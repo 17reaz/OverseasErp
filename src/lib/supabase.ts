@@ -1,2 +1,9 @@
-VITE_SUPABASE_URL=https://equiamryelhkhisvgvfv.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_Rt3-VM4cChqzi76Aokqmcg_S29zSPxs
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseKey
+);

@@ -1,0 +1,2 @@
+VITE_SUPABASE_URL=https://equiamryelhkhisvgvfv.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_Rt3-VM4cChqzi76Aokqmcg_S29zSPxs
