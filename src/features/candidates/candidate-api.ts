@@ -6,6 +6,12 @@ import type {
   UpdateCandidateInput,
 } from './candidate-types'
 
+export type Agent = {
+  id: number
+  name: string
+  code: string | null
+}
+
 const candidateSelect = `
   id,
   sl,
@@ -22,34 +28,18 @@ const candidateSelect = `
   updated_at
 `
 
-/**
- * Get all active candidates
- *
- * Tenant filtering is NOT done here.
- * PostgreSQL RLS handles tenant isolation.
- */
 export async function getCandidates(): Promise<Candidate[]> {
   const { data, error } = await supabase
     .from('candidates')
     .select(candidateSelect)
     .eq('is_deleted', false)
-    .order('created_at', {
-      ascending: false,
-    })
+    .order('created_at', { ascending: false })
 
-  if (error) {
-    throw error
-  }
-
-  return data as Candidate[]
+  if (error) throw error
+  return (data ?? []) as Candidate[]
 }
 
-/**
- * Get one candidate by ID.
- */
-export async function getCandidateById(
-  id: number,
-): Promise<Candidate> {
+export async function getCandidateById(id: number): Promise<Candidate> {
   const { data, error } = await supabase
     .from('candidates')
     .select(candidateSelect)
@@ -57,41 +47,41 @@ export async function getCandidateById(
     .eq('is_deleted', false)
     .single()
 
-  if (error) {
-    throw error
-  }
-
+  if (error) throw error
   return data as Candidate
 }
 
 /**
- * Create candidate.
- *
- * tenant_id is intentionally NOT accepted from the UI.
+ * Loads agents visible to the authenticated tenant through RLS.
+ * This assumes the existing `agents` table exposes id, name and code.
  */
+export async function getAgents(): Promise<Agent[]> {
+  const { data, error } = await supabase
+    .from('agents')
+    .select('id, name, code')
+    .order('name', { ascending: true })
+
+  if (error) throw error
+  return (data ?? []) as Agent[]
+}
+
 export async function createCandidate(
   input: CreateCandidateInput,
 ): Promise<Candidate> {
   const {
-    data: {
-      user,
-    },
+    data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    throw new Error('You must be logged in')
-  }
+  if (!user) throw new Error('You must be logged in')
 
-  const { data: profile, error: profileError } =
-    await supabase
-      .from('profiles')
-      .select('tenant_id')
-      .eq('id', user.id)
-      .single()
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('tenant_id')
+    .eq('id', user.id)
+    .single()
 
-  if (profileError) {
-    throw profileError
-  }
+  if (profileError) throw profileError
+  if (!profile?.tenant_id) throw new Error('Your account has no tenant')
 
   const { data, error } = await supabase
     .from('candidates')
@@ -103,19 +93,10 @@ export async function createCandidate(
     .select(candidateSelect)
     .single()
 
-  if (error) {
-    throw error
-  }
-
+  if (error) throw error
   return data as Candidate
 }
 
-/**
- * Update candidate.
- *
- * RLS ensures that the candidate belongs
- * to the authenticated user's tenant.
- */
 export async function updateCandidate(
   id: number,
   input: UpdateCandidateInput,
@@ -124,33 +105,24 @@ export async function updateCandidate(
     .from('candidates')
     .update(input)
     .eq('id', id)
+    .eq('is_deleted', false)
     .select(candidateSelect)
     .single()
 
-  if (error) {
-    throw error
-  }
-
+  if (error) throw error
   return data as Candidate
 }
 
-/**
- * Soft delete candidate.
- */
-export async function deleteCandidate(
-  id: number,
-): Promise<void> {
+export async function deleteCandidate(id: number): Promise<void> {
   const { error } = await supabase
     .from('candidates')
-    .update({
-      is_deleted: true,
-    })
+    .update({ is_deleted: true })
     .eq('id', id)
+    .eq('is_deleted', false)
 
-  if (error) {
-    throw error
-  }
+  if (error) throw error
 }
+
 export async function setCandidateReturned(
   id: number,
   returned: boolean,
@@ -159,17 +131,13 @@ export async function setCandidateReturned(
     .from('candidates')
     .update({
       is_returned: returned,
-      returned_date: returned
-        ? new Date().toISOString()
-        : null,
+      returned_date: returned ? new Date().toISOString() : null,
     })
     .eq('id', id)
+    .eq('is_deleted', false)
     .select(candidateSelect)
     .single()
 
-  if (error) {
-    throw error
-  }
-
+  if (error) throw error
   return data as Candidate
 }
