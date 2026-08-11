@@ -1,13 +1,11 @@
-
 import { useEffect, useState } from 'react'
 
 import {
   createCandidate,
   getAgents,
   updateCandidate,
-  type Agent,
 } from './candidate-api'
-
+import type { Agent } from './candidate-api'
 import type {
   Candidate,
   CreateCandidateInput,
@@ -16,7 +14,7 @@ import type {
 
 type CandidateFormProps = {
   candidate?: Candidate | null
-  onSuccess?: () => void
+  onSuccess?: () => void | Promise<void>
   onCancel?: () => void
 }
 
@@ -26,105 +24,83 @@ export function CandidateForm({
   onCancel,
 }: CandidateFormProps) {
   const isEditMode = Boolean(candidate)
-
   const [agents, setAgents] = useState<Agent[]>([])
-
   const [passportNo, setPassportNo] = useState('')
   const [name, setName] = useState('')
-  const [receivedDate, setReceivedDate] =
-    useState('')
+  const [receivedDate, setReceivedDate] = useState('')
   const [country, setCountry] = useState('')
-  const [agentId, setAgentId] =
-    useState<string>('')
-
-  const [loadingAgents, setLoadingAgents] =
-    useState(true)
-
+  const [agentId, setAgentId] = useState('')
+  const [loadingAgents, setLoadingAgents] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] =
-    useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!candidate) {
-      setPassportNo('')
-      setName('')
-      setReceivedDate('')
-      setCountry('')
-      setAgentId('')
-      return
-    }
-
-    setPassportNo(candidate.passport_no)
-    setName(candidate.name)
-    setReceivedDate(
-      candidate.received_date ?? '',
-    )
-    setCountry(candidate.country ?? '')
-    setAgentId(
-      candidate.agent_id?.toString() ?? '',
-    )
+    setPassportNo(candidate?.passport_no ?? '')
+    setName(candidate?.name ?? '')
+    setReceivedDate(candidate?.received_date ?? '')
+    setCountry(candidate?.country ?? '')
+    setAgentId(candidate?.agent_id?.toString() ?? '')
+    setError(null)
   }, [candidate])
 
   useEffect(() => {
+    let active = true
+
     async function loadAgents() {
       try {
         const data = await getAgents()
-        setAgents(data)
+        if (active) setAgents(data)
       } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load agents',
-        )
+        if (active) {
+          setError(error instanceof Error ? error.message : 'Failed to load agents')
+        }
       } finally {
-        setLoadingAgents(false)
+        if (active) setLoadingAgents(false)
       }
     }
 
-    loadAgents()
+    void loadAgents()
+    return () => {
+      active = false
+    }
   }, [])
 
-  async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
     setError(null)
     setSaving(true)
 
-    try {
-      if (isEditMode && candidate) {
-        const input: UpdateCandidateInput = {
-          passport_no: passportNo.trim(),
-          name: name.trim(),
-          received_date:
-            receivedDate || null,
-          country: country || null,
-          agent_id: agentId
-            ? Number(agentId)
-            : null,
-        }
+    const passport = passportNo.trim()
+    const candidateName = name.trim()
 
-        await updateCandidate(
-          candidate.id,
-          input,
-        )
+    if (!passport || !candidateName) {
+      setError('Passport number and name are required')
+      setSaving(false)
+      return
+    }
+
+    try {
+      if (candidate) {
+        const input: UpdateCandidateInput = {
+          passport_no: passport,
+          name: candidateName,
+          received_date: receivedDate || null,
+          country: country || null,
+          agent_id: agentId ? Number(agentId) : null,
+        }
+        await updateCandidate(candidate.id, input)
       } else {
         const input: CreateCandidateInput = {
-          passport_no: passportNo.trim(),
-          name: name.trim(),
-          received_date:
-            receivedDate || null,
+          passport_no: passport,
+          name: candidateName,
+          received_date: receivedDate || null,
           country: country || null,
-          agent_id: agentId
-            ? Number(agentId)
-            : null,
+          agent_id: agentId ? Number(agentId) : null,
         }
-
         await createCandidate(input)
       }
 
-      onSuccess?.()
+      await onSuccess?.()
     } catch (error) {
       setError(
         error instanceof Error
@@ -139,17 +115,11 @@ export function CandidateForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6"
-    >
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold">
-          {isEditMode
-            ? 'Edit Candidate'
-            : 'Add Candidate'}
+          {isEditMode ? 'Edit Candidate' : 'Add Candidate'}
         </h2>
-
         <p className="text-sm text-muted-foreground">
           {isEditMode
             ? 'Update candidate information.'
@@ -167,21 +137,14 @@ export function CandidateForm({
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Passport */}
         <div className="space-y-2">
-          <label
-            htmlFor="passport_no"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="passport_no" className="text-sm font-medium">
             Passport No
           </label>
-
           <input
             id="passport_no"
             value={passportNo}
-            onChange={(event) =>
-              setPassportNo(event.target.value)
-            }
+            onChange={(event) => setPassportNo(event.target.value)}
             placeholder="Passport number"
             required
             disabled={saving}
@@ -189,21 +152,14 @@ export function CandidateForm({
           />
         </div>
 
-        {/* Name */}
         <div className="space-y-2">
-          <label
-            htmlFor="name"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="name" className="text-sm font-medium">
             Name
           </label>
-
           <input
             id="name"
             value={name}
-            onChange={(event) =>
-              setName(event.target.value)
-            }
+            onChange={(event) => setName(event.target.value)}
             placeholder="Candidate name"
             required
             disabled={saving}
@@ -211,98 +167,57 @@ export function CandidateForm({
           />
         </div>
 
-        {/* Received Date */}
         <div className="space-y-2">
-          <label
-            htmlFor="received_date"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="received_date" className="text-sm font-medium">
             Received Date
           </label>
-
           <input
             id="received_date"
             type="date"
             value={receivedDate}
-            onChange={(event) =>
-              setReceivedDate(event.target.value)
-            }
+            onChange={(event) => setReceivedDate(event.target.value)}
             disabled={saving}
             className="w-full rounded-md border px-3 py-2"
           />
         </div>
 
-        {/* Country */}
         <div className="space-y-2">
-          <label
-            htmlFor="country"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="country" className="text-sm font-medium">
             Country
           </label>
-
           <select
             id="country"
             value={country}
-            onChange={(event) =>
-              setCountry(event.target.value)
-            }
+            onChange={(event) => setCountry(event.target.value)}
             disabled={saving}
             className="w-full rounded-md border px-3 py-2"
           >
-            <option value="">
-              Select country
-            </option>
-
+            <option value="">Select country</option>
             <option value="KSA">KSA</option>
-            <option value="Mauritius">
-              Mauritius
-            </option>
+            <option value="Mauritius">Mauritius</option>
             <option value="Laos">Laos</option>
-            <option value="Malaysia">
-              Malaysia
-            </option>
-            <option value="Belarus">
-              Belarus
-            </option>
+            <option value="Malaysia">Malaysia</option>
+            <option value="Belarus">Belarus</option>
           </select>
         </div>
 
-        {/* Agent */}
         <div className="space-y-2 md:col-span-2">
-          <label
-            htmlFor="agent_id"
-            className="text-sm font-medium"
-          >
+          <label htmlFor="agent_id" className="text-sm font-medium">
             Agent
           </label>
-
           <select
             id="agent_id"
             value={agentId}
-            onChange={(event) =>
-              setAgentId(event.target.value)
-            }
-            disabled={
-              saving || loadingAgents
-            }
+            onChange={(event) => setAgentId(event.target.value)}
+            disabled={saving || loadingAgents}
             className="w-full rounded-md border px-3 py-2"
           >
             <option value="">
-              {loadingAgents
-                ? 'Loading agents...'
-                : 'Select agent'}
+              {loadingAgents ? 'Loading agents...' : 'Select agent'}
             </option>
-
             {agents.map((agent) => (
-              <option
-                key={agent.id}
-                value={agent.id}
-              >
-                {agent.name}
-                {agent.code
-                  ? ` (${agent.code})`
-                  : ''}
+              <option key={agent.id} value={agent.id}>
+                {agent.name}{agent.code ? ` (${agent.code})` : ''}
               </option>
             ))}
           </select>
@@ -320,12 +235,9 @@ export function CandidateForm({
             Cancel
           </button>
         )}
-
         <button
           type="submit"
-          disabled={
-            saving || loadingAgents
-          }
+          disabled={saving || loadingAgents}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           {saving
@@ -340,4 +252,3 @@ export function CandidateForm({
     </form>
   )
 }
-
