@@ -1,11 +1,14 @@
+import { RouterProvider } from 'react-router-dom'
+
+import { router } from '@/app/routes'
 import { AuthProvider } from '@/features/auth/auth-provider'
 import { ProfileProvider } from '@/features/auth/profile-context'
 
-function App() {
+export function App() {
   return (
     <AuthProvider>
       <ProfileProvider>
-        {/* routes */}
+        <RouterProvider router={router} />
       </ProfileProvider>
     </AuthProvider>
   )
