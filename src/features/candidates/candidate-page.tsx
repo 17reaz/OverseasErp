@@ -4,6 +4,7 @@ import { CandidateForm } from '@/features/candidates/candidate-form'
 import {
   deleteCandidate,
   getCandidates,
+  setCandidateReturned,
 } from '@/features/candidates/candidate-api'
 import type { Candidate } from '@/features/candidates/candidate-types'
 
@@ -12,6 +13,7 @@ export function CandidatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [returningId, setReturningId] = useState<number | null>(null)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [showForm, setShowForm] = useState(false)
 
@@ -60,6 +62,34 @@ export function CandidatesPage() {
       setError(error instanceof Error ? error.message : 'Failed to remove candidate')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function handleReturned(candidate: Candidate) {
+    const nextReturned = !candidate.is_returned
+
+    if (
+      !window.confirm(
+        nextReturned
+          ? 'Mark this candidate as returned?'
+          : 'Remove returned status from this candidate?',
+      )
+    ) {
+      return
+    }
+
+    setReturningId(candidate.id)
+    setError(null)
+
+    try {
+      const updated = await setCandidateReturned(candidate.id, nextReturned)
+      setCandidates((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      )
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update returned status')
+    } finally {
+      setReturningId(null)
     }
   }
 
@@ -136,37 +166,72 @@ export function CandidatesPage() {
               </thead>
 
               <tbody>
-                {candidates.map((candidate) => (
-                  <tr key={candidate.id} className="border-b last:border-0">
-                    <td className="px-4 py-3">{candidate.sl ?? '—'}</td>
-                    <td className="px-4 py-3 font-medium">{candidate.name}</td>
-                    <td className="px-4 py-3">{candidate.passport_no}</td>
-                    <td className="px-4 py-3">{candidate.country ?? '—'}</td>
-                    <td className="px-4 py-3">{candidate.current_stage}</td>
-                    <td className="px-4 py-3">{candidate.is_returned ? 'Yes' : 'No'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditForm(candidate)}
-                          disabled={deletingId === candidate.id}
-                          className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
-                        >
-                          Edit
-                        </button>
+                {candidates.map((candidate) => {
+                  const busy =
+                    deletingId === candidate.id || returningId === candidate.id
 
-                        <button
-                          type="button"
-                          disabled={deletingId === candidate.id}
-                          onClick={() => void handleDelete(candidate.id)}
-                          className="rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive disabled:opacity-50"
-                        >
-                          {deletingId === candidate.id ? 'Removing...' : 'Remove'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                  return (
+                    <tr key={candidate.id} className="border-b last:border-0">
+                      <td className="px-4 py-3">{candidate.sl ?? '—'}</td>
+                      <td className="px-4 py-3 font-medium">{candidate.name}</td>
+                      <td className="px-4 py-3">{candidate.passport_no}</td>
+                      <td className="px-4 py-3">{candidate.country ?? '—'}</td>
+                      <td className="px-4 py-3">{candidate.current_stage}</td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          <span
+                            className={
+                              candidate.is_returned
+                                ? 'font-medium text-destructive'
+                                : 'text-muted-foreground'
+                            }
+                          >
+                            {candidate.is_returned ? 'Returned' : 'Active'}
+                          </span>
+                          {candidate.returned_date && (
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(candidate.returned_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditForm(candidate)}
+                            disabled={busy}
+                            className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleReturned(candidate)}
+                            disabled={busy}
+                            className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
+                          >
+                            {returningId === candidate.id
+                              ? 'Saving...'
+                              : candidate.is_returned
+                                ? 'Unmark Returned'
+                                : 'Mark Returned'}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void handleDelete(candidate.id)}
+                            className="rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive disabled:opacity-50"
+                          >
+                            {deletingId === candidate.id ? 'Removing...' : 'Remove'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
