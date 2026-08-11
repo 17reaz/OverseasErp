@@ -1,17 +1,10 @@
-
 import { useCallback, useEffect, useState } from 'react'
 
 import { CandidateForm } from '@/features/candidates/candidate-form'
 import {
   deleteCandidate,
   getCandidates,
-  setCandidateReturned,
 } from '@/features/candidates/candidate-api'
-import {
-  deleteCandidate,
-  getCandidates,
-} from '@/features/candidates/candidate-api'
-
 import type { Candidate } from '@/features/candidates/candidate-types'
 
 export function CandidatesPage() {
@@ -19,53 +12,52 @@ export function CandidatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [showForm, setShowForm] = useState(false)
 
   const loadCandidates = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const data = await getCandidates()
-      setCandidates(data)
+      setCandidates(await getCandidates())
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load candidates',
-      )
+      setError(error instanceof Error ? error.message : 'Failed to load candidates')
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    loadCandidates()
+    void loadCandidates()
   }, [loadCandidates])
 
-  async function handleDelete(id: number) {
-    const confirmed = window.confirm(
-      'Are you sure you want to remove this candidate?',
-    )
+  function openCreateForm() {
+    setSelectedCandidate(null)
+    setShowForm(true)
+  }
 
-    if (!confirmed) return
+  function openEditForm(candidate: Candidate) {
+    setSelectedCandidate(candidate)
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setSelectedCandidate(null)
+  }
+
+  async function handleDelete(id: number) {
+    if (!window.confirm('Are you sure you want to remove this candidate?')) return
 
     setDeletingId(id)
+    setError(null)
 
     try {
       await deleteCandidate(id)
-
-      setCandidates((current) =>
-        current.filter(
-          (candidate) => candidate.id !== id,
-        ),
-      )
+      setCandidates((current) => current.filter((candidate) => candidate.id !== id))
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to remove candidate',
-      )
+      setError(error instanceof Error ? error.message : 'Failed to remove candidate')
     } finally {
       setDeletingId(null)
     }
@@ -74,22 +66,16 @@ export function CandidatesPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-sm text-muted-foreground">
-          Loading candidates...
-        </p>
+        <p className="text-sm text-muted-foreground">Loading candidates...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">
-            Candidates
-          </h1>
-
+          <h1 className="text-2xl font-semibold">Candidates</h1>
           <p className="text-sm text-muted-foreground">
             Manage candidates belonging to your tenant.
           </p>
@@ -97,29 +83,26 @@ export function CandidatesPage() {
 
         <button
           type="button"
-          onClick={() => setShowCreateForm(true)}
+          onClick={openCreateForm}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
           Add Candidate
         </button>
       </div>
 
-      {/* Create Candidate Form */}
-      {showCreateForm && (
+      {showForm && (
         <div className="rounded-lg border p-6">
           <CandidateForm
+            candidate={selectedCandidate}
             onSuccess={async () => {
-              setShowCreateForm(false)
+              closeForm()
               await loadCandidates()
             }}
-            onCancel={() => {
-              setShowCreateForm(false)
-            }}
+            onCancel={closeForm}
           />
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div
           role="alert"
@@ -129,13 +112,9 @@ export function CandidatesPage() {
         </div>
       )}
 
-      {/* Empty state / Table */}
       {candidates.length === 0 ? (
         <div className="rounded-lg border p-10 text-center">
-          <h2 className="font-medium">
-            No candidates found
-          </h2>
-
+          <h2 className="font-medium">No candidates found</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Add your first candidate to get started.
           </p>
@@ -146,90 +125,43 @@ export function CandidatesPage() {
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">
-                    SL
-                  </th>
-
-                  <th className="px-4 py-3 text-left font-medium">
-                    Name
-                  </th>
-
-                  <th className="px-4 py-3 text-left font-medium">
-                    Passport
-                  </th>
-
-                  <th className="px-4 py-3 text-left font-medium">
-                    Country
-                  </th>
-
-                  <th className="px-4 py-3 text-left font-medium">
-                    Stage
-                  </th>
-
-                  <th className="px-4 py-3 text-left font-medium">
-                    Returned
-                  </th>
-
-                  <th className="px-4 py-3 text-right font-medium">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left font-medium">SL</th>
+                  <th className="px-4 py-3 text-left font-medium">Name</th>
+                  <th className="px-4 py-3 text-left font-medium">Passport</th>
+                  <th className="px-4 py-3 text-left font-medium">Country</th>
+                  <th className="px-4 py-3 text-left font-medium">Stage</th>
+                  <th className="px-4 py-3 text-left font-medium">Returned</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {candidates.map((candidate) => (
-                  <tr
-                    key={candidate.id}
-                    className="border-b last:border-0"
-                  >
-                    <td className="px-4 py-3">
-                      {candidate.sl ?? '—'}
-                    </td>
-
-                    <td className="px-4 py-3 font-medium">
-                      {candidate.name}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {candidate.passport_no}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {candidate.country ?? '—'}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {candidate.current_stage}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {candidate.is_returned
-                        ? 'Yes'
-                        : 'No'}
-                    </td>
-
+                  <tr key={candidate.id} className="border-b last:border-0">
+                    <td className="px-4 py-3">{candidate.sl ?? '—'}</td>
+                    <td className="px-4 py-3 font-medium">{candidate.name}</td>
+                    <td className="px-4 py-3">{candidate.passport_no}</td>
+                    <td className="px-4 py-3">{candidate.country ?? '—'}</td>
+                    <td className="px-4 py-3">{candidate.current_stage}</td>
+                    <td className="px-4 py-3">{candidate.is_returned ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          className="rounded-md border px-3 py-1.5 text-xs"
+                          onClick={() => openEditForm(candidate)}
+                          disabled={deletingId === candidate.id}
+                          className="rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
                         >
                           Edit
                         </button>
 
                         <button
                           type="button"
-                          disabled={
-                            deletingId === candidate.id
-                          }
-                          onClick={() =>
-                            handleDelete(candidate.id)
-                          }
+                          disabled={deletingId === candidate.id}
+                          onClick={() => void handleDelete(candidate.id)}
                           className="rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive disabled:opacity-50"
                         >
-                          {deletingId === candidate.id
-                            ? 'Removing...'
-                            : 'Remove'}
+                          {deletingId === candidate.id ? 'Removing...' : 'Remove'}
                         </button>
                       </div>
                     </td>
@@ -243,4 +175,3 @@ export function CandidatesPage() {
     </div>
   )
 }
-
