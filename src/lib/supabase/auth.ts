@@ -9,7 +9,14 @@ export async function signIn(
     password,
   });
 }
-
+export async function signInWithGoogle() {
+  return await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin,
+    },
+  });
+}
 export async function signUp(
   email: string,
   password: string,

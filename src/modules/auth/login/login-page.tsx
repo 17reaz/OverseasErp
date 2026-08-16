@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { signIn } from "@/lib/supabase/auth";
-import { supabase } from "@/lib/supabase/client";
+import {
+  signIn,
+  signInWithGoogle,
+} from "@/lib/supabase/auth";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -37,12 +39,7 @@ export function LoginPage() {
     setError("");
     setGoogleLoading(true);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/app`,
-      },
-    });
+    const { error } = await signInWithGoogle();
 
     if (error) {
       setError(error.message);
@@ -86,7 +83,9 @@ export function LoginPage() {
           type="submit"
           disabled={loading || googleLoading}
         >
-          {loading ? "Signing in..." : "Sign in"}
+          {loading
+            ? "Signing in..."
+            : "Sign in"}
         </button>
       </form>
 
@@ -102,9 +101,9 @@ export function LoginPage() {
 
       <button
         type="button"
-        onClick={handleGoogleLogin}
+        className="w-full"
         disabled={loading || googleLoading}
-        className="w-full rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+        onClick={handleGoogleLogin}
       >
         {googleLoading
           ? "Connecting to Google..."
