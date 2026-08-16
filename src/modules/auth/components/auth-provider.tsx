@@ -7,7 +7,6 @@ import {
 } from "react";
 
 import type { Session, User } from "@supabase/supabase-js";
-
 import {
   getProfile,
   getTenant,
@@ -125,29 +124,35 @@ export function AuthProvider({
     initializeAuth();
 
     const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+  data: { subscription },
+} = supabase.auth.onAuthStateChange(
+  (event, session) => {
+    if (!mounted) return;
 
-        setSession(session);
+    setSession(session);
 
-        if (event === "SIGNED_OUT") {
-          setProfile(null);
-          setTenant(null);
-          setLoading(false);
-          return;
-        }
+    if (event === "SIGNED_OUT") {
+      setProfile(null);
+      setTenant(null);
+      setLoading(false);
+      return;
+    }
 
-        setLoading(true);
+    setLoading(true);
 
-        await loadUserData(session);
+    // Do not make Supabase calls directly
+    // inside onAuthStateChange.
+    setTimeout(async () => {
+      if (!mounted) return;
 
-        if (mounted) {
-          setLoading(false);
-        }
-      },
-    );
+      await loadUserData(session);
+
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 0);
+  },
+);
 
     return () => {
       mounted = false;
