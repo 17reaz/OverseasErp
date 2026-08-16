@@ -1,25 +1,66 @@
-export function CandidateFilters() {
+import {
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+interface CandidateFiltersProps {
+  search: string;
+  onSearchChange: (value: string) => void;
+  onRefresh: () => void;
+  refreshing?: boolean;
+}
+
+export function CandidateFilters({
+  search,
+  onSearchChange,
+  onRefresh,
+  refreshing = false,
+}: CandidateFiltersProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <input
-        type="search"
-        placeholder="Search candidates..."
-        className="h-9 rounded-md border px-3 text-sm"
-      />
+    <div className="flex w-full flex-wrap items-center gap-2">
+      {/* Search */}
+      <div className="relative w-full sm:w-[280px]">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-      <button
+        <Input
+          value={search}
+          onChange={(event) =>
+            onSearchChange(event.target.value)
+          }
+          placeholder="Search candidates..."
+          className="pl-9"
+        />
+      </div>
+
+      {/* Filter */}
+      <Button
+        variant="outline"
         type="button"
-        className="h-9 rounded-md border px-3 text-sm"
       >
+        <SlidersHorizontal className="mr-2 h-4 w-4" />
         Filter
-      </button>
+      </Button>
 
-      <button
+      {/* Refresh */}
+      <Button
+        variant="outline"
+        size="icon"
         type="button"
-        className="h-9 rounded-md border px-3 text-sm"
+        onClick={onRefresh}
+        disabled={refreshing}
       >
-        Sort
-      </button>
+        <RefreshCw
+          className={
+            refreshing
+              ? "h-4 w-4 animate-spin"
+              : "h-4 w-4"
+          }
+        />
+      </Button>
     </div>
   );
 }
