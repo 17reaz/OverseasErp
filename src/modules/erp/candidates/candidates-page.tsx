@@ -5,10 +5,8 @@ import {
   useState,
 } from "react";
 
-import { PageHeader } from "../shared/page-header";
 import { PageToolbar } from "../shared/page-toolbar";
 
-import { CandidateFilters } from "./components/candidate-filters";
 import { CandidatesTable } from "./components/candidates-table";
 
 import {
