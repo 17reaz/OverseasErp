@@ -71,10 +71,14 @@ export function AuthProvider({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadUserData = async (
+    let mounted = true;
+
+    async function loadUserData(
       currentSession: Session | null,
-    ) => {
+    ) {
       if (!currentSession?.user) {
+        if (!mounted) return;
+
         setProfile(null);
         setTenant(null);
         return;
@@ -83,6 +87,8 @@ export function AuthProvider({
       const { data: profile } = await getProfile(
         currentSession.user.id,
       );
+
+      if (!mounted) return;
 
       setProfile(profile);
 
@@ -95,34 +101,56 @@ export function AuthProvider({
         profile.tenant_id,
       );
 
-      setTenant(tenant);
-    };
+      if (!mounted) return;
 
-    const getInitialSession = async () => {
+      setTenant(tenant);
+    }
+
+    async function initializeAuth() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
+      if (!mounted) return;
 
       setSession(session);
 
       await loadUserData(session);
 
-      setLoading(false);
-    };
+      if (mounted) {
+        setLoading(false);
+      }
+    }
 
-    getInitialSession();
+    initializeAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        if (!mounted) return;
+
         setSession(session);
 
+        if (event === "SIGNED_OUT") {
+          setProfile(null);
+          setTenant(null);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+
         await loadUserData(session);
+
+        if (mounted) {
+          setLoading(false);
+        }
       },
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
