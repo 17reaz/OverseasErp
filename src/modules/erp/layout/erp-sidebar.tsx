@@ -1,60 +1,113 @@
+import {
+  LayoutDashboard,
+  Users,
+  Stethoscope,
+  FileCheck,
+  Plane,
+  ShieldCheck,
+} from "lucide-react";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+
 import { NavLink } from "react-router-dom";
 
 const navigation = [
   {
-    label: "Dashboard",
-    path: "/app",
+    title: "Dashboard",
+    url: "/app",
+    icon: LayoutDashboard,
   },
   {
-    label: "Candidates",
-    path: "/app/candidates",
+    title: "Candidates",
+    url: "/app/candidates",
+    icon: Users,
   },
   {
-    label: "Medical",
-    path: "/app/medical",
+    title: "Medical",
+    url: "/app/medical",
+    icon: Stethoscope,
   },
   {
-    label: "MOFA",
-    path: "/app/mofa",
+    title: "MOFA",
+    url: "/app/mofa",
+    icon: FileCheck,
   },
   {
-    label: "Visa",
-    path: "/app/visa",
+    title: "Visa",
+    url: "/app/visa",
+    icon: ShieldCheck,
   },
   {
-    label: "Flight",
-    path: "/app/flight",
+    title: "Takamul",
+    url: "/app/takamul",
+    icon: Plane,
   },
 ];
 
 export function ErpSidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 border-r bg-background md:block">
+    <Sidebar>
+      {/* Header */}
       <div className="flex h-16 items-center border-b px-6">
-        <h1 className="font-semibold">
-          Overseas ERP
-        </h1>
+        <div>
+          <h1 className="text-sm font-semibold">
+            Overseas ERP
+          </h1>
+
+          <p className="text-xs text-muted-foreground">
+            Management System
+          </p>
+        </div>
       </div>
 
-      <nav className="space-y-1 p-3">
-        {navigation.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === "/app"}
-            className={({ isActive }) =>
-              [
-                "block rounded-md px-3 py-2 text-sm",
-                isActive
-                  ? "bg-accent font-medium"
-                  : "text-muted-foreground hover:bg-accent",
-              ].join(" ")
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-    </aside>
+      {/* Navigation */}
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            ERP Modules
+          </SidebarGroupLabel>
+
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/app"}
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon />
+
+                          <span
+                            className={
+                              isActive
+                                ? "font-medium"
+                                : ""
+                            }
+                          >
+                            {item.title}
+                          </span>
+                        </>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
 }
