@@ -1,41 +1,61 @@
+import {
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
 import type { Candidate } from "../candidate-service";
 
 interface CandidatesTableProps {
   candidates: Candidate[];
   loading?: boolean;
+
+  page?: number;
+  pageSize?: number;
+  total?: number;
+
+  onPageChange?: (page: number) => void;
 }
 
 export function CandidatesTable({
   candidates,
   loading = false,
+  page = 1,
+  pageSize = 10,
+  total,
+  onPageChange,
 }: CandidatesTableProps) {
-  if (loading) {
-    return (
-      <div className="rounded-lg border">
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-          Loading candidates...
-        </div>
-      </div>
-    );
-  }
+  const totalItems = total ?? candidates.length;
 
-  if (candidates.length === 0) {
-    return (
-      <div className="rounded-lg border">
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-          No candidates found.
-        </div>
-      </div>
-    );
-  }
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalItems / pageSize),
+  );
+
+  const currentPage = Math.min(page, totalPages);
+
+  const startItem =
+    totalItems === 0
+      ? 0
+      : (currentPage - 1) * pageSize + 1;
+
+  const endItem = Math.min(
+    currentPage * pageSize,
+    totalItems,
+  );
 
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="border-b bg-muted/50">
+    <div className="flex h-[calc(100vh-250px)] min-h-[400px] flex-col overflow-hidden rounded-lg border bg-background">
+      {/* ================================================
+          FIXED TABLE HEADER
+          ================================================ */}
+
+      <div className="shrink-0 border-b bg-background">
+        <table className="w-full table-fixed">
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium">
+              <th className="w-[70px] px-4 py-3 text-left text-sm font-medium">
                 SL
               </th>
 
@@ -59,68 +79,178 @@ export function CandidatesTable({
                 Received
               </th>
 
-              <th className="px-4 py-3 text-right text-sm font-medium">
+              <th className="w-[100px] px-4 py-3 text-left text-sm font-medium">
+                Agent
+              </th>
+
+              <th className="w-[100px] px-4 py-3 text-left text-sm font-medium">
+                Status
+              </th>
+
+              <th className="w-[90px] px-4 py-3 text-right text-sm font-medium">
                 Action
               </th>
             </tr>
           </thead>
+        </table>
+      </div>
 
-          <tbody>
-            {candidates.map((candidate) => (
-              <tr
-                key={candidate.id}
-                className="border-b last:border-0 hover:bg-muted/30"
-              >
-                {/* SL */}
-                <td className="px-4 py-3 text-sm">
-                  {candidate.sl ?? "—"}
-                </td>
+      {/* ================================================
+          DATA AREA
+          
+          ONLY THIS AREA SCROLLS VERTICALLY
+          ================================================ */}
 
-                {/* Name */}
-                <td className="px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        {loading ? (
+          <div className="flex min-h-[200px] items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              Loading candidates...
+            </p>
+          </div>
+        ) : candidates.length === 0 ? (
+          <div className="flex min-h-[200px] items-center justify-center">
+            <div className="text-center">
+              <p className="text-sm font-medium">
+                No candidates found
+              </p>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Try changing your search or filter.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <table className="w-full table-fixed">
+            <tbody>
+              {candidates.map((candidate) => (
+                <tr
+                  key={candidate.id}
+                  className="border-b hover:bg-muted/40"
+                >
+                  {/* SL */}
+                  <td className="w-[70px] px-4 py-3 text-sm">
+                    {candidate.sl ?? "—"}
+                  </td>
+
+                  {/* Candidate */}
+                  <td className="px-4 py-3">
+                    <p className="truncate text-sm font-medium">
                       {candidate.name}
                     </p>
-                  </div>
-                </td>
+                  </td>
 
-                {/* Passport */}
-                <td className="px-4 py-3 text-sm">
-                  {candidate.passport_no}
-                </td>
+                  {/* Passport */}
+                  <td className="px-4 py-3 text-sm">
+                    <span className="block truncate">
+                      {candidate.passport_no}
+                    </span>
+                  </td>
 
-                {/* Country */}
-                <td className="px-4 py-3 text-sm">
-                  {candidate.country ?? "—"}
-                </td>
+                  {/* Country */}
+                  <td className="px-4 py-3 text-sm">
+                    <span className="block truncate">
+                      {candidate.country ?? "—"}
+                    </span>
+                  </td>
 
-                {/* Stage */}
-                <td className="px-4 py-3">
-                  <span className="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium">
-                    {candidate.current_stage ??
-                      "Pending"}
-                  </span>
-                </td>
+                  {/* Stage */}
+                  <td className="px-4 py-3">
+                    <span className="inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-medium">
+                      {candidate.current_stage ??
+                        "Pending"}
+                    </span>
+                  </td>
 
-                {/* Received date */}
-                <td className="px-4 py-3 text-sm">
-                  {candidate.received_date ?? "—"}
-                </td>
+                  {/* Received */}
+                  <td className="px-4 py-3 text-sm">
+                    {candidate.received_date ?? "—"}
+                  </td>
 
-                {/* Action */}
-                <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {/* Agent */}
+                  <td className="w-[100px] px-4 py-3 text-sm">
+                    {candidate.agent_id ?? "—"}
+                  </td>
+
+                  {/* Status */}
+                  <td className="w-[100px] px-4 py-3">
+                    {candidate.is_returned ? (
+                      <span className="inline-flex rounded-full border px-2 py-1 text-xs">
+                        Returned
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full border px-2 py-1 text-xs">
+                        Active
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Action */}
+                  <td className="w-[90px] px-4 py-3 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                    >
+                      View
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ================================================
+          FIXED FOOTER
+
+          ALWAYS STAYS AT BOTTOM
+          EVEN WHEN THERE IS NO DATA
+          ================================================ */}
+
+      <div className="shrink-0 border-t bg-background px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Result count */}
+          <p className="text-sm text-muted-foreground">
+            {totalItems === 0
+              ? "No results"
+              : `${startItem}-${endItem} of ${totalItems}`}
+          </p>
+
+          {/* Pagination */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() =>
+                onPageChange?.(currentPage - 1)
+              }
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <div className="px-3 text-sm">
+              Page {currentPage} of {totalPages}
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              disabled={
+                currentPage >= totalPages
+              }
+              onClick={() =>
+                onPageChange?.(currentPage + 1)
+              }
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

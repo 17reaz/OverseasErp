@@ -88,20 +88,23 @@ export function CandidatesPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <PageHeader
-        title="Candidates"
-        description="Manage and track all candidates."
-      />
-
-      {/* Toolbar */}
-      <PageToolbar>
-        <CandidateFilters
-          search={search}
-          onSearchChange={setSearch}
-          onRefresh={loadCandidates}
-          refreshing={loading}
-        />
-      </PageToolbar>
+      <PageToolbar
+  title="Candidates"
+  search={search}
+  searchPlaceholder="Search name, passport..."
+  onSearchChange={setSearch}
+  onFilter={() => {
+    console.log("Open candidate filters");
+  }}
+  onSort={() => {
+    console.log("Open candidate sorting");
+  }}
+  onRefresh={loadCandidates}
+  onCreate={() => {
+    console.log("Open create candidate dialog");
+  }}
+  refreshing={loading}
+/>
 
       {/* Error */}
       {error && (
