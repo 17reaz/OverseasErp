@@ -1,6 +1,8 @@
 import {
   LayoutDashboard,
   Users,
+  UserRoundCog,
+  Building2,
   Stethoscope,
   FileCheck,
   Plane,
@@ -30,6 +32,16 @@ const navigation = [
     title: "Candidates",
     url: "/app/candidates",
     icon: Users,
+  },
+  {
+    title: "Agents",
+    url: "/app/agents",
+    icon: UserRoundCog,
+  },
+  {
+    title: "Agencies",
+    url: "/app/agencies",
+    icon: Building2,
   },
   {
     title: "Medical",

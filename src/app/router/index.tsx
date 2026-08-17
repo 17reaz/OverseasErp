@@ -11,6 +11,7 @@ import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-
 import { ErpLayout } from "@/modules/erp/layout/erp-layout";
 import { DashboardPage } from "@/modules/erp/dashboard/dashboard-page";
 import { CandidatesPage } from "@/modules/erp/candidates/candidates-page";
+import { AgentsPage } from "@/modules/erp/agents/agents-page";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -38,6 +39,10 @@ function AppRouter() {
             <Route path="dashboard" element={<DashboardPage />} />
 
             <Route path="candidates" element={<CandidatesPage />}/>
+            <Route
+  path="/app/agents"
+  element={<AgentsPage />}
+/>
             <Route path="medical" element={<div>Medical</div>} />
             <Route path="mofa" element={<div>MOFA</div>} />
             <Route path="visa" element={<div>Visa</div>} />
