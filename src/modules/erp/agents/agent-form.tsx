@@ -31,7 +31,9 @@ export function AgentForm({
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+const hasChanges =
+  name.trim() !== "" ||
+  code.trim() !== "";
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
@@ -81,15 +83,16 @@ export function AgentForm({
 
   return (
     <UniversalSheet
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Add Agent"
-      description="Create a new recruitment agent."
-      onSubmit={handleSubmit}
-      submitLabel="Create Agent"
-      loading={loading}
-      disabled={!name.trim()}
-    >
+  open={open}
+  onOpenChange={onOpenChange}
+  title="Add Agent"
+  description="Create a new recruitment agent."
+  onSubmit={handleSubmit}
+  submitLabel="Create Agent"
+  loading={loading}
+  disabled={!name.trim()}
+  hasChanges={hasChanges}
+>
       {error && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
