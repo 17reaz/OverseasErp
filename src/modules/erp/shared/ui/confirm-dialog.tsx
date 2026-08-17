@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+// src/modules/erp/shared/ui/confirm-dialog.tsx
 
 import {
   AlertDialog,
@@ -18,8 +18,6 @@ interface ConfirmDialogProps {
   title: string;
   description?: string;
 
-  children?: ReactNode;
-
   confirmLabel?: string;
   cancelLabel?: string;
 
@@ -33,7 +31,6 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  children,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   destructive = false,
@@ -55,8 +52,6 @@ export function ConfirmDialog({
               {description}
             </AlertDialogDescription>
           )}
-
-          {children}
         </AlertDialogHeader>
 
         <AlertDialogFooter>
@@ -69,7 +64,7 @@ export function ConfirmDialog({
             className={
               destructive
                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : ""
+                : undefined
             }
           >
             {confirmLabel}

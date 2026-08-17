@@ -1,15 +1,12 @@
+// src/modules/erp/shared/ui/status-toggle.tsx
+
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 interface StatusToggleProps {
   checked: boolean;
-
-  onCheckedChange: (
-    checked: boolean,
-  ) => void;
-
+  onCheckedChange: (checked: boolean) => void;
   label?: string;
-
   disabled?: boolean;
 }
 
@@ -27,9 +24,7 @@ export function StatusToggle({
         disabled={disabled}
       />
 
-      <Label className="cursor-pointer">
-        {label}
-      </Label>
+      <Label>{label}</Label>
     </div>
   );
 }

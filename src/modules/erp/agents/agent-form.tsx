@@ -1,22 +1,18 @@
+// AgentForm — current project অনুযায়ী clean version
+
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import {
-  UniversalSheet,
-} from "../shared/forms/universal-sheet";
-
-import {
-  FormSection,
-} from "../shared/forms/form-section";
+import { UniversalSheet } from "../shared/forms/universal-sheet";
+import { FormSection } from "../shared/forms/form-section";
 
 import { createAgent } from "./agents-service";
 
 interface AgentFormProps {
   open: boolean;
   tenantId: string;
-
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
@@ -31,9 +27,11 @@ export function AgentForm({
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-const hasChanges =
-  name.trim() !== "" ||
-  code.trim() !== "";
+
+  const hasChanges =
+    name.trim() !== "" ||
+    code.trim() !== "";
+
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
@@ -83,16 +81,16 @@ const hasChanges =
 
   return (
     <UniversalSheet
-  open={open}
-  onOpenChange={onOpenChange}
-  title="Add Agent"
-  description="Create a new recruitment agent."
-  onSubmit={handleSubmit}
-  submitLabel="Create Agent"
-  loading={loading}
-  disabled={!name.trim()}
-  hasChanges={hasChanges}
->
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add Agent"
+      description="Create a new recruitment agent."
+      onSubmit={handleSubmit}
+      submitLabel="Create Agent"
+      loading={loading}
+      disabled={!name.trim()}
+      hasChanges={hasChanges}
+    >
       {error && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}

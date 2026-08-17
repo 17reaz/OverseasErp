@@ -1,3 +1,6 @@
+// src/modules/erp/shared/forms/universal-sheet.tsx
+
+import { useState } from "react";
 import type {
   FormEvent,
   ReactNode,
@@ -44,10 +47,6 @@ interface UniversalSheetProps {
 
   loading?: boolean;
   disabled?: boolean;
-
-  /**
-   * true হলে unsaved changes warning দেখাবে
-   */
   hasChanges?: boolean;
 }
 
@@ -64,16 +63,14 @@ export function UniversalSheet({
   disabled = false,
   hasChanges = false,
 }: UniversalSheetProps) {
-  const [showDiscardWarning, setShowDiscardWarning] =
+  const [discardOpen, setDiscardOpen] =
     useState(false);
 
-  function handleRequestClose() {
-    if (loading) {
-      return;
-    }
+  function handleCloseRequest() {
+    if (loading) return;
 
     if (hasChanges) {
-      setShowDiscardWarning(true);
+      setDiscardOpen(true);
       return;
     }
 
@@ -81,7 +78,7 @@ export function UniversalSheet({
   }
 
   function handleDiscard() {
-    setShowDiscardWarning(false);
+    setDiscardOpen(false);
     onOpenChange(false);
   }
 
@@ -89,9 +86,9 @@ export function UniversalSheet({
     <>
       <Sheet
         open={open}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            handleRequestClose();
+        onOpenChange={(value) => {
+          if (!value) {
+            handleCloseRequest();
             return;
           }
 
@@ -102,11 +99,8 @@ export function UniversalSheet({
           side="right"
           className="flex w-full flex-col sm:max-w-lg"
         >
-          {/* Header */}
           <SheetHeader>
-            <SheetTitle>
-              {title}
-            </SheetTitle>
+            <SheetTitle>{title}</SheetTitle>
 
             {description && (
               <SheetDescription>
@@ -115,24 +109,19 @@ export function UniversalSheet({
             )}
           </SheetHeader>
 
-          {/* Form */}
           <form
             onSubmit={onSubmit}
             className="flex min-h-0 flex-1 flex-col"
           >
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 py-6">
-              <div className="space-y-6">
-                {children}
-              </div>
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              {children}
             </div>
 
-            {/* Footer */}
-            <SheetFooter className="border-t px-4 py-4">
+            <SheetFooter className="border-t px-6 py-4">
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleRequestClose}
+                onClick={handleCloseRequest}
                 disabled={loading}
               >
                 {cancelLabel}
@@ -140,10 +129,7 @@ export function UniversalSheet({
 
               <Button
                 type="submit"
-                disabled={
-                  loading ||
-                  disabled
-                }
+                disabled={loading || disabled}
               >
                 {loading && (
                   <Loader2 className="animate-spin" />
@@ -156,12 +142,9 @@ export function UniversalSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Unsaved Changes Warning */}
       <AlertDialog
-        open={showDiscardWarning}
-        onOpenChange={
-          setShowDiscardWarning
-        }
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -171,8 +154,7 @@ export function UniversalSheet({
 
             <AlertDialogDescription>
               You have unsaved changes. If you
-              leave now, your changes will be
-              lost.
+              leave now, your changes will be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
 

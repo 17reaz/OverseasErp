@@ -1,12 +1,12 @@
+// src/modules/erp/shared/ui/filter-bar.tsx
+
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 
 interface FilterBarProps {
   children: ReactNode;
-
   onReset?: () => void;
-
   showReset?: boolean;
 }
 

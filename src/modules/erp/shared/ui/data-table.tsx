@@ -1,24 +1,21 @@
+// src/modules/erp/shared/ui/data-table.tsx
+
 import type { ReactNode } from "react";
 
 export interface DataTableColumn<T> {
   key: string;
   header: string;
-
-  cell: (
-    item: T,
-  ) => ReactNode;
+  cell: (item: T) => ReactNode;
+  className?: string;
 }
 
 interface DataTableProps<T> {
   data: T[];
-
   columns: DataTableColumn<T>[];
-
   getRowKey: (
     item: T,
     index: number,
   ) => string | number;
-
   emptyMessage?: string;
 }
 
@@ -29,14 +26,16 @@ export function DataTable<T>({
   emptyMessage = "No records found.",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full caption-bottom text-sm">
-        <thead className="[&_tr]:border-b">
-          <tr className="border-b transition-colors">
+    <div className="w-full overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b">
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="h-10 px-4 text-left align-middle font-medium text-muted-foreground"
+                className={`h-10 px-4 text-left align-middle font-medium text-muted-foreground ${
+                  column.className ?? ""
+                }`}
               >
                 {column.header}
               </th>
@@ -44,12 +43,12 @@ export function DataTable<T>({
           </tr>
         </thead>
 
-        <tbody className="[&_tr:last-child]:border-0">
+        <tbody>
           {data.length === 0 ? (
             <tr>
               <td
                 colSpan={columns.length}
-                className="h-24 text-center text-muted-foreground"
+                className="h-24 px-4 text-center text-muted-foreground"
               >
                 {emptyMessage}
               </td>
@@ -57,16 +56,15 @@ export function DataTable<T>({
           ) : (
             data.map((item, index) => (
               <tr
-                key={getRowKey(
-                  item,
-                  index,
-                )}
+                key={getRowKey(item, index)}
                 className="border-b transition-colors hover:bg-muted/50"
               >
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className="p-4 align-middle"
+                    className={`px-4 py-3 align-middle ${
+                      column.className ?? ""
+                    }`}
                   >
                     {column.cell(item)}
                   </td>

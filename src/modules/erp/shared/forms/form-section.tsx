@@ -1,3 +1,5 @@
+// src/modules/erp/shared/forms/form-section.tsx
+
 import type { ReactNode } from "react";
 
 interface FormSectionProps {
