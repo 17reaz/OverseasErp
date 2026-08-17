@@ -7,7 +7,7 @@ import { LoginPage } from "@/modules/auth/login/login-page";
 import { SignupPage } from "@/modules/auth/signup/signup-page";
 import { ForgotPasswordPage } from "@/modules/auth/forgot-password/forgot-password-page";
 import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-page";
-
+import { FilesPage } from "@/modules/erp/files/files-page";
 import { ErpLayout } from "@/modules/erp/layout/erp-layout";
 import { DashboardPage } from "@/modules/erp/dashboard/dashboard-page";
 import { CandidatesPage } from "@/modules/erp/candidates/candidates-page";
@@ -42,6 +42,10 @@ function AppRouter() {
             <Route
   path="/app/agents"
   element={<AgentsPage />}
+/>          
+<Route
+  path="files"
+  element={<FilesPage />}
 />
             <Route path="medical" element={<div>Medical</div>} />
             <Route path="mofa" element={<div>MOFA</div>} />

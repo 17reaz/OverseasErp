@@ -7,6 +7,7 @@ import {
   FileCheck,
   Plane,
   ShieldCheck,
+  Files,
 } from "lucide-react";
 
 import {
@@ -62,6 +63,11 @@ const navigation = [
     title: "Takamul",
     url: "/app/takamul",
     icon: Plane,
+  },
+  {
+    title: "Files",
+    url: "/app/files",
+    icon: Files,
   },
 ];
 
