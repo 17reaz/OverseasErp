@@ -390,3 +390,97 @@ export async function deleteCandidate(
     error,
   };
 }
+// ======================================================
+// MARK CANDIDATE AS RETURNED
+// ======================================================
+
+export async function returnCandidate(
+  id: string,
+  returnedDate: string,
+) {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("candidates")
+    .update({
+      is_returned: true,
+
+      returned_date:
+        returnedDate,
+
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      id,
+    )
+    .eq(
+      "is_deleted",
+      false,
+    )
+    .select(`
+      *,
+      agent:agents (
+        id,
+        name,
+        code
+      )
+    `)
+    .single();
+
+  return {
+    data:
+      data as Candidate | null,
+
+    error,
+  };
+}
+
+
+// ======================================================
+// RESTORE RETURNED CANDIDATE
+// ======================================================
+
+export async function restoreCandidate(
+  id: string,
+) {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("candidates")
+    .update({
+      is_returned: false,
+
+      returned_date: null,
+
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      id,
+    )
+    .eq(
+      "is_deleted",
+      false,
+    )
+    .select(`
+      *,
+      agent:agents (
+        id,
+        name,
+        code
+      )
+    `)
+    .single();
+
+  return {
+    data:
+      data as Candidate | null,
+
+    error,
+  };
+}

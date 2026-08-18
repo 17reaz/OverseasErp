@@ -22,21 +22,40 @@ import {
 } from "./components/candidate-delete-dialog";
 
 import {
+  CandidateReturnDialog,
+} from "./components/candidate-return-dialog";
+
+import {
   getCandidates,
   type Candidate,
 } from "./candidate-service";
 
 
 export function CandidatesPage() {
+
+  // ======================================================
+  // CANDIDATES
+  // ======================================================
+
   const [
     candidates,
     setCandidates,
   ] = useState<Candidate[]>([]);
 
+
+  // ======================================================
+  // SEARCH
+  // ======================================================
+
   const [
     search,
     setSearch,
   ] = useState("");
+
+
+  // ======================================================
+  // LOADING / ERROR
+  // ======================================================
 
   const [
     loading,
@@ -52,7 +71,7 @@ export function CandidatesPage() {
 
 
   // ======================================================
-  // DIALOG STATE
+  // CREATE / EDIT DIALOG
   // ======================================================
 
   const [
@@ -66,6 +85,11 @@ export function CandidatesPage() {
   ] = useState<Candidate | null>(
     null,
   );
+
+
+  // ======================================================
+  // DELETE DIALOG
+  // ======================================================
 
   const [
     deleteOpen,
@@ -81,57 +105,102 @@ export function CandidatesPage() {
 
 
   // ======================================================
+  // RETURN DIALOG
+  // ======================================================
+
+  const [
+    returnOpen,
+    setReturnOpen,
+  ] = useState(false);
+
+  const [
+    returningCandidate,
+    setReturningCandidate,
+  ] = useState<Candidate | null>(
+    null,
+  );
+
+
+  // ======================================================
   // LOAD CANDIDATES
   // ======================================================
 
   const loadCandidates =
     useCallback(
       async () => {
+
         setLoading(true);
+
         setError(null);
 
+
         try {
+
           const {
             data,
             error,
           } = await getCandidates();
 
+
           if (error) {
+
             console.error(
               "Failed to load candidates:",
               error,
             );
 
+
             setCandidates([]);
+
 
             setError(
               "Failed to load candidates. Please try again.",
             );
 
+
             return;
           }
+
 
           setCandidates(
             data ?? [],
           );
+
+
         } catch (error) {
-          console.error(error);
+
+          console.error(
+            error,
+          );
+
 
           setCandidates([]);
+
 
           setError(
             "Failed to load candidates. Please try again.",
           );
+
+
         } finally {
+
           setLoading(false);
+
         }
+
       },
       [],
     );
 
 
+  // ======================================================
+  // INITIAL LOAD
+  // ======================================================
+
   useEffect(() => {
+
     loadCandidates();
+
   }, [
     loadCandidates,
   ]);
@@ -143,36 +212,62 @@ export function CandidatesPage() {
 
   const filteredCandidates =
     useMemo(() => {
+
       const query =
         search
           .trim()
           .toLowerCase();
 
+
       if (!query) {
         return candidates;
       }
 
+
       return candidates.filter(
         (candidate) => {
+
           return (
+
             candidate.name
               .toLowerCase()
-              .includes(query) ||
+              .includes(query)
+
+            ||
 
             candidate.passport_no
               .toLowerCase()
-              .includes(query) ||
+              .includes(query)
+
+            ||
 
             candidate.country
               ?.toLowerCase()
-              .includes(query) ||
+              .includes(query)
+
+            ||
 
             candidate.current_stage
               ?.toLowerCase()
               .includes(query)
+
+            ||
+
+            candidate.agent?.name
+              ?.toLowerCase()
+              .includes(query)
+
+            ||
+
+            candidate.agent?.code
+              ?.toLowerCase()
+              .includes(query)
+
           );
+
         },
       );
+
     }, [
       candidates,
       search,
@@ -184,8 +279,13 @@ export function CandidatesPage() {
   // ======================================================
 
   function handleCreate() {
-    setEditingCandidate(null);
+
+    setEditingCandidate(
+      null,
+    );
+
     setFormOpen(true);
+
   }
 
 
@@ -196,11 +296,13 @@ export function CandidatesPage() {
   function handleEdit(
     candidate: Candidate,
   ) {
+
     setEditingCandidate(
       candidate,
     );
 
     setFormOpen(true);
+
   }
 
 
@@ -211,20 +313,47 @@ export function CandidatesPage() {
   function handleDelete(
     candidate: Candidate,
   ) {
+
     setDeletingCandidate(
       candidate,
     );
 
     setDeleteOpen(true);
+
   }
 
 
+  // ======================================================
+  // RETURN
+  // ======================================================
+
+  function handleReturn(
+    candidate: Candidate,
+  ) {
+
+    setReturningCandidate(
+      candidate,
+    );
+
+    setReturnOpen(true);
+
+  }
+
+
+  // ======================================================
+  // RENDER
+  // ======================================================
+
   return (
+
     <div className="space-y-6">
 
-      {/* Toolbar */}
+      {/* ==================================================
+          TOOLBAR
+          ================================================== */}
 
       <PageToolbar
+
         title="Candidates"
 
         search={search}
@@ -236,15 +365,19 @@ export function CandidatesPage() {
         }
 
         onFilter={() => {
+
           console.log(
             "Candidate filters",
           );
+
         }}
 
         onSort={() => {
+
           console.log(
             "Candidate sorting",
           );
+
         }}
 
         onRefresh={
@@ -258,52 +391,96 @@ export function CandidatesPage() {
         refreshing={
           loading
         }
+
       />
 
 
-      {/* Error */}
+      {/* ==================================================
+          ERROR
+          ================================================== */}
 
       {error && (
-        <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-4">
 
-          <p className="text-sm text-destructive">
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            rounded-lg
+            border
+            border-destructive/30
+            bg-destructive/5
+            p-4
+          "
+        >
+
+          <p
+            className="
+              text-sm
+              text-destructive
+            "
+          >
             {error}
           </p>
+
 
           <button
             type="button"
             onClick={
               loadCandidates
             }
-            className="text-sm font-medium underline"
+            className="
+              text-sm
+              font-medium
+              underline
+            "
           >
             Try again
           </button>
 
         </div>
+
       )}
 
 
-      {/* Table */}
+      {/* ==================================================
+          TABLE
+          ================================================== */}
 
       <CandidatesTable
+
         candidates={
           filteredCandidates
         }
-        loading={loading}
+
+        loading={
+          loading
+        }
+
         onEdit={
           handleEdit
         }
+
         onDelete={
           handleDelete
         }
+
+        onReturn={
+          handleReturn
+        }
+
       />
 
 
-      {/* Create / Edit */}
+      {/* ==================================================
+          CREATE / EDIT
+          ================================================== */}
 
       <CandidateFormDialog
-        open={formOpen}
+
+        open={
+          formOpen
+        }
 
         candidate={
           editingCandidate
@@ -314,15 +491,23 @@ export function CandidatesPage() {
         }
 
         onSuccess={() => {
+
           loadCandidates();
+
         }}
+
       />
 
 
-      {/* Delete */}
+      {/* ==================================================
+          DELETE
+          ================================================== */}
 
       <CandidateDeleteDialog
-        open={deleteOpen}
+
+        open={
+          deleteOpen
+        }
 
         candidate={
           deletingCandidate
@@ -333,14 +518,50 @@ export function CandidatesPage() {
         }
 
         onSuccess={() => {
+
           setDeletingCandidate(
             null,
           );
 
           loadCandidates();
+
         }}
+
+      />
+
+
+      {/* ==================================================
+          RETURN
+          ================================================== */}
+
+      <CandidateReturnDialog
+
+        open={
+          returnOpen
+        }
+
+        candidate={
+          returningCandidate
+        }
+
+        onOpenChange={
+          setReturnOpen
+        }
+
+        onSuccess={() => {
+
+          setReturningCandidate(
+            null,
+          );
+
+          loadCandidates();
+
+        }}
+
       />
 
     </div>
+
   );
+
 }
