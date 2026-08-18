@@ -1,4 +1,7 @@
-import React from "react";
+import {
+  useState,
+} from "react";
+
 import {
   Loader2,
   Trash2,
@@ -43,10 +46,10 @@ export function CandidateDeleteDialog({
   onSuccess,
 }: CandidateDeleteDialogProps) {
   const [loading, setLoading] =
-    React.useState(false);
+    useState(false);
 
   const [error, setError] =
-    React.useState<string | null>(null);
+    useState<string | null>(null);
 
 
   async function handleDelete() {

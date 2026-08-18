@@ -31,7 +31,6 @@ export interface Candidate {
 
   sl: number | null;
 
-  // Supabase schema অনুযায়ী uuid
   agent_id: string | null;
 }
 
@@ -43,6 +42,11 @@ export interface CandidateInput {
   agent_id: string | null;
   current_stage: string | null;
 }
+
+
+// ======================================================
+// CURRENT USER + TENANT
+// ======================================================
 
 export async function getCurrentUserContext() {
   const {
@@ -72,7 +76,9 @@ export async function getCurrentUserContext() {
   }
 
   if (!profile?.tenant_id) {
-    throw new Error("No tenant is assigned to this user.");
+    throw new Error(
+      "No tenant is assigned to this user.",
+    );
   }
 
   return {
@@ -83,15 +89,18 @@ export async function getCurrentUserContext() {
 
 
 // ======================================================
-// GET ALL CANDIDATES
+// GET CANDIDATES
 // ======================================================
 
 export async function getCandidates() {
-  const { data, error } = await supabase
+  const {
+    data,
+    error,
+  } = await supabase
     .from("candidates")
     .select("*")
     .eq("is_deleted", false)
-    .order("created_at", {
+    .order("sl", {
       ascending: false,
     });
 
@@ -106,8 +115,13 @@ export async function getCandidates() {
 // GET SINGLE CANDIDATE
 // ======================================================
 
-export async function getCandidate(id: string) {
-  const { data, error } = await supabase
+export async function getCandidate(
+  id: string,
+) {
+  const {
+    data,
+    error,
+  } = await supabase
     .from("candidates")
     .select("*")
     .eq("id", id)
@@ -122,7 +136,7 @@ export async function getCandidate(id: string) {
 
 
 // ======================================================
-// CREATE CANDIDATE
+// CREATE
 // ======================================================
 
 export async function createCandidate(
@@ -140,7 +154,6 @@ export async function createCandidate(
     .from("candidates")
     .insert({
       tenant_id: tenantId,
-
       created_by: user.id,
 
       passport_no:
@@ -159,7 +172,8 @@ export async function createCandidate(
         input.agent_id || null,
 
       current_stage:
-        input.current_stage || "Pending",
+        input.current_stage?.trim() ||
+        "Pending",
     })
     .select("*")
     .single();
@@ -172,7 +186,7 @@ export async function createCandidate(
 
 
 // ======================================================
-// UPDATE CANDIDATE
+// UPDATE
 // ======================================================
 
 export async function updateCandidate(
@@ -201,7 +215,8 @@ export async function updateCandidate(
         input.agent_id || null,
 
       current_stage:
-        input.current_stage || "Pending",
+        input.current_stage?.trim() ||
+        "Pending",
 
       updated_at:
         new Date().toISOString(),
@@ -219,7 +234,7 @@ export async function updateCandidate(
 
 
 // ======================================================
-// SOFT DELETE CANDIDATE
+// SOFT DELETE
 // ======================================================
 
 export async function deleteCandidate(
