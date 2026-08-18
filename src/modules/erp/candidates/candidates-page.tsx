@@ -45,6 +45,19 @@ export function CandidatesPage() {
 
 
   // ======================================================
+  // CANDIDATE VIEW
+  // active | returned
+  // ======================================================
+
+  const [
+    candidateView,
+    setCandidateView,
+  ] = useState<
+    "active" | "returned"
+  >("active");
+
+
+  // ======================================================
   // SEARCH
   // ======================================================
 
@@ -201,7 +214,37 @@ export function CandidatesPage() {
 
 
   // ======================================================
-  // SEARCH
+  // ACTIVE / RETURNED COUNTS
+  // ======================================================
+
+  const activeCount =
+    useMemo(() => {
+
+      return candidates.filter(
+        (candidate) =>
+          !candidate.is_returned,
+      ).length;
+
+    }, [
+      candidates,
+    ]);
+
+
+  const returnedCount =
+    useMemo(() => {
+
+      return candidates.filter(
+        (candidate) =>
+          candidate.is_returned,
+      ).length;
+
+    }, [
+      candidates,
+    ]);
+
+
+  // ======================================================
+  // SEARCH + ACTIVE / RETURNED FILTER
   // ======================================================
 
   const filteredCandidates =
@@ -213,13 +256,32 @@ export function CandidatesPage() {
           .toLowerCase();
 
 
-      if (!query) {
-        return candidates;
-      }
-
-
       return candidates.filter(
         (candidate) => {
+
+          // -----------------------------------------------
+          // VIEW FILTER
+          // -----------------------------------------------
+
+          const matchesView =
+            candidateView === "active"
+              ? !candidate.is_returned
+              : candidate.is_returned;
+
+
+          if (!matchesView) {
+            return false;
+          }
+
+
+          // -----------------------------------------------
+          // SEARCH
+          // -----------------------------------------------
+
+          if (!query) {
+            return true;
+          }
+
 
           return (
 
@@ -265,6 +327,7 @@ export function CandidatesPage() {
     }, [
       candidates,
       search,
+      candidateView,
     ]);
 
 
@@ -476,6 +539,158 @@ export function CandidatesPage() {
         }
 
       />
+
+
+      {/* ==================================================
+          ACTIVE / RETURNED TOGGLE
+          ================================================== */}
+
+      <div
+        className="
+          flex
+          items-center
+          justify-between
+        "
+      >
+
+        <div
+          className="
+            inline-flex
+            items-center
+            rounded-lg
+            border
+            bg-muted/40
+            p-1
+          "
+        >
+
+          {/* =================================================
+              ACTIVE
+              ================================================= */}
+
+          <button
+            type="button"
+            onClick={() => {
+
+              setCandidateView(
+                "active",
+              );
+
+              setSearch("");
+
+            }}
+            className={`
+              rounded-md
+              px-4
+              py-2
+              text-sm
+              font-medium
+              transition-all
+
+              ${
+                candidateView ===
+                "active"
+                  ? `
+                    bg-background
+                    text-foreground
+                    shadow-sm
+                  `
+                  : `
+                    text-muted-foreground
+                    hover:text-foreground
+                  `
+              }
+            `}
+          >
+
+            Active
+
+            <span
+              className="
+                ml-2
+                text-xs
+                text-muted-foreground
+              "
+            >
+              {activeCount}
+            </span>
+
+          </button>
+
+
+          {/* =================================================
+              RETURNED
+              ================================================= */}
+
+          <button
+            type="button"
+            onClick={() => {
+
+              setCandidateView(
+                "returned",
+              );
+
+              setSearch("");
+
+            }}
+            className={`
+              rounded-md
+              px-4
+              py-2
+              text-sm
+              font-medium
+              transition-all
+
+              ${
+                candidateView ===
+                "returned"
+                  ? `
+                    bg-background
+                    text-foreground
+                    shadow-sm
+                  `
+                  : `
+                    text-muted-foreground
+                    hover:text-foreground
+                  `
+              }
+            `}
+          >
+
+            Returned
+
+            <span
+              className="
+                ml-2
+                text-xs
+                text-muted-foreground
+              "
+            >
+              {returnedCount}
+            </span>
+
+          </button>
+
+        </div>
+
+
+        {/* =================================================
+            CURRENT VIEW LABEL
+            ================================================= */}
+
+        <p
+          className="
+            text-sm
+            text-muted-foreground
+          "
+        >
+          {candidateView ===
+          "active"
+            ? "Active candidates"
+            : "Returned candidates"}
+        </p>
+
+      </div>
 
 
       {/* ==================================================
