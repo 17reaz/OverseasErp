@@ -199,3 +199,51 @@ export async function getFileUrl(
 
   return data.signedUrl;
 }
+export async function getAllFiles(
+  tenantId: string,
+) {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("files")
+    .select(`
+      id,
+      tenant_id,
+      candidate_id,
+      doc_type,
+      file_location,
+      version,
+      is_active,
+      created_at,
+      updated_at,
+      candidates (
+        id,
+        sl,
+        name,
+        passport_no
+      )
+    `)
+    .eq(
+      "tenant_id",
+      tenantId,
+    )
+    .order("created_at", {
+      ascending: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(
+    (file) => ({
+      ...file,
+      candidate: Array.isArray(
+        file.candidates,
+      )
+        ? file.candidates[0]
+        : file.candidates,
+    }),
+  );
+}
