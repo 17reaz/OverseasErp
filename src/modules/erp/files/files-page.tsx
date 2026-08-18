@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { FileText, Plus } from "lucide-react";
+import {
+  FileText,
+  Upload,
+} from "lucide-react";
 
 import { supabase } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
-
 import {
   Card,
   CardContent,
@@ -22,8 +24,7 @@ import {
 } from "@/components/ui/table";
 
 import { FileUploadSheet } from "./file-upload-sheet";
-
-import { getFileVersions } from "./files-service";
+import { getAllFiles } from "./files-service";
 
 import type { FileRecord } from "./types";
 
@@ -34,27 +35,31 @@ interface CandidateInfo {
   passport_no: string;
 }
 
+interface FileWithCandidate extends FileRecord {
+  candidate?: CandidateInfo;
+}
+
 export function FilesPage() {
   const [tenantId, setTenantId] =
     useState<string | null>(null);
 
-  const [candidate, setCandidate] =
-    useState<CandidateInfo | null>(null);
-
   const [files, setFiles] =
-    useState<FileRecord[]>([]);
+    useState<FileWithCandidate[]>([]);
+
+  const [candidates, setCandidates] =
+    useState<CandidateInfo[]>([]);
 
   const [loading, setLoading] =
     useState(true);
 
-  const [showUpload, setShowUpload] =
+  const [uploadOpen, setUploadOpen] =
     useState(false);
 
   const [error, setError] =
     useState("");
 
   /*
-   * Load logged-in user's tenant
+   * Get logged-in user's tenant
    */
   async function loadTenant() {
     const {
@@ -95,13 +100,13 @@ export function FilesPage() {
   }
 
   /*
-   * Temporary candidate
+   * Load candidates
    *
-   * Candidate module এখনো তৈরি হয়নি।
-   * তাই existing candidate table থেকে
-   * tenant-এর প্রথম candidate নেওয়া হচ্ছে।
+   * These are only used by the upload sheet.
+   * They are NOT displayed as selected candidate
+   * on the Files page.
    */
-  async function loadCandidate(
+  async function loadCandidates(
     currentTenantId: string,
   ) {
     const {
@@ -116,46 +121,41 @@ export function FilesPage() {
         "tenant_id",
         currentTenantId,
       )
-      .eq("is_deleted", false)
+      .eq(
+        "is_deleted",
+        false,
+      )
       .order("sl", {
         ascending: true,
-      })
-      .limit(1)
-      .maybeSingle();
+      });
 
     if (candidateError) {
       throw candidateError;
     }
 
-    if (!data) {
-      return null;
-    }
-
-    return data as CandidateInfo;
+    setCandidates(
+      (data ?? []) as CandidateInfo[],
+    );
   }
 
   /*
-   * Load files for selected candidate
+   * Load ALL files for this tenant
    */
   async function loadFiles(
-    candidateId?: string,
+    currentTenantId: string,
   ) {
-    if (!candidateId) {
-      setFiles([]);
-      return;
-    }
-
     const data =
-      await getFileVersions(
-        candidateId,
-        "passport",
+      await getAllFiles(
+        currentTenantId,
       );
 
-    setFiles(data);
+    setFiles(
+      data as FileWithCandidate[],
+    );
   }
 
   /*
-   * Initial load
+   * Initial page load
    */
   async function initialize() {
     try {
@@ -169,20 +169,14 @@ export function FilesPage() {
         currentTenantId,
       );
 
-      const currentCandidate =
-        await loadCandidate(
+      await Promise.all([
+        loadCandidates(
           currentTenantId,
-        );
-
-      setCandidate(
-        currentCandidate,
-      );
-
-      if (currentCandidate) {
-        await loadFiles(
-          currentCandidate.id,
-        );
-      }
+        ),
+        loadFiles(
+          currentTenantId,
+        ),
+      ]);
     } catch (error) {
       console.error(
         "Failed to initialize files page:",
@@ -204,21 +198,31 @@ export function FilesPage() {
   }, []);
 
   /*
-   * After successful upload
+   * After upload
+   *
+   * Reload all files so the newly uploaded
+   * file immediately appears in the table.
    */
   async function handleUploadSuccess() {
-    if (!candidate) {
+    if (!tenantId) {
       return;
     }
 
-    await loadFiles(
-      candidate.id,
-    );
+    try {
+      await loadFiles(
+        tenantId,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to reload files:",
+        error,
+      );
+    }
   }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
 
       <div className="flex items-center justify-between">
         <div>
@@ -227,20 +231,20 @@ export function FilesPage() {
           </h1>
 
           <p className="text-sm text-muted-foreground">
-            Manage candidate documents.
+            Manage all candidate documents.
           </p>
         </div>
 
         <Button
           disabled={
             !tenantId ||
-            !candidate
+            candidates.length === 0
           }
           onClick={() =>
-            setShowUpload(true)
+            setUploadOpen(true)
           }
         >
-          <Plus />
+          <Upload />
 
           Upload File
         </Button>
@@ -254,80 +258,21 @@ export function FilesPage() {
         </div>
       )}
 
-      {/* Candidate Information */}
-
-      {candidate && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Candidate SL
-                </p>
-
-                <p className="font-medium">
-                  {candidate.sl}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Name
-                </p>
-
-                <p className="font-medium">
-                  {candidate.name}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Passport No
-                </p>
-
-                <p className="font-medium">
-                  {candidate.passport_no}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* No Candidate */}
-
-      {!loading &&
-        !candidate &&
-        !error && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="mb-3 size-10 text-muted-foreground" />
-
-              <p className="font-medium">
-                No candidate found
-              </p>
-
-              <p className="text-sm text-muted-foreground">
-                Create a candidate first before
-                uploading documents.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-      {/* Files Table */}
+      {/* All Files */}
 
       <Card>
         <CardHeader>
           <CardTitle>
-            Passport Files
+            All Files
           </CardTitle>
         </CardHeader>
 
         <CardContent>
           {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              Loading files...
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-muted-foreground">
+                Loading files...
+              </p>
             </div>
           ) : files.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
@@ -335,122 +280,154 @@ export function FilesPage() {
 
               <div>
                 <p className="font-medium">
-                  No passport files
+                  No files found
                 </p>
 
                 <p className="text-sm text-muted-foreground">
-                  Upload the first passport document.
+                  Upload a candidate document
+                  to get started.
                 </p>
               </div>
 
-              {candidate && (
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setShowUpload(true)
-                  }
-                >
-                  <Plus />
+              <Button
+                variant="outline"
+                disabled={
+                  candidates.length === 0
+                }
+                onClick={() =>
+                  setUploadOpen(true)
+                }
+              >
+                <Upload />
 
-                  Upload Passport
-                </Button>
-              )}
+                Upload File
+              </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    ID
-                  </TableHead>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      SL
+                    </TableHead>
 
-                  <TableHead>
-                    Document
-                  </TableHead>
+                    <TableHead>
+                      Candidate
+                    </TableHead>
 
-                  <TableHead>
-                    Version
-                  </TableHead>
+                    <TableHead>
+                      Passport No
+                    </TableHead>
 
-                  <TableHead>
-                    Status
-                  </TableHead>
+                    <TableHead>
+                      Document
+                    </TableHead>
 
-                  <TableHead>
-                    Created
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+                    <TableHead>
+                      Version
+                    </TableHead>
 
-              <TableBody>
-                {files.map((file) => (
-                  <TableRow
-                    key={file.id}
-                  >
-                    <TableCell>
-                      {file.id}
-                    </TableCell>
+                    <TableHead>
+                      Status
+                    </TableHead>
 
-                    <TableCell className="capitalize">
-                      {file.doc_type}
-                    </TableCell>
-
-                    <TableCell>
-                      v{file.version}
-                    </TableCell>
-
-                    <TableCell>
-                      {file.is_active ? (
-                        <span className="font-medium">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          Previous
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {new Date(
-                        file.created_at,
-                      ).toLocaleDateString()}
-                    </TableCell>
+                    <TableHead>
+                      Created
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+
+                <TableBody>
+                  {files.map(
+                    (file) => (
+                      <TableRow
+                        key={file.id}
+                      >
+                        {/* Candidate SL */}
+
+                        <TableCell>
+                          {file.candidate?.sl ??
+                            "-"}
+                        </TableCell>
+
+                        {/* Candidate */}
+
+                        <TableCell>
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {file.candidate?.name ??
+                                "-"}
+                            </p>
+                          </div>
+                        </TableCell>
+
+                        {/* Passport */}
+
+                        <TableCell>
+                          {file.candidate
+                            ?.passport_no ??
+                            "-"}
+                        </TableCell>
+
+                        {/* Document */}
+
+                        <TableCell className="capitalize">
+                          {file.doc_type}
+                        </TableCell>
+
+                        {/* Version */}
+
+                        <TableCell>
+                          v{file.version}
+                        </TableCell>
+
+                        {/* Status */}
+
+                        <TableCell>
+                          {file.is_active ? (
+                            <span className="font-medium">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              Previous
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Created */}
+
+                        <TableCell>
+                          {new Date(
+                            file.created_at,
+                          ).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ),
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Upload Sheet */}
 
-      {tenantId &&
-        candidate && (
-          <FileUploadSheet
-            open={showUpload}
-            onOpenChange={
-              setShowUpload
-            }
-            tenantId={tenantId}
-            candidateId={
-              candidate.id
-            }
-            candidateSl={
-              candidate.sl
-            }
-            candidateName={
-              candidate.name
-            }
-            passportNo={
-              candidate.passport_no
-            }
-            onSuccess={
-              handleUploadSuccess
-            }
-          />
-        )}
+      {tenantId && (
+        <FileUploadSheet
+          open={uploadOpen}
+          onOpenChange={
+            setUploadOpen
+          }
+          tenantId={tenantId}
+          candidates={candidates}
+          onSuccess={
+            handleUploadSuccess
+          }
+        />
+      )}
     </div>
   );
 }
