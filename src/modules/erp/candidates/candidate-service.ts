@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 
+
 export type CandidateCountry =
   | "Saudi Arabia"
   | "Mauritius"
@@ -7,6 +8,14 @@ export type CandidateCountry =
   | "Malaysia"
   | "Belarus"
   | null;
+
+
+export interface CandidateAgent {
+  id: string;
+  name: string | null;
+  code: string | null;
+}
+
 
 export interface Candidate {
   id: string;
@@ -32,15 +41,29 @@ export interface Candidate {
   sl: number | null;
 
   agent_id: string | null;
+
+  agent?: CandidateAgent | null;
 }
+
 
 export interface CandidateInput {
   passport_no: string;
   name: string;
-  received_date: string | null;
-  country: Exclude<CandidateCountry, null> | null;
-  agent_id: string | null;
-  current_stage: string | null;
+
+  received_date:
+    string | null;
+
+  country:
+    Exclude<
+      CandidateCountry,
+      null
+    > | null;
+
+  agent_id:
+    string | null;
+
+  current_stage:
+    string | null;
 }
 
 
@@ -49,31 +72,48 @@ export interface CandidateInput {
 // ======================================================
 
 export async function getCurrentUserContext() {
+
   const {
-    data: { user },
+    data: {
+      user,
+    },
     error: userError,
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
+
 
   if (userError) {
     throw userError;
   }
 
+
   if (!user) {
-    throw new Error("User is not authenticated.");
+    throw new Error(
+      "User is not authenticated.",
+    );
   }
+
 
   const {
     data: profile,
     error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("tenant_id")
-    .eq("id", user.id)
-    .single();
+  } =
+    await supabase
+      .from("profiles")
+      .select(
+        "tenant_id",
+      )
+      .eq(
+        "id",
+        user.id,
+      )
+      .single();
+
 
   if (profileError) {
     throw profileError;
   }
+
 
   if (!profile?.tenant_id) {
     throw new Error(
@@ -81,9 +121,11 @@ export async function getCurrentUserContext() {
     );
   }
 
+
   return {
     user,
-    tenantId: profile.tenant_id as string,
+    tenantId:
+      profile.tenant_id as string,
   };
 }
 
@@ -93,19 +135,37 @@ export async function getCurrentUserContext() {
 // ======================================================
 
 export async function getCandidates() {
+
   const {
     data,
     error,
-  } = await supabase
-    .from("candidates")
-    .select("*")
-    .eq("is_deleted", false)
-    .order("sl", {
-      ascending: false,
-    });
+  } =
+    await supabase
+      .from("candidates")
+      .select(`
+        *,
+        agent:agents (
+          id,
+          name,
+          code
+        )
+      `)
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .order(
+        "sl",
+        {
+          ascending: false,
+        },
+      );
+
 
   return {
-    data: data as Candidate[] | null,
+    data:
+      data as Candidate[] | null,
+
     error,
   };
 }
@@ -118,18 +178,36 @@ export async function getCandidates() {
 export async function getCandidate(
   id: string,
 ) {
+
   const {
     data,
     error,
-  } = await supabase
-    .from("candidates")
-    .select("*")
-    .eq("id", id)
-    .eq("is_deleted", false)
-    .single();
+  } =
+    await supabase
+      .from("candidates")
+      .select(`
+        *,
+        agent:agents (
+          id,
+          name,
+          code
+        )
+      `)
+      .eq(
+        "id",
+        id,
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .single();
+
 
   return {
-    data: data as Candidate | null,
+    data:
+      data as Candidate | null,
+
     error,
   };
 }
@@ -142,44 +220,65 @@ export async function getCandidate(
 export async function createCandidate(
   input: CandidateInput,
 ) {
+
   const {
     user,
     tenantId,
-  } = await getCurrentUserContext();
+  } =
+    await getCurrentUserContext();
+
 
   const {
     data,
     error,
-  } = await supabase
-    .from("candidates")
-    .insert({
-      tenant_id: tenantId,
-      created_by: user.id,
+  } =
+    await supabase
+      .from("candidates")
+      .insert({
 
-      passport_no:
-        input.passport_no.trim(),
+        tenant_id:
+          tenantId,
 
-      name:
-        input.name.trim(),
+        created_by:
+          user.id,
 
-      received_date:
-        input.received_date || null,
+        passport_no:
+          input.passport_no.trim(),
 
-      country:
-        input.country,
+        name:
+          input.name.trim(),
 
-      agent_id:
-        input.agent_id || null,
+        received_date:
+          input.received_date ||
+          null,
 
-      current_stage:
-        input.current_stage?.trim() ||
-        "Pending",
-    })
-    .select("*")
-    .single();
+        country:
+          input.country,
+
+        agent_id:
+          input.agent_id ||
+          null,
+
+        current_stage:
+          input.current_stage?.trim() ||
+          "Pending",
+
+      })
+      .select(`
+        *,
+        agent:agents (
+          id,
+          name,
+          code
+        )
+      `)
+      .single();
+
 
   return {
-    data: data as Candidate | null,
+    data:
+      data as Candidate | null,
+
     error,
   };
 }
@@ -193,41 +292,63 @@ export async function updateCandidate(
   id: string,
   input: CandidateInput,
 ) {
+
   const {
     data,
     error,
-  } = await supabase
-    .from("candidates")
-    .update({
-      passport_no:
-        input.passport_no.trim(),
+  } =
+    await supabase
+      .from("candidates")
+      .update({
 
-      name:
-        input.name.trim(),
+        passport_no:
+          input.passport_no.trim(),
 
-      received_date:
-        input.received_date || null,
+        name:
+          input.name.trim(),
 
-      country:
-        input.country,
+        received_date:
+          input.received_date ||
+          null,
 
-      agent_id:
-        input.agent_id || null,
+        country:
+          input.country,
 
-      current_stage:
-        input.current_stage?.trim() ||
-        "Pending",
+        agent_id:
+          input.agent_id ||
+          null,
 
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("is_deleted", false)
-    .select("*")
-    .single();
+        current_stage:
+          input.current_stage?.trim() ||
+          "Pending",
+
+        updated_at:
+          new Date().toISOString(),
+
+      })
+      .eq(
+        "id",
+        id,
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .select(`
+        *,
+        agent:agents (
+          id,
+          name,
+          code
+        )
+      `)
+      .single();
+
 
   return {
-    data: data as Candidate | null,
+    data:
+      data as Candidate | null,
+
     error,
   };
 }
@@ -240,18 +361,30 @@ export async function updateCandidate(
 export async function deleteCandidate(
   id: string,
 ) {
+
   const {
     error,
-  } = await supabase
-    .from("candidates")
-    .update({
-      is_deleted: true,
+  } =
+    await supabase
+      .from("candidates")
+      .update({
 
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("is_deleted", false);
+        is_deleted:
+          true,
+
+        updated_at:
+          new Date().toISOString(),
+
+      })
+      .eq(
+        "id",
+        id,
+      )
+      .eq(
+        "is_deleted",
+        false,
+      );
+
 
   return {
     error,

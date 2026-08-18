@@ -4,20 +4,15 @@ import {
 } from "react";
 
 import {
+  Check,
+  ChevronsUpDown,
   Loader2,
 } from "lucide-react";
 
-import {
-  Button,
-} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-import {
-  Input,
-} from "@/components/ui/input";
-
-import {
-  Label,
-} from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -32,7 +27,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { supabase } from "@/lib/supabase/client";
+
 import {
   Dialog,
   DialogContent,
@@ -42,17 +37,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { supabase } from "@/lib/supabase/client";
+
 import {
   createCandidate,
   updateCandidate,
   type Candidate,
   type CandidateInput,
 } from "../candidate-service";
+
+
 interface Agent {
   id: string;
   name: string | null;
   code: string | null;
 }
+
+
 interface CandidateFormDialogProps {
   open: boolean;
 
@@ -67,6 +68,7 @@ interface CandidateFormDialogProps {
   ) => void;
 }
 
+
 const countries = [
   "Saudi Arabia",
   "Mauritius",
@@ -75,13 +77,21 @@ const countries = [
   "Belarus",
 ] as const;
 
+
 export function CandidateFormDialog({
   open,
   candidate,
   onOpenChange,
   onSuccess,
 }: CandidateFormDialogProps) {
-  const isEdit = Boolean(candidate);
+
+  const isEdit =
+    Boolean(candidate);
+
+
+  // =====================================================
+  // FORM STATE
+  // =====================================================
 
   const [passportNo, setPassportNo] =
     useState("");
@@ -98,122 +108,182 @@ export function CandidateFormDialog({
   const [currentStage, setCurrentStage] =
     useState("Pending");
 
+
+  // =====================================================
+  // AGENT STATE
+  // =====================================================
+
+  const [agents, setAgents] =
+    useState<Agent[]>([]);
+
+  const [selectedAgentId, setSelectedAgentId] =
+    useState<string | null>(null);
+
+  const [agentOpen, setAgentOpen] =
+    useState(false);
+
+  const [agentLoading, setAgentLoading] =
+    useState(false);
+
+
+  // =====================================================
+  // GENERAL STATE
+  // =====================================================
+
   const [loading, setLoading] =
     useState(false);
 
   const [error, setError] =
     useState<string | null>(null);
-const [agents, setAgents] = useState<Agent[]>([]);
 
-const [selectedAgentId, setSelectedAgentId] =
-  useState<string | null>(null);
 
-const [agentOpen, setAgentOpen] =
-  useState(false);
+  // =====================================================
+  // LOAD AGENTS
+  // =====================================================
 
-const [agentLoading, setAgentLoading] =
-  useState(false);
-useEffect(() => {
-  if (!open) return;
-
-  async function loadAgents() {
-    setAgentLoading(true);
-
-    const { data, error } = await supabase
-      .from("agents")
-      .select("id, name, code")
-      .eq("is_active", true)
-      .eq("is_deleted", false)
-      .order("name", {
-        ascending: true,
-      });
-
-    if (error) {
-      console.error(
-        "Failed to load agents:",
-        error,
-      );
-
-      setAgents([]);
-    } else {
-      setAgents(data ?? []);
-    }
-
-    setAgentLoading(false);
-  }
-
-  loadAgents();
-}, [open]);
-useEffect(() => {
-  if (!open) return;
-
-  async function loadAgents() {
-    setAgentLoading(true);
-
-    const { data, error } = await supabase
-      .from("agents")
-      .select("id, name, code")
-      .eq("is_active", true)
-      .eq("is_deleted", false)
-      .order("name", {
-        ascending: true,
-      });
-
-    if (error) {
-      console.error(
-        "Failed to load agents:",
-        error,
-      );
-
-      setAgents([]);
-    } else {
-      setAgents(data ?? []);
-    }
-
-    setAgentLoading(false);
-  }
-
-  loadAgents();
-}, [open]);
   useEffect(() => {
+
     if (!open) {
       return;
     }
 
+
+    async function loadAgents() {
+
+      setAgentLoading(true);
+
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("agents")
+        .select(
+          "id, name, code",
+        )
+        .eq(
+          "is_active",
+          true,
+        )
+        .eq(
+          "is_deleted",
+          false,
+        )
+        .order(
+          "name",
+          {
+            ascending: true,
+          },
+        );
+
+
+      if (error) {
+
+        console.error(
+          "Failed to load agents:",
+          error,
+        );
+
+        setAgents([]);
+
+      } else {
+
+        setAgents(
+          data ?? [],
+        );
+
+      }
+
+
+      setAgentLoading(false);
+    }
+
+
+    loadAgents();
+
+  }, [open]);
+
+
+  // =====================================================
+  // LOAD CANDIDATE INTO FORM
+  // =====================================================
+
+  useEffect(() => {
+
+    if (!open) {
+      return;
+    }
+
+
     setPassportNo(
-      candidate?.passport_no ?? "",
+      candidate?.passport_no ??
+        "",
     );
+
 
     setName(
-      candidate?.name ?? "",
+      candidate?.name ??
+        "",
     );
+
 
     setReceivedDate(
-      candidate?.received_date ?? "",
+      candidate?.received_date ??
+        "",
     );
 
+
     setCountry(
-      candidate?.country ?? "",
+      candidate?.country ??
+        "",
     );
+
 
     setCurrentStage(
       candidate?.current_stage ??
         "Pending",
     );
 
+
+    setSelectedAgentId(
+      candidate?.agent_id ??
+        null,
+    );
+
+
     setError(null);
+
   }, [
     open,
     candidate,
   ]);
 
 
+  // =====================================================
+  // SELECTED AGENT
+  // =====================================================
+
+  const selectedAgent =
+    agents.find(
+      (agent) =>
+        agent.id ===
+        selectedAgentId,
+    );
+
+
+  // =====================================================
+  // SUBMIT
+  // =====================================================
+
   async function handleSubmit(
     event: React.FormEvent,
   ) {
+
     event.preventDefault();
 
+
     if (!passportNo.trim()) {
+
       setError(
         "Passport number is required.",
       );
@@ -221,7 +291,9 @@ useEffect(() => {
       return;
     }
 
+
     if (!name.trim()) {
+
       setError(
         "Candidate name is required.",
       );
@@ -229,11 +301,16 @@ useEffect(() => {
       return;
     }
 
+
     try {
+
       setLoading(true);
+
       setError(null);
 
+
       const input: CandidateInput = {
+
         passport_no:
           passportNo.trim(),
 
@@ -241,106 +318,155 @@ useEffect(() => {
           name.trim(),
 
         received_date:
-          receivedDate || null,
+          receivedDate ||
+          null,
 
         country:
           country
-            ? (country as CandidateInput["country"])
+            ? (
+                country as CandidateInput[
+                  "country"
+                ]
+              )
             : null,
 
-        /*
-         * Agent dropdown আমরা next step-এ
-         * properly connect করব।
-         */
         agent_id:
-          candidate?.agent_id ?? null,
+          selectedAgentId,
 
         current_stage:
           currentStage.trim() ||
           "Pending",
       };
 
-      const result = isEdit
-        ? await updateCandidate(
-            candidate!.id,
-            input,
-          )
-        : await createCandidate(
-            input,
-          );
+
+      const result =
+        isEdit
+          ? await updateCandidate(
+              candidate!.id,
+              input,
+            )
+          : await createCandidate(
+              input,
+            );
+
 
       if (result.error) {
+
         console.error(
           result.error,
         );
+
 
         if (
           result.error.code ===
           "23505"
         ) {
+
           setError(
             "This passport number already exists.",
           );
+
         } else {
+
           setError(
             result.error.message ||
               "Failed to save candidate.",
           );
+
         }
 
         return;
       }
 
+
       if (result.data) {
+
         onSuccess(
           result.data,
         );
+
       }
 
-      onOpenChange(false);
+
+      onOpenChange(
+        false,
+      );
+
     } catch (error) {
-      console.error(error);
+
+      console.error(
+        error,
+      );
+
 
       setError(
         "Something went wrong. Please try again.",
       );
+
     } finally {
+
       setLoading(false);
+
     }
+
   }
 
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={
+        onOpenChange
+      }
     >
-      <DialogContent className="sm:max-w-[520px]">
+
+      <DialogContent
+        className="sm:max-w-[520px]"
+      >
 
         <DialogHeader>
+
           <DialogTitle>
+
             {isEdit
               ? "Edit Candidate"
               : "Create Candidate"}
+
           </DialogTitle>
 
+
           <DialogDescription>
+
             {isEdit
               ? "Update candidate information."
               : "Add a new candidate."}
+
           </DialogDescription>
+
         </DialogHeader>
 
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
           className="space-y-5"
         >
 
-          {/* Passport */}
+
+          {/* =================================================
+              PASSPORT
+              ================================================= */}
 
           <div className="space-y-2">
-            <Label htmlFor="passport_no">
+
+            <Label
+              htmlFor="passport_no"
+            >
               Passport Number
             </Label>
 
@@ -355,13 +481,19 @@ useEffect(() => {
               placeholder="A12345678"
               disabled={loading}
             />
+
           </div>
 
 
-          {/* Name */}
+          {/* =================================================
+              NAME
+              ================================================= */}
 
           <div className="space-y-2">
-            <Label htmlFor="candidate_name">
+
+            <Label
+              htmlFor="candidate_name"
+            >
               Candidate Name
             </Label>
 
@@ -376,20 +508,208 @@ useEffect(() => {
               placeholder="Full name"
               disabled={loading}
             />
+
           </div>
 
 
-          {/* Received Date */}
+          {/* =================================================
+              AGENT
+              ================================================= */}
 
           <div className="space-y-2">
-            <Label htmlFor="received_date">
+
+            <Label>
+              Agent
+            </Label>
+
+
+            <Popover
+              open={agentOpen}
+              onOpenChange={
+                setAgentOpen
+              }
+            >
+
+              <PopoverTrigger
+                asChild
+              >
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={
+                    agentOpen
+                  }
+                  disabled={
+                    loading ||
+                    agentLoading
+                  }
+                  className="w-full justify-between font-normal"
+                >
+
+                  {agentLoading
+                    ? "Loading agents..."
+                    : selectedAgent
+                      ? selectedAgent.name
+                      : "Select agent..."}
+
+
+                  <ChevronsUpDown
+                    className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                  />
+
+                </Button>
+
+              </PopoverTrigger>
+
+
+              <PopoverContent
+                align="start"
+                className="w-[--radix-popover-trigger-width] p-0"
+              >
+
+                <Command>
+
+                  <CommandInput
+                    placeholder="Search agent..."
+                  />
+
+
+                  <CommandList>
+
+                    <CommandEmpty>
+                      No agent found.
+                    </CommandEmpty>
+
+
+                    <CommandGroup>
+
+                      {/* No Agent */}
+
+                      <CommandItem
+                        value="no agent"
+                        onSelect={() => {
+
+                          setSelectedAgentId(
+                            null,
+                          );
+
+                          setAgentOpen(
+                            false,
+                          );
+
+                        }}
+                      >
+
+                        No Agent
+
+
+                        {selectedAgentId ===
+                          null && (
+
+                          <Check
+                            className="ml-auto h-4 w-4"
+                          />
+
+                        )}
+
+                      </CommandItem>
+
+
+                      {/* Existing Agents */}
+
+                      {agents.map(
+                        (agent) => (
+
+                          <CommandItem
+                            key={
+                              agent.id
+                            }
+                            value={`${agent.name ?? ""} ${agent.code ?? ""}`}
+                            onSelect={() => {
+
+                              setSelectedAgentId(
+                                agent.id,
+                              );
+
+                              setAgentOpen(
+                                false,
+                              );
+
+                            }}
+                          >
+
+                            <div className="flex flex-col">
+
+                              <span>
+
+                                {agent.name ||
+                                  "Unnamed Agent"}
+
+                              </span>
+
+
+                              {agent.code && (
+
+                                <span className="text-xs text-muted-foreground">
+
+                                  {
+                                    agent.code
+                                  }
+
+                                </span>
+
+                              )}
+
+                            </div>
+
+
+                            {selectedAgentId ===
+                              agent.id && (
+
+                              <Check
+                                className="ml-auto h-4 w-4"
+                              />
+
+                            )}
+
+                          </CommandItem>
+
+                        ),
+                      )}
+
+                    </CommandGroup>
+
+                  </CommandList>
+
+                </Command>
+
+              </PopoverContent>
+
+            </Popover>
+
+          </div>
+
+
+          {/* =================================================
+              RECEIVED DATE
+              ================================================= */}
+
+          <div className="space-y-2">
+
+            <Label
+              htmlFor="received_date"
+            >
               Received Date
             </Label>
 
             <Input
               id="received_date"
               type="date"
-              value={receivedDate}
+              value={
+                receivedDate
+              }
               onChange={(event) =>
                 setReceivedDate(
                   event.target.value,
@@ -397,97 +717,22 @@ useEffect(() => {
               }
               disabled={loading}
             />
+
           </div>
 
-              <div className="space-y-2">
-  <Label>
-    Agent
-  </Label>
 
-  <Popover
-    open={agentOpen}
-    onOpenChange={setAgentOpen}
-  >
-    <PopoverTrigger asChild>
-      <Button
-        type="button"
-        variant="outline"
-        role="combobox"
-        aria-expanded={agentOpen}
-        disabled={
-          loading ||
-          agentLoading
-        }
-        className="w-full justify-between font-normal"
-      >
-        {agentLoading
-          ? "Loading agents..."
-          : selectedAgent
-            ? selectedAgent.name
-            : "Select agent..."}
-
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    </PopoverTrigger>
-
-    <PopoverContent
-      className="w-[--radix-popover-trigger-width] p-0"
-      align="start"
-    >
-      <Command>
-        <CommandInput
-          placeholder="Search agent..."
-        />
-
-        <CommandList>
-          <CommandEmpty>
-            No agent found.
-          </CommandEmpty>
-
-          <CommandGroup>
-            {agents.map((agent) => (
-              <CommandItem
-                key={agent.id}
-                value={`${agent.name ?? ""} ${agent.code ?? ""}`}
-                onSelect={() => {
-                  setSelectedAgentId(
-                    agent.id,
-                  );
-
-                  setAgentOpen(false);
-                }}
-              >
-                <div className="flex flex-col">
-                  <span>
-                    {agent.name ||
-                      "Unnamed Agent"}
-                  </span>
-
-                  {agent.code && (
-                    <span className="text-xs text-muted-foreground">
-                      {agent.code}
-                    </span>
-                  )}
-                </div>
-
-                {selectedAgentId ===
-                  agent.id && (
-                  <Check className="ml-auto h-4 w-4" />
-                )}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </PopoverContent>
-  </Popover>
-</div>
-          {/* Country */}
+          {/* =================================================
+              COUNTRY
+              ================================================= */}
 
           <div className="space-y-2">
-            <Label htmlFor="country">
+
+            <Label
+              htmlFor="country"
+            >
               Country
             </Label>
+
 
             <select
               id="country"
@@ -500,34 +745,47 @@ useEffect(() => {
               disabled={loading}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none"
             >
+
               <option value="">
                 Select country
               </option>
 
+
               {countries.map(
                 (item) => (
+
                   <option
                     key={item}
                     value={item}
                   >
                     {item}
                   </option>
+
                 ),
               )}
+
             </select>
+
           </div>
 
 
-          {/* Stage */}
+          {/* =================================================
+              CURRENT STAGE
+              ================================================= */}
 
           <div className="space-y-2">
-            <Label htmlFor="current_stage">
+
+            <Label
+              htmlFor="current_stage"
+            >
               Current Stage
             </Label>
 
             <Input
               id="current_stage"
-              value={currentStage}
+              value={
+                currentStage
+              }
               onChange={(event) =>
                 setCurrentStage(
                   event.target.value,
@@ -536,17 +794,28 @@ useEffect(() => {
               placeholder="Pending"
               disabled={loading}
             />
+
           </div>
 
 
-          {/* Error */}
+          {/* =================================================
+              ERROR
+              ================================================= */}
 
           {error && (
+
             <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+
               {error}
+
             </div>
+
           )}
 
+
+          {/* =================================================
+              FOOTER
+              ================================================= */}
 
           <DialogFooter>
 
@@ -554,24 +823,34 @@ useEffect(() => {
               type="button"
               variant="outline"
               onClick={() =>
-                onOpenChange(false)
+                onOpenChange(
+                  false,
+                )
               }
               disabled={loading}
             >
               Cancel
             </Button>
 
+
             <Button
               type="submit"
               disabled={loading}
             >
+
               {loading && (
-                <Loader2 className="animate-spin" />
+
+                <Loader2
+                  className="animate-spin"
+                />
+
               )}
+
 
               {isEdit
                 ? "Save Changes"
                 : "Create Candidate"}
+
             </Button>
 
           </DialogFooter>
@@ -579,6 +858,7 @@ useEffect(() => {
         </form>
 
       </DialogContent>
+
     </Dialog>
   );
 }

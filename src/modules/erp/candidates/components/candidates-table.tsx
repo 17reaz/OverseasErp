@@ -62,8 +62,13 @@ export function CandidatesTable({
   onDelete,
 }: CandidatesTableProps) {
 
+  // =====================================================
+  // PAGINATION
+  // =====================================================
+
   const totalItems =
     total ?? candidates.length;
+
 
   const totalPages =
     Math.max(
@@ -74,11 +79,13 @@ export function CandidatesTable({
       ),
     );
 
+
   const currentPage =
     Math.min(
       page,
       totalPages,
     );
+
 
   const startItem =
     totalItems === 0
@@ -86,6 +93,7 @@ export function CandidatesTable({
       : (currentPage - 1) *
           pageSize +
         1;
+
 
   const endItem =
     Math.min(
@@ -95,57 +103,187 @@ export function CandidatesTable({
     );
 
 
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
-    <div className="flex h-[calc(100vh-250px)] min-h-[400px] flex-col overflow-hidden rounded-lg border bg-background">
+    <div
+      className="
+        flex
+        h-[calc(100vh-250px)]
+        min-h-[400px]
+        flex-col
+        overflow-hidden
+        rounded-lg
+        border
+        bg-background
+      "
+    >
 
       {/* ==================================================
           HEADER
           ================================================== */}
 
-      <div className="shrink-0 border-b bg-background">
+      <div
+        className="
+          shrink-0
+          border-b
+          bg-background
+        "
+      >
 
-        <table className="w-full table-fixed">
+        <table
+          className="
+            w-full
+            table-fixed
+          "
+        >
 
           <thead>
+
             <tr>
 
-              <th className="w-[70px] px-4 py-3 text-left text-sm font-medium">
+              {/* SL */}
+
+              <th
+                className="
+                  w-[70px]
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 SL
               </th>
 
-              <th className="px-4 py-3 text-left text-sm font-medium">
+
+              {/* CANDIDATE */}
+
+              <th
+                className="
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Candidate
               </th>
 
-              <th className="px-4 py-3 text-left text-sm font-medium">
+
+              {/* PASSPORT */}
+
+              <th
+                className="
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Passport
               </th>
 
-              <th className="px-4 py-3 text-left text-sm font-medium">
+
+              {/* COUNTRY */}
+
+              <th
+                className="
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Country
               </th>
 
-              <th className="px-4 py-3 text-left text-sm font-medium">
+
+              {/* STAGE */}
+
+              <th
+                className="
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Stage
               </th>
 
-              <th className="px-4 py-3 text-left text-sm font-medium">
+
+              {/* RECEIVED */}
+
+              <th
+                className="
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Received
               </th>
 
-              <th className="w-[100px] px-4 py-3 text-left text-sm font-medium">
+
+              {/* AGENT */}
+
+              <th
+                className="
+                  w-[180px]
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Agent
               </th>
 
-              <th className="w-[100px] px-4 py-3 text-left text-sm font-medium">
+
+              {/* STATUS */}
+
+              <th
+                className="
+                  w-[100px]
+                  px-4
+                  py-3
+                  text-left
+                  text-sm
+                  font-medium
+                "
+              >
                 Status
               </th>
 
-              <th className="w-[70px] px-4 py-3 text-right text-sm font-medium">
+
+              {/* ACTION */}
+
+              <th
+                className="
+                  w-[70px]
+                  px-4
+                  py-3
+                  text-right
+                  text-sm
+                  font-medium
+                "
+              >
                 Action
               </th>
 
             </tr>
+
           </thead>
 
         </table>
@@ -157,13 +295,36 @@ export function CandidatesTable({
           DATA
           ================================================== */}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <div
+        className="
+          min-h-0
+          flex-1
+          overflow-y-auto
+          overflow-x-hidden
+        "
+      >
+
+        {/* ==================================================
+            LOADING
+            ================================================== */}
 
         {loading ? (
 
-          <div className="flex min-h-[200px] items-center justify-center">
+          <div
+            className="
+              flex
+              min-h-[200px]
+              items-center
+              justify-center
+            "
+          >
 
-            <p className="text-sm text-muted-foreground">
+            <p
+              className="
+                text-sm
+                text-muted-foreground
+              "
+            >
               Loading candidates...
             </p>
 
@@ -171,15 +332,42 @@ export function CandidatesTable({
 
         ) : candidates.length === 0 ? (
 
-          <div className="flex min-h-[200px] items-center justify-center">
+          /* ==================================================
+             EMPTY
+             ================================================== */
 
-            <div className="text-center">
+          <div
+            className="
+              flex
+              min-h-[200px]
+              items-center
+              justify-center
+            "
+          >
 
-              <p className="text-sm font-medium">
+            <div
+              className="
+                text-center
+              "
+            >
+
+              <p
+                className="
+                  text-sm
+                  font-medium
+                "
+              >
                 No candidates found
               </p>
 
-              <p className="mt-1 text-xs text-muted-foreground">
+
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-muted-foreground
+                "
+              >
                 Try changing your search.
               </p>
 
@@ -189,35 +377,71 @@ export function CandidatesTable({
 
         ) : (
 
-          <table className="w-full table-fixed">
+          /* ==================================================
+             TABLE
+             ================================================== */
+
+          <table
+            className="
+              w-full
+              table-fixed
+            "
+          >
 
             <tbody>
 
               {candidates.map(
-                (candidate) => (
+                (
+                  candidate,
+                ) => (
 
                   <tr
                     key={
                       candidate.id
                     }
-                    className="border-b hover:bg-muted/40"
+                    className="
+                      border-b
+                      hover:bg-muted/40
+                    "
                   >
 
-                    {/* SL */}
+                    {/* =================================================
+                        SL
+                        ================================================= */}
 
-                    <td className="w-[70px] px-4 py-3 text-sm">
+                    <td
+                      className="
+                        w-[70px]
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
                       {candidate.sl ??
                         "—"}
                     </td>
 
 
-                    {/* NAME */}
+                    {/* =================================================
+                        CANDIDATE
+                        ================================================= */}
 
-                    <td className="px-4 py-3">
+                    <td
+                      className="
+                        px-4
+                        py-3
+                      "
+                    >
 
                       <Link
                         to={`/app/candidates/${candidate.id}`}
-                        className="block truncate text-sm font-medium hover:underline"
+                        className="
+                          block
+                          truncate
+                          text-sm
+                          font-medium
+                          hover:underline
+                        "
                       >
                         {candidate.name}
                       </Link>
@@ -225,11 +449,24 @@ export function CandidatesTable({
                     </td>
 
 
-                    {/* PASSPORT */}
+                    {/* =================================================
+                        PASSPORT
+                        ================================================= */}
 
-                    <td className="px-4 py-3 text-sm">
+                    <td
+                      className="
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
 
-                      <span className="block truncate">
+                      <span
+                        className="
+                          block
+                          truncate
+                        "
+                      >
                         {
                           candidate.passport_no
                         }
@@ -238,11 +475,24 @@ export function CandidatesTable({
                     </td>
 
 
-                    {/* COUNTRY */}
+                    {/* =================================================
+                        COUNTRY
+                        ================================================= */}
 
-                    <td className="px-4 py-3 text-sm">
+                    <td
+                      className="
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
 
-                      <span className="block truncate">
+                      <span
+                        className="
+                          block
+                          truncate
+                        "
+                      >
                         {
                           candidate.country ??
                           "—"
@@ -252,25 +502,49 @@ export function CandidatesTable({
                     </td>
 
 
-                    {/* STAGE */}
+                    {/* =================================================
+                        STAGE
+                        ================================================= */}
 
-                    <td className="px-4 py-3">
+                    <td
+                      className="
+                        px-4
+                        py-3
+                      "
+                    >
 
-                      <span className="inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-medium">
-
+                      <span
+                        className="
+                          inline-flex
+                          max-w-full
+                          rounded-full
+                          border
+                          px-2.5
+                          py-1
+                          text-xs
+                          font-medium
+                        "
+                      >
                         {
                           candidate.current_stage ??
                           "Pending"
                         }
-
                       </span>
 
                     </td>
 
 
-                    {/* RECEIVED */}
+                    {/* =================================================
+                        RECEIVED
+                        ================================================= */}
 
-                    <td className="px-4 py-3 text-sm">
+                    <td
+                      className="
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
                       {
                         candidate.received_date ??
                         "—"
@@ -278,30 +552,114 @@ export function CandidatesTable({
                     </td>
 
 
-                    {/* AGENT */}
+                    {/* =================================================
+                        AGENT
+                        ================================================= */}
 
-                    <td className="w-[100px] px-4 py-3 text-sm">
+                    <td
+                      className="
+                        w-[180px]
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
 
-                      {candidate.agent_id
-                        ? "Assigned"
-                        : "—"}
+                      {candidate.agent ? (
+
+                        <div
+                          className="
+                            flex
+                            min-w-0
+                            flex-col
+                          "
+                        >
+
+                          <span
+                            className="
+                              truncate
+                              font-medium
+                            "
+                          >
+                            {
+                              candidate.agent.name ??
+                              "Unnamed Agent"
+                            }
+                          </span>
+
+
+                          {candidate.agent.code && (
+
+                            <span
+                              className="
+                                truncate
+                                text-xs
+                                text-muted-foreground
+                              "
+                            >
+                              {
+                                candidate.agent.code
+                              }
+                            </span>
+
+                          )}
+
+                        </div>
+
+                      ) : (
+
+                        <span
+                          className="
+                            text-muted-foreground
+                          "
+                        >
+                          —
+                        </span>
+
+                      )}
 
                     </td>
 
 
-                    {/* STATUS */}
+                    {/* =================================================
+                        STATUS
+                        ================================================= */}
 
-                    <td className="w-[100px] px-4 py-3">
+                    <td
+                      className="
+                        w-[100px]
+                        px-4
+                        py-3
+                      "
+                    >
 
                       {candidate.is_returned ? (
 
-                        <span className="inline-flex rounded-full border px-2 py-1 text-xs">
+                        <span
+                          className="
+                            inline-flex
+                            rounded-full
+                            border
+                            px-2
+                            py-1
+                            text-xs
+                          "
+                        >
                           Returned
                         </span>
 
                       ) : (
 
-                        <span className="inline-flex rounded-full border px-2 py-1 text-xs">
+                        <span
+                          className="
+                            inline-flex
+                            rounded-full
+                            border
+                            px-2
+                            py-1
+                            text-xs
+                          "
+                        >
                           Active
                         </span>
 
@@ -310,9 +668,18 @@ export function CandidatesTable({
                     </td>
 
 
-                    {/* ACTION */}
+                    {/* =================================================
+                        ACTION
+                        ================================================= */}
 
-                    <td className="w-[70px] px-4 py-3 text-right">
+                    <td
+                      className="
+                        w-[70px]
+                        px-4
+                        py-3
+                        text-right
+                      "
+                    >
 
                       <DropdownMenu>
 
@@ -323,8 +690,15 @@ export function CandidatesTable({
                           <Button
                             variant="ghost"
                             size="icon"
+                            type="button"
                           >
+
                             <MoreHorizontal />
+
+                            <span className="sr-only">
+                              Open candidate actions
+                            </span>
+
                           </Button>
 
                         </DropdownMenuTrigger>
@@ -334,6 +708,8 @@ export function CandidatesTable({
                           align="end"
                         >
 
+                          {/* EDIT */}
+
                           <DropdownMenuItem
                             onClick={() =>
                               onEdit?.(
@@ -341,10 +717,15 @@ export function CandidatesTable({
                               )
                             }
                           >
+
                             <Pencil />
+
                             Edit
+
                           </DropdownMenuItem>
 
+
+                          {/* DELETE */}
 
                           <DropdownMenuItem
                             variant="destructive"
@@ -354,8 +735,11 @@ export function CandidatesTable({
                               )
                             }
                           >
+
                             <Trash2 />
+
                             Delete
+
                           </DropdownMenuItem>
 
                         </DropdownMenuContent>
@@ -382,11 +766,34 @@ export function CandidatesTable({
           FOOTER
           ================================================== */}
 
-      <div className="shrink-0 border-t bg-background px-4 py-3">
+      <div
+        className="
+          shrink-0
+          border-t
+          bg-background
+          px-4
+          py-3
+        "
+      >
 
-        <div className="flex items-center justify-between">
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+          "
+        >
 
-          <p className="text-sm text-muted-foreground">
+          {/* =================================================
+              RESULT COUNT
+              ================================================= */}
+
+          <p
+            className="
+              text-sm
+              text-muted-foreground
+            "
+          >
 
             {totalItems === 0
               ? "No results"
@@ -395,7 +802,19 @@ export function CandidatesTable({
           </p>
 
 
-          <div className="flex items-center gap-1">
+          {/* =================================================
+              PAGINATION
+              ================================================= */}
+
+          <div
+            className="
+              flex
+              items-center
+              gap-1
+            "
+          >
+
+            {/* PREVIOUS */}
 
             <Button
               variant="outline"
@@ -410,17 +829,32 @@ export function CandidatesTable({
                 )
               }
             >
+
               <ChevronLeft />
+
+              <span className="sr-only">
+                Previous page
+              </span>
+
             </Button>
 
 
-            <div className="px-3 text-sm">
+            {/* PAGE */}
+
+            <div
+              className="
+                px-3
+                text-sm
+              "
+            >
               Page{" "}
               {currentPage}{" "}
               of{" "}
               {totalPages}
             </div>
 
+
+            {/* NEXT */}
 
             <Button
               variant="outline"
@@ -436,7 +870,13 @@ export function CandidatesTable({
                 )
               }
             >
+
               <ChevronRight />
+
+              <span className="sr-only">
+                Next page
+              </span>
+
             </Button>
 
           </div>
