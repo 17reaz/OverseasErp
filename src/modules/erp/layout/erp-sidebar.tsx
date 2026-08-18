@@ -8,6 +8,7 @@ import {
   Plane,
   ShieldCheck,
   Files,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -21,111 +22,267 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-import { NavLink } from "react-router-dom";
+import {
+  NavLink,
+} from "react-router-dom";
+
+
+// =====================================================
+// NAVIGATION
+// =====================================================
 
 const navigation = [
+
   {
     title: "Dashboard",
     url: "/app",
     icon: LayoutDashboard,
   },
+
   {
     title: "Candidates",
     url: "/app/candidates",
     icon: Users,
   },
+
   {
     title: "Agents",
     url: "/app/agents",
     icon: UserRoundCog,
   },
+
   {
     title: "Agencies",
     url: "/app/agencies",
     icon: Building2,
   },
+
   {
     title: "Medical",
     url: "/app/medical",
     icon: Stethoscope,
   },
+
   {
     title: "MOFA",
     url: "/app/mofa",
     icon: FileCheck,
   },
+
   {
     title: "Visa",
     url: "/app/visa",
     icon: ShieldCheck,
   },
+
   {
     title: "Takamul",
     url: "/app/takamul",
     icon: Plane,
   },
+
   {
     title: "Files",
     url: "/app/files",
     icon: Files,
   },
+
 ];
 
+
+// =====================================================
+// ERP SIDEBAR
+// =====================================================
+
 export function ErpSidebar() {
+
   return (
+
     <Sidebar>
-      {/* Header */}
-      <div className="flex h-16 items-center border-b px-6">
+
+      {/* =================================================
+          HEADER
+          ================================================= */}
+
+      <div
+        className="
+          flex
+          h-16
+          items-center
+          border-b
+          px-6
+        "
+      >
+
         <div>
-          <h1 className="text-sm font-semibold">
+
+          <h1
+            className="
+              text-sm
+              font-semibold
+            "
+          >
             Overseas ERP
           </h1>
 
-          <p className="text-xs text-muted-foreground">
+
+          <p
+            className="
+              text-xs
+              text-muted-foreground
+            "
+          >
             Management System
           </p>
+
         </div>
+
       </div>
 
-      {/* Navigation */}
+
+      {/* =================================================
+          NAVIGATION
+          ================================================= */}
+
       <SidebarContent>
+
         <SidebarGroup>
+
           <SidebarGroupLabel>
             ERP Modules
           </SidebarGroupLabel>
 
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigation.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/app"}
-                    >
-                      {({ isActive }) => (
-                        <>
-                          <item.icon />
 
-                          <span
-                            className={
-                              isActive
-                                ? "font-medium"
-                                : ""
-                            }
-                          >
-                            {item.title}
-                          </span>
-                        </>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+          <SidebarGroupContent>
+
+            <SidebarMenu>
+
+              {navigation.map(
+                (
+                  item,
+                ) => (
+
+                  <SidebarMenuItem
+                    key={
+                      item.url
+                    }
+                  >
+
+                    <SidebarMenuButton
+                      asChild
+                    >
+
+                      <NavLink
+                        to={
+                          item.url
+                        }
+                        end={
+                          item.url ===
+                          "/app"
+                        }
+                      >
+
+                        {({
+                          isActive,
+                        }) => (
+
+                          <>
+
+                            <item.icon />
+
+                            <span
+                              className={
+                                isActive
+                                  ? "font-medium"
+                                  : ""
+                              }
+                            >
+                              {
+                                item.title
+                              }
+                            </span>
+
+                          </>
+
+                        )}
+
+                      </NavLink>
+
+                    </SidebarMenuButton>
+
+                  </SidebarMenuItem>
+
+                ),
+              )}
+
             </SidebarMenu>
+
           </SidebarGroupContent>
+
         </SidebarGroup>
+
+
+        {/* =================================================
+            TRASH
+            ================================================= */}
+
+        <SidebarGroup
+          className="
+            mt-auto
+          "
+        >
+
+          <SidebarGroupContent>
+
+            <SidebarMenu>
+
+              <SidebarMenuItem>
+
+                <SidebarMenuButton
+                  asChild
+                >
+
+                  <NavLink
+                    to="/app/trash"
+                  >
+
+                    {({
+                      isActive,
+                    }) => (
+
+                      <>
+
+                        <Trash2 />
+
+                        <span
+                          className={
+                            isActive
+                              ? "font-medium"
+                              : ""
+                          }
+                        >
+                          Trash
+                        </span>
+
+                      </>
+
+                    )}
+
+                  </NavLink>
+
+                </SidebarMenuButton>
+
+              </SidebarMenuItem>
+
+            </SidebarMenu>
+
+          </SidebarGroupContent>
+
+        </SidebarGroup>
+
       </SidebarContent>
+
     </Sidebar>
+
   );
 }

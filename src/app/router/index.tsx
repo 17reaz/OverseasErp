@@ -15,7 +15,9 @@ import { DashboardPage } from "@/modules/erp/dashboard/dashboard-page";
 
 import { CandidatesPage } from "@/modules/erp/candidates/candidates-page";
 import { CandidateProfilePage } from "@/modules/erp/candidates/candidate-profile";
-
+import {
+  TrashPage,
+} from "@/modules/erp/trash/trash-page";
 import { AgentsPage } from "@/modules/erp/agents/agents-page";
 
 import { FilesPage } from "@/modules/erp/files/files-page";
@@ -157,7 +159,12 @@ function AppRouter() {
               path="flight"
               element={<div>Flight</div>}
             />
-
+            <Route
+  path="trash"
+  element={
+    <TrashPage />
+  }
+/>
           </Route>
 
         </Route>
