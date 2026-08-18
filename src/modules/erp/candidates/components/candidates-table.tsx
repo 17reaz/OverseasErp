@@ -2,7 +2,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
+import {
+  Link,
+} from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 import type { Candidate } from "../candidate-service";
@@ -135,9 +137,12 @@ export function CandidatesTable({
 
                   {/* Candidate */}
                   <td className="px-4 py-3">
-                    <p className="truncate text-sm font-medium">
-                      {candidate.name}
-                    </p>
+                    <Link
+  to={`/app/candidates/${candidate.id}`}
+  className="truncate text-sm font-medium hover:underline"
+>
+  {candidate.name}
+</Link>
                   </td>
 
                   {/* Passport */}

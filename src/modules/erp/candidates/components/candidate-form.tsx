@@ -1,42 +1,416 @@
-export function CandidateForm() {
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  CalendarDays,
+  Loader2,
+} from "lucide-react";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  Input,
+} from "@/components/ui/input";
+
+import {
+  Label,
+} from "@/components/ui/label";
+
+import {
+  Textarea,
+} from "@/components/ui/textarea";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import {
+  createCandidate,
+  updateCandidate,
+  type Candidate,
+  type CandidateInput,
+} from "../candidate-service";
+
+interface CandidateFormDialogProps {
+  open: boolean;
+
+  candidate?: Candidate | null;
+
+  onOpenChange: (
+    open: boolean,
+  ) => void;
+
+  onSuccess: (
+    candidate: Candidate,
+  ) => void;
+}
+
+const countries = [
+  "Saudi Arabia",
+  "Mauritius",
+  "Laos",
+  "Malaysia",
+  "Belarus",
+] as const;
+
+export function CandidateFormDialog({
+  open,
+  candidate,
+  onOpenChange,
+  onSuccess,
+}: CandidateFormDialogProps) {
+  const isEdit = Boolean(candidate);
+
+  const [passportNo, setPassportNo] =
+    useState("");
+
+  const [name, setName] =
+    useState("");
+
+  const [receivedDate, setReceivedDate] =
+    useState("");
+
+  const [country, setCountry] =
+    useState("");
+
+  const [currentStage, setCurrentStage] =
+    useState("Pending");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setPassportNo(
+      candidate?.passport_no ?? "",
+    );
+
+    setName(
+      candidate?.name ?? "",
+    );
+
+    setReceivedDate(
+      candidate?.received_date ?? "",
+    );
+
+    setCountry(
+      candidate?.country ?? "",
+    );
+
+    setCurrentStage(
+      candidate?.current_stage ??
+        "Pending",
+    );
+
+    setError(null);
+  }, [
+    open,
+    candidate,
+  ]);
+
+
+  async function handleSubmit(
+    event: React.FormEvent,
+  ) {
+    event.preventDefault();
+
+    if (!passportNo.trim()) {
+      setError(
+        "Passport number is required.",
+      );
+
+      return;
+    }
+
+    if (!name.trim()) {
+      setError(
+        "Candidate name is required.",
+      );
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const input: CandidateInput = {
+        passport_no:
+          passportNo.trim(),
+
+        name:
+          name.trim(),
+
+        received_date:
+          receivedDate || null,
+
+        country:
+          country
+            ? (country as CandidateInput["country"])
+            : null,
+
+        agent_id:
+          candidate?.agent_id ?? null,
+
+        current_stage:
+          currentStage.trim() ||
+          "Pending",
+      };
+
+      const result = isEdit
+        ? await updateCandidate(
+            candidate!.id,
+            input,
+          )
+        : await createCandidate(
+            input,
+          );
+
+      if (result.error) {
+        console.error(
+          result.error,
+        );
+
+        if (
+          result.error.code ===
+          "23505"
+        ) {
+          setError(
+            "This passport number already exists.",
+          );
+        } else {
+          setError(
+            result.error.message ||
+              "Failed to save candidate.",
+          );
+        }
+
+        return;
+      }
+
+      if (result.data) {
+        onSuccess(
+          result.data,
+        );
+      }
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        "Something went wrong. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+
   return (
-    <form className="space-y-4">
-      <div>
-        <label
-          htmlFor="name"
-          className="text-sm font-medium"
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>
+            {isEdit
+              ? "Edit Candidate"
+              : "Create Candidate"}
+          </DialogTitle>
+
+          <DialogDescription>
+            {isEdit
+              ? "Update candidate information."
+              : "Add a new candidate to your tenant."}
+          </DialogDescription>
+        </DialogHeader>
+
+
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
         >
-          Name
-        </label>
 
-        <input
-          id="name"
-          name="name"
-          className="mt-1 w-full rounded-md border px-3 py-2"
-        />
-      </div>
+          {/* Passport */}
 
-      <div>
-        <label
-          htmlFor="code"
-          className="text-sm font-medium"
-        >
-          Code
-        </label>
+          <div className="space-y-2">
+            <Label htmlFor="passport">
+              Passport Number
+            </Label>
 
-        <input
-          id="code"
-          name="code"
-          className="mt-1 w-full rounded-md border px-3 py-2"
-        />
-      </div>
+            <Input
+              id="passport"
+              value={passportNo}
+              onChange={(event) =>
+                setPassportNo(
+                  event.target.value,
+                )
+              }
+              placeholder="e.g. A12345678"
+              disabled={loading}
+            />
+          </div>
 
-      <button
-        type="submit"
-        className="rounded-md border px-4 py-2"
-      >
-        Save Candidate
-      </button>
-    </form>
+
+          {/* Name */}
+
+          <div className="space-y-2">
+            <Label htmlFor="candidate-name">
+              Candidate Name
+            </Label>
+
+            <Input
+              id="candidate-name"
+              value={name}
+              onChange={(event) =>
+                setName(
+                  event.target.value,
+                )
+              }
+              placeholder="Full name"
+              disabled={loading}
+            />
+          </div>
+
+
+          {/* Received Date */}
+
+          <div className="space-y-2">
+            <Label htmlFor="received-date">
+              Received Date
+            </Label>
+
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+              <Input
+                id="received-date"
+                type="date"
+                value={receivedDate}
+                onChange={(event) =>
+                  setReceivedDate(
+                    event.target.value,
+                  )
+                }
+                className="pl-9"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+
+          {/* Country */}
+
+          <div className="space-y-2">
+            <Label htmlFor="country">
+              Country
+            </Label>
+
+            <select
+              id="country"
+              value={country}
+              onChange={(event) =>
+                setCountry(
+                  event.target.value,
+                )
+              }
+              disabled={loading}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <option value="">
+                Select country
+              </option>
+
+              {countries.map(
+                (item) => (
+                  <option
+                    key={item}
+                    value={item}
+                  >
+                    {item}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+
+          {/* Stage */}
+
+          <div className="space-y-2">
+            <Label htmlFor="stage">
+              Current Stage
+            </Label>
+
+            <Input
+              id="stage"
+              value={currentStage}
+              onChange={(event) =>
+                setCurrentStage(
+                  event.target.value,
+                )
+              }
+              placeholder="Pending"
+              disabled={loading}
+            />
+          </div>
+
+
+          {/* Error */}
+
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                onOpenChange(false)
+              }
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={loading}
+            >
+              {loading && (
+                <Loader2 className="animate-spin" />
+              )}
+
+              {isEdit
+                ? "Save Changes"
+                : "Create Candidate"}
+            </Button>
+          </DialogFooter>
+
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -2,7 +2,7 @@ import { ProtectedRoute } from "@/modules/auth/components/protected-route";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { LandingPage } from "@/modules/landing/landing-page";
-
+import { CandidateProfilePage } from "@/modules/erp/candidates/candidate-profile/candidate-profile-page";
 import { LoginPage } from "@/modules/auth/login/login-page";
 import { SignupPage } from "@/modules/auth/signup/signup-page";
 import { ForgotPasswordPage } from "@/modules/auth/forgot-password/forgot-password-page";
@@ -39,6 +39,10 @@ function AppRouter() {
             <Route path="dashboard" element={<DashboardPage />} />
 
             <Route path="candidates" element={<CandidatesPage />}/>
+            <Route
+  path="candidates/:candidateId"
+  element={<CandidateProfilePage />}
+/>
             <Route
   path="/app/agents"
   element={<AgentsPage />}
