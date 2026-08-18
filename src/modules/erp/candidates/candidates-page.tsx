@@ -27,6 +27,7 @@ import {
 
 import {
   getCandidates,
+  restoreCandidate,
   type Candidate,
 } from "./candidate-service";
 
@@ -71,7 +72,7 @@ export function CandidatesPage() {
 
 
   // ======================================================
-  // CREATE / EDIT DIALOG
+  // CREATE / EDIT
   // ======================================================
 
   const [
@@ -88,7 +89,7 @@ export function CandidatesPage() {
 
 
   // ======================================================
-  // DELETE DIALOG
+  // DELETE
   // ======================================================
 
   const [
@@ -105,7 +106,7 @@ export function CandidatesPage() {
 
 
   // ======================================================
-  // RETURN DIALOG
+  // RETURN
   // ======================================================
 
   const [
@@ -149,14 +150,11 @@ export function CandidatesPage() {
               error,
             );
 
-
             setCandidates([]);
-
 
             setError(
               "Failed to load candidates. Please try again.",
             );
-
 
             return;
           }
@@ -166,21 +164,17 @@ export function CandidatesPage() {
             data ?? [],
           );
 
-
         } catch (error) {
 
           console.error(
             error,
           );
 
-
           setCandidates([]);
-
 
           setError(
             "Failed to load candidates. Please try again.",
           );
-
 
         } finally {
 
@@ -341,6 +335,95 @@ export function CandidatesPage() {
 
 
   // ======================================================
+  // RESTORE
+  // ======================================================
+
+  async function handleRestore(
+    candidate: Candidate,
+  ) {
+
+    const confirmed =
+      window.confirm(
+        `Restore ${candidate.name} and mark the candidate as active?`,
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    try {
+
+      setLoading(true);
+
+      setError(null);
+
+
+      const {
+        data,
+        error,
+      } =
+        await restoreCandidate(
+          candidate.id,
+        );
+
+
+      if (error) {
+
+        console.error(
+          "Failed to restore candidate:",
+          error,
+        );
+
+        setError(
+          error.message ||
+            "Failed to restore candidate. Please try again.",
+        );
+
+        return;
+      }
+
+
+      if (data) {
+
+        setCandidates(
+          (current) =>
+            current.map(
+              (item) =>
+                item.id ===
+                data.id
+                  ? data
+                  : item,
+            ),
+        );
+
+      } else {
+
+        await loadCandidates();
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        error,
+      );
+
+      setError(
+        "Failed to restore candidate. Please try again.",
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }
+
+
+  // ======================================================
   // RENDER
   // ======================================================
 
@@ -469,6 +552,10 @@ export function CandidatesPage() {
           handleReturn
         }
 
+        onRestore={
+          handleRestore
+        }
+
       />
 
 
@@ -563,5 +650,4 @@ export function CandidatesPage() {
     </div>
 
   );
-
 }

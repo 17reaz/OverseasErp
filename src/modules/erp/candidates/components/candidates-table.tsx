@@ -3,9 +3,16 @@ import {
   ChevronRight,
   MoreHorizontal,
   Pencil,
+  RotateCcw,
   Trash2,
+  Download,
 } from "lucide-react";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Link,
 } from "react-router-dom";
@@ -18,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -40,12 +48,22 @@ interface CandidatesTableProps {
   onPageChange?: (
     page: number,
   ) => void;
-
+onDownloadPassport?: (
+  candidate: Candidate,
+) => void;
   onEdit?: (
     candidate: Candidate,
   ) => void;
 
   onDelete?: (
+    candidate: Candidate,
+  ) => void;
+
+  onReturn?: (
+    candidate: Candidate,
+  ) => void;
+
+  onRestore?: (
     candidate: Candidate,
   ) => void;
 }
@@ -60,6 +78,8 @@ export function CandidatesTable({
   onPageChange,
   onEdit,
   onDelete,
+  onReturn,
+  onRestore,
 }: CandidatesTableProps) {
 
   // =====================================================
@@ -122,7 +142,7 @@ export function CandidatesTable({
     >
 
       {/* ==================================================
-          HEADER
+          TABLE HEADER
           ================================================== */}
 
       <div
@@ -255,7 +275,7 @@ export function CandidatesTable({
 
               <th
                 className="
-                  w-[100px]
+                  w-[110px]
                   px-4
                   py-3
                   text-left
@@ -292,7 +312,7 @@ export function CandidatesTable({
 
 
       {/* ==================================================
-          DATA
+          TABLE BODY
           ================================================== */}
 
       <div
@@ -304,9 +324,7 @@ export function CandidatesTable({
         "
       >
 
-        {/* ==================================================
-            LOADING
-            ================================================== */}
+        {/* LOADING */}
 
         {loading ? (
 
@@ -332,9 +350,7 @@ export function CandidatesTable({
 
         ) : candidates.length === 0 ? (
 
-          /* ==================================================
-             EMPTY
-             ================================================== */
+          /* EMPTY */
 
           <div
             className="
@@ -377,9 +393,7 @@ export function CandidatesTable({
 
         ) : (
 
-          /* ==================================================
-             TABLE
-             ================================================== */
+          /* DATA */
 
           <table
             className="
@@ -626,46 +640,67 @@ export function CandidatesTable({
                         ================================================= */}
 
                     <td
-                      className="
-                        w-[100px]
-                        px-4
-                        py-3
-                      "
-                    >
+  className="
+    w-[110px]
+    px-4
+    py-3
+  "
+>
+  {candidate.is_returned ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="
+              inline-flex
+              cursor-help
+              rounded-full
+              border
+              px-2
+              py-1
+              text-xs
+              font-medium
+            "
+          >
+            Returned
+          </span>
+        </TooltipTrigger>
 
-                      {candidate.is_returned ? (
-
-                        <span
-                          className="
-                            inline-flex
-                            rounded-full
-                            border
-                            px-2
-                            py-1
-                            text-xs
-                          "
-                        >
-                          Returned
-                        </span>
-
-                      ) : (
-
-                        <span
-                          className="
-                            inline-flex
-                            rounded-full
-                            border
-                            px-2
-                            py-1
-                            text-xs
-                          "
-                        >
-                          Active
-                        </span>
-
-                      )}
-
-                    </td>
+        <TooltipContent>
+          <p>
+            Returned date:{" "}
+            {candidate.returned_date
+              ? new Date(
+                  candidate.returned_date,
+                ).toLocaleDateString(
+                  "en-GB",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  },
+                )
+              : "Not available"}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    <span
+      className="
+        inline-flex
+        rounded-full
+        border
+        px-2
+        py-1
+        text-xs
+        font-medium
+      "
+    >
+      Active
+    </span>
+  )}
+</td>
 
 
                     {/* =================================================
@@ -708,6 +743,17 @@ export function CandidatesTable({
                           align="end"
                         >
 
+<DropdownMenuItem
+  onClick={() =>
+    onDownloadPassport?.(
+      candidate,
+    )
+  }
+>
+  <Download />
+
+  Download Passport
+</DropdownMenuItem>
                           {/* EDIT */}
 
                           <DropdownMenuItem
@@ -723,6 +769,51 @@ export function CandidatesTable({
                             Edit
 
                           </DropdownMenuItem>
+
+
+                          {/* RETURN */}
+
+                          {!candidate.is_returned && (
+
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onReturn?.(
+                                  candidate,
+                                )
+                              }
+                            >
+
+                              <RotateCcw />
+
+                              Mark as Returned
+
+                            </DropdownMenuItem>
+
+                          )}
+
+
+                          {/* RESTORE */}
+
+                          {candidate.is_returned && (
+
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onRestore?.(
+                                  candidate,
+                                )
+                              }
+                            >
+
+                              <RotateCcw />
+
+                              Restore Candidate
+
+                            </DropdownMenuItem>
+
+                          )}
+
+
+                          <DropdownMenuSeparator />
 
 
                           {/* DELETE */}
@@ -784,10 +875,6 @@ export function CandidatesTable({
           "
         >
 
-          {/* =================================================
-              RESULT COUNT
-              ================================================= */}
-
           <p
             className="
               text-sm
@@ -802,10 +889,6 @@ export function CandidatesTable({
           </p>
 
 
-          {/* =================================================
-              PAGINATION
-              ================================================= */}
-
           <div
             className="
               flex
@@ -813,8 +896,6 @@ export function CandidatesTable({
               gap-1
             "
           >
-
-            {/* PREVIOUS */}
 
             <Button
               variant="outline"
@@ -839,8 +920,6 @@ export function CandidatesTable({
             </Button>
 
 
-            {/* PAGE */}
-
             <div
               className="
                 px-3
@@ -853,8 +932,6 @@ export function CandidatesTable({
               {totalPages}
             </div>
 
-
-            {/* NEXT */}
 
             <Button
               variant="outline"
