@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Check,
   ChevronsUpDown,
   Loader2,
   Upload,
 } from "lucide-react";
-
-import { supabase } from "@/lib/supabase/client";
 
 import {
   Sheet,
@@ -22,6 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -35,14 +41,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { uploadFile } from "./files-service";
 
@@ -61,34 +59,23 @@ interface FileUploadSheetProps {
 
   tenantId: string;
 
-  candidateId?: string | null;
-  candidateSl?: number | null;
-  candidateName?: string | null;
-  passportNo?: string | null;
+  candidates: CandidateInfo[];
 
-  onCandidateSelected?: (
-    candidate: CandidateInfo,
-  ) => void;
-
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
 }
 
 export function FileUploadSheet({
   open,
   onOpenChange,
   tenantId,
-  candidateId: initialCandidateId,
-  candidateSl: initialCandidateSl,
-  candidateName: initialCandidateName,
-  passportNo: initialPassportNo,
-  onCandidateSelected,
+  candidates,
   onSuccess,
 }: FileUploadSheetProps) {
-  /*
-   * ==============================
-   * STATE
-   * ==============================
-   */
+  const [candidateOpen, setCandidateOpen] =
+    useState(false);
+
+  const [candidate, setCandidate] =
+    useState<CandidateInfo | null>(null);
 
   const [docType, setDocType] =
     useState<DocumentType>("passport");
@@ -99,169 +86,24 @@ export function FileUploadSheet({
   const [loading, setLoading] =
     useState(false);
 
-  const [candidateLoading, setCandidateLoading] =
-    useState(false);
-
   const [error, setError] =
     useState("");
 
-  const [candidates, setCandidates] =
-    useState<CandidateInfo[]>([]);
-
-  const [candidateSelectorOpen, setCandidateSelectorOpen] =
-    useState(false);
-
-  const [selectedCandidate, setSelectedCandidate] =
-    useState<CandidateInfo | null>(
-      initialCandidateId
-        ? {
-            id: initialCandidateId,
-            sl: initialCandidateSl ?? 0,
-            name: initialCandidateName ?? "",
-            passport_no:
-              initialPassportNo ?? "",
-          }
-        : null,
-    );
-
-  /*
-   * ==============================
-   * LOAD CANDIDATES
-   * ==============================
-   */
-
-  async function loadCandidates() {
-    if (!tenantId) {
-      return;
-    }
-
-    try {
-      setCandidateLoading(true);
-      setError("");
-
-      const {
-        data,
-        error: candidateError,
-      } = await supabase
-        .from("candidates")
-        .select(
-          "id, sl, name, passport_no",
-        )
-        .eq(
-          "tenant_id",
-          tenantId,
-        )
-        .eq(
-          "is_deleted",
-          false,
-        )
-        .order("sl", {
-          ascending: true,
-        });
-
-      if (candidateError) {
-        throw candidateError;
-      }
-
-      setCandidates(
-        (data ?? []) as CandidateInfo[],
-      );
-    } catch (error) {
-      console.error(
-        "Failed to load candidates:",
-        error,
-      );
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load candidates.",
-      );
-    } finally {
-      setCandidateLoading(false);
-    }
-  }
-
-  /*
-   * Load candidates whenever
-   * Sheet opens.
-   */
-
-  useEffect(() => {
-    if (open) {
-      loadCandidates();
-    }
-  }, [open, tenantId]);
-
-  /*
-   * ==============================
-   * RESET
-   * ==============================
-   */
-
   function resetForm() {
+    setCandidateOpen(false);
+    setCandidate(null);
     setDocType("passport");
     setFile(null);
     setError("");
-    setCandidateSelectorOpen(false);
-
-    setSelectedCandidate(
-      initialCandidateId
-        ? {
-            id: initialCandidateId,
-            sl: initialCandidateSl ?? 0,
-            name: initialCandidateName ?? "",
-            passport_no:
-              initialPassportNo ?? "",
-          }
-        : null,
-    );
   }
 
-  /*
-   * ==============================
-   * CLOSE SHEET
-   * ==============================
-   */
-
-  function handleClose(
-    nextOpen: boolean,
-  ) {
+  function handleClose(nextOpen: boolean) {
     if (!nextOpen && !loading) {
       resetForm();
     }
 
     onOpenChange(nextOpen);
   }
-
-  /*
-   * ==============================
-   * SELECT CANDIDATE
-   * ==============================
-   */
-
-  function handleCandidateSelect(
-    candidate: CandidateInfo,
-  ) {
-    setSelectedCandidate(candidate);
-
-    setCandidateSelectorOpen(false);
-
-    setError("");
-
-    /*
-     * Inform parent page.
-     */
-    onCandidateSelected?.(
-      candidate,
-    );
-  }
-
-  /*
-   * ==============================
-   * UPLOAD
-   * ==============================
-   */
 
   async function handleUpload() {
     setError("");
@@ -273,37 +115,28 @@ export function FileUploadSheet({
       return;
     }
 
-    if (!selectedCandidate) {
+    if (!candidate) {
       setError(
         "Please select a candidate.",
       );
       return;
     }
 
-    if (!selectedCandidate.id) {
-      setError(
-        "Candidate information is missing.",
-      );
-      return;
-    }
-
-    if (!selectedCandidate.sl) {
+    if (!candidate.sl) {
       setError(
         "Candidate SL is missing.",
       );
       return;
     }
 
-    if (!selectedCandidate.name.trim()) {
+    if (!candidate.name.trim()) {
       setError(
         "Candidate name is missing.",
       );
       return;
     }
 
-    if (
-      !selectedCandidate.passport_no.trim()
-    ) {
+    if (!candidate.passport_no.trim()) {
       setError(
         "Passport number is missing.",
       );
@@ -322,36 +155,19 @@ export function FileUploadSheet({
 
       await uploadFile({
         tenantId,
-
-        candidateId:
-          selectedCandidate.id,
-
-        candidateSl:
-          selectedCandidate.sl,
-
-        candidateName:
-          selectedCandidate.name,
-
-        passportNo:
-          selectedCandidate.passport_no,
-
+        candidateId: candidate.id,
+        candidateSl: candidate.sl,
+        candidateName: candidate.name,
+        passportNo: candidate.passport_no,
         docType,
-
         file,
       });
 
-      /*
-       * Tell parent that upload
-       * completed successfully.
-       */
-      onSuccess?.();
-
-      /*
-       * Close sheet.
-       */
-      onOpenChange(false);
+      await onSuccess?.();
 
       resetForm();
+
+      onOpenChange(false);
     } catch (error) {
       console.error(
         "Failed to upload file:",
@@ -367,12 +183,6 @@ export function FileUploadSheet({
       setLoading(false);
     }
   }
-
-  /*
-   * ==============================
-   * UI
-   * ==============================
-   */
 
   return (
     <Sheet
@@ -395,9 +205,7 @@ export function FileUploadSheet({
         </SheetHeader>
 
         <div className="space-y-6 px-4">
-          {/* ========================
-              ERROR
-          ========================= */}
+          {/* Error */}
 
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -405,9 +213,7 @@ export function FileUploadSheet({
             </div>
           )}
 
-          {/* ========================
-              CANDIDATE SELECTOR
-          ========================= */}
+          {/* Candidate */}
 
           <div className="space-y-2">
             <Label>
@@ -415,11 +221,9 @@ export function FileUploadSheet({
             </Label>
 
             <Popover
-              open={
-                candidateSelectorOpen
-              }
+              open={candidateOpen}
               onOpenChange={
-                setCandidateSelectorOpen
+                setCandidateOpen
               }
             >
               <PopoverTrigger asChild>
@@ -428,39 +232,32 @@ export function FileUploadSheet({
                   variant="outline"
                   role="combobox"
                   aria-expanded={
-                    candidateSelectorOpen
+                    candidateOpen
                   }
                   disabled={
                     loading ||
-                    candidateLoading
+                    candidates.length === 0
                   }
                   className="w-full justify-between"
                 >
-                  {selectedCandidate ? (
+                  {candidate ? (
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="shrink-0 font-medium">
-                        #
-                        {
-                          selectedCandidate.sl
-                        }
+                      <span className="font-medium">
+                        #{candidate.sl}
                       </span>
 
                       <span className="truncate">
-                        {
-                          selectedCandidate.name
-                        }
+                        {candidate.name}
                       </span>
 
-                      <span className="shrink-0 text-muted-foreground">
+                      <span className="truncate text-muted-foreground">
                         ·{" "}
-                        {
-                          selectedCandidate.passport_no
-                        }
+                        {candidate.passport_no}
                       </span>
                     </div>
                   ) : (
                     <span className="text-muted-foreground">
-                      Search candidate...
+                      Search and select candidate...
                     </span>
                   )}
 
@@ -478,80 +275,68 @@ export function FileUploadSheet({
                   />
 
                   <CommandList>
-                    {candidateLoading ? (
-                      <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                        <Loader2 className="size-4 animate-spin" />
+                    <CommandEmpty>
+                      No candidate found.
+                    </CommandEmpty>
 
-                        Loading candidates...
-                      </div>
-                    ) : (
-                      <>
-                        <CommandEmpty>
-                          No candidates found.
-                        </CommandEmpty>
+                    <CommandGroup>
+                      {candidates.map(
+                        (item) => (
+                          <CommandItem
+                            key={item.id}
+                            value={`${item.sl} ${item.name} ${item.passport_no}`}
+                            onSelect={() => {
+                              setCandidate(
+                                item,
+                              );
 
-                        <CommandGroup>
-                          {candidates.map(
-                            (item) => (
-                              <CommandItem
-                                key={
-                                  item.id
-                                }
-                                value={`${item.name} ${item.passport_no} ${item.sl}`}
-                                onSelect={() =>
-                                  handleCandidateSelect(
-                                    item,
-                                  )
-                                }
-                              >
-                                <div className="flex min-w-0 flex-1 items-center gap-3">
-                                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium">
-                                    {
-                                      item.sl
-                                    }
-                                  </div>
+                              setCandidateOpen(
+                                false,
+                              );
 
-                                  <div className="min-w-0">
-                                    <p className="truncate font-medium">
-                                      {
-                                        item.name
-                                      }
-                                    </p>
+                              setError("");
+                            }}
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium">
+                                {item.sl}
+                              </div>
 
-                                    <p className="truncate text-xs text-muted-foreground">
-                                      Passport:{" "}
-                                      {
-                                        item.passport_no
-                                      }
-                                    </p>
-                                  </div>
-                                </div>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium">
+                                  {item.name}
+                                </p>
 
-                                <Check
-                                  className={
-                                    selectedCandidate?.id ===
-                                    item.id
-                                      ? "ml-2 size-4 opacity-100"
-                                      : "ml-2 size-4 opacity-0"
+                                <p className="truncate text-xs text-muted-foreground">
+                                  Passport:{" "}
+                                  {
+                                    item.passport_no
                                   }
-                                />
-                              </CommandItem>
-                            ),
-                          )}
-                        </CommandGroup>
-                      </>
-                    )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <Check
+                              className={
+                                candidate?.id ===
+                                item.id
+                                  ? "ml-2 size-4 opacity-100"
+                                  : "ml-2 size-4 opacity-0"
+                              }
+                            />
+                          </CommandItem>
+                        ),
+                      )}
+                    </CommandGroup>
                   </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>
           </div>
 
-          {/* ========================
-              SELECTED CANDIDATE
-          ========================= */}
+          {/* Selected Candidate */}
 
-          {selectedCandidate && (
+          {candidate && (
             <div className="space-y-3 rounded-lg border p-4">
               <div>
                 <p className="text-xs text-muted-foreground">
@@ -559,9 +344,7 @@ export function FileUploadSheet({
                 </p>
 
                 <p className="font-medium">
-                  {
-                    selectedCandidate.name
-                  }
+                  {candidate.name}
                 </p>
               </div>
 
@@ -571,9 +354,7 @@ export function FileUploadSheet({
                 </p>
 
                 <p className="font-medium">
-                  {
-                    selectedCandidate.passport_no
-                  }
+                  {candidate.passport_no}
                 </p>
               </div>
 
@@ -583,17 +364,13 @@ export function FileUploadSheet({
                 </p>
 
                 <p className="font-medium">
-                  {
-                    selectedCandidate.sl
-                  }
+                  {candidate.sl}
                 </p>
               </div>
             </div>
           )}
 
-          {/* ========================
-              DOCUMENT TYPE
-          ========================= */}
+          {/* Document Type */}
 
           <div className="space-y-2">
             <Label>
@@ -607,10 +384,7 @@ export function FileUploadSheet({
                   value as DocumentType,
                 )
               }
-              disabled={
-                loading ||
-                !selectedCandidate
-              }
+              disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -648,9 +422,7 @@ export function FileUploadSheet({
             </Select>
           </div>
 
-          {/* ========================
-              FILE SELECT
-          ========================= */}
+          {/* File */}
 
           <div className="space-y-2">
             <Label htmlFor="document-file">
@@ -661,19 +433,13 @@ export function FileUploadSheet({
               id="document-file"
               type="file"
               accept="image/*,.pdf"
-              disabled={
-                loading ||
-                !selectedCandidate
-              }
+              disabled={loading}
               onChange={(event) => {
                 const selectedFile =
                   event.target.files?.[0] ??
                   null;
 
-                setFile(
-                  selectedFile,
-                );
-
+                setFile(selectedFile);
                 setError("");
               }}
             />
@@ -683,9 +449,7 @@ export function FileUploadSheet({
             </p>
           </div>
 
-          {/* ========================
-              SELECTED FILE
-          ========================= */}
+          {/* Selected File */}
 
           {file && (
             <div className="rounded-lg border bg-muted/50 p-3">
@@ -707,32 +471,7 @@ export function FileUploadSheet({
               </p>
             </div>
           )}
-
-          {/* ========================
-              UPLOAD STATUS
-          ========================= */}
-
-          {loading && (
-            <div className="rounded-lg border bg-muted/50 p-3">
-              <div className="flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" />
-
-                <span className="text-sm font-medium">
-                  Uploading document...
-                </span>
-              </div>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Please wait while the file is
-                being uploaded.
-              </p>
-            </div>
-          )}
         </div>
-
-        {/* ========================
-            FOOTER
-        ========================= */}
 
         <SheetFooter className="px-4">
           <Button
@@ -750,7 +489,7 @@ export function FileUploadSheet({
             type="button"
             disabled={
               loading ||
-              !selectedCandidate ||
+              !candidate ||
               !file
             }
             onClick={handleUpload}
