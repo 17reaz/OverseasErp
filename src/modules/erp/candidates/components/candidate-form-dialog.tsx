@@ -18,7 +18,21 @@ import {
 import {
   Label,
 } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { supabase } from "@/lib/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +48,11 @@ import {
   type Candidate,
   type CandidateInput,
 } from "../candidate-service";
-
+interface Agent {
+  id: string;
+  name: string | null;
+  code: string | null;
+}
 interface CandidateFormDialogProps {
   open: boolean;
 
@@ -85,8 +103,78 @@ export function CandidateFormDialog({
 
   const [error, setError] =
     useState<string | null>(null);
+const [agents, setAgents] = useState<Agent[]>([]);
 
+const [selectedAgentId, setSelectedAgentId] =
+  useState<string | null>(null);
 
+const [agentOpen, setAgentOpen] =
+  useState(false);
+
+const [agentLoading, setAgentLoading] =
+  useState(false);
+useEffect(() => {
+  if (!open) return;
+
+  async function loadAgents() {
+    setAgentLoading(true);
+
+    const { data, error } = await supabase
+      .from("agents")
+      .select("id, name, code")
+      .eq("is_active", true)
+      .eq("is_deleted", false)
+      .order("name", {
+        ascending: true,
+      });
+
+    if (error) {
+      console.error(
+        "Failed to load agents:",
+        error,
+      );
+
+      setAgents([]);
+    } else {
+      setAgents(data ?? []);
+    }
+
+    setAgentLoading(false);
+  }
+
+  loadAgents();
+}, [open]);
+useEffect(() => {
+  if (!open) return;
+
+  async function loadAgents() {
+    setAgentLoading(true);
+
+    const { data, error } = await supabase
+      .from("agents")
+      .select("id, name, code")
+      .eq("is_active", true)
+      .eq("is_deleted", false)
+      .order("name", {
+        ascending: true,
+      });
+
+    if (error) {
+      console.error(
+        "Failed to load agents:",
+        error,
+      );
+
+      setAgents([]);
+    } else {
+      setAgents(data ?? []);
+    }
+
+    setAgentLoading(false);
+  }
+
+  loadAgents();
+}, [open]);
   useEffect(() => {
     if (!open) {
       return;
@@ -311,7 +399,89 @@ export function CandidateFormDialog({
             />
           </div>
 
+              <div className="space-y-2">
+  <Label>
+    Agent
+  </Label>
 
+  <Popover
+    open={agentOpen}
+    onOpenChange={setAgentOpen}
+  >
+    <PopoverTrigger asChild>
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={agentOpen}
+        disabled={
+          loading ||
+          agentLoading
+        }
+        className="w-full justify-between font-normal"
+      >
+        {agentLoading
+          ? "Loading agents..."
+          : selectedAgent
+            ? selectedAgent.name
+            : "Select agent..."}
+
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+
+    <PopoverContent
+      className="w-[--radix-popover-trigger-width] p-0"
+      align="start"
+    >
+      <Command>
+        <CommandInput
+          placeholder="Search agent..."
+        />
+
+        <CommandList>
+          <CommandEmpty>
+            No agent found.
+          </CommandEmpty>
+
+          <CommandGroup>
+            {agents.map((agent) => (
+              <CommandItem
+                key={agent.id}
+                value={`${agent.name ?? ""} ${agent.code ?? ""}`}
+                onSelect={() => {
+                  setSelectedAgentId(
+                    agent.id,
+                  );
+
+                  setAgentOpen(false);
+                }}
+              >
+                <div className="flex flex-col">
+                  <span>
+                    {agent.name ||
+                      "Unnamed Agent"}
+                  </span>
+
+                  {agent.code && (
+                    <span className="text-xs text-muted-foreground">
+                      {agent.code}
+                    </span>
+                  )}
+                </div>
+
+                {selectedAgentId ===
+                  agent.id && (
+                  <Check className="ml-auto h-4 w-4" />
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </PopoverContent>
+  </Popover>
+</div>
           {/* Country */}
 
           <div className="space-y-2">
