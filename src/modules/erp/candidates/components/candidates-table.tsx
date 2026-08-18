@@ -7,19 +7,17 @@ import {
   Trash2,
   Download,
 } from "lucide-react";
+
+import { Link } from "react-router-dom";
+
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Link,
-} from "react-router-dom";
 
-import {
-  Button,
-} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
 import {
   DropdownMenu,
@@ -29,10 +27,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import type {
-  Candidate,
-} from "../candidate-service";
+import type { Candidate } from "../candidate-service";
 
+
+// =====================================================
+// PROPS
+// =====================================================
 
 interface CandidatesTableProps {
   candidates: Candidate[];
@@ -48,26 +48,37 @@ interface CandidatesTableProps {
   onPageChange?: (
     page: number,
   ) => void;
-onDownloadPassport?: (
-  candidate: Candidate,
-) => void;
+
+  // Passport download
+  onDownloadPassport?: (
+    candidate: Candidate,
+  ) => void;
+
+  // Edit
   onEdit?: (
     candidate: Candidate,
   ) => void;
 
+  // Delete
   onDelete?: (
     candidate: Candidate,
   ) => void;
 
+  // Return
   onReturn?: (
     candidate: Candidate,
   ) => void;
 
+  // Restore
   onRestore?: (
     candidate: Candidate,
   ) => void;
 }
 
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 export function CandidatesTable({
   candidates,
@@ -75,10 +86,17 @@ export function CandidatesTable({
   page = 1,
   pageSize = 10,
   total,
+
   onPageChange,
+
+  onDownloadPassport,
+
   onEdit,
+
   onDelete,
+
   onReturn,
+
   onRestore,
 }: CandidatesTableProps) {
 
@@ -128,212 +146,789 @@ export function CandidatesTable({
   // =====================================================
 
   return (
-    <div
-      className="
-        flex
-        h-[calc(100vh-250px)]
-        min-h-[400px]
-        flex-col
-        overflow-hidden
-        rounded-lg
-        border
-        bg-background
-      "
-    >
-
-      {/* ==================================================
-          TABLE HEADER
-          ================================================== */}
-
+    <TooltipProvider>
       <div
         className="
-          shrink-0
-          border-b
+          flex
+          h-[calc(100vh-250px)]
+          min-h-[400px]
+          flex-col
+          overflow-hidden
+          rounded-lg
+          border
           bg-background
         "
       >
 
-        <table
+        {/* ==================================================
+            TABLE HEADER
+            ================================================== */}
+
+        <div
           className="
-            w-full
-            table-fixed
+            shrink-0
+            border-b
+            bg-background
           "
         >
 
-          <thead>
+          <table
+            className="
+              w-full
+              table-fixed
+            "
+          >
 
-            <tr>
+            <thead>
 
-              {/* SL */}
+              <tr>
 
-              <th
+                {/* SL */}
+
+                <th
+                  className="
+                    w-[70px]
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  SL
+                </th>
+
+
+                {/* CANDIDATE */}
+
+                <th
+                  className="
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Candidate
+                </th>
+
+
+                {/* PASSPORT */}
+
+                <th
+                  className="
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Passport
+                </th>
+
+
+                {/* COUNTRY */}
+
+                <th
+                  className="
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Country
+                </th>
+
+
+                {/* STAGE */}
+
+                <th
+                  className="
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Stage
+                </th>
+
+
+                {/* RECEIVED */}
+
+                <th
+                  className="
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Received
+                </th>
+
+
+                {/* AGENT */}
+
+                <th
+                  className="
+                    w-[180px]
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Agent
+                </th>
+
+
+                {/* STATUS */}
+
+                <th
+                  className="
+                    w-[110px]
+                    px-4
+                    py-3
+                    text-left
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Status
+                </th>
+
+
+                {/* ACTION */}
+
+                <th
+                  className="
+                    w-[70px]
+                    px-4
+                    py-3
+                    text-right
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Action
+                </th>
+
+              </tr>
+
+            </thead>
+
+          </table>
+
+        </div>
+
+
+        {/* ==================================================
+            TABLE BODY
+            ================================================== */}
+
+        <div
+          className="
+            min-h-0
+            flex-1
+            overflow-y-auto
+            overflow-x-hidden
+          "
+        >
+
+          {/* ==================================================
+              LOADING
+              ================================================== */}
+
+          {loading ? (
+
+            <div
+              className="
+                flex
+                min-h-[200px]
+                items-center
+                justify-center
+              "
+            >
+
+              <p
                 className="
-                  w-[70px]
-                  px-4
-                  py-3
-                  text-left
                   text-sm
-                  font-medium
+                  text-muted-foreground
                 "
               >
-                SL
-              </th>
+                Loading candidates...
+              </p>
 
+            </div>
 
-              {/* CANDIDATE */}
+          ) : candidates.length === 0 ? (
 
-              <th
+            /* ==================================================
+                EMPTY
+                ================================================== */
+
+            <div
+              className="
+                flex
+                min-h-[200px]
+                items-center
+                justify-center
+              "
+            >
+
+              <div
                 className="
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
+                  text-center
                 "
               >
-                Candidate
-              </th>
+
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  No candidates found
+                </p>
 
 
-              {/* PASSPORT */}
+                <p
+                  className="
+                    mt-1
+                    text-xs
+                    text-muted-foreground
+                  "
+                >
+                  Try changing your search.
+                </p>
 
-              <th
-                className="
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
-                Passport
-              </th>
+              </div>
 
+            </div>
 
-              {/* COUNTRY */}
+          ) : (
 
-              <th
-                className="
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
-                Country
-              </th>
+            /* ==================================================
+                DATA
+                ================================================== */
 
+            <table
+              className="
+                w-full
+                table-fixed
+              "
+            >
 
-              {/* STAGE */}
+              <tbody>
 
-              <th
-                className="
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
-                Stage
-              </th>
+                {candidates.map(
+                  (
+                    candidate,
+                  ) => (
 
+                    <tr
+                      key={
+                        candidate.id
+                      }
+                      className="
+                        border-b
+                        hover:bg-muted/40
+                      "
+                    >
 
-              {/* RECEIVED */}
+                      {/* =================================================
+                          SL
+                          ================================================= */}
 
-              <th
-                className="
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
-                Received
-              </th>
-
-
-              {/* AGENT */}
-
-              <th
-                className="
-                  w-[180px]
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
-                Agent
-              </th>
+                      <td
+                        className="
+                          w-[70px]
+                          px-4
+                          py-3
+                          text-sm
+                        "
+                      >
+                        {candidate.sl ??
+                          "—"}
+                      </td>
 
 
-              {/* STATUS */}
+                      {/* =================================================
+                          CANDIDATE
+                          ================================================= */}
 
-              <th
-                className="
-                  w-[110px]
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
-                Status
-              </th>
+                      <td
+                        className="
+                          px-4
+                          py-3
+                        "
+                      >
 
+                        <Link
+                          to={`/app/candidates/${candidate.id}`}
+                          className="
+                            block
+                            truncate
+                            text-sm
+                            font-medium
+                            hover:underline
+                          "
+                        >
+                          {candidate.name}
+                        </Link>
 
-              {/* ACTION */}
-
-              <th
-                className="
-                  w-[70px]
-                  px-4
-                  py-3
-                  text-right
-                  text-sm
-                  font-medium
-                "
-              >
-                Action
-              </th>
-
-            </tr>
-
-          </thead>
-
-        </table>
-
-      </div>
+                      </td>
 
 
-      {/* ==================================================
-          TABLE BODY
-          ================================================== */}
+                      {/* =================================================
+                          PASSPORT
+                          ================================================= */}
 
-      <div
-        className="
-          min-h-0
-          flex-1
-          overflow-y-auto
-          overflow-x-hidden
-        "
-      >
+                      <td
+                        className="
+                          px-4
+                          py-3
+                          text-sm
+                        "
+                      >
 
-        {/* LOADING */}
+                        <span
+                          className="
+                            block
+                            truncate
+                          "
+                        >
+                          {
+                            candidate.passport_no
+                          }
+                        </span>
 
-        {loading ? (
+                      </td>
+
+
+                      {/* =================================================
+                          COUNTRY
+                          ================================================= */}
+
+                      <td
+                        className="
+                          px-4
+                          py-3
+                          text-sm
+                        "
+                      >
+
+                        <span
+                          className="
+                            block
+                            truncate
+                          "
+                        >
+                          {
+                            candidate.country ??
+                            "—"
+                          }
+                        </span>
+
+                      </td>
+
+
+                      {/* =================================================
+                          STAGE
+                          ================================================= */}
+
+                      <td
+                        className="
+                          px-4
+                          py-3
+                        "
+                      >
+
+                        <span
+                          className="
+                            inline-flex
+                            max-w-full
+                            rounded-full
+                            border
+                            px-2.5
+                            py-1
+                            text-xs
+                            font-medium
+                          "
+                        >
+                          {
+                            candidate.current_stage ??
+                            "Pending"
+                          }
+                        </span>
+
+                      </td>
+
+
+                      {/* =================================================
+                          RECEIVED
+                          ================================================= */}
+
+                      <td
+                        className="
+                          px-4
+                          py-3
+                          text-sm
+                        "
+                      >
+                        {
+                          candidate.received_date ??
+                          "—"
+                        }
+                      </td>
+
+
+                      {/* =================================================
+                          AGENT
+                          ================================================= */}
+
+                      <td
+                        className="
+                          w-[180px]
+                          px-4
+                          py-3
+                          text-sm
+                        "
+                      >
+
+                        {candidate.agent ? (
+
+                          <div
+                            className="
+                              flex
+                              min-w-0
+                              flex-col
+                            "
+                          >
+
+                            <span
+                              className="
+                                truncate
+                                font-medium
+                              "
+                            >
+                              {
+                                candidate.agent.name ??
+                                "Unnamed Agent"
+                              }
+                            </span>
+
+
+                            {candidate.agent.code && (
+
+                              <span
+                                className="
+                                  truncate
+                                  text-xs
+                                  text-muted-foreground
+                                "
+                              >
+                                {
+                                  candidate.agent.code
+                                }
+                              </span>
+
+                            )}
+
+                          </div>
+
+                        ) : (
+
+                          <span
+                            className="
+                              text-muted-foreground
+                            "
+                          >
+                            —
+                          </span>
+
+                        )}
+
+                      </td>
+
+
+                      {/* =================================================
+                          STATUS
+                          ================================================= */}
+
+                      <td
+                        className="
+                          w-[110px]
+                          px-4
+                          py-3
+                        "
+                      >
+
+                        {candidate.is_returned ? (
+
+                          <Tooltip>
+
+                            <TooltipTrigger
+                              asChild
+                            >
+
+                              <span
+                                className="
+                                  inline-flex
+                                  cursor-help
+                                  rounded-full
+                                  border
+                                  px-2
+                                  py-1
+                                  text-xs
+                                  font-medium
+                                "
+                              >
+                                Returned
+                              </span>
+
+                            </TooltipTrigger>
+
+
+                            <TooltipContent>
+
+                              <p>
+                                Returned date:{" "}
+
+                                {candidate.returned_date
+                                  ? new Date(
+                                      candidate.returned_date,
+                                    ).toLocaleDateString(
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "short",
+                                        year: "numeric",
+                                      },
+                                    )
+                                  : "Not available"}
+                              </p>
+
+                            </TooltipContent>
+
+                          </Tooltip>
+
+                        ) : (
+
+                          <span
+                            className="
+                              inline-flex
+                              rounded-full
+                              border
+                              px-2
+                              py-1
+                              text-xs
+                              font-medium
+                            "
+                          >
+                            Active
+                          </span>
+
+                        )}
+
+                      </td>
+
+
+                      {/* =================================================
+                          ACTION
+                          ================================================= */}
+
+                      <td
+                        className="
+                          w-[70px]
+                          px-4
+                          py-3
+                          text-right
+                        "
+                      >
+
+                        <DropdownMenu>
+
+                          <DropdownMenuTrigger
+                            asChild
+                          >
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                            >
+
+                              <MoreHorizontal />
+
+                              <span
+                                className="sr-only"
+                              >
+                                Open candidate actions
+                              </span>
+
+                            </Button>
+
+                          </DropdownMenuTrigger>
+
+
+                          <DropdownMenuContent
+                            align="end"
+                          >
+
+                            {/* =================================================
+                                DOWNLOAD PASSPORT
+                                ================================================= */}
+
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onDownloadPassport?.(
+                                  candidate,
+                                )
+                              }
+                            >
+
+                              <Download />
+
+                              Download Passport
+
+                            </DropdownMenuItem>
+
+
+                            {/* =================================================
+                                EDIT
+                                ================================================= */}
+
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onEdit?.(
+                                  candidate,
+                                )
+                              }
+                            >
+
+                              <Pencil />
+
+                              Edit
+
+                            </DropdownMenuItem>
+
+
+                            {/* =================================================
+                                RETURN
+                                ================================================= */}
+
+                            {!candidate.is_returned && (
+
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  onReturn?.(
+                                    candidate,
+                                  )
+                                }
+                              >
+
+                                <RotateCcw />
+
+                                Mark as Returned
+
+                              </DropdownMenuItem>
+
+                            )}
+
+
+                            {/* =================================================
+                                RESTORE
+                                ================================================= */}
+
+                            {candidate.is_returned && (
+
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  onRestore?.(
+                                    candidate,
+                                  )
+                                }
+                              >
+
+                                <RotateCcw />
+
+                                Restore Candidate
+
+                              </DropdownMenuItem>
+
+                            )}
+
+
+                            <DropdownMenuSeparator />
+
+
+                            {/* =================================================
+                                DELETE
+                                ================================================= */}
+
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() =>
+                                onDelete?.(
+                                  candidate,
+                                )
+                              }
+                            >
+
+                              <Trash2 />
+
+                              Delete
+
+                            </DropdownMenuItem>
+
+                          </DropdownMenuContent>
+
+                        </DropdownMenu>
+
+                      </td>
+
+                    </tr>
+
+                  ),
+                )}
+
+              </tbody>
+
+            </table>
+
+          )}
+
+        </div>
+
+
+        {/* ==================================================
+            FOOTER
+            ================================================== */}
+
+        <div
+          className="
+            shrink-0
+            border-t
+            bg-background
+            px-4
+            py-3
+          "
+        >
 
           <div
             className="
               flex
-              min-h-[200px]
               items-center
-              justify-center
+              justify-between
             "
           >
 
@@ -343,625 +938,92 @@ export function CandidatesTable({
                 text-muted-foreground
               "
             >
-              Loading candidates...
+
+              {totalItems === 0
+                ? "No results"
+                : `${startItem}-${endItem} of ${totalItems}`}
+
             </p>
 
-          </div>
-
-        ) : candidates.length === 0 ? (
-
-          /* EMPTY */
-
-          <div
-            className="
-              flex
-              min-h-[200px]
-              items-center
-              justify-center
-            "
-          >
 
             <div
               className="
-                text-center
+                flex
+                items-center
+                gap-1
               "
             >
 
-              <p
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                disabled={
+                  currentPage <= 1
+                }
+                onClick={() =>
+                  onPageChange?.(
+                    currentPage - 1,
+                  )
+                }
+              >
+
+                <ChevronLeft />
+
+                <span
+                  className="sr-only"
+                >
+                  Previous page
+                </span>
+
+              </Button>
+
+
+              <div
                 className="
+                  px-3
                   text-sm
-                  font-medium
                 "
               >
-                No candidates found
-              </p>
+                Page{" "}
+                {currentPage}{" "}
+                of{" "}
+                {totalPages}
+              </div>
 
 
-              <p
-                className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                "
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                disabled={
+                  currentPage >=
+                  totalPages
+                }
+                onClick={() =>
+                  onPageChange?.(
+                    currentPage + 1,
+                  )
+                }
               >
-                Try changing your search.
-              </p>
+
+                <ChevronRight />
+
+                <span
+                  className="sr-only"
+                >
+                  Next page
+                </span>
+
+              </Button>
 
             </div>
-
-          </div>
-
-        ) : (
-
-          /* DATA */
-
-          <table
-            className="
-              w-full
-              table-fixed
-            "
-          >
-
-            <tbody>
-
-              {candidates.map(
-                (
-                  candidate,
-                ) => (
-
-                  <tr
-                    key={
-                      candidate.id
-                    }
-                    className="
-                      border-b
-                      hover:bg-muted/40
-                    "
-                  >
-
-                    {/* =================================================
-                        SL
-                        ================================================= */}
-
-                    <td
-                      className="
-                        w-[70px]
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-                      {candidate.sl ??
-                        "—"}
-                    </td>
-
-
-                    {/* =================================================
-                        CANDIDATE
-                        ================================================= */}
-
-                    <td
-                      className="
-                        px-4
-                        py-3
-                      "
-                    >
-
-                      <Link
-                        to={`/app/candidates/${candidate.id}`}
-                        className="
-                          block
-                          truncate
-                          text-sm
-                          font-medium
-                          hover:underline
-                        "
-                      >
-                        {candidate.name}
-                      </Link>
-
-                    </td>
-
-
-                    {/* =================================================
-                        PASSPORT
-                        ================================================= */}
-
-                    <td
-                      className="
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-
-                      <span
-                        className="
-                          block
-                          truncate
-                        "
-                      >
-                        {
-                          candidate.passport_no
-                        }
-                      </span>
-
-                    </td>
-
-
-                    {/* =================================================
-                        COUNTRY
-                        ================================================= */}
-
-                    <td
-                      className="
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-
-                      <span
-                        className="
-                          block
-                          truncate
-                        "
-                      >
-                        {
-                          candidate.country ??
-                          "—"
-                        }
-                      </span>
-
-                    </td>
-
-
-                    {/* =================================================
-                        STAGE
-                        ================================================= */}
-
-                    <td
-                      className="
-                        px-4
-                        py-3
-                      "
-                    >
-
-                      <span
-                        className="
-                          inline-flex
-                          max-w-full
-                          rounded-full
-                          border
-                          px-2.5
-                          py-1
-                          text-xs
-                          font-medium
-                        "
-                      >
-                        {
-                          candidate.current_stage ??
-                          "Pending"
-                        }
-                      </span>
-
-                    </td>
-
-
-                    {/* =================================================
-                        RECEIVED
-                        ================================================= */}
-
-                    <td
-                      className="
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-                      {
-                        candidate.received_date ??
-                        "—"
-                      }
-                    </td>
-
-
-                    {/* =================================================
-                        AGENT
-                        ================================================= */}
-
-                    <td
-                      className="
-                        w-[180px]
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-
-                      {candidate.agent ? (
-
-                        <div
-                          className="
-                            flex
-                            min-w-0
-                            flex-col
-                          "
-                        >
-
-                          <span
-                            className="
-                              truncate
-                              font-medium
-                            "
-                          >
-                            {
-                              candidate.agent.name ??
-                              "Unnamed Agent"
-                            }
-                          </span>
-
-
-                          {candidate.agent.code && (
-
-                            <span
-                              className="
-                                truncate
-                                text-xs
-                                text-muted-foreground
-                              "
-                            >
-                              {
-                                candidate.agent.code
-                              }
-                            </span>
-
-                          )}
-
-                        </div>
-
-                      ) : (
-
-                        <span
-                          className="
-                            text-muted-foreground
-                          "
-                        >
-                          —
-                        </span>
-
-                      )}
-
-                    </td>
-
-
-                    {/* =================================================
-                        STATUS
-                        ================================================= */}
-
-                    <td
-  className="
-    w-[110px]
-    px-4
-    py-3
-  "
->
-  {candidate.is_returned ? (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className="
-              inline-flex
-              cursor-help
-              rounded-full
-              border
-              px-2
-              py-1
-              text-xs
-              font-medium
-            "
-          >
-            Returned
-          </span>
-        </TooltipTrigger>
-
-        <TooltipContent>
-          <p>
-            Returned date:{" "}
-            {candidate.returned_date
-              ? new Date(
-                  candidate.returned_date,
-                ).toLocaleDateString(
-                  "en-GB",
-                  {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  },
-                )
-              : "Not available"}
-          </p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  ) : (
-    <span
-      className="
-        inline-flex
-        rounded-full
-        border
-        px-2
-        py-1
-        text-xs
-        font-medium
-      "
-    >
-      Active
-    </span>
-  )}
-</td>
-
-
-                    {/* =================================================
-                        ACTION
-                        ================================================= */}
-
-                    <td
-                      className="
-                        w-[70px]
-                        px-4
-                        py-3
-                        text-right
-                      "
-                    >
-
-                      <DropdownMenu>
-
-                        <DropdownMenuTrigger
-                          asChild
-                        >
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                          >
-
-                            <MoreHorizontal />
-
-                            <span className="sr-only">
-                              Open candidate actions
-                            </span>
-
-                          </Button>
-
-                        </DropdownMenuTrigger>
-
-
-                        <DropdownMenuContent
-                          align="end"
-                        >
-
-<DropdownMenuItem
-  onClick={() =>
-    onDownloadPassport?.(
-      candidate,
-    )
-  }
->
-  <Download />
-
-  Download Passport
-</DropdownMenuItem>
-                          {/* EDIT */}
-
-                          <DropdownMenuItem
-                            onClick={() =>
-                              onEdit?.(
-                                candidate,
-                              )
-                            }
-                          >
-
-                            <Pencil />
-
-                            Edit
-
-                          </DropdownMenuItem>
-
-
-                          {/* RETURN */}
-
-                          {!candidate.is_returned && (
-
-                            <DropdownMenuItem
-                              onClick={() =>
-                                onReturn?.(
-                                  candidate,
-                                )
-                              }
-                            >
-
-                              <RotateCcw />
-
-                              Mark as Returned
-
-                            </DropdownMenuItem>
-
-                          )}
-
-
-                          {/* RESTORE */}
-
-                          {candidate.is_returned && (
-
-                            <DropdownMenuItem
-                              onClick={() =>
-                                onRestore?.(
-                                  candidate,
-                                )
-                              }
-                            >
-
-                              <RotateCcw />
-
-                              Restore Candidate
-
-                            </DropdownMenuItem>
-
-                          )}
-
-
-                          <DropdownMenuSeparator />
-
-
-                          {/* DELETE */}
-
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() =>
-                              onDelete?.(
-                                candidate,
-                              )
-                            }
-                          >
-
-                            <Trash2 />
-
-                            Delete
-
-                          </DropdownMenuItem>
-
-                        </DropdownMenuContent>
-
-                      </DropdownMenu>
-
-                    </td>
-
-                  </tr>
-
-                ),
-              )}
-
-            </tbody>
-
-          </table>
-
-        )}
-
-      </div>
-
-
-      {/* ==================================================
-          FOOTER
-          ================================================== */}
-
-      <div
-        className="
-          shrink-0
-          border-t
-          bg-background
-          px-4
-          py-3
-        "
-      >
-
-        <div
-          className="
-            flex
-            items-center
-            justify-between
-          "
-        >
-
-          <p
-            className="
-              text-sm
-              text-muted-foreground
-            "
-          >
-
-            {totalItems === 0
-              ? "No results"
-              : `${startItem}-${endItem} of ${totalItems}`}
-
-          </p>
-
-
-          <div
-            className="
-              flex
-              items-center
-              gap-1
-            "
-          >
-
-            <Button
-              variant="outline"
-              size="icon"
-              type="button"
-              disabled={
-                currentPage <= 1
-              }
-              onClick={() =>
-                onPageChange?.(
-                  currentPage - 1,
-                )
-              }
-            >
-
-              <ChevronLeft />
-
-              <span className="sr-only">
-                Previous page
-              </span>
-
-            </Button>
-
-
-            <div
-              className="
-                px-3
-                text-sm
-              "
-            >
-              Page{" "}
-              {currentPage}{" "}
-              of{" "}
-              {totalPages}
-            </div>
-
-
-            <Button
-              variant="outline"
-              size="icon"
-              type="button"
-              disabled={
-                currentPage >=
-                totalPages
-              }
-              onClick={() =>
-                onPageChange?.(
-                  currentPage + 1,
-                )
-              }
-            >
-
-              <ChevronRight />
-
-              <span className="sr-only">
-                Next page
-              </span>
-
-            </Button>
 
           </div>
 
         </div>
 
       </div>
-
-    </div>
+    </TooltipProvider>
   );
 }
