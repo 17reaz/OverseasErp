@@ -1,10 +1,21 @@
-import { AuthProvider } from "@/modules/auth/components/auth-provider";
-import { AppRouter } from "./router";
+import {
+  AuthProvider,
+} from "@/modules/auth/components/auth-provider";
+
+import {
+  ToastProvider,
+} from "@/components/shared/toast/toast-provider";
+
+import {
+  AppRouter,
+} from "./router";
 
 function App() {
   return (
     <AuthProvider>
-      <AppRouter />
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
     </AuthProvider>
   );
 }
