@@ -4,9 +4,14 @@ import {
   useMemo,
   useState,
 } from "react";
-
+import {
+  CandidatesGrid,
+} from "./components/candidates-grid";
 import {
   PageToolbar,
+  type CandidateFilterState,
+  type CandidateSortState,
+  type ViewMode,
 } from "../shared/page-toolbar";
 
 import {
@@ -34,9 +39,9 @@ import {
 
 export function CandidatesPage() {
 
-  // ======================================================
+  // =====================================================
   // CANDIDATES
-  // ======================================================
+  // =====================================================
 
   const [
     candidates,
@@ -44,22 +49,9 @@ export function CandidatesPage() {
   ] = useState<Candidate[]>([]);
 
 
-  // ======================================================
-  // CANDIDATE VIEW
-  // active | returned
-  // ======================================================
-
-  const [
-    candidateView,
-    setCandidateView,
-  ] = useState<
-    "active" | "returned"
-  >("active");
-
-
-  // ======================================================
+  // =====================================================
   // SEARCH
-  // ======================================================
+  // =====================================================
 
   const [
     search,
@@ -67,9 +59,49 @@ export function CandidatesPage() {
   ] = useState("");
 
 
-  // ======================================================
+  // =====================================================
+  // FILTER
+  // =====================================================
+
+  const [
+    candidateFilter,
+    setCandidateFilter,
+  ] =
+    useState<CandidateFilterState>({
+      status: "active",
+      agentId: "all",
+      stage: "all",
+      month: "all",
+    });
+
+
+  // =====================================================
+  // SORT
+  // =====================================================
+
+  const [
+    candidateSort,
+    setCandidateSort,
+  ] =
+    useState<CandidateSortState>({
+      mode: "custom",
+      field: "created_at",
+    });
+
+
+  // =====================================================
+  // VIEW
+  // =====================================================
+
+  const [
+    viewMode,
+    setViewMode,
+  ] = useState<ViewMode>("list");
+
+
+  // =====================================================
   // LOADING / ERROR
-  // ======================================================
+  // =====================================================
 
   const [
     loading,
@@ -84,9 +116,9 @@ export function CandidatesPage() {
   );
 
 
-  // ======================================================
+  // =====================================================
   // CREATE / EDIT
-  // ======================================================
+  // =====================================================
 
   const [
     formOpen,
@@ -101,9 +133,9 @@ export function CandidatesPage() {
   );
 
 
-  // ======================================================
+  // =====================================================
   // DELETE
-  // ======================================================
+  // =====================================================
 
   const [
     deleteOpen,
@@ -118,9 +150,9 @@ export function CandidatesPage() {
   );
 
 
-  // ======================================================
+  // =====================================================
   // RETURN
-  // ======================================================
+  // =====================================================
 
   const [
     returnOpen,
@@ -135,9 +167,9 @@ export function CandidatesPage() {
   );
 
 
-  // ======================================================
+  // =====================================================
   // LOAD CANDIDATES
-  // ======================================================
+  // =====================================================
 
   const loadCandidates =
     useCallback(
@@ -200,9 +232,9 @@ export function CandidatesPage() {
     );
 
 
-  // ======================================================
+  // =====================================================
   // INITIAL LOAD
-  // ======================================================
+  // =====================================================
 
   useEffect(() => {
 
@@ -213,9 +245,9 @@ export function CandidatesPage() {
   ]);
 
 
-  // ======================================================
+  // =====================================================
   // ACTIVE / RETURNED COUNTS
-  // ======================================================
+  // =====================================================
 
   const activeCount =
     useMemo(() => {
@@ -243,9 +275,185 @@ export function CandidatesPage() {
     ]);
 
 
-  // ======================================================
-  // SEARCH + ACTIVE / RETURNED FILTER
-  // ======================================================
+  // =====================================================
+  // AGENT OPTIONS
+  // =====================================================
+
+  const agentOptions =
+    useMemo(() => {
+
+      const agents =
+        new Map<
+          string,
+          string
+        >();
+
+      candidates.forEach(
+        (candidate) => {
+
+          if (
+            candidate.agent?.id
+          ) {
+
+            agents.set(
+              String(
+                candidate.agent.id,
+              ),
+              candidate.agent.name ||
+                candidate.agent.code ||
+                "Unknown agent",
+            );
+
+          }
+
+        },
+      );
+
+      return Array.from(
+        agents.entries(),
+      )
+        .map(
+          ([
+            value,
+            label,
+          ]) => ({
+            value,
+            label,
+          }),
+        )
+        .sort(
+          (a, b) =>
+            a.label.localeCompare(
+              b.label,
+            ),
+        );
+
+    }, [
+      candidates,
+    ]);
+
+
+  // =====================================================
+  // STAGE OPTIONS
+  // =====================================================
+
+  const stageOptions =
+    useMemo(() => {
+
+      return Array.from(
+        new Set(
+          candidates
+            .map(
+              (candidate) =>
+                candidate.current_stage,
+            )
+            .filter(
+              (
+                stage,
+              ): stage is string =>
+                Boolean(stage),
+            ),
+        ),
+      ).sort(
+        (a, b) =>
+          a.localeCompare(b),
+      );
+
+    }, [
+      candidates,
+    ]);
+
+
+  // =====================================================
+  // MONTH OPTIONS
+  // =====================================================
+
+  const monthOptions =
+    useMemo(() => {
+
+      const months =
+        new Map<
+          string,
+          string
+        >();
+
+      candidates.forEach(
+        (candidate) => {
+
+          const rawDate =
+            (
+              candidate as Candidate & {
+                created_at?: string;
+              }
+            ).created_at;
+
+          if (!rawDate) {
+            return;
+          }
+
+          const date =
+            new Date(rawDate);
+
+          if (
+            Number.isNaN(
+              date.getTime(),
+            )
+          ) {
+            return;
+          }
+
+          const value =
+            `${date.getFullYear()}-${String(
+              date.getMonth() + 1,
+            ).padStart(2, "0")}`;
+
+          const label =
+            date.toLocaleDateString(
+              undefined,
+              {
+                year: "numeric",
+                month: "long",
+              },
+            );
+
+          months.set(
+            value,
+            label,
+          );
+
+        },
+      );
+
+      return Array.from(
+        months.entries(),
+      )
+        .sort(
+          (
+            a,
+            b,
+          ) =>
+            b[0].localeCompare(
+              a[0],
+            ),
+        )
+        .map(
+          ([
+            value,
+            label,
+          ]) => ({
+            value,
+            label,
+          }),
+        );
+
+    }, [
+      candidates,
+    ]);
+
+
+  // =====================================================
+  // FILTER + SEARCH + SORT
+  // =====================================================
 
   const filteredCandidates =
     useMemo(() => {
@@ -256,84 +464,311 @@ export function CandidatesPage() {
           .toLowerCase();
 
 
-      return candidates.filter(
-        (candidate) => {
+      const result =
+        candidates.filter(
+          (candidate) => {
 
-          // -----------------------------------------------
-          // VIEW FILTER
-          // -----------------------------------------------
+            // -------------------------------------------
+            // STATUS
+            // -------------------------------------------
 
-          const matchesView =
-            candidateView === "active"
-              ? !candidate.is_returned
-              : candidate.is_returned;
+            if (
+              candidateFilter.status ===
+              "active" &&
+              candidate.is_returned
+            ) {
+              return false;
+            }
+
+            if (
+              candidateFilter.status ===
+              "returned" &&
+              !candidate.is_returned
+            ) {
+              return false;
+            }
 
 
-          if (!matchesView) {
-            return false;
+            // -------------------------------------------
+            // AGENT
+            // -------------------------------------------
+
+            if (
+              candidateFilter.agentId !==
+              "all"
+            ) {
+
+              const agentId =
+                candidate.agent?.id;
+
+              if (
+                String(agentId) !==
+                candidateFilter.agentId
+              ) {
+                return false;
+              }
+
+            }
+
+
+            // -------------------------------------------
+            // STAGE
+            // -------------------------------------------
+
+            if (
+              candidateFilter.stage !==
+              "all"
+            ) {
+
+              if (
+                candidate.current_stage !==
+                candidateFilter.stage
+              ) {
+                return false;
+              }
+
+            }
+
+
+            // -------------------------------------------
+            // MONTH
+            // -------------------------------------------
+
+            if (
+              candidateFilter.month !==
+              "all"
+            ) {
+
+              const rawDate =
+                (
+                  candidate as Candidate & {
+                    created_at?: string;
+                  }
+                ).created_at;
+
+              if (!rawDate) {
+                return false;
+              }
+
+              const date =
+                new Date(rawDate);
+
+              if (
+                Number.isNaN(
+                  date.getTime(),
+                )
+              ) {
+                return false;
+              }
+
+              const candidateMonth =
+                `${date.getFullYear()}-${String(
+                  date.getMonth() + 1,
+                ).padStart(2, "0")}`;
+
+              if (
+                candidateMonth !==
+                candidateFilter.month
+              ) {
+                return false;
+              }
+
+            }
+
+
+            // -------------------------------------------
+            // SEARCH
+            // -------------------------------------------
+
+            if (!query) {
+              return true;
+            }
+
+
+            return (
+              candidate.name
+                ?.toLowerCase()
+                .includes(query)
+
+              ||
+
+              candidate.passport_no
+                ?.toLowerCase()
+                .includes(query)
+
+              ||
+
+              candidate.country
+                ?.toLowerCase()
+                .includes(query)
+
+              ||
+
+              candidate.current_stage
+                ?.toLowerCase()
+                .includes(query)
+
+              ||
+
+              candidate.agent?.name
+                ?.toLowerCase()
+                .includes(query)
+
+              ||
+
+              candidate.agent?.code
+                ?.toLowerCase()
+                .includes(query)
+            );
+
+          },
+        );
+
+
+      // ===================================================
+      // SORT
+      // ===================================================
+
+      result.sort(
+        (
+          a,
+          b,
+        ) => {
+
+          const getValue =
+            (
+              candidate: Candidate,
+            ): string | number => {
+
+              switch (
+                candidateSort.field
+              ) {
+
+                case "name":
+                  return (
+                    candidate.name ||
+                    ""
+                  ).toLowerCase();
+
+                case "passport_no":
+                  return (
+                    candidate.passport_no ||
+                    ""
+                  ).toLowerCase();
+
+                case "created_at":
+                  return new Date(
+                    (
+                      candidate as Candidate & {
+                        created_at?: string;
+                      }
+                    ).created_at ||
+                      0,
+                  ).getTime();
+
+                case "updated_at":
+                  return new Date(
+                    (
+                      candidate as Candidate & {
+                        updated_at?: string;
+                      }
+                    ).updated_at ||
+                      0,
+                  ).getTime();
+
+                default:
+                  return 0;
+              }
+
+            };
+
+
+          const first =
+            getValue(a);
+
+          const second =
+            getValue(b);
+
+
+          let comparison = 0;
+
+
+          if (
+            typeof first ===
+              "number" &&
+            typeof second ===
+              "number"
+          ) {
+
+            comparison =
+              first - second;
+
+          } else {
+
+            comparison =
+              String(first).localeCompare(
+                String(second),
+              );
+
           }
 
 
-          // -----------------------------------------------
-          // SEARCH
-          // -----------------------------------------------
-
-          if (!query) {
-            return true;
+          if (
+            candidateSort.mode ===
+            "descending"
+          ) {
+            return -comparison;
           }
 
+
+          if (
+            candidateSort.mode ===
+            "ascending"
+          ) {
+            return comparison;
+          }
+
+
+          // Custom default:
+          // newest first
 
           return (
-
-            candidate.name
-              .toLowerCase()
-              .includes(query)
-
-            ||
-
-            candidate.passport_no
-              .toLowerCase()
-              .includes(query)
-
-            ||
-
-            candidate.country
-              ?.toLowerCase()
-              .includes(query)
-
-            ||
-
-            candidate.current_stage
-              ?.toLowerCase()
-              .includes(query)
-
-            ||
-
-            candidate.agent?.name
-              ?.toLowerCase()
-              .includes(query)
-
-            ||
-
-            candidate.agent?.code
-              ?.toLowerCase()
-              .includes(query)
-
+            new Date(
+              (
+                b as Candidate & {
+                  created_at?: string;
+                }
+              ).created_at ||
+                0,
+            ).getTime()
+            -
+            new Date(
+              (
+                a as Candidate & {
+                  created_at?: string;
+                }
+              ).created_at ||
+                0,
+            ).getTime()
           );
 
         },
       );
 
+
+      return result;
+
     }, [
       candidates,
       search,
-      candidateView,
+      candidateFilter,
+      candidateSort,
     ]);
 
 
-  // ======================================================
+  // =====================================================
   // CREATE
-  // ======================================================
+  // =====================================================
 
   function handleCreate() {
 
@@ -346,9 +781,9 @@ export function CandidatesPage() {
   }
 
 
-  // ======================================================
+  // =====================================================
   // EDIT
-  // ======================================================
+  // =====================================================
 
   function handleEdit(
     candidate: Candidate,
@@ -363,9 +798,9 @@ export function CandidatesPage() {
   }
 
 
-  // ======================================================
+  // =====================================================
   // DELETE
-  // ======================================================
+  // =====================================================
 
   function handleDelete(
     candidate: Candidate,
@@ -380,9 +815,9 @@ export function CandidatesPage() {
   }
 
 
-  // ======================================================
+  // =====================================================
   // RETURN
-  // ======================================================
+  // =====================================================
 
   function handleReturn(
     candidate: Candidate,
@@ -397,9 +832,9 @@ export function CandidatesPage() {
   }
 
 
-  // ======================================================
+  // =====================================================
   // RESTORE
-  // ======================================================
+  // =====================================================
 
   async function handleRestore(
     candidate: Candidate,
@@ -486,23 +921,29 @@ export function CandidatesPage() {
   }
 
 
-  // ======================================================
+  // =====================================================
   // RENDER
-  // ======================================================
+  // =====================================================
 
   return (
 
-    <div className="space-y-6">
+    <div
+      className="
+        space-y-6
+      "
+    >
 
-      {/* ==================================================
+      {/* =================================================
           TOOLBAR
-          ================================================== */}
+          ================================================= */}
 
       <PageToolbar
 
         title="Candidates"
 
-        search={search}
+        search={
+          search
+        }
 
         searchPlaceholder="Search name, passport..."
 
@@ -510,21 +951,41 @@ export function CandidatesPage() {
           setSearch
         }
 
-        onFilter={() => {
+        filter={
+          candidateFilter
+        }
 
-          console.log(
-            "Candidate filters",
-          );
+        onFilterChange={
+          setCandidateFilter
+        }
 
-        }}
+        agentOptions={
+          agentOptions
+        }
 
-        onSort={() => {
+        stageOptions={
+          stageOptions
+        }
 
-          console.log(
-            "Candidate sorting",
-          );
+        monthOptions={
+          monthOptions
+        }
 
-        }}
+        sort={
+          candidateSort
+        }
+
+        onSortChange={
+          setCandidateSort
+        }
+
+        viewMode={
+          viewMode
+        }
+
+        onViewModeChange={
+          setViewMode
+        }
 
         onRefresh={
           loadCandidates
@@ -541,9 +1002,9 @@ export function CandidatesPage() {
       />
 
 
-      {/* ==================================================
-          ACTIVE / RETURNED TOGGLE
-          ================================================== */}
+      {/* =================================================
+          RESULT SUMMARY
+          ================================================= */}
 
       <div
         className="
@@ -553,149 +1014,34 @@ export function CandidatesPage() {
         "
       >
 
-        <div
-          className="
-            inline-flex
-            items-center
-            rounded-lg
-            border
-            bg-muted/40
-            p-1
-          "
-        >
-
-          {/* =================================================
-              ACTIVE
-              ================================================= */}
-
-          <button
-            type="button"
-            onClick={() => {
-
-              setCandidateView(
-                "active",
-              );
-
-              setSearch("");
-
-            }}
-            className={`
-              rounded-md
-              px-4
-              py-2
-              text-sm
-              font-medium
-              transition-all
-
-              ${
-                candidateView ===
-                "active"
-                  ? `
-                    bg-background
-                    text-foreground
-                    shadow-sm
-                  `
-                  : `
-                    text-muted-foreground
-                    hover:text-foreground
-                  `
-              }
-            `}
-          >
-
-            Active
-
-            <span
-              className="
-                ml-2
-                text-xs
-                text-muted-foreground
-              "
-            >
-              {activeCount}
-            </span>
-
-          </button>
-
-
-          {/* =================================================
-              RETURNED
-              ================================================= */}
-
-          <button
-            type="button"
-            onClick={() => {
-
-              setCandidateView(
-                "returned",
-              );
-
-              setSearch("");
-
-            }}
-            className={`
-              rounded-md
-              px-4
-              py-2
-              text-sm
-              font-medium
-              transition-all
-
-              ${
-                candidateView ===
-                "returned"
-                  ? `
-                    bg-background
-                    text-foreground
-                    shadow-sm
-                  `
-                  : `
-                    text-muted-foreground
-                    hover:text-foreground
-                  `
-              }
-            `}
-          >
-
-            Returned
-
-            <span
-              className="
-                ml-2
-                text-xs
-                text-muted-foreground
-              "
-            >
-              {returnedCount}
-            </span>
-
-          </button>
-
-        </div>
-
-
-        {/* =================================================
-            CURRENT VIEW LABEL
-            ================================================= */}
-
         <p
           className="
             text-sm
             text-muted-foreground
           "
         >
-          {candidateView ===
-          "active"
-            ? "Active candidates"
-            : "Returned candidates"}
+          {filteredCandidates.length}{" "}
+          candidates
+        </p>
+
+
+        <p
+          className="
+            text-xs
+            text-muted-foreground
+          "
+        >
+          Active {activeCount}
+          {" · "}
+          Returned {returnedCount}
         </p>
 
       </div>
 
 
-      {/* ==================================================
+      {/* =================================================
           ERROR
-          ================================================== */}
+          ================================================= */}
 
       {error && (
 
@@ -741,42 +1087,42 @@ export function CandidatesPage() {
       )}
 
 
-      {/* ==================================================
-          TABLE
-          ================================================== */}
+      {/* =================================================
+          CANDIDATE VIEW
+          ================================================= */}
 
-      <CandidatesTable
+      {/*
+        Grid mode is intentionally not rendered yet.
 
-        candidates={
-          filteredCandidates
-        }
+        The toolbar is already ready for List / Grid.
+        Until a CandidatesGrid component is introduced,
+        Grid will continue to use the existing table.
+      */}
 
-        loading={
-          loading
-        }
-
-        onEdit={
-          handleEdit
-        }
-
-        onDelete={
-          handleDelete
-        }
-
-        onReturn={
-          handleReturn
-        }
-
-        onRestore={
-          handleRestore
-        }
-
-      />
+      {viewMode === "list" ? (
+  <CandidatesTable
+    candidates={filteredCandidates}
+    loading={loading}
+    onEdit={handleEdit}
+    onDelete={handleDelete}
+    onReturn={handleReturn}
+    onRestore={handleRestore}
+  />
+) : (
+  <CandidatesGrid
+    candidates={filteredCandidates}
+    loading={loading}
+    onEdit={handleEdit}
+    onDelete={handleDelete}
+    onReturn={handleReturn}
+    onRestore={handleRestore}
+  />
+)}
 
 
-      {/* ==================================================
+      {/* =================================================
           CREATE / EDIT
-          ================================================== */}
+          ================================================= */}
 
       <CandidateFormDialog
 
@@ -801,9 +1147,9 @@ export function CandidatesPage() {
       />
 
 
-      {/* ==================================================
+      {/* =================================================
           DELETE
-          ================================================== */}
+          ================================================= */}
 
       <CandidateDeleteDialog
 
@@ -832,9 +1178,9 @@ export function CandidatesPage() {
       />
 
 
-      {/* ==================================================
+      {/* =================================================
           RETURN
-          ================================================== */}
+          ================================================= */}
 
       <CandidateReturnDialog
 
