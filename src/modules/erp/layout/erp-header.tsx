@@ -1,6 +1,7 @@
 import {
   Bell,
   LogOut,
+  Search,
   User,
   Settings,
 } from "lucide-react";
@@ -112,11 +113,13 @@ export function ErpHeader() {
       className="
         flex
         h-16
+        w-full
         items-center
         justify-between
         border-b
         bg-background
-        px-6
+        px-4
+        md:px-6
       "
     >
 
@@ -127,46 +130,52 @@ export function ErpHeader() {
       <div
         className="
           flex
+          min-w-0
           items-center
           gap-3
         "
       >
 
-        {/* Sidebar collapse / expand */}
+        {/* =================================================
+            SIDEBAR
+            ================================================= */}
 
         <SidebarTrigger
           className="
+            shrink-0
             -ml-2
           "
         />
 
 
-        {/* Header title */}
+        {/* =================================================
+            AGENCY / TENANT
+            ================================================= */}
 
-        <div>
+        <div
+          className="
+            min-w-0
+          "
+        >
 
-          <h2
+          <p
             className="
+              max-w-[180px]
+              truncate
               text-sm
               font-semibold
+              md:max-w-[260px]
             "
+            title={
+              tenant?.name ||
+              "Agency"
+            }
           >
-            Overseas ERP
-          </h2>
-
-
-          {tenant && (
-
-            <p
-              className="
-                text-xs
-                text-muted-foreground
-              "
-            >
-              {tenant.name}
-            </p>
-
-          )}
+            {
+              tenant?.name ||
+              "Agency"
+            }
+          </p>
 
         </div>
 
@@ -181,9 +190,93 @@ export function ErpHeader() {
         className="
           flex
           items-center
-          gap-2
+          gap-1
+          md:gap-2
         "
       >
+
+        {/* =================================================
+            GLOBAL SEARCH
+            ================================================= */}
+
+        <Button
+          variant="outline"
+          className="
+            hidden
+            h-9
+            w-[220px]
+            justify-start
+            gap-2
+            px-3
+            text-muted-foreground
+            lg:flex
+          "
+          onClick={() => {
+            // Global search action will be added later
+          }}
+        >
+
+          <Search
+            className="
+              h-4
+              w-4
+              shrink-0
+            "
+          />
+
+          <span
+            className="
+              text-sm
+            "
+          >
+            Search...
+          </span>
+
+          <kbd
+            className="
+              ml-auto
+              hidden
+              rounded
+              border
+              bg-muted
+              px-1.5
+              py-0.5
+              text-[10px]
+              font-medium
+              text-muted-foreground
+            "
+          >
+            Ctrl K
+          </kbd>
+
+        </Button>
+
+
+        {/* =================================================
+            MOBILE SEARCH
+            ================================================= */}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="
+            lg:hidden
+          "
+          aria-label="Search"
+          onClick={() => {
+            // Mobile search action will be added later
+          }}
+        >
+
+          <Search
+            className="
+              h-4
+              w-4
+            "
+          />
+
+        </Button>
+
 
         {/* =================================================
             NOTIFICATION
@@ -195,6 +288,10 @@ export function ErpHeader() {
           className="
             relative
           "
+          aria-label="Notifications"
+          onClick={() => {
+            // Notification module will be connected later
+          }}
         >
 
           <Bell
@@ -205,7 +302,7 @@ export function ErpHeader() {
           />
 
 
-          {/* Notification dot */}
+          {/* Unread notification indicator */}
 
           <span
             className="
@@ -249,6 +346,7 @@ export function ErpHeader() {
                 className="
                   h-8
                   w-8
+                  shrink-0
                 "
               >
 
@@ -271,6 +369,8 @@ export function ErpHeader() {
 
                 <p
                   className="
+                    max-w-[120px]
+                    truncate
                     text-sm
                     font-medium
                     leading-none
