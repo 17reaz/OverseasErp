@@ -9,6 +9,9 @@ import {
   ShieldCheck,
   Files,
   Trash2,
+  Settings,
+  BarChart3,
+  WalletCards,
 } from "lucide-react";
 
 import {
@@ -25,7 +28,6 @@ import {
 import {
   NavLink,
 } from "react-router-dom";
-
 
 // =====================================================
 // NAVIGATION
@@ -81,6 +83,27 @@ const navigation = [
     icon: Plane,
   },
 
+  // NEW
+  {
+    title: "Flight",
+    url: "/app/flight",
+    icon: Plane,
+  },
+
+  // NEW
+  {
+    title: "Reports",
+    url: "/app/reports",
+    icon: BarChart3,
+  },
+
+  // NEW
+  {
+    title: "Finance",
+    url: "/app/finance",
+    icon: WalletCards,
+  },
+
   {
     title: "Files",
     url: "/app/files",
@@ -88,7 +111,6 @@ const navigation = [
   },
 
 ];
-
 
 // =====================================================
 // ERP SIDEBAR
@@ -125,7 +147,6 @@ export function ErpSidebar() {
             Overseas ERP
           </h1>
 
-
           <p
             className="
               text-xs
@@ -146,12 +167,11 @@ export function ErpSidebar() {
 
       <SidebarContent>
 
+        {/* =================================================
+            MAIN NAVIGATION
+            ================================================= */}
+
         <SidebarGroup>
-
-          <SidebarGroupLabel>
-            ERP Modules
-          </SidebarGroupLabel>
-
 
           <SidebarGroupContent>
 
@@ -223,7 +243,7 @@ export function ErpSidebar() {
 
 
         {/* =================================================
-            TRASH
+            BOTTOM NAVIGATION
             ================================================= */}
 
         <SidebarGroup
@@ -235,6 +255,78 @@ export function ErpSidebar() {
           <SidebarGroupContent>
 
             <SidebarMenu>
+
+              {/* =================================================
+                  SUPPORT NUMBER
+                  ================================================= */}
+
+              <SidebarMenuItem>
+
+                <SidebarMenuButton
+                  asChild
+                >
+
+                  <a
+                    href="tel:+8801XXXXXXXXX"
+                  >
+
+                    <span>
+                      +8801839869859
+                    </span>
+
+                  </a>
+
+                </SidebarMenuButton>
+
+              </SidebarMenuItem>
+
+
+              {/* =================================================
+                  SETTINGS
+                  ================================================= */}
+
+              <SidebarMenuItem>
+
+                <SidebarMenuButton
+                  asChild
+                >
+
+                  <NavLink
+                    to="/app/settings"
+                  >
+
+                    {({
+                      isActive,
+                    }) => (
+
+                      <>
+
+                        <Settings />
+
+                        <span
+                          className={
+                            isActive
+                              ? "font-medium"
+                              : ""
+                          }
+                        >
+                          Settings
+                        </span>
+
+                      </>
+
+                    )}
+
+                  </NavLink>
+
+                </SidebarMenuButton>
+
+              </SidebarMenuItem>
+
+
+              {/* =================================================
+                  TRASH
+                  ================================================= */}
 
               <SidebarMenuItem>
 
@@ -279,6 +371,42 @@ export function ErpSidebar() {
           </SidebarGroupContent>
 
         </SidebarGroup>
+
+
+        {/* =================================================
+            TENANT / PLAN / COMMIT
+            ================================================= */}
+
+        <div
+          className="
+            border-t
+            px-4
+            py-3
+          "
+        >
+
+          <div
+            className="
+              truncate
+              text-xs
+              font-medium
+            "
+          >
+            Pro · TEN-0001
+          </div>
+
+          <div
+            className="
+              mt-1
+              truncate
+              text-[11px]
+              text-muted-foreground
+            "
+          >
+            Commit 8f3a2c1
+          </div>
+
+        </div>
 
       </SidebarContent>
 
