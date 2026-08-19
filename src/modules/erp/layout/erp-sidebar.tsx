@@ -13,6 +13,7 @@ import {
   BarChart3,
   WalletCards,
   ListTodo,
+  Phone,
 } from "lucide-react";
 
 import {
@@ -24,7 +25,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
+
+import {
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 import {
   NavLink,
@@ -84,21 +91,18 @@ const navigation = [
     icon: Plane,
   },
 
-  // NEW
   {
     title: "Flight",
     url: "/app/flight",
     icon: Plane,
   },
 
-  // NEW
   {
     title: "Reports",
     url: "/app/reports",
     icon: BarChart3,
   },
 
-  // NEW
   {
     title: "Finance",
     url: "/app/finance",
@@ -110,11 +114,12 @@ const navigation = [
     url: "/app/files",
     icon: Files,
   },
+
   {
-  title: "Todo",
-  url: "/app/todo",
-  icon: ListTodo,
-},
+    title: "Todo",
+    url: "/app/todo",
+    icon: ListTodo,
+  },
 
 ];
 
@@ -126,297 +131,382 @@ export function ErpSidebar() {
 
   return (
 
-    <Sidebar>
+    <TooltipProvider>
 
-      {/* =================================================
-          HEADER
-          ================================================= */}
-
-      <div
-        className="
-          flex
-          h-16
-          items-center
-          border-b
-          px-6
-        "
+      <Sidebar
+        collapsible="icon"
       >
 
-        <div>
-
-          <h1
-            className="
-              text-sm
-              font-semibold
-            "
-          >
-            Overseas ERP
-          </h1>
-
-          <p
-            className="
-              text-xs
-              text-muted-foreground
-            "
-          >
-            Management System
-          </p>
-
-        </div>
-
-      </div>
-
-
-      {/* =================================================
-          NAVIGATION
-          ================================================= */}
-
-      <SidebarContent>
-
         {/* =================================================
-            MAIN NAVIGATION
+            HEADER
             ================================================= */}
 
-        <SidebarGroup>
+        <SidebarHeader>
 
-          <SidebarGroupContent>
+          <div
+            className="
+              flex
+              h-16
+              items-center
+              px-2
+              group-data-[collapsible=icon]:justify-center
+            "
+          >
 
-            <SidebarMenu>
+            {/* Expanded logo/title */}
 
-              {navigation.map(
-                (
-                  item,
-                ) => (
+            <div
+              className="
+                min-w-0
+                group-data-[collapsible=icon]:hidden
+              "
+            >
 
-                  <SidebarMenuItem
-                    key={
-                      item.url
-                    }
-                  >
+              <h1
+                className="
+                  truncate
+                  text-sm
+                  font-semibold
+                "
+              >
+                Overseas ERP
+              </h1>
 
-                    <SidebarMenuButton
-                      asChild
+              <p
+                className="
+                  truncate
+                  text-xs
+                  text-muted-foreground
+                "
+              >
+                Management System
+              </p>
+
+            </div>
+
+
+            {/* Collapsed logo */}
+
+            <div
+              className="
+                hidden
+                text-sm
+                font-bold
+                group-data-[collapsible=icon]:block
+              "
+            >
+              OE
+            </div>
+
+          </div>
+
+        </SidebarHeader>
+
+
+        {/* =================================================
+            CONTENT
+            ================================================= */}
+
+        <SidebarContent>
+
+          {/* =================================================
+              MAIN NAVIGATION
+              ================================================= */}
+
+          <SidebarGroup>
+
+            <SidebarGroupLabel
+              className="
+                group-data-[collapsible=icon]:hidden
+              "
+            >
+              ERP Modules
+            </SidebarGroupLabel>
+
+
+            <SidebarGroupContent>
+
+              <SidebarMenu>
+
+                {navigation.map(
+                  (
+                    item,
+                  ) => (
+
+                    <SidebarMenuItem
+                      key={
+                        item.url
+                      }
                     >
 
-                      <NavLink
-                        to={
-                          item.url
-                        }
-                        end={
-                          item.url ===
-                          "/app"
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={
+                          item.title
                         }
                       >
 
-                        {({
-                          isActive,
-                        }) => (
-
-                          <>
-
-                            <item.icon />
-
-                            <span
-                              className={
-                                isActive
-                                  ? "font-medium"
-                                  : ""
-                              }
-                            >
-                              {
-                                item.title
-                              }
-                            </span>
-
-                          </>
-
-                        )}
-
-                      </NavLink>
-
-                    </SidebarMenuButton>
-
-                  </SidebarMenuItem>
-
-                ),
-              )}
-
-            </SidebarMenu>
-
-          </SidebarGroupContent>
-
-        </SidebarGroup>
-
-
-        {/* =================================================
-            BOTTOM NAVIGATION
-            ================================================= */}
-
-        <SidebarGroup
-          className="
-            mt-auto
-          "
-        >
-
-          <SidebarGroupContent>
-
-            <SidebarMenu>
-
-              {/* =================================================
-                  SUPPORT NUMBER
-                  ================================================= */}
-
-              <SidebarMenuItem>
-
-                <SidebarMenuButton
-                  asChild
-                >
-
-                  <a
-                    href="tel:+8801XXXXXXXXX"
-                  >
-
-                    <span>
-                      +8801839869859
-                    </span>
-
-                  </a>
-
-                </SidebarMenuButton>
-
-              </SidebarMenuItem>
-
-
-              {/* =================================================
-                  SETTINGS
-                  ================================================= */}
-
-              <SidebarMenuItem>
-
-                <SidebarMenuButton
-                  asChild
-                >
-
-                  <NavLink
-                    to="/app/settings"
-                  >
-
-                    {({
-                      isActive,
-                    }) => (
-
-                      <>
-
-                        <Settings />
-
-                        <span
-                          className={
-                            isActive
-                              ? "font-medium"
-                              : ""
+                        <NavLink
+                          to={
+                            item.url
+                          }
+                          end={
+                            item.url ===
+                            "/app"
                           }
                         >
-                          Settings
-                        </span>
 
-                      </>
+                          {({
+                            isActive,
+                          }) => (
 
-                    )}
+                            <>
 
-                  </NavLink>
+                              <item.icon />
 
-                </SidebarMenuButton>
+                              <span
+                                className={
+                                  isActive
+                                    ? "font-medium"
+                                    : ""
+                                }
+                              >
+                                {
+                                  item.title
+                                }
+                              </span>
 
-              </SidebarMenuItem>
+                            </>
+
+                          )}
+
+                        </NavLink>
+
+                      </SidebarMenuButton>
+
+                    </SidebarMenuItem>
+
+                  ),
+                )}
+
+              </SidebarMenu>
+
+            </SidebarGroupContent>
+
+          </SidebarGroup>
 
 
-              {/* =================================================
-                  TRASH
-                  ================================================= */}
+          {/* =================================================
+              BOTTOM NAVIGATION
+              ================================================= */}
 
-              <SidebarMenuItem>
+          <SidebarGroup
+            className="
+              mt-auto
+            "
+          >
 
-                <SidebarMenuButton
-                  asChild
-                >
+            <SidebarGroupContent>
 
-                  <NavLink
-                    to="/app/trash"
+              <SidebarMenu>
+
+                {/* =================================================
+                    SUPPORT NUMBER
+                    ================================================= */}
+
+                <SidebarMenuItem>
+
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Call Support"
                   >
 
-                    {({
-                      isActive,
-                    }) => (
+                    <a
+                      href="tel:+8801839869859"
+                    >
 
-                      <>
+                      <Phone />
 
-                        <Trash2 />
+                      <span>
+                        +8801839869859
+                      </span>
 
-                        <span
-                          className={
-                            isActive
-                              ? "font-medium"
-                              : ""
-                          }
-                        >
-                          Trash
-                        </span>
+                    </a>
 
-                      </>
+                  </SidebarMenuButton>
 
-                    )}
-
-                  </NavLink>
-
-                </SidebarMenuButton>
-
-              </SidebarMenuItem>
-
-            </SidebarMenu>
-
-          </SidebarGroupContent>
-
-        </SidebarGroup>
+                </SidebarMenuItem>
 
 
-        {/* =================================================
-            TENANT / PLAN / COMMIT
-            ================================================= */}
+                {/* =================================================
+                    SETTINGS
+                    ================================================= */}
 
-        <div
-          className="
-            border-t
-            px-4
-            py-3
-          "
-        >
+                <SidebarMenuItem>
 
-          <div
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Settings"
+                  >
+
+                    <NavLink
+                      to="/app/settings"
+                    >
+
+                      {({
+                        isActive,
+                      }) => (
+
+                        <>
+
+                          <Settings />
+
+                          <span
+                            className={
+                              isActive
+                                ? "font-medium"
+                                : ""
+                            }
+                          >
+                            Settings
+                          </span>
+
+                        </>
+
+                      )}
+
+                    </NavLink>
+
+                  </SidebarMenuButton>
+
+                </SidebarMenuItem>
+
+
+                {/* =================================================
+                    TRASH
+                    ================================================= */}
+
+                <SidebarMenuItem>
+
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Trash"
+                  >
+
+                    <NavLink
+                      to="/app/trash"
+                    >
+
+                      {({
+                        isActive,
+                      }) => (
+
+                        <>
+
+                          <Trash2 />
+
+                          <span
+                            className={
+                              isActive
+                                ? "font-medium"
+                                : ""
+                            }
+                          >
+                            Trash
+                          </span>
+
+                        </>
+
+                      )}
+
+                    </NavLink>
+
+                  </SidebarMenuButton>
+
+                </SidebarMenuItem>
+
+              </SidebarMenu>
+
+            </SidebarGroupContent>
+
+          </SidebarGroup>
+
+
+          {/* =================================================
+              TENANT / PLAN / COMMIT
+              ================================================= */}
+
+          <SidebarFooter
             className="
-              truncate
-              text-xs
-              font-medium
+              border-t
+              px-4
+              py-3
+              group-data-[collapsible=icon]:px-2
             "
           >
-            Pro · TEN-0001
-          </div>
 
-          <div
-            className="
-              mt-1
-              truncate
-              text-[11px]
-              text-muted-foreground
-            "
-          >
-            Commit 8f3a2c1
-          </div>
+            {/* Expanded */}
 
-        </div>
+            <div
+              className="
+                group-data-[collapsible=icon]:hidden
+              "
+            >
 
-      </SidebarContent>
+              <div
+                className="
+                  truncate
+                  text-xs
+                  font-medium
+                "
+              >
+                Pro · TEN-0001
+              </div>
 
-    </Sidebar>
+              <div
+                className="
+                  mt-1
+                  truncate
+                  text-[11px]
+                  text-muted-foreground
+                "
+              >
+                Commit 8f3a2c1
+              </div>
+
+            </div>
+
+
+            {/* Collapsed */}
+
+            <div
+              className="
+                hidden
+                items-center
+                justify-center
+                group-data-[collapsible=icon]:flex
+              "
+            >
+
+              <span
+                className="
+                  text-xs
+                  font-semibold
+                "
+                title="Pro · TEN-0001"
+              >
+                P
+              </span>
+
+            </div>
+
+          </SidebarFooter>
+
+        </SidebarContent>
+
+      </Sidebar>
+
+    </TooltipProvider>
 
   );
 }
