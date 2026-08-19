@@ -14,7 +14,9 @@ import {
   useParams,
 } from "react-router-dom";
 
-import { toast } from "sonner";
+import {
+  toast,
+} from "@/components/shared/toast/toast";
 
 import {
   Button,
@@ -57,7 +59,10 @@ export function CandidateProfilePage() {
         setError(message);
         setLoading(false);
 
-        toast.error(message);
+        toast.error(
+          "Candidate ID is missing.",
+          "Please return to the Candidates page and select a candidate.",
+        );
 
         return;
       }
@@ -83,7 +88,10 @@ export function CandidateProfilePage() {
 
           setError(message);
 
-          toast.error(message);
+          toast.error(
+            "Candidate not found.",
+            "The requested candidate profile could not be found.",
+          );
 
           return;
         }
@@ -91,7 +99,8 @@ export function CandidateProfilePage() {
         setCandidate(data);
 
         toast.success(
-          "Candidate profile loaded successfully.",
+          "Candidate profile loaded.",
+          "Candidate information has been loaded successfully.",
         );
       } catch (error) {
         console.error(error);
@@ -101,7 +110,10 @@ export function CandidateProfilePage() {
 
         setError(message);
 
-        toast.error(message);
+        toast.error(
+          "Failed to load candidate profile.",
+          "Please try again.",
+        );
       } finally {
         setLoading(false);
       }
