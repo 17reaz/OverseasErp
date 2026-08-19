@@ -12,6 +12,7 @@ import {
   Settings,
   BarChart3,
   WalletCards,
+  ListTodo,
 } from "lucide-react";
 
 import {
@@ -109,6 +110,11 @@ const navigation = [
     url: "/app/files",
     icon: Files,
   },
+  {
+  title: "Todo",
+  url: "/app/todo",
+  icon: ListTodo,
+},
 
 ];
 
