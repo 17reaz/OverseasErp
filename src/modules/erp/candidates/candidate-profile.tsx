@@ -14,6 +14,8 @@ import {
   useParams,
 } from "react-router-dom";
 
+import { toast } from "sonner";
+
 import {
   Button,
 } from "@/components/ui/button";
@@ -29,7 +31,6 @@ import {
   getCandidate,
   type Candidate,
 } from "./candidate-service";
-
 
 export function CandidateProfilePage() {
   const {
@@ -47,21 +48,23 @@ export function CandidateProfilePage() {
   const [error, setError] =
     useState<string | null>(null);
 
-
   useEffect(() => {
     async function loadCandidate() {
       if (!candidateId) {
-        setError(
-          "Candidate ID is missing.",
-        );
+        const message =
+          "Candidate ID is missing.";
 
+        setError(message);
         setLoading(false);
+
+        toast.error(message);
 
         return;
       }
 
       try {
         setLoading(true);
+        setError(null);
 
         const {
           data,
@@ -74,13 +77,31 @@ export function CandidateProfilePage() {
           throw error;
         }
 
+        if (!data) {
+          const message =
+            "Candidate not found.";
+
+          setError(message);
+
+          toast.error(message);
+
+          return;
+        }
+
         setCandidate(data);
+
+        toast.success(
+          "Candidate profile loaded successfully.",
+        );
       } catch (error) {
         console.error(error);
 
-        setError(
-          "Failed to load candidate.",
-        );
+        const message =
+          "Failed to load candidate profile.";
+
+        setError(message);
+
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -88,7 +109,6 @@ export function CandidateProfilePage() {
 
     loadCandidate();
   }, [candidateId]);
-
 
   if (loading) {
     return (
@@ -99,7 +119,6 @@ export function CandidateProfilePage() {
       </div>
     );
   }
-
 
   if (error || !candidate) {
     return (
@@ -123,7 +142,6 @@ export function CandidateProfilePage() {
       </div>
     );
   }
-
 
   return (
     <div className="space-y-6">
@@ -157,14 +175,12 @@ export function CandidateProfilePage() {
 
         </div>
 
-
         <Button>
           <Pencil />
           Edit Candidate
         </Button>
 
       </div>
-
 
       {/* Basic Information */}
 
@@ -190,7 +206,6 @@ export function CandidateProfilePage() {
               </p>
             </div>
 
-
             <div>
               <p className="text-xs text-muted-foreground">
                 Passport Number
@@ -200,7 +215,6 @@ export function CandidateProfilePage() {
                 {candidate.passport_no}
               </p>
             </div>
-
 
             <div>
               <p className="text-xs text-muted-foreground">
@@ -212,7 +226,6 @@ export function CandidateProfilePage() {
                   "—"}
               </p>
             </div>
-
 
             <div>
               <p className="text-xs text-muted-foreground">
@@ -230,7 +243,6 @@ export function CandidateProfilePage() {
           </CardContent>
 
         </Card>
-
 
         {/* Processing */}
 
@@ -255,7 +267,6 @@ export function CandidateProfilePage() {
               </p>
             </div>
 
-
             <div>
               <p className="text-xs text-muted-foreground">
                 Current Stage
@@ -266,7 +277,6 @@ export function CandidateProfilePage() {
                   "Pending"}
               </p>
             </div>
-
 
             <div>
               <p className="text-xs text-muted-foreground">
@@ -279,7 +289,6 @@ export function CandidateProfilePage() {
                   : "Active"}
               </p>
             </div>
-
 
             {candidate.is_returned && (
               <div>
