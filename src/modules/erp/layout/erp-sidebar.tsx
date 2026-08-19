@@ -328,7 +328,7 @@ export function ErpSidebar() {
                       <Phone />
 
                       <span>
-                        +8801839869859
+                        01839869859
                       </span>
 
                     </a>
