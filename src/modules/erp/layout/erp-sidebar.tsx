@@ -5,6 +5,7 @@ import {
   Building2,
   Stethoscope,
   FileCheck,
+  CheckCircle2,
   Plane,
   ShieldCheck,
   Files,
@@ -88,7 +89,7 @@ const navigation = [
   {
     title: "Takamul",
     url: "/app/takamul",
-    icon: Plane,
+    icon: CheckCircle2,
   },
 
   {
