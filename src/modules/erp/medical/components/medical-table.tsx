@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -11,10 +12,6 @@ import {
 import {
   Button,
 } from "@/components/ui/button";
-
-import {
-  Card,
-} from "@/components/ui/card";
 
 import {
   Table,
@@ -37,207 +34,420 @@ import type {
   MedicalStatus,
 } from "../medical-service";
 
+
 interface MedicalTableProps {
   medicals: Medical[];
+
   loading: boolean;
+
   onEdit: (
     medical: Medical,
   ) => void;
+
   onDelete: (
     medical: Medical,
   ) => void;
+
+  onNext?: (
+    medical: Medical,
+  ) => void;
 }
+
 
 function getStatusVariant(
   status: MedicalStatus,
 ) {
-  if (status === "unfit") {
+
+  if (
+    status === "unfit"
+  ) {
     return "destructive" as const;
   }
 
-  if (status === "fit") {
+
+  if (
+    status === "fit"
+  ) {
     return "default" as const;
   }
 
-  if (status === "expired") {
+
+  if (
+    status === "expired"
+  ) {
     return "secondary" as const;
   }
+
 
   return "outline" as const;
 }
 
+
 function getStatusLabel(
   status: MedicalStatus,
 ) {
+
   return (
     status.charAt(0).toUpperCase() +
     status.slice(1)
   );
+
 }
+
 
 export function MedicalTable({
   medicals,
   loading,
   onEdit,
   onDelete,
+  onNext,
 }: MedicalTableProps) {
+
   return (
-    <Card className="overflow-hidden">
+    <div
+      className="
+        flex
+        h-[calc(100vh-250px)]
+        min-h-[400px]
+        flex-col
+        overflow-hidden
+        rounded-lg
+        border
+        bg-background
+      "
+    >
 
-      <div className="border-b px-6 py-4">
+      {/* ==================================================
+          TABLE
+          ================================================== */}
 
-        <h2 className="font-semibold">
-          Medical Records
-        </h2>
+      <div
+        className="
+          min-h-0
+          flex-1
+          overflow-y-auto
+          overflow-x-hidden
+        "
+      >
 
-        <p className="text-sm text-muted-foreground">
-          Existing candidate medical records.
-        </p>
+        {loading ? (
+
+          <div
+            className="
+              flex
+              min-h-[200px]
+              items-center
+              justify-center
+            "
+          >
+
+            <p
+              className="
+                text-sm
+                text-muted-foreground
+              "
+            >
+              Loading medical records...
+            </p>
+
+          </div>
+
+        ) : medicals.length === 0 ? (
+
+          <div
+            className="
+              flex
+              min-h-[200px]
+              items-center
+              justify-center
+            "
+          >
+
+            <div
+              className="
+                text-center
+              "
+            >
+
+              <p
+                className="
+                  text-sm
+                  font-medium
+                "
+              >
+                No medical records found
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-muted-foreground
+                "
+              >
+                Medical records will appear here.
+              </p>
+
+            </div>
+
+          </div>
+
+        ) : (
+
+          <Table>
+
+            <TableHeader>
+
+              <TableRow>
+
+                <TableHead>
+                  Candidate
+                </TableHead>
+
+                <TableHead>
+                  Passport
+                </TableHead>
+
+                <TableHead>
+                  Medical Date
+                </TableHead>
+
+                <TableHead>
+                  Fit Date
+                </TableHead>
+
+                <TableHead>
+                  Status
+                </TableHead>
+
+                <TableHead
+                  className="
+                    w-[150px]
+                    text-right
+                  "
+                >
+                  Action
+                </TableHead>
+
+              </TableRow>
+
+            </TableHeader>
+
+
+            <TableBody>
+
+              {medicals.map(
+                (medical) => (
+
+                  <TableRow
+                    key={
+                      medical.id
+                    }
+                  >
+
+                    {/* Candidate */}
+
+                    <TableCell
+                      className="
+                        font-medium
+                      "
+                    >
+                      {
+                        medical.candidate
+                          ?.name ??
+                        "—"
+                      }
+                    </TableCell>
+
+
+                    {/* Passport */}
+
+                    <TableCell>
+
+                      {
+                        medical.candidate
+                          ?.passport_no ??
+                        "—"
+                      }
+
+                    </TableCell>
+
+
+                    {/* Medical Date */}
+
+                    <TableCell>
+
+                      {
+                        medical.medical_date ??
+                        "—"
+                      }
+
+                    </TableCell>
+
+
+                    {/* Fit Date */}
+
+                    <TableCell>
+
+                      {
+                        medical.fit_date ??
+                        "—"
+                      }
+
+                    </TableCell>
+
+
+                    {/* Status */}
+
+                    <TableCell>
+
+                      <Badge
+                        variant={
+                          getStatusVariant(
+                            medical.status,
+                          )
+                        }
+                      >
+                        {
+                          getStatusLabel(
+                            medical.status,
+                          )
+                        }
+                      </Badge>
+
+                    </TableCell>
+
+
+                    {/* Actions */}
+
+                    <TableCell>
+
+                      <div
+                        className="
+                          flex
+                          items-center
+                          justify-end
+                          gap-1
+                        "
+                      >
+
+                        {/* ==================================
+                            FIT → NEXT
+                            ================================== */}
+
+                        {medical.status ===
+                          "fit" && (
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            type="button"
+                            onClick={() =>
+                              onNext?.(
+                                medical,
+                              )
+                            }
+                          >
+
+                            Next
+
+                            <ArrowRight />
+
+                          </Button>
+
+                        )}
+
+
+                        {/* ==================================
+                            MORE
+                            ================================== */}
+
+                        <DropdownMenu>
+
+                          <DropdownMenuTrigger
+                            asChild
+                          >
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                            >
+
+                              <MoreHorizontal />
+
+                              <span
+                                className="
+                                  sr-only
+                                "
+                              >
+                                Actions
+                              </span>
+
+                            </Button>
+
+                          </DropdownMenuTrigger>
+
+
+                          <DropdownMenuContent
+                            align="end"
+                          >
+
+                            {/* Edit */}
+
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onEdit(
+                                  medical,
+                                )
+                              }
+                            >
+
+                              <Pencil />
+
+                              Edit
+
+                            </DropdownMenuItem>
+
+
+                            {/* Delete */}
+
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() =>
+                                onDelete(
+                                  medical,
+                                )
+                              }
+                            >
+
+                              <Trash2 />
+
+                              Delete
+
+                            </DropdownMenuItem>
+
+                          </DropdownMenuContent>
+
+                        </DropdownMenu>
+
+                      </div>
+
+                    </TableCell>
+
+                  </TableRow>
+
+                ),
+              )}
+
+            </TableBody>
+
+          </Table>
+
+        )}
 
       </div>
 
-      {loading ? (
-        <div className="py-10 text-center text-sm text-muted-foreground">
-          Loading medical records...
-        </div>
-      ) : medicals.length === 0 ? (
-        <div className="py-10 text-center text-sm text-muted-foreground">
-          No medical records found.
-        </div>
-      ) : (
-        <Table>
-
-          <TableHeader>
-
-            <TableRow>
-
-              <TableHead>
-                Candidate
-              </TableHead>
-
-              <TableHead>
-                Passport
-              </TableHead>
-
-              <TableHead>
-                Medical Date
-              </TableHead>
-
-              <TableHead>
-                Fit Date
-              </TableHead>
-
-              <TableHead>
-                Status
-              </TableHead>
-
-              <TableHead className="w-[60px]" />
-
-            </TableRow>
-
-          </TableHeader>
-
-          <TableBody>
-
-            {medicals.map(
-              (medical) => (
-
-                <TableRow
-                  key={medical.id}
-                >
-
-                  <TableCell className="font-medium">
-                    {medical.candidate?.name ??
-                      "—"}
-                  </TableCell>
-
-                  <TableCell>
-                    {medical.candidate?.passport_no ??
-                      "—"}
-                  </TableCell>
-
-                  <TableCell>
-                    {medical.medical_date ??
-                      "—"}
-                  </TableCell>
-
-                  <TableCell>
-                    {medical.fit_date ??
-                      "—"}
-                  </TableCell>
-
-                  <TableCell>
-
-                    <Badge
-                      variant={getStatusVariant(
-                        medical.status,
-                      )}
-                    >
-                      {getStatusLabel(
-                        medical.status,
-                      )}
-                    </Badge>
-
-                  </TableCell>
-
-                  <TableCell>
-
-                    <DropdownMenu>
-
-                      <DropdownMenuTrigger
-                        asChild
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                        >
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent
-                        align="end"
-                      >
-
-                        <DropdownMenuItem
-                          onClick={() =>
-                            onEdit(
-                              medical,
-                            )
-                          }
-                        >
-                          <Pencil />
-                          Edit
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() =>
-                            onDelete(
-                              medical,
-                            )
-                          }
-                        >
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
-
-                      </DropdownMenuContent>
-
-                    </DropdownMenu>
-
-                  </TableCell>
-
-                </TableRow>
-
-              ),
-            )}
-
-          </TableBody>
-
-        </Table>
-      )}
-
-    </Card>
+    </div>
   );
 }

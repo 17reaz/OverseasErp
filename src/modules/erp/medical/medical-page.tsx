@@ -13,9 +13,6 @@ import {
   MedicalForm,
 } from "./components/medical-form";
 
-import {
-  MedicalNextAction,
-} from "./components/medical-next-action";
 
 import {
   MedicalPending,
@@ -430,11 +427,7 @@ export function MedicalPage() {
       />
 
 
-      <MedicalNextAction
-        medicals={
-          medicals
-        }
-      />
+      
 
 
       <MedicalForm
