@@ -1,26 +1,64 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+} from "react-router-dom";
 
-import { ProtectedRoute } from "@/modules/auth/components/protected-route";
+import {
+  ProtectedRoute,
+} from "@/modules/auth/components/protected-route";
 
-import { LandingPage } from "@/modules/landing/landing-page";
+import {
+  LandingPage,
+} from "@/modules/landing/landing-page";
 
-import { LoginPage } from "@/modules/auth/login/login-page";
-import { SignupPage } from "@/modules/auth/signup/signup-page";
-import { ForgotPasswordPage } from "@/modules/auth/forgot-password/forgot-password-page";
-import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-page";
+import {
+  LoginPage,
+} from "@/modules/auth/login/login-page";
 
-import { ErpLayout } from "@/modules/erp/layout/erp-layout";
+import {
+  SignupPage,
+} from "@/modules/auth/signup/signup-page";
 
-import { DashboardPage } from "@/modules/erp/dashboard/dashboard-page";
+import {
+  ForgotPasswordPage,
+} from "@/modules/auth/forgot-password/forgot-password-page";
 
-import { CandidatesPage } from "@/modules/erp/candidates/candidates-page";
-import { CandidateProfilePage } from "@/modules/erp/candidates/candidate-profile";
+import {
+  ResetPasswordPage,
+} from "@/modules/auth/reset-password/reset-password-page";
+
+import {
+  ErpLayout,
+} from "@/modules/erp/layout/erp-layout";
+
+import {
+  DashboardPage,
+} from "@/modules/erp/dashboard/dashboard-page";
+
+import {
+  CandidatesPage,
+} from "@/modules/erp/candidates/candidates-page";
+
+import {
+  CandidateProfilePage,
+} from "@/modules/erp/candidates/candidate-profile";
+
 import {
   TrashPage,
 } from "@/modules/erp/trash/trash-page";
-import { AgentsPage } from "@/modules/erp/agents/agents-page";
 
-import { FilesPage } from "@/modules/erp/files/files-page";
+import {
+  AgentsPage,
+} from "@/modules/erp/agents/agents-page";
+
+import {
+  FilesPage,
+} from "@/modules/erp/files/files-page";
+
+import {
+  MedicalPage,
+} from "@/modules/erp/medical/medical-page";
 
 
 function AppRouter() {
@@ -137,13 +175,20 @@ function AppRouter() {
 
 
             {/* ==================================================
-                OTHER ERP MODULES
+                MEDICAL
                 ================================================== */}
+
+            {/* /app/medical */}
 
             <Route
               path="medical"
-              element={<div>Medical</div>}
+              element={<MedicalPage />}
             />
+
+
+            {/* ==================================================
+                OTHER ERP MODULES
+                ================================================== */}
 
             <Route
               path="mofa"
@@ -159,12 +204,17 @@ function AppRouter() {
               path="flight"
               element={<div>Flight</div>}
             />
+
+
+            {/* ==================================================
+                TRASH
+                ================================================== */}
+
             <Route
-  path="trash"
-  element={
-    <TrashPage />
-  }
-/>
+              path="trash"
+              element={<TrashPage />}
+            />
+
           </Route>
 
         </Route>
@@ -184,4 +234,7 @@ function AppRouter() {
   );
 }
 
-export { AppRouter };
+
+export {
+  AppRouter,
+};
