@@ -1,6 +1,4 @@
-import {
-  supabase,
-} from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 export type MedicalStatus =
   | "new"
@@ -12,44 +10,56 @@ export interface MedicalCandidate {
   id: string;
   name: string;
   passport_no: string;
+  received_date: string | null;
 }
 
 export interface Medical {
   id: string;
-
   tenant_id: string;
-
   candidate_id: string;
-
   medical_date: string | null;
-
   fit_date: string | null;
-
   status: MedicalStatus;
-
   created_at: string;
-
   updated_at: string;
-
   candidate?: MedicalCandidate | null;
 }
 
 export interface MedicalInput {
   candidate_id: string;
-
   medical_date: string | null;
-
   fit_date: string | null;
-
   status: MedicalStatus;
 }
 
+export async function getMedicals() {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("medicals")
+    .select(`
+      *,
+      candidate:candidates (
+        id,
+        name,
+        passport_no,
+        received_date
+      )
+    `)
+    .order("created_at", {
+      ascending: false,
+    });
 
-// =====================================================
-// CURRENT TENANT
-// =====================================================
+  return {
+    data: data as Medical[] | null,
+    error,
+  };
+}
 
-export async function getCurrentTenantId() {
+export async function createMedical(
+  input: MedicalInput,
+) {
   const {
     data: {
       user,
@@ -73,10 +83,7 @@ export async function getCurrentTenantId() {
   } = await supabase
     .from("profiles")
     .select("tenant_id")
-    .eq(
-      "id",
-      user.id,
-    )
+    .eq("id", user.id)
     .single();
 
   if (profileError) {
@@ -85,88 +92,9 @@ export async function getCurrentTenantId() {
 
   if (!profile?.tenant_id) {
     throw new Error(
-      "No tenant is assigned to this user.",
+      "Tenant information is missing.",
     );
   }
-
-  return profile.tenant_id as string;
-}
-
-
-// =====================================================
-// GET MEDICALS
-// =====================================================
-
-export async function getMedicals() {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("medicals")
-    .select(`
-      *,
-      candidate:candidates (
-        id,
-        name,
-        passport_no
-      )
-    `)
-    .order(
-      "created_at",
-      {
-        ascending: false,
-      },
-    );
-
-  return {
-    data: data as Medical[] | null,
-    error,
-  };
-}
-
-
-// =====================================================
-// GET SINGLE MEDICAL
-// =====================================================
-
-export async function getMedical(
-  id: string,
-) {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("medicals")
-    .select(`
-      *,
-      candidate:candidates (
-        id,
-        name,
-        passport_no
-      )
-    `)
-    .eq(
-      "id",
-      id,
-    )
-    .single();
-
-  return {
-    data: data as Medical | null,
-    error,
-  };
-}
-
-
-// =====================================================
-// CREATE
-// =====================================================
-
-export async function createMedical(
-  input: MedicalInput,
-) {
-  const tenantId =
-    await getCurrentTenantId();
 
   const {
     data,
@@ -174,31 +102,23 @@ export async function createMedical(
   } = await supabase
     .from("medicals")
     .insert({
-      tenant_id:
-        tenantId,
-
-      candidate_id:
-        input.candidate_id,
-
+      tenant_id: profile.tenant_id,
+      candidate_id: input.candidate_id,
       medical_date:
-        input.medical_date ||
-        null,
-
+        input.medical_date || null,
       fit_date:
         input.status === "fit"
-          ? input.fit_date ||
-            null
+          ? input.fit_date || null
           : null,
-
-      status:
-        input.status,
+      status: input.status,
     })
     .select(`
       *,
       candidate:candidates (
         id,
         name,
-        passport_no
+        passport_no,
+        received_date
       )
     `)
     .single();
@@ -208,11 +128,6 @@ export async function createMedical(
     error,
   };
 }
-
-
-// =====================================================
-// UPDATE
-// =====================================================
 
 export async function updateMedical(
   id: string,
@@ -224,35 +139,25 @@ export async function updateMedical(
   } = await supabase
     .from("medicals")
     .update({
-      candidate_id:
-        input.candidate_id,
-
+      candidate_id: input.candidate_id,
       medical_date:
-        input.medical_date ||
-        null,
-
+        input.medical_date || null,
       fit_date:
         input.status === "fit"
-          ? input.fit_date ||
-            null
+          ? input.fit_date || null
           : null,
-
-      status:
-        input.status,
-
+      status: input.status,
       updated_at:
         new Date().toISOString(),
     })
-    .eq(
-      "id",
-      id,
-    )
+    .eq("id", id)
     .select(`
       *,
       candidate:candidates (
         id,
         name,
-        passport_no
+        passport_no,
+        received_date
       )
     `)
     .single();
@@ -263,11 +168,6 @@ export async function updateMedical(
   };
 }
 
-
-// =====================================================
-// DELETE
-// =====================================================
-
 export async function deleteMedical(
   id: string,
 ) {
@@ -276,47 +176,69 @@ export async function deleteMedical(
   } = await supabase
     .from("medicals")
     .delete()
-    .eq(
-      "id",
-      id,
-    );
+    .eq("id", id);
 
   return {
     error,
   };
 }
 
-
-// =====================================================
-// GET CANDIDATES FOR PICKER
-// =====================================================
-
-export async function getMedicalCandidates() {
+export async function getCandidatesWithoutMedical() {
   const {
-    data,
-    error,
+    data: candidates,
+    error: candidatesError,
   } = await supabase
     .from("candidates")
     .select(`
       id,
       name,
-      passport_no
+      passport_no,
+      received_date
     `)
-    .eq(
-      "is_deleted",
-      false,
-    )
-    .order(
-      "sl",
-      {
-        ascending: false,
-      },
+    .order("sl", {
+      ascending: false,
+    });
+
+  if (candidatesError) {
+    return {
+      data: null,
+      error: candidatesError,
+    };
+  }
+
+  const {
+    data: medicals,
+    error: medicalError,
+  } = await supabase
+    .from("medicals")
+    .select("candidate_id");
+
+  if (medicalError) {
+    return {
+      data: null,
+      error: medicalError,
+    };
+  }
+
+  const medicalCandidateIds =
+    new Set(
+      (medicals ?? []).map(
+        (item) =>
+          item.candidate_id,
+      ),
+    );
+
+  const pending =
+    (candidates ?? []).filter(
+      (candidate) =>
+        !medicalCandidateIds.has(
+          candidate.id,
+        ),
     );
 
   return {
     data:
-      data as MedicalCandidate[] | null,
-
-    error,
+      pending as MedicalCandidate[],
+    error: null,
   };
 }

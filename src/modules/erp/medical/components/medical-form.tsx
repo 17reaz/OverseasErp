@@ -10,10 +10,6 @@ import {
 } from "lucide-react";
 
 import {
-  cn,
-} from "@/lib/utils";
-
-import {
   Button,
 } from "@/components/ui/button";
 
@@ -50,52 +46,43 @@ import {
 
 import {
   UniversalSheet,
-} from "../../shared/forms/universal-sheet";
+} from "../../shared/ui/universal-sheet";
 
 import {
   FormSection,
 } from "../../shared/forms/form-section";
 
 import {
-  toast,
-} from "@/components/shared/toast/toast";
+  cn,
+} from "@/lib/utils";
 
 import {
   createMedical,
-  getMedicalCandidates,
   updateMedical,
   type Medical,
   type MedicalCandidate,
   type MedicalStatus,
 } from "../medical-service";
 
-
 interface MedicalFormProps {
   open: boolean;
-
   medical: Medical | null;
-
+  selectedCandidate: MedicalCandidate | null;
+  candidates: MedicalCandidate[];
   onOpenChange: (
     open: boolean,
   ) => void;
-
   onSuccess: () => void;
 }
-
 
 export function MedicalForm({
   open,
   medical,
+  selectedCandidate,
+  candidates,
   onOpenChange,
   onSuccess,
 }: MedicalFormProps) {
-
-  const [
-    candidates,
-    setCandidates,
-  ] = useState<MedicalCandidate[]>(
-    [],
-  );
 
   const [
     candidateId,
@@ -125,11 +112,6 @@ export function MedicalForm({
   ] = useState(false);
 
   const [
-    loadingCandidates,
-    setLoadingCandidates,
-  ] = useState(false);
-
-  const [
     loading,
     setLoading,
   ] = useState(false);
@@ -140,69 +122,6 @@ export function MedicalForm({
   ] = useState("");
 
 
-  // =====================================================
-  // LOAD CANDIDATES
-  // =====================================================
-
-  useEffect(() => {
-
-    if (!open) {
-      return;
-    }
-
-    async function loadCandidates() {
-
-      try {
-
-        setLoadingCandidates(
-          true,
-        );
-
-        const {
-          data,
-          error,
-        } =
-          await getMedicalCandidates();
-
-        if (error) {
-          throw error;
-        }
-
-        setCandidates(
-          data ?? [],
-        );
-
-      } catch (error) {
-
-        console.error(
-          error,
-        );
-
-        toast.error(
-          "Failed to load candidates.",
-          "Please try again.",
-        );
-
-      } finally {
-
-        setLoadingCandidates(
-          false,
-        );
-
-      }
-    }
-
-    loadCandidates();
-
-  }, [
-    open,
-  ]);
-
-
-  // =====================================================
-  // LOAD FORM DATA
-  // =====================================================
-
   useEffect(() => {
 
     if (medical) {
@@ -212,18 +131,28 @@ export function MedicalForm({
       );
 
       setMedicalDate(
-        medical.medical_date ??
-          "",
+        medical.medical_date ?? "",
       );
 
       setFitDate(
-        medical.fit_date ??
-          "",
+        medical.fit_date ?? "",
       );
 
       setStatus(
         medical.status,
       );
+
+    } else if (selectedCandidate) {
+
+      setCandidateId(
+        selectedCandidate.id,
+      );
+
+      setMedicalDate("");
+
+      setFitDate("");
+
+      setStatus("new");
 
     } else {
 
@@ -241,32 +170,28 @@ export function MedicalForm({
 
   }, [
     medical,
+    selectedCandidate,
     open,
   ]);
 
 
-  // =====================================================
-  // SELECTED CANDIDATE
-  // =====================================================
-
-  const selectedCandidate =
+  const currentCandidate =
     useMemo(
       () =>
         candidates.find(
           (candidate) =>
             candidate.id ===
             candidateId,
-        ),
+        ) ??
+        selectedCandidate ??
+        null,
       [
         candidates,
         candidateId,
+        selectedCandidate,
       ],
     );
 
-
-  // =====================================================
-  // HAS CHANGES
-  // =====================================================
 
   const hasChanges =
     Boolean(
@@ -277,64 +202,48 @@ export function MedicalForm({
     );
 
 
-  // =====================================================
-  // SUBMIT
-  // =====================================================
-
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
 
     event.preventDefault();
 
-    setError("");
-
-
     if (!candidateId) {
-
       setError(
         "Candidate is required.",
       );
-
       return;
     }
-
 
     if (
       status === "fit" &&
       !fitDate
     ) {
-
       setError(
         "Fit date is required when status is Fit.",
       );
-
       return;
     }
-
 
     try {
 
       setLoading(true);
-
+      setError("");
 
       const input = {
         candidate_id:
           candidateId,
 
         medical_date:
-          medicalDate ||
-          null,
+          medicalDate || null,
 
         fit_date:
           status === "fit"
-            ? fitDate ||
-              null
+            ? fitDate || null
             : null,
 
         status,
       };
-
 
       const result =
         medical
@@ -346,37 +255,16 @@ export function MedicalForm({
               input,
             );
 
-
       if (result.error) {
-
-        console.error(
-          result.error,
-        );
-
-        setError(
-          result.error.message ||
-            "Failed to save medical record.",
-        );
-
-        return;
+        throw result.error;
       }
-
-
-      toast.success(
-        medical
-          ? "Medical updated."
-          : "Medical created.",
-        medical
-          ? "Medical record updated successfully."
-          : "Medical record created successfully.",
-      );
-
 
       onSuccess();
 
     } catch (error) {
 
       console.error(
+        "Failed to save medical:",
         error,
       );
 
@@ -391,16 +279,13 @@ export function MedicalForm({
       setLoading(false);
 
     }
-
   }
 
 
   return (
     <UniversalSheet
       open={open}
-      onOpenChange={
-        onOpenChange
-      }
+      onOpenChange={onOpenChange}
       title={
         medical
           ? "Edit Medical"
@@ -411,29 +296,16 @@ export function MedicalForm({
           ? "Update the candidate medical record."
           : "Create a new candidate medical record."
       }
-      onSubmit={
-        handleSubmit
-      }
+      onSubmit={handleSubmit}
       submitLabel={
         medical
           ? "Update Medical"
           : "Create Medical"
       }
-      loading={
-        loading
-      }
-      disabled={
-        !candidateId ||
-        loadingCandidates
-      }
-      hasChanges={
-        hasChanges
-      }
+      loading={loading}
+      disabled={!candidateId}
+      hasChanges={hasChanges}
     >
-
-      {/* ==================================================
-          ERROR
-          ================================================== */}
 
       {error && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -442,184 +314,157 @@ export function MedicalForm({
       )}
 
 
-      {/* ==================================================
-          CANDIDATE INFORMATION
-          ================================================== */}
-
       <FormSection
         title="Candidate Information"
         description="Select the candidate for this medical record."
       >
 
-        <div className="space-y-4">
+        <div className="space-y-2">
 
-          <div className="space-y-2">
+          <Label>
+            Candidate
+          </Label>
 
-            <Label>
-              Candidate
-            </Label>
+          <Popover
+            open={candidateOpen}
+            onOpenChange={
+              setCandidateOpen
+            }
+          >
 
+            <PopoverTrigger asChild>
 
-            <Popover
-              open={
-                candidateOpen
-              }
-              onOpenChange={
-                setCandidateOpen
-              }
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={
+                  candidateOpen
+                }
+                disabled={
+                  loading ||
+                  Boolean(medical)
+                }
+                className="w-full justify-between font-normal"
+              >
+
+                {currentCandidate ? (
+                  <span className="truncate">
+                    {
+                      currentCandidate.name
+                    }
+                    {" — "}
+                    {
+                      currentCandidate.passport_no
+                    }
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Select candidate
+                  </span>
+                )}
+
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+
+              </Button>
+
+            </PopoverTrigger>
+
+            <PopoverContent
+              align="start"
+              className="w-[var(--radix-popover-trigger-width)] p-0"
             >
 
-              <PopoverTrigger
-                asChild
-              >
+              <Command>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={
-                    candidateOpen
-                  }
-                  disabled={
-                    loading ||
-                    loadingCandidates ||
-                    Boolean(medical)
-                  }
-                  className="w-full justify-between font-normal"
-                >
+                <CommandInput
+                  placeholder="Search name or passport..."
+                />
 
-                  {selectedCandidate ? (
-                    <span className="truncate">
-                      {
-                        selectedCandidate.name
-                      }{" "}
-                      —{" "}
-                      {
-                        selectedCandidate.passport_no
-                      }
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">
-                      {loadingCandidates
-                        ? "Loading candidates..."
-                        : "Select candidate"}
-                    </span>
-                  )}
+                <CommandList>
 
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <CommandEmpty>
+                    No candidate found.
+                  </CommandEmpty>
 
-                </Button>
+                  <CommandGroup>
 
-              </PopoverTrigger>
+                    {candidates.map(
+                      (candidate) => (
 
+                        <CommandItem
+                          key={
+                            candidate.id
+                          }
+                          value={`${candidate.name} ${candidate.passport_no}`}
+                          onSelect={() => {
 
-              <PopoverContent
-                align="start"
-                className="w-[var(--radix-popover-trigger-width)] p-0"
-              >
+                            setCandidateId(
+                              candidate.id,
+                            );
 
-                <Command>
+                            setCandidateOpen(
+                              false,
+                            );
 
-                  <CommandInput
-                    placeholder="Search name or passport..."
-                  />
+                            setError("");
 
-                  <CommandList>
+                          }}
+                        >
 
-                    <CommandEmpty>
-                      No candidate found.
-                    </CommandEmpty>
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              candidateId ===
+                                candidate.id
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
 
+                          <div>
 
-                    <CommandGroup>
+                            <p className="text-sm font-medium">
+                              {
+                                candidate.name
+                              }
+                            </p>
 
-                      {candidates.map(
-                        (
-                          candidate,
-                        ) => (
+                            <p className="text-xs text-muted-foreground">
+                              Passport:{" "}
+                              {
+                                candidate.passport_no
+                              }
+                            </p>
 
-                          <CommandItem
-                            key={
-                              candidate.id
-                            }
-                            value={`${candidate.name} ${candidate.passport_no}`}
-                            onSelect={() => {
+                          </div>
 
-                              setCandidateId(
-                                candidate.id,
-                              );
+                        </CommandItem>
 
-                              setCandidateOpen(
-                                false,
-                              );
+                      ),
+                    )}
 
-                              setError("");
+                  </CommandGroup>
 
-                            }}
-                          >
+                </CommandList>
 
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                candidateId ===
-                                  candidate.id
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
+              </Command>
 
+            </PopoverContent>
 
-                            <div className="flex min-w-0 flex-col">
-
-                              <span className="truncate font-medium">
-                                {
-                                  candidate.name
-                                }
-                              </span>
-
-                              <span className="truncate text-xs text-muted-foreground">
-                                Passport:{" "}
-                                {
-                                  candidate.passport_no
-                                }
-                              </span>
-
-                            </div>
-
-                          </CommandItem>
-
-                        ),
-                      )}
-
-                    </CommandGroup>
-
-                  </CommandList>
-
-                </Command>
-
-              </PopoverContent>
-
-            </Popover>
-
-          </div>
+          </Popover>
 
         </div>
 
       </FormSection>
 
 
-      {/* ==================================================
-          MEDICAL INFORMATION
-          ================================================== */}
-
       <FormSection
         title="Medical Information"
-        description="Enter the medical examination and current status."
+        description="Enter medical examination details."
       >
 
         <div className="space-y-4">
-
-          {/* Medical Date */}
 
           <div className="space-y-2">
 
@@ -630,25 +475,17 @@ export function MedicalForm({
             <Input
               id="medical-date"
               type="date"
-              value={
-                medicalDate
-              }
-              onChange={(
-                event,
-              ) =>
+              value={medicalDate}
+              onChange={(event) =>
                 setMedicalDate(
                   event.target.value,
                 )
               }
-              disabled={
-                loading
-              }
+              disabled={loading}
             />
 
           </div>
 
-
-          {/* Status */}
 
           <div className="space-y-2">
 
@@ -657,12 +494,8 @@ export function MedicalForm({
             </Label>
 
             <Select
-              value={
-                status
-              }
-              onValueChange={(
-                value,
-              ) => {
+              value={status}
+              onValueChange={(value) => {
 
                 const nextStatus =
                   value as MedicalStatus;
@@ -679,17 +512,12 @@ export function MedicalForm({
                 }
 
               }}
-              disabled={
-                loading
-              }
+              disabled={loading}
             >
 
               <SelectTrigger>
-
                 <SelectValue />
-
               </SelectTrigger>
-
 
               <SelectContent>
 
@@ -716,8 +544,6 @@ export function MedicalForm({
           </div>
 
 
-          {/* Fit Date */}
-
           {status === "fit" && (
 
             <div className="space-y-2">
@@ -729,19 +555,13 @@ export function MedicalForm({
               <Input
                 id="fit-date"
                 type="date"
-                value={
-                  fitDate
-                }
-                onChange={(
-                  event,
-                ) =>
+                value={fitDate}
+                onChange={(event) =>
                   setFitDate(
                     event.target.value,
                   )
                 }
-                disabled={
-                  loading
-                }
+                disabled={loading}
               />
 
             </div>

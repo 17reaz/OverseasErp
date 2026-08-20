@@ -1,35 +1,42 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
-
-import {
-  Plus,
-  RefreshCw,
-} from "lucide-react";
-
-import {
-  Button,
-} from "@/components/ui/button";
 
 import {
   toast,
 } from "@/components/shared/toast/toast";
 
 import {
-  deleteMedical,
-  getMedicals,
-  type Medical,
-} from "./medical-service";
-
-import {
   MedicalForm,
 } from "./components/medical-form";
 
 import {
+  MedicalNextAction,
+} from "./components/medical-next-action";
+
+import {
+  MedicalPending,
+} from "./components/medical-pending";
+
+import {
   MedicalTable,
 } from "./components/medical-table";
+
+import {
+  MedicalToolbar,
+} from "./components/medical-toolbar";
+
+import {
+  deleteMedical,
+  getCandidatesWithoutMedical,
+  getMedicals,
+  type Medical,
+  type MedicalCandidate,
+  type MedicalStatus,
+} from "./medical-service";
 
 
 export function MedicalPage() {
@@ -40,8 +47,20 @@ export function MedicalPage() {
   ] = useState<Medical[]>([]);
 
   const [
+    pendingCandidates,
+    setPendingCandidates,
+  ] = useState<
+    MedicalCandidate[]
+  >([]);
+
+  const [
     loading,
     setLoading,
+  ] = useState(true);
+
+  const [
+    pendingLoading,
+    setPendingLoading,
   ] = useState(true);
 
   const [
@@ -56,10 +75,26 @@ export function MedicalPage() {
     null,
   );
 
+  const [
+    selectedCandidate,
+    setSelectedCandidate,
+  ] =
+    useState<MedicalCandidate | null>(
+      null,
+    );
 
-  // =====================================================
-  // LOAD MEDICALS
-  // =====================================================
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  const [
+    status,
+    setStatus,
+  ] = useState<
+    MedicalStatus | "all"
+  >("all");
+
 
   const loadMedicals =
     useCallback(
@@ -104,26 +139,127 @@ export function MedicalPage() {
     );
 
 
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
+  const loadPending =
+    useCallback(
+      async () => {
+
+        try {
+
+          setPendingLoading(
+            true,
+          );
+
+          const {
+            data,
+            error,
+          } =
+            await getCandidatesWithoutMedical();
+
+          if (error) {
+            throw error;
+          }
+
+          setPendingCandidates(
+            data ?? [],
+          );
+
+        } catch (error) {
+
+          console.error(
+            error,
+          );
+
+          toast.error(
+            "Failed to load pending candidates.",
+            "Please try again.",
+          );
+
+        } finally {
+
+          setPendingLoading(
+            false,
+          );
+
+        }
+
+      },
+      [],
+    );
+
+
+  const loadAll =
+    useCallback(
+      async () => {
+
+        await Promise.all([
+          loadMedicals(),
+          loadPending(),
+        ]);
+
+      },
+      [
+        loadMedicals,
+        loadPending,
+      ],
+    );
+
 
   useEffect(() => {
 
-    loadMedicals();
+    loadAll();
 
   }, [
-    loadMedicals,
+    loadAll,
   ]);
 
 
-  // =====================================================
-  // CREATE
-  // =====================================================
+  const filteredMedicals =
+    useMemo(() => {
+
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      return medicals.filter(
+        (medical) => {
+
+          const matchesSearch =
+            !query ||
+            medical.candidate?.name
+              ?.toLowerCase()
+              .includes(query) ||
+            medical.candidate?.passport_no
+              ?.toLowerCase()
+              .includes(query);
+
+          const matchesStatus =
+            status === "all" ||
+            medical.status ===
+              status;
+
+          return (
+            matchesSearch &&
+            matchesStatus
+          );
+
+        },
+      );
+
+    }, [
+      medicals,
+      search,
+      status,
+    ]);
+
 
   function handleCreate() {
 
     setEditingMedical(
+      null,
+    );
+
+    setSelectedCandidate(
       null,
     );
 
@@ -134,16 +270,16 @@ export function MedicalPage() {
   }
 
 
-  // =====================================================
-  // EDIT
-  // =====================================================
-
-  function handleEdit(
-    medical: Medical,
+  function handleAddMedical(
+    candidate: MedicalCandidate,
   ) {
 
     setEditingMedical(
-      medical,
+      null,
+    );
+
+    setSelectedCandidate(
+      candidate,
     );
 
     setFormOpen(
@@ -153,9 +289,24 @@ export function MedicalPage() {
   }
 
 
-  // =====================================================
-  // DELETE
-  // =====================================================
+  function handleEdit(
+    medical: Medical,
+  ) {
+
+    setEditingMedical(
+      medical,
+    );
+
+    setSelectedCandidate(
+      null,
+    );
+
+    setFormOpen(
+      true,
+    );
+
+  }
+
 
   async function handleDelete(
     medical: Medical,
@@ -173,38 +324,25 @@ export function MedicalPage() {
       return;
     }
 
-
     try {
 
       const {
         error,
-      } = await deleteMedical(
-        medical.id,
-      );
+      } =
+        await deleteMedical(
+          medical.id,
+        );
 
       if (error) {
         throw error;
       }
 
-
-      setMedicals(
-        (
-          current,
-        ) =>
-          current.filter(
-            (
-              item,
-            ) =>
-              item.id !==
-              medical.id,
-          ),
-      );
-
-
       toast.success(
         "Medical deleted.",
         "The medical record was deleted successfully.",
       );
+
+      await loadAll();
 
     } catch (error) {
 
@@ -222,70 +360,63 @@ export function MedicalPage() {
   }
 
 
+  function handleFormSuccess() {
+
+    setFormOpen(
+      false,
+    );
+
+    setEditingMedical(
+      null,
+    );
+
+    setSelectedCandidate(
+      null,
+    );
+
+    loadAll();
+
+  }
+
+
   return (
     <div className="space-y-6">
 
-      {/* ==================================================
-          PAGE HEADER
-          ================================================== */}
-
-      <div className="flex items-center justify-between">
-
-        <div>
-
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Medical
-          </h1>
-
-          <p className="text-sm text-muted-foreground">
-            Manage candidate medical records.
-          </p>
-
-        </div>
-
-
-        <div className="flex items-center gap-2">
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={
-              loadMedicals
-            }
-            disabled={
-              loading
-            }
-          >
-
-            <RefreshCw />
-
-          </Button>
+      <MedicalToolbar
+        search={search}
+        status={status}
+        loading={loading}
+        onSearchChange={
+          setSearch
+        }
+        onStatusChange={
+          setStatus
+        }
+        onRefresh={
+          loadAll
+        }
+        onCreate={
+          handleCreate
+        }
+      />
 
 
-          <Button
-            onClick={
-              handleCreate
-            }
-          >
+      <MedicalPending
+        candidates={
+          pendingCandidates
+        }
+        loading={
+          pendingLoading
+        }
+        onAddMedical={
+          handleAddMedical
+        }
+      />
 
-            <Plus />
-
-            Add Medical
-
-          </Button>
-
-        </div>
-
-      </div>
-
-
-      {/* ==================================================
-          TABLE
-          ================================================== */}
 
       <MedicalTable
         medicals={
-          medicals
+          filteredMedicals
         }
         loading={
           loading
@@ -299,9 +430,12 @@ export function MedicalPage() {
       />
 
 
-      {/* ==================================================
-          FORM
-          ================================================== */}
+      <MedicalNextAction
+        medicals={
+          medicals
+        }
+      />
+
 
       <MedicalForm
         open={
@@ -310,23 +444,17 @@ export function MedicalPage() {
         medical={
           editingMedical
         }
+        selectedCandidate={
+          selectedCandidate
+        }
+        candidates={
+          pendingCandidates
+        }
         onOpenChange={
           setFormOpen
         }
         onSuccess={
-          async () => {
-
-            setFormOpen(
-              false,
-            );
-
-            setEditingMedical(
-              null,
-            );
-
-            await loadMedicals();
-
-          }
+          handleFormSuccess
         }
       />
 
