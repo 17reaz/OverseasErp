@@ -1,826 +1,585 @@
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+  ArrowDownAZ,
+  ArrowUpAZ,
+  List,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 
 import {
-  toast,
-} from "@/components/shared/toast/toast";
+  Button,
+} from "@/components/ui/button";
 
 import {
-  MedicalForm,
-} from "./components/medical-form";
+  Input,
+} from "@/components/ui/input";
 
 import {
-  MedicalNextAction,
-} from "./components/medical-next-action";
+  Separator,
+} from "@/components/ui/separator";
 
 import {
-  MedicalPending,
-} from "./components/medical-pending";
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 
 import {
-  MedicalTable,
-} from "./components/medical-table";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
-  MedicalToolbar,
-  type MedicalFilterState,
-  type MedicalSortState,
-  type MedicalViewMode,
-} from "./components/medical-toolbar";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
-  deleteMedical,
-  getCandidatesWithoutMedical,
-  getMedicals,
-  type Medical,
-  type MedicalCandidate,
-} from "./medical-service";
+  type MedicalStatus,
+} from "../medical-service";
 
 
-const defaultFilter: MedicalFilterState = {
-  view: "medicalable",
-  month: "all",
+export type MedicalFilterState = {
+  view:
+    | MedicalStatus
+    | "all"
+    | "medicalable";
+
+  month:
+    | "all"
+    | string;
 };
 
-const defaultSort: MedicalSortState = {
-  mode: "custom",
-  field: "created_at",
+
+export type MedicalSortState = {
+  mode:
+    | "ascending"
+    | "descending"
+    | "custom";
+
+  field:
+    | "name"
+    | "passport_no"
+    | "medical_date"
+    | "created_at"
+    | "updated_at";
 };
 
 
-export function MedicalPage() {
+export type MedicalViewMode =
+  | "list"
+  | "grid";
 
-  const [
-    medicals,
-    setMedicals,
-  ] = useState<Medical[]>([]);
 
+interface MedicalToolbarProps {
 
-  const [
-    pendingCandidates,
-    setPendingCandidates,
-  ] = useState<
-    MedicalCandidate[]
-  >([]);
+  search: string;
 
+  searchPlaceholder?: string;
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  onSearchChange: (
+    value: string,
+  ) => void;
 
+  onRefresh: () => void;
 
-  const [
-    pendingLoading,
-    setPendingLoading,
-  ] = useState(true);
+  onCreate: () => void;
 
+  refreshing?: boolean;
 
-  const [
-    formOpen,
-    setFormOpen,
-  ] = useState(false);
+  filter: MedicalFilterState;
 
+  onFilterChange: (
+    filter: MedicalFilterState,
+  ) => void;
 
-  const [
-    editingMedical,
-    setEditingMedical,
-  ] = useState<Medical | null>(
-    null,
-  );
+  sort: MedicalSortState;
 
+  onSortChange: (
+    sort: MedicalSortState,
+  ) => void;
 
-  const [
-    selectedCandidate,
-    setSelectedCandidate,
-  ] =
-    useState<MedicalCandidate | null>(
-      null,
-    );
+  viewMode: MedicalViewMode;
 
+  onViewModeChange: (
+    mode: MedicalViewMode,
+  ) => void;
+}
 
-  const [
-    search,
-    setSearch,
-  ] = useState("");
 
-
-  const [
-    filter,
-    setFilter,
-  ] =
-    useState<MedicalFilterState>(
-      defaultFilter,
-    );
-
-
-  const [
-    sort,
-    setSort,
-  ] =
-    useState<MedicalSortState>(
-      defaultSort,
-    );
-
-
-  const [
-    viewMode,
-    setViewMode,
-  ] =
-    useState<MedicalViewMode>(
-      "list",
-    );
-
-
-  /*
-   * =========================================================
-   * LOAD MEDICAL RECORDS
-   * =========================================================
-   */
-
-  const loadMedicals =
-    useCallback(
-      async () => {
-
-        try {
-
-          setLoading(true);
-
-          const {
-            data,
-            error,
-          } = await getMedicals();
-
-          if (error) {
-            throw error;
-          }
-
-          setMedicals(
-            data ?? [],
-          );
-
-        } catch (error) {
-
-          console.error(
-            error,
-          );
-
-          toast.error(
-            "Failed to load medical records.",
-            "Please try again.",
-          );
-
-        } finally {
-
-          setLoading(false);
-
-        }
-
-      },
-      [],
-    );
-
-
-  /*
-   * =========================================================
-   * LOAD MEDICALABLE CANDIDATES
-   *
-   * These are candidates who do not have a medical record yet.
-   * =========================================================
-   */
-
-  const loadPending =
-    useCallback(
-      async () => {
-
-        try {
-
-          setPendingLoading(
-            true,
-          );
-
-          const {
-            data,
-            error,
-          } =
-            await getCandidatesWithoutMedical();
-
-          if (error) {
-            throw error;
-          }
-
-          setPendingCandidates(
-            data ?? [],
-          );
-
-        } catch (error) {
-
-          console.error(
-            error,
-          );
-
-          toast.error(
-            "Failed to load medicalable candidates.",
-            "Please try again.",
-          );
-
-        } finally {
-
-          setPendingLoading(
-            false,
-          );
-
-        }
-
-      },
-      [],
-    );
-
-
-  /*
-   * =========================================================
-   * LOAD EVERYTHING
-   * =========================================================
-   */
-
-  const loadAll =
-    useCallback(
-      async () => {
-
-        await Promise.all([
-          loadMedicals(),
-          loadPending(),
-        ]);
-
-      },
-      [
-        loadMedicals,
-        loadPending,
-      ],
-    );
-
-
-  /*
-   * =========================================================
-   * INITIAL LOAD
-   * =========================================================
-   */
-
-  useEffect(() => {
-
-    void loadAll();
-
-  }, [
-    loadAll,
-  ]);
-
-
-  /*
-   * =========================================================
-   * SEARCH MEDICALABLE CANDIDATES
-   * =========================================================
-   */
-
-  const filteredPendingCandidates =
-    useMemo(() => {
-
-      const query =
-        search
-          .trim()
-          .toLowerCase();
-
-      if (!query) {
-        return pendingCandidates;
-      }
-
-      return pendingCandidates.filter(
-        (candidate) =>
-          candidate.name
-            ?.toLowerCase()
-            .includes(query) ||
-          candidate.passport_no
-            ?.toLowerCase()
-            .includes(query),
-      );
-
-    }, [
-      pendingCandidates,
-      search,
-    ]);
-
-
-  /*
-   * =========================================================
-   * SEARCH + FILTER MEDICAL RECORDS
-   * =========================================================
-   */
-
-  const filteredMedicals =
-    useMemo(() => {
-
-      const query =
-        search
-          .trim()
-          .toLowerCase();
-
-      let result =
-        medicals.filter(
-          (medical) => {
-
-            const matchesSearch =
-              !query ||
-              medical.candidate?.name
-                ?.toLowerCase()
-                .includes(query) ||
-              medical.candidate?.passport_no
-                ?.toLowerCase()
-                .includes(query);
-
-            const matchesStatus =
-              filter.view ===
-                "all" ||
-              filter.view ===
-                "medicalable" ||
-              medical.status ===
-                filter.view;
-
-            return (
-              matchesSearch &&
-              matchesStatus
-            );
-
-          },
-        );
-
-
-      /*
-       * =======================================================
-       * SORT
-       * =======================================================
-       */
-
-      result = [
-        ...result,
-      ].sort(
-        (a, b) => {
-
-          let first = "";
-          let second = "";
-
-          switch (
-            sort.field
-          ) {
-
-            case "name":
-
-              first =
-                a.candidate
-                  ?.name ?? "";
-
-              second =
-                b.candidate
-                  ?.name ?? "";
-
-              break;
-
-
-            case "passport_no":
-
-              first =
-                a.candidate
-                  ?.passport_no ?? "";
-
-              second =
-                b.candidate
-                  ?.passport_no ?? "";
-
-              break;
-
-
-            case "medical_date":
-
-              first =
-                a.medical_date ?? "";
-
-              second =
-                b.medical_date ?? "";
-
-              break;
-
-
-            case "updated_at":
-
-              first =
-                a.updated_at ?? "";
-
-              second =
-                b.updated_at ?? "";
-
-              break;
-
-
-            case "created_at":
-
-            default:
-
-              first =
-                a.created_at ?? "";
-
-              second =
-                b.created_at ?? "";
-
-              break;
-
-          }
-
-
-          const comparison =
-            first.localeCompare(
-              second,
-              undefined,
-              {
-                numeric: true,
-                sensitivity:
-                  "base",
-              },
-            );
-
-
-          if (
-            sort.mode ===
-            "descending"
-          ) {
-            return -comparison;
-          }
-
-
-          return comparison;
-
-        },
-      );
-
-
-      return result;
-
-    }, [
-      medicals,
-      search,
-      filter.view,
-      sort,
-    ]);
-
-
-  /*
-   * =========================================================
-   * CREATE MEDICAL FROM TOOLBAR
-   *
-   * Candidate will be selected inside the Universal Sheet.
-   * =========================================================
-   */
-
-  function handleCreate() {
-
-    setEditingMedical(
-      null,
-    );
-
-    setSelectedCandidate(
-      null,
-    );
-
-    setFormOpen(
-      true,
-    );
-
-  }
-
-
-  /*
-   * =========================================================
-   * CREATE MEDICAL FROM MEDICALABLE TABLE
-   *
-   * Candidate is already selected.
-   * Universal Sheet will lock the candidate.
-   * =========================================================
-   */
-
-  function handleAddMedical(
-    candidate: MedicalCandidate,
-  ) {
-
-    setEditingMedical(
-      null,
-    );
-
-    setSelectedCandidate(
-      candidate,
-    );
-
-    setFormOpen(
-      true,
-    );
-
-  }
-
-
-  /*
-   * =========================================================
-   * EDIT EXISTING MEDICAL
-   *
-   * Candidate will be locked inside the Sheet.
-   * =========================================================
-   */
-
-  function handleEdit(
-    medical: Medical,
-  ) {
-
-    setEditingMedical(
-      medical,
-    );
-
-    setSelectedCandidate(
-      null,
-    );
-
-    setFormOpen(
-      true,
-    );
-
-  }
-
-
-  /*
-   * =========================================================
-   * DELETE MEDICAL
-   * =========================================================
-   */
-
-  async function handleDelete(
-    medical: Medical,
-  ) {
-
-    const confirmed =
-      window.confirm(
-        `Delete medical record for ${
-          medical.candidate?.name ??
-          "this candidate"
-        }?`,
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    try {
-
-      const {
-        error,
-      } =
-        await deleteMedical(
-          medical.id,
-        );
-
-
-      if (error) {
-        throw error;
-      }
-
-
-      toast.success(
-        "Medical deleted.",
-        "The medical record was deleted successfully.",
-      );
-
-
-      await loadAll();
-
-    } catch (error) {
-
-      console.error(
-        error,
-      );
-
-      toast.error(
-        "Failed to delete medical record.",
-        "Please try again.",
-      );
-
-    }
-
-  }
-
-
-  /*
-   * =========================================================
-   * FORM SUCCESS
-   * =========================================================
-   */
-
-  function handleFormSuccess() {
-
-    setFormOpen(
-      false,
-    );
-
-    setEditingMedical(
-      null,
-    );
-
-    setSelectedCandidate(
-      null,
-    );
-
-    void loadAll();
-
-  }
-
-
-  /*
-   * =========================================================
-   * REFRESH
-   * =========================================================
-   */
-
-  async function handleRefresh() {
-
-    await loadAll();
-
-  }
-
-
-  /*
-   * =========================================================
-   * RENDER
-   * =========================================================
-   */
+export function MedicalToolbar({
+  search,
+  searchPlaceholder =
+    "Search candidate or passport...",
+  onSearchChange,
+  onRefresh,
+  onCreate,
+  refreshing = false,
+  filter,
+  onFilterChange,
+  sort,
+  onSortChange,
+  viewMode,
+  onViewModeChange,
+}: MedicalToolbarProps) {
 
   return (
-    <div className="space-y-6">
+    <div
+      className="
+        flex
+        flex-col
+        gap-3
+        md:flex-row
+        md:items-center
+        md:justify-between
+      "
+    >
 
-      <MedicalToolbar
-        search={
-          search
-        }
+      {/* Search */}
 
-        searchPlaceholder={
-          "Search candidate or passport..."
-        }
+      <div
+        className="
+          relative
+          w-full
+          md:max-w-sm
+        "
+      >
 
-        onSearchChange={
-          setSearch
-        }
-
-        onRefresh={
-          handleRefresh
-        }
-
-        onCreate={
-          handleCreate
-        }
-
-        refreshing={
-          loading ||
-          pendingLoading
-        }
-
-        filter={
-          filter
-        }
-
-        onFilterChange={
-          setFilter
-        }
-
-        sort={
-          sort
-        }
-
-        onSortChange={
-          setSort
-        }
-
-        viewMode={
-          viewMode
-        }
-
-        onViewModeChange={
-          setViewMode
-        }
-      />
-
-
-      {/*
-       * =======================================================
-       * MEDICALABLE
-       *
-       * Candidate has no medical record yet.
-       * =======================================================
-       */}
-
-      {filter.view ===
-        "medicalable" && (
-        <MedicalPending
-          candidates={
-            filteredPendingCandidates
-          }
-
-          loading={
-            pendingLoading
-          }
-
-          onAddMedical={
-            handleAddMedical
-          }
+        <Search
+          className="
+            absolute
+            left-3
+            top-1/2
+            h-4
+            w-4
+            -translate-y-1/2
+            text-muted-foreground
+          "
         />
-      )}
 
-
-      {/*
-       * =======================================================
-       * MEDICAL RECORDS
-       *
-       * New / Fit / Unfit / Expired / All
-       * =======================================================
-       */}
-
-      {filter.view !==
-        "medicalable" && (
-        <MedicalTable
-          medicals={
-            filteredMedicals
+        <Input
+          value={search}
+          onChange={(
+            event,
+          ) =>
+            onSearchChange(
+              event.target.value,
+            )
           }
-
-          loading={
-            loading
+          placeholder={
+            searchPlaceholder
           }
-
-          onEdit={
-            handleEdit
-          }
-
-          onDelete={
-            handleDelete
-          }
+          className="
+            pl-9
+          "
         />
-      )}
+
+      </div>
 
 
-      {/*
-       * =======================================================
-       * NEXT ACTION
-       *
-       * Kept separate for the Fit → next-stage flow.
-       * =======================================================
-       */}
+      {/* Actions */}
 
-      {filter.view !==
-        "medicalable" && (
-        <MedicalNextAction
-          medicals={
-            filteredMedicals
+      <div
+        className="
+          flex
+          items-center
+          gap-2
+          overflow-x-auto
+        "
+      >
+
+        {/* Filter */}
+
+        <Popover>
+
+          <PopoverTrigger
+            asChild
+          >
+
+            <Button
+              variant="outline"
+              size="sm"
+            >
+              <SlidersHorizontal />
+              Filter
+            </Button>
+
+          </PopoverTrigger>
+
+
+          <PopoverContent
+            align="end"
+            className="w-72"
+          >
+
+            <div
+              className="
+                space-y-4
+              "
+            >
+
+              <div>
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  View
+                </p>
+
+                <p
+                  className="
+                    text-xs
+                    text-muted-foreground
+                  "
+                >
+                  Select medical stage
+                </p>
+              </div>
+
+
+              <Select
+                value={
+                  filter.view
+                }
+                onValueChange={(
+                  value,
+                ) =>
+                  onFilterChange({
+                    ...filter,
+                    view:
+                      value as MedicalFilterState["view"],
+                  })
+                }
+              >
+
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+
+                <SelectContent>
+
+                  <SelectItem
+                    value="medicalable"
+                  >
+                    Medicalable
+                  </SelectItem>
+
+                  <SelectItem
+                    value="all"
+                  >
+                    All
+                  </SelectItem>
+
+                  <SelectItem
+                    value="new"
+                  >
+                    New
+                  </SelectItem>
+
+                  <SelectItem
+                    value="fit"
+                  >
+                    Fit
+                  </SelectItem>
+
+                  <SelectItem
+                    value="unfit"
+                  >
+                    Unfit
+                  </SelectItem>
+
+                  <SelectItem
+                    value="expired"
+                  >
+                    Expired
+                  </SelectItem>
+
+                </SelectContent>
+
+              </Select>
+
+
+              <Separator />
+
+
+              <div>
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Month
+                </p>
+
+                <Select
+                  value={
+                    filter.month
+                  }
+                  onValueChange={(
+                    value,
+                  ) =>
+                    onFilterChange({
+                      ...filter,
+                      month: value,
+                    })
+                  }
+                >
+
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+
+                  <SelectContent>
+
+                    <SelectItem
+                      value="all"
+                    >
+                      All months
+                    </SelectItem>
+
+                  </SelectContent>
+
+                </Select>
+
+              </div>
+
+            </div>
+
+          </PopoverContent>
+
+        </Popover>
+
+
+        {/* Sort */}
+
+        <Popover>
+
+          <PopoverTrigger
+            asChild
+          >
+
+            <Button
+              variant="outline"
+              size="sm"
+            >
+              {sort.mode ===
+              "descending" ? (
+                <ArrowDownAZ />
+              ) : (
+                <ArrowUpAZ />
+              )}
+
+              Sort
+            </Button>
+
+          </PopoverTrigger>
+
+
+          <PopoverContent
+            align="end"
+            className="w-64"
+          >
+
+            <div
+              className="
+                space-y-4
+              "
+            >
+
+              <div>
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Sort by
+                </p>
+              </div>
+
+
+              <Select
+                value={
+                  sort.field
+                }
+                onValueChange={(
+                  value,
+                ) =>
+                  onSortChange({
+                    ...sort,
+                    field:
+                      value as MedicalSortState["field"],
+                  })
+                }
+              >
+
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+
+                  <SelectItem
+                    value="created_at"
+                  >
+                    Created date
+                  </SelectItem>
+
+                  <SelectItem
+                    value="name"
+                  >
+                    Candidate name
+                  </SelectItem>
+
+                  <SelectItem
+                    value="passport_no"
+                  >
+                    Passport number
+                  </SelectItem>
+
+                  <SelectItem
+                    value="medical_date"
+                  >
+                    Medical date
+                  </SelectItem>
+
+                  <SelectItem
+                    value="updated_at"
+                  >
+                    Updated date
+                  </SelectItem>
+
+                </SelectContent>
+
+              </Select>
+
+
+              <ToggleGroup
+                type="single"
+                value={
+                  sort.mode ===
+                  "descending"
+                    ? "descending"
+                    : "ascending"
+                }
+                onValueChange={(
+                  value,
+                ) => {
+
+                  if (!value) {
+                    return;
+                  }
+
+                  onSortChange({
+                    ...sort,
+                    mode:
+                      value as MedicalSortState["mode"],
+                  });
+
+                }}
+                className="w-full"
+              >
+
+                <ToggleGroupItem
+                  value="ascending"
+                  className="flex-1"
+                >
+                  <ArrowUpAZ />
+                  Asc
+                </ToggleGroupItem>
+
+                <ToggleGroupItem
+                  value="descending"
+                  className="flex-1"
+                >
+                  <ArrowDownAZ />
+                  Desc
+                </ToggleGroupItem>
+
+              </ToggleGroup>
+
+            </div>
+
+          </PopoverContent>
+
+        </Popover>
+
+
+        {/* Refresh */}
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={
+            onRefresh
           }
-        />
-      )}
+          disabled={
+            refreshing
+          }
+        >
+          <RefreshCw
+            className={
+              refreshing
+                ? "animate-spin"
+                : undefined
+            }
+          />
+        </Button>
 
 
-      {/*
-       * =======================================================
-       * UNIVERSAL MEDICAL SHEET
-       * =======================================================
-       */}
+        {/* View */}
 
-      <MedicalForm
-        open={
-          formOpen
-        }
+        <ToggleGroup
+          type="single"
+          value={
+            viewMode
+          }
+          onValueChange={(
+            value,
+          ) => {
 
-        medical={
-          editingMedical
-        }
+            if (!value) {
+              return;
+            }
 
-        selectedCandidate={
-          selectedCandidate
-        }
+            onViewModeChange(
+              value as MedicalViewMode,
+            );
 
-        candidates={
-          pendingCandidates
-        }
+          }}
+        >
 
-        onOpenChange={
-          setFormOpen
-        }
+          <ToggleGroupItem
+            value="list"
+            aria-label="List view"
+          >
+            <List />
+          </ToggleGroupItem>
 
-        onSuccess={
-          handleFormSuccess
-        }
-      />
+        </ToggleGroup>
+
+
+        {/* Create */}
+
+        <Button
+          onClick={
+            onCreate
+          }
+        >
+          <Plus />
+          Add Medical
+        </Button>
+
+      </div>
 
     </div>
   );

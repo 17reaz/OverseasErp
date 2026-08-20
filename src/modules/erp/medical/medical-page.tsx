@@ -23,6 +23,9 @@ import {
 
 import {
   MedicalToolbar,
+  type MedicalFilterState,
+  type MedicalSortState,
+  type MedicalViewMode,
 } from "./components/medical-toolbar";
 
 import {
@@ -31,8 +34,19 @@ import {
   getMedicals,
   type Medical,
   type MedicalCandidate,
-  type MedicalStatus,
 } from "./medical-service";
+
+
+const defaultFilter: MedicalFilterState = {
+  view: "medicalable",
+  month: "all",
+};
+
+
+const defaultSort: MedicalSortState = {
+  mode: "custom",
+  field: "created_at",
+};
 
 
 export function MedicalPage() {
@@ -42,72 +56,59 @@ export function MedicalPage() {
     setMedicals,
   ] = useState<Medical[]>([]);
 
-
   const [
     pendingCandidates,
     setPendingCandidates,
-  ] = useState<MedicalCandidate[]>(
-    [],
-  );
-
+  ] = useState<MedicalCandidate[]>([]);
 
   const [
     loading,
     setLoading,
   ] = useState(true);
 
-
   const [
     pendingLoading,
     setPendingLoading,
   ] = useState(true);
-
 
   const [
     formOpen,
     setFormOpen,
   ] = useState(false);
 
-
   const [
     editingMedical,
     setEditingMedical,
-  ] = useState<Medical | null>(
-    null,
-  );
-
+  ] = useState<Medical | null>(null);
 
   const [
     selectedCandidate,
     setSelectedCandidate,
-  ] =
-    useState<MedicalCandidate | null>(
-      null,
-    );
-
+  ] = useState<MedicalCandidate | null>(null);
 
   const [
     search,
     setSearch,
   ] = useState("");
 
-
-  /*
-   * all
-   * medicalable
-   * new
-   * fit
-   * unfit
-   * expired
-   */
   const [
-    status,
-    setStatus,
-  ] = useState<
-    MedicalStatus |
-    "all" |
-    "medicalable"
-  >("medicalable");
+    filter,
+    setFilter,
+  ] = useState<MedicalFilterState>(
+    defaultFilter,
+  );
+
+  const [
+    sort,
+    setSort,
+  ] = useState<MedicalSortState>(
+    defaultSort,
+  );
+
+  const [
+    viewMode,
+    setViewMode,
+  ] = useState<MedicalViewMode>("list");
 
 
   /*
@@ -116,49 +117,44 @@ export function MedicalPage() {
    * =========================================================
    */
 
-  const loadMedicals =
-    useCallback(
-      async () => {
+  const loadMedicals = useCallback(
+    async () => {
 
-        try {
+      try {
 
-          setLoading(true);
+        setLoading(true);
 
-          const {
-            data,
-            error,
-          } = await getMedicals();
+        const {
+          data,
+          error,
+        } = await getMedicals();
 
-
-          if (error) {
-            throw error;
-          }
-
-
-          setMedicals(
-            data ?? [],
-          );
-
-        } catch (error) {
-
-          console.error(
-            error,
-          );
-
-          toast.error(
-            "Failed to load medical records.",
-            "Please try again.",
-          );
-
-        } finally {
-
-          setLoading(false);
-
+        if (error) {
+          throw error;
         }
 
-      },
-      [],
-    );
+        setMedicals(
+          data ?? [],
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        toast.error(
+          "Failed to load medical records.",
+          "Please try again.",
+        );
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    },
+    [],
+  );
 
 
   /*
@@ -167,88 +163,72 @@ export function MedicalPage() {
    * =========================================================
    */
 
-  const loadPending =
-    useCallback(
-      async () => {
+  const loadPending = useCallback(
+    async () => {
 
-        try {
+      try {
 
-          setPendingLoading(
-            true,
-          );
+        setPendingLoading(true);
 
-          const {
-            data,
-            error,
-          } =
-            await getCandidatesWithoutMedical();
+        const {
+          data,
+          error,
+        } =
+          await getCandidatesWithoutMedical();
 
-
-          if (error) {
-            throw error;
-          }
-
-
-          setPendingCandidates(
-            data ?? [],
-          );
-
-        } catch (error) {
-
-          console.error(
-            error,
-          );
-
-          toast.error(
-            "Failed to load medicalable candidates.",
-            "Please try again.",
-          );
-
-        } finally {
-
-          setPendingLoading(
-            false,
-          );
-
+        if (error) {
+          throw error;
         }
 
-      },
-      [],
-    );
+        setPendingCandidates(
+          data ?? [],
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        toast.error(
+          "Failed to load medicalable candidates.",
+          "Please try again.",
+        );
+
+      } finally {
+
+        setPendingLoading(false);
+
+      }
+
+    },
+    [],
+  );
 
 
   /*
    * =========================================================
-   * LOAD EVERYTHING
+   * LOAD ALL
    * =========================================================
    */
 
-  const loadAll =
-    useCallback(
-      async () => {
+  const loadAll = useCallback(
+    async () => {
 
-        await Promise.all([
-          loadMedicals(),
-          loadPending(),
-        ]);
+      await Promise.all([
+        loadMedicals(),
+        loadPending(),
+      ]);
 
-      },
-      [
-        loadMedicals,
-        loadPending,
-      ],
-    );
+    },
+    [
+      loadMedicals,
+      loadPending,
+    ],
+  );
 
-
-  /*
-   * =========================================================
-   * INITIAL LOAD
-   * =========================================================
-   */
 
   useEffect(() => {
 
-    loadAll();
+    void loadAll();
 
   }, [
     loadAll,
@@ -257,7 +237,52 @@ export function MedicalPage() {
 
   /*
    * =========================================================
-   * FILTER MEDICAL RECORDS
+   * MEDICALABLE SEARCH
+   *
+   * Name + Passport
+   * =========================================================
+   */
+
+  const filteredPendingCandidates =
+    useMemo(() => {
+
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (!query) {
+        return pendingCandidates;
+      }
+
+      return pendingCandidates.filter(
+        (candidate) => {
+
+          const name =
+            candidate.name
+              ?.toLowerCase() ?? "";
+
+          const passport =
+            candidate.passport_no
+              ?.toLowerCase() ?? "";
+
+          return (
+            name.includes(query) ||
+            passport.includes(query)
+          );
+
+        },
+      );
+
+    }, [
+      pendingCandidates,
+      search,
+    ]);
+
+
+  /*
+   * =========================================================
+   * MEDICAL SEARCH + FILTER
    * =========================================================
    */
 
@@ -269,76 +294,153 @@ export function MedicalPage() {
           .trim()
           .toLowerCase();
 
+      let result =
+        medicals.filter(
+          (medical) => {
 
-      return medicals.filter(
-        (medical) => {
+            const matchesSearch =
+              !query ||
+              medical.candidate?.name
+                ?.toLowerCase()
+                .includes(query) ||
+              medical.candidate?.passport_no
+                ?.toLowerCase()
+                .includes(query);
 
-          const matchesSearch =
-            !query ||
-            medical.candidate?.name
-              ?.toLowerCase()
-              .includes(query) ||
-            medical.candidate?.passport_no
-              ?.toLowerCase()
-              .includes(query);
+            const matchesStatus =
+              filter.view === "all" ||
+              medical.status === filter.view;
+
+            return (
+              matchesSearch &&
+              matchesStatus
+            );
+
+          },
+        );
 
 
-          const matchesStatus =
-            status === "all" ||
-            status === "medicalable" ||
-            medical.status === status;
+      /*
+       * SORT
+       */
+
+      result = [
+        ...result,
+      ].sort(
+        (a, b) => {
+
+          let first = "";
+          let second = "";
+
+          switch (
+            sort.field
+          ) {
+
+            case "name":
+
+              first =
+                a.candidate?.name ?? "";
+
+              second =
+                b.candidate?.name ?? "";
+
+              break;
+
+            case "passport_no":
+
+              first =
+                a.candidate?.passport_no ?? "";
+
+              second =
+                b.candidate?.passport_no ?? "";
+
+              break;
+
+            case "medical_date":
+
+              first =
+                a.medical_date ?? "";
+
+              second =
+                b.medical_date ?? "";
+
+              break;
+
+            case "updated_at":
+
+              first =
+                a.updated_at ?? "";
+
+              second =
+                b.updated_at ?? "";
+
+              break;
+
+            case "created_at":
+
+            default:
+
+              first =
+                a.created_at ?? "";
+
+              second =
+                b.created_at ?? "";
+
+              break;
+
+          }
 
 
-          return (
-            matchesSearch &&
-            matchesStatus
-          );
+          const comparison =
+            first.localeCompare(
+              second,
+              undefined,
+              {
+                numeric: true,
+                sensitivity: "base",
+              },
+            );
+
+
+          return sort.mode ===
+            "descending"
+            ? -comparison
+            : comparison;
 
         },
       );
 
+
+      return result;
+
     }, [
       medicals,
       search,
-      status,
+      filter.view,
+      sort,
     ]);
 
 
   /*
    * =========================================================
-   * CREATE MEDICAL
-   *
-   * This means:
-   *
-   * + Add Medical
-   *
-   * Candidate is NOT locked yet.
-   * User can search/select candidate.
+   * ADD MEDICAL
    * =========================================================
    */
 
   function handleCreate() {
 
-    setEditingMedical(
-      null,
-    );
+    setEditingMedical(null);
 
-    setSelectedCandidate(
-      null,
-    );
+    setSelectedCandidate(null);
 
-    setFormOpen(
-      true,
-    );
+    setFormOpen(true);
 
   }
 
 
   /*
    * =========================================================
-   * CREATE MEDICAL FROM MEDICALABLE
-   *
-   * Candidate becomes locked inside the sheet.
+   * ADD FROM MEDICALABLE
    * =========================================================
    */
 
@@ -346,26 +448,20 @@ export function MedicalPage() {
     candidate: MedicalCandidate,
   ) {
 
-    setEditingMedical(
-      null,
-    );
+    setEditingMedical(null);
 
     setSelectedCandidate(
       candidate,
     );
 
-    setFormOpen(
-      true,
-    );
+    setFormOpen(true);
 
   }
 
 
   /*
    * =========================================================
-   * EDIT MEDICAL
-   *
-   * Candidate becomes locked inside the sheet.
+   * EDIT
    * =========================================================
    */
 
@@ -377,20 +473,16 @@ export function MedicalPage() {
       medical,
     );
 
-    setSelectedCandidate(
-      null,
-    );
+    setSelectedCandidate(null);
 
-    setFormOpen(
-      true,
-    );
+    setFormOpen(true);
 
   }
 
 
   /*
    * =========================================================
-   * DELETE MEDICAL
+   * DELETE
    * =========================================================
    */
 
@@ -406,7 +498,6 @@ export function MedicalPage() {
         }?`,
       );
 
-
     if (!confirmed) {
       return;
     }
@@ -421,26 +512,20 @@ export function MedicalPage() {
           medical.id,
         );
 
-
       if (error) {
         throw error;
       }
-
 
       toast.success(
         "Medical deleted.",
         "The medical record was deleted successfully.",
       );
 
-
       await loadAll();
 
     } catch (error) {
 
-      console.error(
-        error,
-      );
-
+      console.error(error);
 
       toast.error(
         "Failed to delete medical record.",
@@ -454,39 +539,9 @@ export function MedicalPage() {
 
   /*
    * =========================================================
-   * FORM SUCCESS
-   * =========================================================
-   */
-
-  function handleFormSuccess() {
-
-    setFormOpen(
-      false,
-    );
-
-    setEditingMedical(
-      null,
-    );
-
-    setSelectedCandidate(
-      null,
-    );
-
-
-    loadAll();
-
-  }
-
-
-  /*
-   * =========================================================
-   * NEXT STAGE
+   * NEXT
    *
-   * IMPORTANT:
-   *
-   * এখনো MOFA create করছি না।
-   *
-   * এই জায়গাটা future pipeline connection-এর জন্য।
+   * Actual MOFA connection will come later.
    * =========================================================
    */
 
@@ -495,8 +550,11 @@ export function MedicalPage() {
   ) {
 
     toast.info(
-      "Next stage",
-      `${medical.candidate?.name ?? "Candidate"} is ready for the next stage.`,
+      "Ready for next stage",
+      `${
+        medical.candidate?.name ??
+        "Candidate"
+      } is ready for MOFA.`,
     );
 
   }
@@ -504,66 +562,19 @@ export function MedicalPage() {
 
   /*
    * =========================================================
-   * ACTIVE CONTENT
+   * FORM SUCCESS
    * =========================================================
    */
 
-  function renderContent() {
+  function handleFormSuccess() {
 
-    /*
-     * -------------------------------------------------------
-     * MEDICALABLE
-     * -------------------------------------------------------
-     */
+    setFormOpen(false);
 
-    if (
-      status === "medicalable"
-    ) {
+    setEditingMedical(null);
 
-      return (
-        <MedicalPending
-          candidates={
-            pendingCandidates
-          }
-          loading={
-            pendingLoading
-          }
-          onAddMedical={
-            handleAddMedical
-          }
-        />
-      );
+    setSelectedCandidate(null);
 
-    }
-
-
-    /*
-     * -------------------------------------------------------
-     * MEDICAL RECORDS
-     *
-     * All / New / Fit / Unfit / Expired
-     * -------------------------------------------------------
-     */
-
-    return (
-      <MedicalTable
-        medicals={
-          filteredMedicals
-        }
-        loading={
-          loading
-        }
-        onEdit={
-          handleEdit
-        }
-        onDelete={
-          handleDelete
-        }
-        onNext={
-          handleNext
-        }
-      />
-    );
+    void loadAll();
 
   }
 
@@ -575,87 +586,104 @@ export function MedicalPage() {
    */
 
   return (
-    <div
-      className="
-        space-y-6
-      "
-    >
-
-      {/* =====================================================
-          TOOLBAR
-          ===================================================== */}
+    <div className="space-y-6">
 
       <MedicalToolbar
-
-        search={
-          search
+        search={search}
+        searchPlaceholder={
+          "Search candidate or passport..."
         }
-
-        status={
-          status
-        }
-
-        loading={
-          loading ||
-          pendingLoading
-        }
-
         onSearchChange={
           setSearch
         }
-
-        onStatusChange={
-          setStatus
-        }
-
         onRefresh={
           loadAll
         }
-
         onCreate={
           handleCreate
         }
-
+        refreshing={
+          loading ||
+          pendingLoading
+        }
+        filter={
+          filter
+        }
+        onFilterChange={
+          setFilter
+        }
+        sort={
+          sort
+        }
+        onSortChange={
+          setSort
+        }
+        viewMode={
+          viewMode
+        }
+        onViewModeChange={
+          setViewMode
+        }
       />
 
 
-      {/* =====================================================
-          ACTIVE TABLE
-          ===================================================== */}
+      {filter.view ===
+        "medicalable" ? (
 
-      {renderContent()}
+        <MedicalPending
+          candidates={
+            filteredPendingCandidates
+          }
+          loading={
+            pendingLoading
+          }
+          onAddMedical={
+            handleAddMedical
+          }
+        />
 
+      ) : (
 
-      {/* =====================================================
-          MEDICAL FORM
-          ===================================================== */}
+        <MedicalTable
+          medicals={
+            filteredMedicals
+          }
+          loading={
+            loading
+          }
+          onEdit={
+            handleEdit
+          }
+          onDelete={
+            handleDelete
+          }
+          onNext={
+            handleNext
+          }
+        />
+
+      )}
+
 
       <MedicalForm
-
         open={
           formOpen
         }
-
         medical={
           editingMedical
         }
-
         selectedCandidate={
           selectedCandidate
         }
-
         candidates={
           pendingCandidates
         }
-
         onOpenChange={
           setFormOpen
         }
-
         onSuccess={
           handleFormSuccess
         }
-
       />
 
     </div>

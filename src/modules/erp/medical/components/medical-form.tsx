@@ -2,6 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type FormEvent,
 } from "react";
 
 import {
@@ -44,6 +45,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   UniversalSheet,
@@ -100,18 +112,15 @@ export function MedicalForm({
     setCandidateId,
   ] = useState("");
 
-
   const [
     medicalDate,
     setMedicalDate,
   ] = useState("");
 
-
   const [
     fitDate,
     setFitDate,
   ] = useState("");
-
 
   const [
     status,
@@ -120,31 +129,38 @@ export function MedicalForm({
     "new",
   );
 
-
   const [
     candidateOpen,
     setCandidateOpen,
   ] = useState(false);
-
 
   const [
     loading,
     setLoading,
   ] = useState(false);
 
-
   const [
     error,
     setError,
   ] = useState("");
 
+  /*
+   * New → Fit confirmation
+   */
+  const [
+    showFitConfirmation,
+    setShowFitConfirmation,
+  ] = useState(false);
+
 
   /*
    * =========================================================
-   * CANDIDATE IS LOCKED WHEN:
+   * CANDIDATE LOCK
    *
-   * 1. Editing an existing medical
-   * 2. Creating medical from Medicalable row
+   * Candidate is locked when:
+   *
+   * 1. Editing existing medical
+   * 2. Creating from Medicalable table
    * =========================================================
    */
 
@@ -211,10 +227,9 @@ export function MedicalForm({
     } else {
 
       /*
-       * + Add Medical
+       * Add Medical from toolbar.
        *
-       * No candidate selected yet.
-       * Candidate search remains enabled.
+       * Candidate remains searchable.
        */
 
       setCandidateId(
@@ -241,6 +256,10 @@ export function MedicalForm({
     );
 
     setError("");
+
+    setShowFitConfirmation(
+      false,
+    );
 
   }, [
     medical,
@@ -285,14 +304,15 @@ export function MedicalForm({
       candidateId ||
       medicalDate ||
       fitDate ||
-      status !==
-        "new",
+      status !== "new",
     );
 
 
   /*
    * =========================================================
    * STATUS CHANGE
+   *
+   * New → Fit requires confirmation.
    * =========================================================
    */
 
@@ -303,18 +323,39 @@ export function MedicalForm({
     const nextStatus =
       value as MedicalStatus;
 
+
+    /*
+     * New → Fit
+     *
+     * Do not change the actual
+     * form state until confirmed.
+     */
+
+    if (
+      status === "new" &&
+      nextStatus === "fit"
+    ) {
+
+      setShowFitConfirmation(
+        true,
+      );
+
+      return;
+    }
+
+
     setStatus(
       nextStatus,
     );
 
 
     /*
-     * Fit Date only belongs to Fit.
+     * Fit Date only belongs
+     * to Fit status.
      */
 
     if (
-      nextStatus !==
-      "fit"
+      nextStatus !== "fit"
     ) {
 
       setFitDate(
@@ -331,13 +372,46 @@ export function MedicalForm({
 
   /*
    * =========================================================
+   * CONFIRM NEW → FIT
+   * =========================================================
+   */
+
+  function handleConfirmFit() {
+
+    setStatus(
+      "fit",
+    );
+
+
+    /*
+     * Automatically set today's
+     * date when candidate becomes Fit.
+     */
+
+    setFitDate(
+      new Date()
+        .toISOString()
+        .slice(0, 10),
+    );
+
+
+    setError("");
+
+    setShowFitConfirmation(
+      false,
+    );
+
+  }
+
+
+  /*
+   * =========================================================
    * SUBMIT
    * =========================================================
    */
 
   async function handleSubmit(
-    event:
-      React.FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>,
   ) {
 
     event.preventDefault();
@@ -387,8 +461,7 @@ export function MedicalForm({
 
         /*
          * Candidate is intentionally
-         * never changed after the
-         * record is created.
+         * locked after record creation.
          */
 
         candidate_id:
@@ -460,474 +533,90 @@ export function MedicalForm({
 
 
   return (
-    <UniversalSheet
+    <>
+      <UniversalSheet
 
-      open={
-        open
-      }
+        open={
+          open
+        }
 
-      onOpenChange={
-        onOpenChange
-      }
+        onOpenChange={
+          onOpenChange
+        }
 
-      title={
-        medical
-          ? "Edit Medical"
-          : "Add Medical"
-      }
-
-      description={
-        medical
-          ? "Update the candidate medical record."
-          : "Create a new candidate medical record."
-      }
-
-      onSubmit={
-        handleSubmit
-      }
-
-      submitLabel={
-        medical
-          ? "Update Medical"
-          : "Create Medical"
-      }
-
-      loading={
-        loading
-      }
-
-      disabled={
-        !candidateId
-      }
-
-      hasChanges={
-        hasChanges
-      }
-    >
-
-      {/*
-       * =======================================================
-       * ERROR
-       * =======================================================
-       */}
-
-      {error && (
-
-        <div
-          className="
-            rounded-md
-            border
-            border-destructive/30
-            bg-destructive/10
-            px-3
-            py-2
-            text-sm
-            text-destructive
-          "
-        >
-          {error}
-        </div>
-
-      )}
-
-
-      {/*
-       * =======================================================
-       * CANDIDATE INFORMATION
-       * =======================================================
-       */}
-
-      <FormSection
-
-        title="Candidate Information"
+        title={
+          medical
+            ? "Edit Medical"
+            : "Add Medical"
+        }
 
         description={
-          candidateLocked
-            ? "Candidate is locked for this medical record."
-            : "Select the candidate for this medical record."
+          medical
+            ? "Update the candidate medical record."
+            : "Create a new candidate medical record."
+        }
+
+        onSubmit={
+          handleSubmit
+        }
+
+        submitLabel={
+          medical
+            ? "Update Medical"
+            : "Create Medical"
+        }
+
+        loading={
+          loading
+        }
+
+        disabled={
+          !candidateId
+        }
+
+        hasChanges={
+          hasChanges
         }
       >
 
-        <div
-          className="
-            space-y-2
-          "
-        >
-
-          <Label>
-            Candidate
-          </Label>
-
-
-          {/*
-           * ====================================================
-           * LOCKED CANDIDATE
-           * ====================================================
-           */}
-
-          {candidateLocked ? (
-
-            <div
-              className="
-                flex
-                min-h-10
-                w-full
-                items-center
-                justify-between
-                rounded-md
-                border
-                bg-muted/40
-                px-3
-                py-2
-              "
-            >
-
-              <div
-                className="
-                  min-w-0
-                "
-              >
-
-                {currentCandidate ? (
-
-                  <>
-
-                    <p
-                      className="
-                        truncate
-                        text-sm
-                        font-medium
-                      "
-                    >
-                      {
-                        currentCandidate.name
-                      }
-                    </p>
-
-                    <p
-                      className="
-                        truncate
-                        text-xs
-                        text-muted-foreground
-                      "
-                    >
-                      Passport:{" "}
-                      {
-                        currentCandidate.passport_no
-                      }
-                    </p>
-
-                  </>
-
-                ) : (
-
-                  <p
-                    className="
-                      text-sm
-                      text-muted-foreground
-                    "
-                  >
-                    Candidate
-                  </p>
-
-                )}
-
-              </div>
-
-
-              <Lock
-                className="
-                  ml-3
-                  h-4
-                  w-4
-                  shrink-0
-                  text-muted-foreground
-                "
-              />
-
-            </div>
-
-          ) : (
-
-            /*
-             * ==================================================
-             * SEARCHABLE CANDIDATE
-             * ==================================================
-             */
-
-            <Popover
-
-              open={
-                candidateOpen
-              }
-
-              onOpenChange={
-                setCandidateOpen
-              }
-            >
-
-              <PopoverTrigger
-                asChild
-              >
-
-                <Button
-
-                  type="button"
-
-                  variant="outline"
-
-                  role="combobox"
-
-                  aria-expanded={
-                    candidateOpen
-                  }
-
-                  disabled={
-                    loading
-                  }
-
-                  className="
-                    w-full
-                    justify-between
-                    font-normal
-                  "
-                >
-
-                  {currentCandidate ? (
-
-                    <span
-                      className="
-                        truncate
-                      "
-                    >
-                      {
-                        currentCandidate.name
-                      }
-                      {" — "}
-                      {
-                        currentCandidate.passport_no
-                      }
-                    </span>
-
-                  ) : (
-
-                    <span
-                      className="
-                        text-muted-foreground
-                      "
-                    >
-                      Select candidate
-                    </span>
-
-                  )}
-
-
-                  <ChevronsUpDown
-                    className="
-                      ml-2
-                      h-4
-                      w-4
-                      shrink-0
-                      opacity-50
-                    "
-                  />
-
-                </Button>
-
-              </PopoverTrigger>
-
-
-              <PopoverContent
-
-                align="start"
-
-                className="
-                  w-[var(--radix-popover-trigger-width)]
-                  p-0
-                "
-              >
-
-                <Command>
-
-                  <CommandInput
-                    placeholder="
-                      Search name or passport...
-                    "
-                  />
-
-
-                  <CommandList>
-
-                    <CommandEmpty>
-                      No candidate found.
-                    </CommandEmpty>
-
-
-                    <CommandGroup>
-
-                      {candidates.map(
-                        (
-                          candidate,
-                        ) => (
-
-                          <CommandItem
-
-                            key={
-                              candidate.id
-                            }
-
-                            value={`
-                              ${candidate.name}
-                              ${candidate.passport_no}
-                            `}
-
-                            onSelect={() => {
-
-                              setCandidateId(
-                                candidate.id,
-                              );
-
-                              setCandidateOpen(
-                                false,
-                              );
-
-                              setError(
-                                "",
-                              );
-
-                            }}
-                          >
-
-                            <Check
-
-                              className={cn(
-
-                                "mr-2 h-4 w-4",
-
-                                candidateId ===
-                                  candidate.id
-                                  ? "opacity-100"
-                                  : "opacity-0",
-
-                              )}
-
-                            />
-
-
-                            <div>
-
-                              <p
-                                className="
-                                  text-sm
-                                  font-medium
-                                "
-                              >
-                                {
-                                  candidate.name
-                                }
-                              </p>
-
-
-                              <p
-                                className="
-                                  text-xs
-                                  text-muted-foreground
-                                "
-                              >
-                                Passport:{" "}
-                                {
-                                  candidate.passport_no
-                                }
-                              </p>
-
-                            </div>
-
-                          </CommandItem>
-
-                        ),
-                      )}
-
-                    </CommandGroup>
-
-                  </CommandList>
-
-                </Command>
-
-              </PopoverContent>
-
-            </Popover>
-
-          )}
-
-        </div>
-
-      </FormSection>
-
-
-      {/*
-       * =======================================================
-       * MEDICAL INFORMATION
-       * =======================================================
-       */}
-
-      <FormSection
-
-        title="Medical Information"
-
-        description="
-          Enter medical examination details.
-        "
-      >
-
-        <div
-          className="
-            space-y-4
-          "
-        >
-
-          {/* Medical Date */}
+        {/* =====================================================
+            ERROR
+            ===================================================== */}
+
+        {error && (
 
           <div
             className="
-              space-y-2
+              rounded-md
+              border
+              border-destructive/30
+              bg-destructive/10
+              px-3
+              py-2
+              text-sm
+              text-destructive
             "
           >
-
-            <Label
-              htmlFor="medical-date"
-            >
-              Medical Date
-            </Label>
-
-
-            <Input
-
-              id="medical-date"
-
-              type="date"
-
-              value={
-                medicalDate
-              }
-
-              onChange={(
-                event,
-              ) =>
-                setMedicalDate(
-                  event.target.value,
-                )
-              }
-
-              disabled={
-                loading
-              }
-
-            />
-
+            {error}
           </div>
 
+        )}
 
-          {/* Status */}
+
+        {/* =====================================================
+            CANDIDATE INFORMATION
+            ===================================================== */}
+
+        <FormSection
+
+          title="Candidate Information"
+
+          description={
+            candidateLocked
+              ? "Candidate is locked for this medical record."
+              : "Select the candidate for this medical record."
+          }
+        >
 
           <div
             className="
@@ -936,70 +625,323 @@ export function MedicalForm({
           >
 
             <Label>
-              Status
+              Candidate
             </Label>
 
 
-            <Select
+            {/* =================================================
+                LOCKED CANDIDATE
+                ================================================= */}
 
-              value={
-                status
-              }
+            {candidateLocked ? (
 
-              onValueChange={
-                handleStatusChange
-              }
+              <div
+                className="
+                  flex
+                  min-h-10
+                  w-full
+                  items-center
+                  justify-between
+                  rounded-md
+                  border
+                  bg-muted/40
+                  px-3
+                  py-2
+                "
+              >
 
-              disabled={
-                loading
-              }
-            >
-
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-
-              <SelectContent>
-
-                <SelectItem
-                  value="new"
+                <div
+                  className="
+                    min-w-0
+                  "
                 >
-                  New
-                </SelectItem>
+
+                  {currentCandidate ? (
+
+                    <>
+                      <p
+                        className="
+                          truncate
+                          text-sm
+                          font-medium
+                        "
+                      >
+                        {
+                          currentCandidate.name
+                        }
+                      </p>
+
+                      <p
+                        className="
+                          truncate
+                          text-xs
+                          text-muted-foreground
+                        "
+                      >
+                        Passport:{" "}
+                        {
+                          currentCandidate.passport_no
+                        }
+                      </p>
+                    </>
+
+                  ) : (
+
+                    <p
+                      className="
+                        text-sm
+                        text-muted-foreground
+                      "
+                    >
+                      Candidate
+                    </p>
+
+                  )}
+
+                </div>
 
 
-                <SelectItem
-                  value="fit"
+                <Lock
+                  className="
+                    ml-3
+                    h-4
+                    w-4
+                    shrink-0
+                    text-muted-foreground
+                  "
+                />
+
+              </div>
+
+            ) : (
+
+              /* =================================================
+                 SEARCHABLE CANDIDATE
+                 ================================================= */
+
+              <Popover
+
+                open={
+                  candidateOpen
+                }
+
+                onOpenChange={
+                  setCandidateOpen
+                }
+              >
+
+                <PopoverTrigger
+                  asChild
                 >
-                  Fit
-                </SelectItem>
+
+                  <Button
+
+                    type="button"
+
+                    variant="outline"
+
+                    role="combobox"
+
+                    aria-expanded={
+                      candidateOpen
+                    }
+
+                    disabled={
+                      loading
+                    }
+
+                    className="
+                      w-full
+                      justify-between
+                      font-normal
+                    "
+                  >
+
+                    {currentCandidate ? (
+
+                      <span
+                        className="
+                          truncate
+                        "
+                      >
+                        {
+                          currentCandidate.name
+                        }
+                        {" — "}
+                        {
+                          currentCandidate.passport_no
+                        }
+                      </span>
+
+                    ) : (
+
+                      <span
+                        className="
+                          text-muted-foreground
+                        "
+                      >
+                        Select candidate
+                      </span>
+
+                    )}
 
 
-                <SelectItem
-                  value="unfit"
+                    <ChevronsUpDown
+                      className="
+                        ml-2
+                        h-4
+                        w-4
+                        shrink-0
+                        opacity-50
+                      "
+                    />
+
+                  </Button>
+
+                </PopoverTrigger>
+
+
+                <PopoverContent
+
+                  align="start"
+
+                  className="
+                    w-[var(--radix-popover-trigger-width)]
+                    p-0
+                  "
                 >
-                  Unfit
-                </SelectItem>
+
+                  <Command>
+
+                    <CommandInput
+                      placeholder="
+                        Search name or passport...
+                      "
+                    />
 
 
-                <SelectItem
-                  value="expired"
-                >
-                  Expired
-                </SelectItem>
+                    <CommandList>
 
-              </SelectContent>
+                      <CommandEmpty>
+                        No candidate found.
+                      </CommandEmpty>
 
-            </Select>
+
+                      <CommandGroup>
+
+                        {candidates.map(
+                          (
+                            candidate,
+                          ) => (
+
+                            <CommandItem
+
+                              key={
+                                candidate.id
+                              }
+
+                              value={`${candidate.name} ${candidate.passport_no}`}
+
+                              onSelect={() => {
+
+                                setCandidateId(
+                                  candidate.id,
+                                );
+
+                                setCandidateOpen(
+                                  false,
+                                );
+
+                                setError(
+                                  "",
+                                );
+
+                              }}
+                            >
+
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  candidateId ===
+                                    candidate.id
+                                    ? "opacity-100"
+                                    : "opacity-0",
+                                )}
+                              />
+
+
+                              <div>
+
+                                <p
+                                  className="
+                                    text-sm
+                                    font-medium
+                                  "
+                                >
+                                  {
+                                    candidate.name
+                                  }
+                                </p>
+
+
+                                <p
+                                  className="
+                                    text-xs
+                                    text-muted-foreground
+                                  "
+                                >
+                                  Passport:{" "}
+                                  {
+                                    candidate.passport_no
+                                  }
+                                </p>
+
+                              </div>
+
+                            </CommandItem>
+
+                          ),
+                        )}
+
+                      </CommandGroup>
+
+                    </CommandList>
+
+                  </Command>
+
+                </PopoverContent>
+
+              </Popover>
+
+            )}
 
           </div>
 
+        </FormSection>
 
-          {/* Fit Date */}
 
-          {status ===
-            "fit" && (
+        {/* =====================================================
+            MEDICAL INFORMATION
+            ===================================================== */}
+
+        <FormSection
+
+          title="Medical Information"
+
+          description="
+            Enter medical examination details.
+          "
+        >
+
+          <div
+            className="
+              space-y-4
+            "
+          >
+
+            {/* =================================================
+                MEDICAL DATE
+                ================================================= */}
 
             <div
               className="
@@ -1008,26 +950,26 @@ export function MedicalForm({
             >
 
               <Label
-                htmlFor="fit-date"
+                htmlFor="medical-date"
               >
-                Fit Date
+                Medical Date
               </Label>
 
 
               <Input
 
-                id="fit-date"
+                id="medical-date"
 
                 type="date"
 
                 value={
-                  fitDate
+                  medicalDate
                 }
 
                 onChange={(
                   event,
                 ) =>
-                  setFitDate(
+                  setMedicalDate(
                     event.target.value,
                   )
                 }
@@ -1040,12 +982,237 @@ export function MedicalForm({
 
             </div>
 
-          )}
 
-        </div>
+            {/* =================================================
+                STATUS
+                ================================================= */}
 
-      </FormSection>
+            <div
+              className="
+                space-y-2
+              "
+            >
 
-    </UniversalSheet>
+              <Label>
+                Status
+              </Label>
+
+
+              <Select
+
+                value={
+                  status
+                }
+
+                onValueChange={
+                  handleStatusChange
+                }
+
+                disabled={
+                  loading
+                }
+              >
+
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+
+                <SelectContent>
+
+                  <SelectItem
+                    value="new"
+                  >
+                    New
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="fit"
+                  >
+                    Fit
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="unfit"
+                  >
+                    Unfit
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="expired"
+                  >
+                    Expired
+                  </SelectItem>
+
+                </SelectContent>
+
+              </Select>
+
+            </div>
+
+
+            {/* =================================================
+                FIT DATE
+                ================================================= */}
+
+            {status === "fit" && (
+
+              <div
+                className="
+                  space-y-2
+                "
+              >
+
+                <Label
+                  htmlFor="fit-date"
+                >
+                  Fit Date
+                </Label>
+
+
+                <Input
+
+                  id="fit-date"
+
+                  type="date"
+
+                  value={
+                    fitDate
+                  }
+
+                  onChange={(
+                    event,
+                  ) =>
+                    setFitDate(
+                      event.target.value,
+                    )
+                  }
+
+                  disabled={
+                    loading
+                  }
+
+                />
+
+
+                <p
+                  className="
+                    text-xs
+                    text-muted-foreground
+                  "
+                >
+                  Fit date is automatically
+                  set when a New medical is
+                  confirmed as Fit.
+                </p>
+
+              </div>
+
+            )}
+
+          </div>
+
+        </FormSection>
+
+      </UniversalSheet>
+
+
+      {/* =======================================================
+          NEW → FIT CONFIRMATION
+          ======================================================= */}
+
+      <AlertDialog
+
+        open={
+          showFitConfirmation
+        }
+
+        onOpenChange={
+          setShowFitConfirmation
+        }
+      >
+
+        <AlertDialogContent>
+
+          <AlertDialogHeader>
+
+            <AlertDialogTitle>
+              Confirm Medical Fit
+            </AlertDialogTitle>
+
+
+            <AlertDialogDescription>
+
+              Are you sure you want to
+              mark{" "}
+
+              <span
+                className="
+                  font-medium
+                  text-foreground
+                "
+              >
+                {
+                  currentCandidate?.name ??
+                  "this candidate"
+                }
+              </span>
+
+              {" "}as Fit?
+
+              <br />
+
+              This will move the medical
+              record from{" "}
+              <span
+                className="
+                  font-medium
+                  text-foreground
+                "
+              >
+                New
+              </span>
+              {" "}to{" "}
+              <span
+                className="
+                  font-medium
+                  text-foreground
+                "
+              >
+                Fit
+              </span>
+              {" "}and set the Fit Date
+              automatically.
+
+            </AlertDialogDescription>
+
+          </AlertDialogHeader>
+
+
+          <AlertDialogFooter>
+
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+
+            <AlertDialogAction
+              onClick={
+                handleConfirmFit
+              }
+            >
+              Confirm Fit
+            </AlertDialogAction>
+
+          </AlertDialogFooter>
+
+        </AlertDialogContent>
+
+      </AlertDialog>
+
+    </>
   );
 }
