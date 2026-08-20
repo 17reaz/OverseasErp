@@ -414,19 +414,29 @@ export async function getCandidatesWithoutMedical() {
     );
 
 
-  const pending =
-    (candidates ?? []).filter(
+  const pending: MedicalCandidate[] =
+  (candidates ?? [])
+    .filter(
       (candidate) =>
         !medicalCandidateIds.has(
           candidate.id,
         ),
-    );
+    )
+    .map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      passport_no: candidate.passport_no,
+      received_date: candidate.received_date,
+      country: candidate.country,
+      sl: candidate.sl,
+      agent_id: candidate.agent_id,
+      agent: Array.isArray(candidate.agent)
+        ? candidate.agent[0] ?? null
+        : candidate.agent,
+    }));
 
-
-  return {
-    data:
-      pending as MedicalCandidate[],
-
-    error: null,
-  };
+return {
+  data: pending,
+  error: null,
+};
 }
