@@ -1,38 +1,97 @@
 import { supabase } from "@/lib/supabase/client";
 
+
 export type MedicalStatus =
   | "new"
   | "fit"
   | "unfit"
   | "expired";
 
+
+export type MedicalCandidateCountry =
+  | "Saudi Arabia"
+  | "Mauritius"
+  | "Laos"
+  | "Malaysia"
+  | "Belarus"
+  | null;
+
+
+export interface MedicalCandidateAgent {
+  id: string;
+  name: string | null;
+  code: string | null;
+}
+
+
 export interface MedicalCandidate {
   id: string;
+
   name: string;
+
   passport_no: string;
+
   received_date: string | null;
+
+  country:
+    MedicalCandidateCountry;
+
+  sl: number | null;
+
+  agent_id: string | null;
+
+  agent:
+    MedicalCandidateAgent | null;
 }
+
 
 export interface Medical {
   id: string;
+
   tenant_id: string;
+
   candidate_id: string;
-  medical_date: string | null;
-  fit_date: string | null;
-  status: MedicalStatus;
+
+  medical_date:
+    string | null;
+
+  fit_date:
+    string | null;
+
+  status:
+    MedicalStatus;
+
   created_at: string;
+
   updated_at: string;
-  candidate?: MedicalCandidate | null;
+
+  candidate?:
+    MedicalCandidate | null;
 }
+
 
 export interface MedicalInput {
   candidate_id: string;
-  medical_date: string | null;
-  fit_date: string | null;
-  status: MedicalStatus;
+
+  medical_date:
+    string | null;
+
+  fit_date:
+    string | null;
+
+  status:
+    MedicalStatus;
 }
 
+
+/*
+ * =========================================================
+ * GET MEDICALS
+ * =========================================================
+ */
+
 export async function getMedicals() {
+
   const {
     data,
     error,
@@ -44,22 +103,44 @@ export async function getMedicals() {
         id,
         name,
         passport_no,
-        received_date
+        received_date,
+        country,
+        sl,
+        agent_id,
+        agent:agents (
+          id,
+          name,
+          code
+        )
       )
     `)
-    .order("created_at", {
-      ascending: false,
-    });
+    .order(
+      "created_at",
+      {
+        ascending: false,
+      },
+    );
+
 
   return {
-    data: data as Medical[] | null,
+    data:
+      data as Medical[] | null,
+
     error,
   };
 }
 
+
+/*
+ * =========================================================
+ * CREATE MEDICAL
+ * =========================================================
+ */
+
 export async function createMedical(
   input: MedicalInput,
 ) {
+
   const {
     data: {
       user,
@@ -67,9 +148,11 @@ export async function createMedical(
     error: userError,
   } = await supabase.auth.getUser();
 
+
   if (userError) {
     throw userError;
   }
+
 
   if (!user) {
     throw new Error(
@@ -77,18 +160,24 @@ export async function createMedical(
     );
   }
 
+
   const {
     data: profile,
     error: profileError,
   } = await supabase
     .from("profiles")
     .select("tenant_id")
-    .eq("id", user.id)
+    .eq(
+      "id",
+      user.id,
+    )
     .single();
+
 
   if (profileError) {
     throw profileError;
   }
+
 
   if (!profile?.tenant_id) {
     throw new Error(
@@ -96,21 +185,31 @@ export async function createMedical(
     );
   }
 
+
   const {
     data,
     error,
   } = await supabase
     .from("medicals")
     .insert({
-      tenant_id: profile.tenant_id,
-      candidate_id: input.candidate_id,
+      tenant_id:
+        profile.tenant_id,
+
+      candidate_id:
+        input.candidate_id,
+
       medical_date:
-        input.medical_date || null,
+        input.medical_date ||
+        null,
+
       fit_date:
         input.status === "fit"
-          ? input.fit_date || null
+          ? input.fit_date ||
+            null
           : null,
-      status: input.status,
+
+      status:
+        input.status,
     })
     .select(`
       *,
@@ -118,72 +217,133 @@ export async function createMedical(
         id,
         name,
         passport_no,
-        received_date
+        received_date,
+        country,
+        sl,
+        agent_id,
+        agent:agents (
+          id,
+          name,
+          code
+        )
       )
     `)
     .single();
 
+
   return {
-    data: data as Medical | null,
+    data:
+      data as Medical | null,
+
     error,
   };
 }
+
+
+/*
+ * =========================================================
+ * UPDATE MEDICAL
+ * =========================================================
+ */
 
 export async function updateMedical(
   id: string,
   input: MedicalInput,
 ) {
+
   const {
     data,
     error,
   } = await supabase
     .from("medicals")
     .update({
-      candidate_id: input.candidate_id,
+      candidate_id:
+        input.candidate_id,
+
       medical_date:
-        input.medical_date || null,
+        input.medical_date ||
+        null,
+
       fit_date:
         input.status === "fit"
-          ? input.fit_date || null
+          ? input.fit_date ||
+            null
           : null,
-      status: input.status,
+
+      status:
+        input.status,
+
       updated_at:
         new Date().toISOString(),
     })
-    .eq("id", id)
+    .eq(
+      "id",
+      id,
+    )
     .select(`
       *,
       candidate:candidates (
         id,
         name,
         passport_no,
-        received_date
+        received_date,
+        country,
+        sl,
+        agent_id,
+        agent:agents (
+          id,
+          name,
+          code
+        )
       )
     `)
     .single();
 
+
   return {
-    data: data as Medical | null,
+    data:
+      data as Medical | null,
+
     error,
   };
 }
 
+
+/*
+ * =========================================================
+ * DELETE MEDICAL
+ * =========================================================
+ */
+
 export async function deleteMedical(
   id: string,
 ) {
+
   const {
     error,
   } = await supabase
     .from("medicals")
     .delete()
-    .eq("id", id);
+    .eq(
+      "id",
+      id,
+    );
+
 
   return {
     error,
   };
 }
 
+
+/*
+ * =========================================================
+ * GET CANDIDATES WITHOUT MEDICAL
+ * =========================================================
+ */
+
 export async function getCandidatesWithoutMedical() {
+
   const {
     data: candidates,
     error: candidatesError,
@@ -193,32 +353,57 @@ export async function getCandidatesWithoutMedical() {
       id,
       name,
       passport_no,
-      received_date
+      received_date,
+      country,
+      sl,
+      agent_id,
+      agent:agents (
+        id,
+        name,
+        code
+      )
     `)
-    .order("sl", {
-      ascending: false,
-    });
+    .eq(
+      "is_deleted",
+      false,
+    )
+    .order(
+      "sl",
+      {
+        ascending: false,
+      },
+    );
+
 
   if (candidatesError) {
+
     return {
       data: null,
       error: candidatesError,
     };
+
   }
+
 
   const {
     data: medicals,
     error: medicalError,
   } = await supabase
     .from("medicals")
-    .select("candidate_id");
+    .select(
+      "candidate_id",
+    );
+
 
   if (medicalError) {
+
     return {
       data: null,
       error: medicalError,
     };
+
   }
+
 
   const medicalCandidateIds =
     new Set(
@@ -228,6 +413,7 @@ export async function getCandidatesWithoutMedical() {
       ),
     );
 
+
   const pending =
     (candidates ?? []).filter(
       (candidate) =>
@@ -236,9 +422,11 @@ export async function getCandidatesWithoutMedical() {
         ),
     );
 
+
   return {
     data:
       pending as MedicalCandidate[],
+
     error: null,
   };
 }

@@ -21,11 +21,6 @@ import {
 } from "@/components/ui/separator";
 
 import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
-
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -39,8 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import {
-  type MedicalStatus,
+import type {
+  MedicalStatus,
 } from "../medical-service";
 
 
@@ -112,6 +107,72 @@ interface MedicalToolbarProps {
 }
 
 
+function getMonthOptions() {
+
+  const months: {
+    value: string;
+    label: string;
+  }[] = [];
+
+
+  const currentDate =
+    new Date();
+
+
+  for (
+    let index = 0;
+    index < 12;
+    index++
+  ) {
+
+    const date =
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() -
+          index,
+        1,
+      );
+
+
+    const year =
+      date.getFullYear();
+
+
+    const month =
+      String(
+        date.getMonth() + 1,
+      ).padStart(
+        2,
+        "0",
+      );
+
+
+    const value =
+      `${year}-${month}`;
+
+
+    const label =
+      date.toLocaleDateString(
+        "en-US",
+        {
+          month: "long",
+          year: "numeric",
+        },
+      );
+
+
+    months.push({
+      value,
+      label,
+    });
+
+  }
+
+
+  return months;
+}
+
+
 export function MedicalToolbar({
   search,
   searchPlaceholder =
@@ -128,6 +189,10 @@ export function MedicalToolbar({
   onViewModeChange,
 }: MedicalToolbarProps) {
 
+  const monthOptions =
+    getMonthOptions();
+
+
   return (
     <div
       className="
@@ -140,7 +205,9 @@ export function MedicalToolbar({
       "
     >
 
-      {/* Search */}
+      {/* =====================================================
+          SEARCH
+          ===================================================== */}
 
       <div
         className="
@@ -163,7 +230,9 @@ export function MedicalToolbar({
         />
 
         <Input
-          value={search}
+          value={
+            search
+          }
           onChange={(
             event,
           ) =>
@@ -182,7 +251,9 @@ export function MedicalToolbar({
       </div>
 
 
-      {/* Actions */}
+      {/* =====================================================
+          ACTIONS
+          ===================================================== */}
 
       <div
         className="
@@ -193,7 +264,9 @@ export function MedicalToolbar({
         "
       >
 
-        {/* Filter */}
+        {/* ===================================================
+            FILTER
+            =================================================== */}
 
         <Popover>
 
@@ -205,8 +278,11 @@ export function MedicalToolbar({
               variant="outline"
               size="sm"
             >
+
               <SlidersHorizontal />
+
               Filter
+
             </Button>
 
           </PopoverTrigger>
@@ -224,6 +300,7 @@ export function MedicalToolbar({
             >
 
               <div>
+
                 <p
                   className="
                     text-sm
@@ -241,6 +318,7 @@ export function MedicalToolbar({
                 >
                   Select medical stage
                 </p>
+
               </div>
 
 
@@ -249,7 +327,7 @@ export function MedicalToolbar({
                   filter.view
                 }
                 onValueChange={(
-                  value,
+                  value: string,
                 ) =>
                   onFilterChange({
                     ...filter,
@@ -272,11 +350,13 @@ export function MedicalToolbar({
                     Medicalable
                   </SelectItem>
 
+
                   <SelectItem
                     value="all"
                   >
                     All
                   </SelectItem>
+
 
                   <SelectItem
                     value="new"
@@ -284,17 +364,20 @@ export function MedicalToolbar({
                     New
                   </SelectItem>
 
+
                   <SelectItem
                     value="fit"
                   >
                     Fit
                   </SelectItem>
 
+
                   <SelectItem
                     value="unfit"
                   >
                     Unfit
                   </SelectItem>
+
 
                   <SelectItem
                     value="expired"
@@ -311,6 +394,7 @@ export function MedicalToolbar({
 
 
               <div>
+
                 <p
                   className="
                     text-sm
@@ -320,35 +404,76 @@ export function MedicalToolbar({
                   Month
                 </p>
 
-                <Select
-                  value={
-                    filter.month
-                  }
-                  onValueChange={(
-                    value,
-                  ) =>
-                    onFilterChange({
-                      ...filter,
-                      month: value,
-                    })
-                  }
+                <p
+                  className="
+                    text-xs
+                    text-muted-foreground
+                  "
+                >
+                  Filter by medical date
+                </p>
+
+
+                <div
+                  className="
+                    mt-2
+                  "
                 >
 
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <Select
+                    value={
+                      filter.month
+                    }
+                    onValueChange={(
+                      value: string,
+                    ) =>
+                      onFilterChange({
+                        ...filter,
+                        month: value,
+                      })
+                    }
+                  >
 
-                  <SelectContent>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
 
-                    <SelectItem
-                      value="all"
-                    >
-                      All months
-                    </SelectItem>
 
-                  </SelectContent>
+                    <SelectContent>
 
-                </Select>
+                      <SelectItem
+                        value="all"
+                      >
+                        All months
+                      </SelectItem>
+
+
+                      {monthOptions.map(
+                        (
+                          month,
+                        ) => (
+
+                          <SelectItem
+                            key={
+                              month.value
+                            }
+                            value={
+                              month.value
+                            }
+                          >
+                            {
+                              month.label
+                            }
+                          </SelectItem>
+
+                        ),
+                      )}
+
+                    </SelectContent>
+
+                  </Select>
+
+                </div>
 
               </div>
 
@@ -359,7 +484,9 @@ export function MedicalToolbar({
         </Popover>
 
 
-        {/* Sort */}
+        {/* ===================================================
+            SORT
+            =================================================== */}
 
         <Popover>
 
@@ -371,14 +498,20 @@ export function MedicalToolbar({
               variant="outline"
               size="sm"
             >
+
               {sort.mode ===
               "descending" ? (
+
                 <ArrowDownAZ />
+
               ) : (
+
                 <ArrowUpAZ />
+
               )}
 
               Sort
+
             </Button>
 
           </PopoverTrigger>
@@ -395,16 +528,14 @@ export function MedicalToolbar({
               "
             >
 
-              <div>
-                <p
-                  className="
-                    text-sm
-                    font-medium
-                  "
-                >
-                  Sort by
-                </p>
-              </div>
+              <p
+                className="
+                  text-sm
+                  font-medium
+                "
+              >
+                Sort by
+              </p>
 
 
               <Select
@@ -412,7 +543,7 @@ export function MedicalToolbar({
                   sort.field
                 }
                 onValueChange={(
-                  value,
+                  value: string,
                 ) =>
                   onSortChange({
                     ...sort,
@@ -426,6 +557,7 @@ export function MedicalToolbar({
                   <SelectValue />
                 </SelectTrigger>
 
+
                 <SelectContent>
 
                   <SelectItem
@@ -434,11 +566,13 @@ export function MedicalToolbar({
                     Created date
                   </SelectItem>
 
+
                   <SelectItem
                     value="name"
                   >
                     Candidate name
                   </SelectItem>
+
 
                   <SelectItem
                     value="passport_no"
@@ -446,11 +580,13 @@ export function MedicalToolbar({
                     Passport number
                   </SelectItem>
 
+
                   <SelectItem
                     value="medical_date"
                   >
                     Medical date
                   </SelectItem>
+
 
                   <SelectItem
                     value="updated_at"
@@ -463,49 +599,70 @@ export function MedicalToolbar({
               </Select>
 
 
-              <ToggleGroup
-                type="single"
-                value={
-                  sort.mode ===
-                  "descending"
-                    ? "descending"
-                    : "ascending"
-                }
-                onValueChange={(
-                  value,
-                ) => {
+              {/* Asc / Desc */}
 
-                  if (!value) {
-                    return;
-                  }
-
-                  onSortChange({
-                    ...sort,
-                    mode:
-                      value as MedicalSortState["mode"],
-                  });
-
-                }}
-                className="w-full"
+              <div
+                className="
+                  flex
+                  w-full
+                  gap-1
+                "
               >
 
-                <ToggleGroupItem
-                  value="ascending"
-                  className="flex-1"
+                <Button
+                  type="button"
+                  variant={
+                    sort.mode ===
+                    "descending"
+                      ? "outline"
+                      : "secondary"
+                  }
+                  className="
+                    flex-1
+                  "
+                  onClick={() =>
+                    onSortChange({
+                      ...sort,
+                      mode:
+                        "ascending",
+                    })
+                  }
                 >
+
                   <ArrowUpAZ />
+
                   Asc
-                </ToggleGroupItem>
 
-                <ToggleGroupItem
-                  value="descending"
-                  className="flex-1"
+                </Button>
+
+
+                <Button
+                  type="button"
+                  variant={
+                    sort.mode ===
+                    "descending"
+                      ? "secondary"
+                      : "outline"
+                  }
+                  className="
+                    flex-1
+                  "
+                  onClick={() =>
+                    onSortChange({
+                      ...sort,
+                      mode:
+                        "descending",
+                    })
+                  }
                 >
-                  <ArrowDownAZ />
-                  Desc
-                </ToggleGroupItem>
 
-              </ToggleGroup>
+                  <ArrowDownAZ />
+
+                  Desc
+
+                </Button>
+
+              </div>
 
             </div>
 
@@ -514,7 +671,9 @@ export function MedicalToolbar({
         </Popover>
 
 
-        {/* Refresh */}
+        {/* ===================================================
+            REFRESH
+            =================================================== */}
 
         <Button
           variant="outline"
@@ -526,6 +685,7 @@ export function MedicalToolbar({
             refreshing
           }
         >
+
           <RefreshCw
             className={
               refreshing
@@ -533,50 +693,48 @@ export function MedicalToolbar({
                 : undefined
             }
           />
+
         </Button>
 
 
-        {/* View */}
+        {/* ===================================================
+            LIST VIEW
+            =================================================== */}
 
-        <ToggleGroup
-          type="single"
-          value={
-            viewMode
+        <Button
+          type="button"
+          variant={
+            viewMode === "list"
+              ? "secondary"
+              : "outline"
           }
-          onValueChange={(
-            value,
-          ) => {
-
-            if (!value) {
-              return;
-            }
-
+          size="icon"
+          onClick={() =>
             onViewModeChange(
-              value as MedicalViewMode,
-            );
-
-          }}
+              "list",
+            )
+          }
         >
 
-          <ToggleGroupItem
-            value="list"
-            aria-label="List view"
-          >
-            <List />
-          </ToggleGroupItem>
+          <List />
 
-        </ToggleGroup>
+        </Button>
 
 
-        {/* Create */}
+        {/* ===================================================
+            CREATE
+            =================================================== */}
 
         <Button
           onClick={
             onCreate
           }
         >
+
           <Plus />
+
           Add Medical
+
         </Button>
 
       </div>

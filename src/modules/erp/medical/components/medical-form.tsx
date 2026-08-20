@@ -275,22 +275,24 @@ export function MedicalForm({
    */
 
   const currentCandidate =
-    useMemo(
-      () =>
-        candidates.find(
-          (candidate) =>
-            candidate.id ===
-            candidateId,
-        ) ??
-        selectedCandidate ??
-        null,
+  useMemo(
+    () =>
+      candidates.find(
+        (candidate) =>
+          candidate.id ===
+          candidateId,
+      ) ??
+      selectedCandidate ??
+      medical?.candidate ??
+      null,
 
-      [
-        candidates,
-        candidateId,
-        selectedCandidate,
-      ],
-    );
+    [
+      candidates,
+      candidateId,
+      selectedCandidate,
+      medical,
+    ],
+  );
 
 
   /*

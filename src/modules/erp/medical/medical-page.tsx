@@ -56,40 +56,50 @@ export function MedicalPage() {
     setMedicals,
   ] = useState<Medical[]>([]);
 
+
   const [
     pendingCandidates,
     setPendingCandidates,
   ] = useState<MedicalCandidate[]>([]);
+
 
   const [
     loading,
     setLoading,
   ] = useState(true);
 
+
   const [
     pendingLoading,
     setPendingLoading,
   ] = useState(true);
+
 
   const [
     formOpen,
     setFormOpen,
   ] = useState(false);
 
+
   const [
     editingMedical,
     setEditingMedical,
   ] = useState<Medical | null>(null);
 
+
   const [
     selectedCandidate,
     setSelectedCandidate,
-  ] = useState<MedicalCandidate | null>(null);
+  ] = useState<MedicalCandidate | null>(
+    null,
+  );
+
 
   const [
     search,
     setSearch,
   ] = useState("");
+
 
   const [
     filter,
@@ -98,6 +108,7 @@ export function MedicalPage() {
     defaultFilter,
   );
 
+
   const [
     sort,
     setSort,
@@ -105,10 +116,13 @@ export function MedicalPage() {
     defaultSort,
   );
 
+
   const [
     viewMode,
     setViewMode,
-  ] = useState<MedicalViewMode>("list");
+  ] = useState<MedicalViewMode>(
+    "list",
+  );
 
 
   /*
@@ -238,8 +252,6 @@ export function MedicalPage() {
   /*
    * =========================================================
    * MEDICALABLE SEARCH
-   *
-   * Name + Passport
    * =========================================================
    */
 
@@ -282,7 +294,7 @@ export function MedicalPage() {
 
   /*
    * =========================================================
-   * MEDICAL SEARCH + FILTER
+   * MEDICAL SEARCH + FILTER + MONTH + SORT
    * =========================================================
    */
 
@@ -294,9 +306,14 @@ export function MedicalPage() {
           .trim()
           .toLowerCase();
 
+
       let result =
         medicals.filter(
           (medical) => {
+
+            /*
+             * Search
+             */
 
             const matchesSearch =
               !query ||
@@ -307,13 +324,41 @@ export function MedicalPage() {
                 ?.toLowerCase()
                 .includes(query);
 
+
+            /*
+             * Status
+             */
+
             const matchesStatus =
               filter.view === "all" ||
-              medical.status === filter.view;
+              medical.status ===
+                filter.view;
+
+
+            /*
+             * Month
+             *
+             * Month is based on
+             * medical_date.
+             *
+             * Format:
+             * YYYY-MM
+             */
+
+            const matchesMonth =
+              filter.month === "all" ||
+              Boolean(
+                medical.medical_date &&
+                medical.medical_date.startsWith(
+                  filter.month,
+                ),
+              );
+
 
             return (
               matchesSearch &&
-              matchesStatus
+              matchesStatus &&
+              matchesMonth
             );
 
           },
@@ -321,7 +366,9 @@ export function MedicalPage() {
 
 
       /*
+       * =======================================================
        * SORT
+       * =======================================================
        */
 
       result = [
@@ -331,6 +378,7 @@ export function MedicalPage() {
 
           let first = "";
           let second = "";
+
 
           switch (
             sort.field
@@ -346,15 +394,19 @@ export function MedicalPage() {
 
               break;
 
+
             case "passport_no":
 
               first =
-                a.candidate?.passport_no ?? "";
+                a.candidate?.passport_no ??
+                "";
 
               second =
-                b.candidate?.passport_no ?? "";
+                b.candidate?.passport_no ??
+                "";
 
               break;
+
 
             case "medical_date":
 
@@ -366,6 +418,7 @@ export function MedicalPage() {
 
               break;
 
+
             case "updated_at":
 
               first =
@@ -375,6 +428,7 @@ export function MedicalPage() {
                 b.updated_at ?? "";
 
               break;
+
 
             case "created_at":
 
@@ -402,10 +456,15 @@ export function MedicalPage() {
             );
 
 
-          return sort.mode ===
+          if (
+            sort.mode ===
             "descending"
-            ? -comparison
-            : comparison;
+          ) {
+            return -comparison;
+          }
+
+
+          return comparison;
 
         },
       );
@@ -417,30 +476,37 @@ export function MedicalPage() {
       medicals,
       search,
       filter.view,
+      filter.month,
       sort,
     ]);
 
 
   /*
    * =========================================================
-   * ADD MEDICAL
+   * CREATE FROM TOOLBAR
    * =========================================================
    */
 
   function handleCreate() {
 
-    setEditingMedical(null);
+    setEditingMedical(
+      null,
+    );
 
-    setSelectedCandidate(null);
+    setSelectedCandidate(
+      null,
+    );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
 
   /*
    * =========================================================
-   * ADD FROM MEDICALABLE
+   * CREATE FROM MEDICALABLE
    * =========================================================
    */
 
@@ -448,13 +514,17 @@ export function MedicalPage() {
     candidate: MedicalCandidate,
   ) {
 
-    setEditingMedical(null);
+    setEditingMedical(
+      null,
+    );
 
     setSelectedCandidate(
       candidate,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
@@ -473,9 +543,13 @@ export function MedicalPage() {
       medical,
     );
 
-    setSelectedCandidate(null);
+    setSelectedCandidate(
+      null,
+    );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
@@ -498,6 +572,7 @@ export function MedicalPage() {
         }?`,
       );
 
+
     if (!confirmed) {
       return;
     }
@@ -512,14 +587,17 @@ export function MedicalPage() {
           medical.id,
         );
 
+
       if (error) {
         throw error;
       }
+
 
       toast.success(
         "Medical deleted.",
         "The medical record was deleted successfully.",
       );
+
 
       await loadAll();
 
@@ -539,9 +617,10 @@ export function MedicalPage() {
 
   /*
    * =========================================================
-   * NEXT
+   * FIT → NEXT
    *
-   * Actual MOFA connection will come later.
+   * Actual MOFA connection will be implemented
+   * when MOFA module is ready.
    * =========================================================
    */
 
@@ -568,11 +647,17 @@ export function MedicalPage() {
 
   function handleFormSuccess() {
 
-    setFormOpen(false);
+    setFormOpen(
+      false,
+    );
 
-    setEditingMedical(null);
+    setEditingMedical(
+      null,
+    );
 
-    setSelectedCandidate(null);
+    setSelectedCandidate(
+      null,
+    );
 
     void loadAll();
 
@@ -581,7 +666,7 @@ export function MedicalPage() {
 
   /*
    * =========================================================
-   * PAGE
+   * RENDER
    * =========================================================
    */
 
@@ -589,41 +674,56 @@ export function MedicalPage() {
     <div className="space-y-6">
 
       <MedicalToolbar
-        search={search}
+
+        search={
+          search
+        }
+
         searchPlaceholder={
           "Search candidate or passport..."
         }
+
         onSearchChange={
           setSearch
         }
+
         onRefresh={
           loadAll
         }
+
         onCreate={
           handleCreate
         }
+
         refreshing={
           loading ||
           pendingLoading
         }
+
         filter={
           filter
         }
+
         onFilterChange={
           setFilter
         }
+
         sort={
           sort
         }
+
         onSortChange={
           setSort
         }
+
         viewMode={
           viewMode
         }
+
         onViewModeChange={
           setViewMode
         }
+
       />
 
 
@@ -631,59 +731,76 @@ export function MedicalPage() {
         "medicalable" ? (
 
         <MedicalPending
+
           candidates={
             filteredPendingCandidates
           }
+
           loading={
             pendingLoading
           }
+
           onAddMedical={
             handleAddMedical
           }
+
         />
 
       ) : (
 
         <MedicalTable
+
           medicals={
             filteredMedicals
           }
+
           loading={
             loading
           }
+
           onEdit={
             handleEdit
           }
+
           onDelete={
             handleDelete
           }
+
           onNext={
             handleNext
           }
+
         />
 
       )}
 
 
       <MedicalForm
+
         open={
           formOpen
         }
+
         medical={
           editingMedical
         }
+
         selectedCandidate={
           selectedCandidate
         }
+
         candidates={
           pendingCandidates
         }
+
         onOpenChange={
           setFormOpen
         }
+
         onSuccess={
           handleFormSuccess
         }
+
       />
 
     </div>

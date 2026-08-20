@@ -13,6 +13,7 @@ import type {
   MedicalCandidate,
 } from "../medical-service";
 
+
 interface MedicalPendingProps {
   candidates: MedicalCandidate[];
 
@@ -33,6 +34,7 @@ interface MedicalPendingProps {
   ) => void;
 }
 
+
 export function MedicalPending({
   candidates,
   loading = false,
@@ -44,7 +46,9 @@ export function MedicalPending({
 }: MedicalPendingProps) {
 
   const totalItems =
-    total ?? candidates.length;
+    total ??
+    candidates.length;
+
 
   const totalPages =
     Math.max(
@@ -55,11 +59,13 @@ export function MedicalPending({
       ),
     );
 
+
   const currentPage =
     Math.min(
-      page,
+      Math.max(page, 1),
       totalPages,
     );
+
 
   const startItem =
     totalItems === 0
@@ -68,12 +74,14 @@ export function MedicalPending({
           pageSize +
         1;
 
+
   const endItem =
     Math.min(
       currentPage *
         pageSize,
       totalItems,
     );
+
 
   return (
     <div
@@ -355,12 +363,16 @@ export function MedicalPending({
                         text-sm
                       "
                     >
+
                       {candidate.sl ??
-                        (currentPage -
-                          1) *
-                          pageSize +
+                        (
+                          (currentPage -
+                            1) *
+                            pageSize +
                           index +
-                          1}
+                          1
+                        )}
+
                     </td>
 
 
@@ -734,10 +746,12 @@ export function MedicalPending({
                 text-sm
               "
             >
+
               Page{" "}
               {currentPage}{" "}
               of{" "}
               {totalPages}
+
             </div>
 
 
