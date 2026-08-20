@@ -9,13 +9,21 @@ import {
 } from "@/components/ui/button";
 
 import {
+  Badge,
+} from "@/components/ui/badge";
+
+import {
   Card,
-  CardContent,
 } from "@/components/ui/card";
 
 import {
-  Badge,
-} from "@/components/ui/badge";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import {
   DropdownMenu,
@@ -27,6 +35,7 @@ import {
 import type {
   Medical,
 } from "../medical-service";
+
 
 interface MedicalTableProps {
   medicals: Medical[];
@@ -46,7 +55,9 @@ interface MedicalTableProps {
 function getStatusVariant(
   status: Medical["status"],
 ) {
+
   switch (status) {
+
     case "fit":
       return "default";
 
@@ -59,6 +70,32 @@ function getStatusVariant(
     default:
       return "outline";
   }
+
+}
+
+
+function getStatusLabel(
+  status: Medical["status"],
+) {
+
+  switch (status) {
+
+    case "new":
+      return "New";
+
+    case "fit":
+      return "Fit";
+
+    case "unfit":
+      return "Unfit";
+
+    case "expired":
+      return "Expired";
+
+    default:
+      return status;
+  }
+
 }
 
 
@@ -70,204 +107,219 @@ export function MedicalTable({
 }: MedicalTableProps) {
 
   if (loading) {
+
     return (
       <Card>
-        <CardContent className="flex min-h-[300px] items-center justify-center">
-          <p className="text-sm text-muted-foreground">
-            Loading medical records...
-          </p>
-        </CardContent>
+
+        <div className="py-10 text-center text-sm text-muted-foreground">
+          Loading medical records...
+        </div>
+
       </Card>
     );
+
   }
 
 
   if (
     medicals.length === 0
   ) {
+
     return (
       <Card>
-        <CardContent className="flex min-h-[300px] flex-col items-center justify-center gap-2">
-          <p className="font-medium">
-            No medical records
+
+        <div className="py-10 text-center">
+
+          <p className="text-sm font-medium">
+            No medical records found.
           </p>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Add a medical record to get started.
           </p>
-        </CardContent>
+
+        </div>
+
       </Card>
     );
+
   }
 
 
   return (
     <Card className="overflow-hidden">
 
-      <div className="overflow-x-auto">
+      <Table>
 
-        <table className="w-full text-sm">
+        <TableHeader>
 
-          <thead className="border-b bg-muted/40">
+          <TableRow>
 
-            <tr>
+            <TableHead>
+              Candidate
+            </TableHead>
 
-              <th className="px-4 py-3 text-left font-medium">
-                Candidate
-              </th>
+            <TableHead>
+              Passport
+            </TableHead>
 
-              <th className="px-4 py-3 text-left font-medium">
-                Passport
-              </th>
+            <TableHead>
+              Medical Date
+            </TableHead>
 
-              <th className="px-4 py-3 text-left font-medium">
-                Medical Date
-              </th>
+            <TableHead>
+              Fit Date
+            </TableHead>
 
-              <th className="px-4 py-3 text-left font-medium">
-                Fit Date
-              </th>
+            <TableHead>
+              Status
+            </TableHead>
 
-              <th className="px-4 py-3 text-left font-medium">
-                Status
-              </th>
+            <TableHead className="w-[60px]" />
 
-              <th className="w-12 px-4 py-3" />
+          </TableRow>
 
-            </tr>
-
-          </thead>
+        </TableHeader>
 
 
-          <tbody>
+        <TableBody>
 
-            {medicals.map(
-              (
-                medical,
-              ) => (
+          {medicals.map(
+            (
+              medical,
+            ) => (
 
-                <tr
-                  key={
-                    medical.id
+              <TableRow
+                key={
+                  medical.id
+                }
+              >
+
+                <TableCell className="font-medium">
+
+                  {
+                    medical
+                      .candidate
+                      ?.name ??
+                    "—"
                   }
-                  className="border-b last:border-0"
-                >
 
-                  <td className="px-4 py-3 font-medium">
-                    {
-                      medical
-                        .candidate
-                        ?.name ??
-                      "—"
+                </TableCell>
+
+
+                <TableCell>
+
+                  {
+                    medical
+                      .candidate
+                      ?.passport_no ??
+                    "—"
+                  }
+
+                </TableCell>
+
+
+                <TableCell>
+
+                  {
+                    medical
+                      .medical_date ??
+                    "—"
+                  }
+
+                </TableCell>
+
+
+                <TableCell>
+
+                  {
+                    medical
+                      .fit_date ??
+                    "—"
+                  }
+
+                </TableCell>
+
+
+                <TableCell>
+
+                  <Badge
+                    variant={
+                      getStatusVariant(
+                        medical.status,
+                      )
                     }
-                  </td>
-
-
-                  <td className="px-4 py-3">
+                  >
                     {
-                      medical
-                        .candidate
-                        ?.passport_no ??
-                      "—"
+                      getStatusLabel(
+                        medical.status,
+                      )
                     }
-                  </td>
+                  </Badge>
+
+                </TableCell>
 
 
-                  <td className="px-4 py-3">
-                    {
-                      medical
-                        .medical_date ??
-                      "—"
-                    }
-                  </td>
+                <TableCell>
 
+                  <DropdownMenu>
 
-                  <td className="px-4 py-3">
-                    {
-                      medical
-                        .fit_date ??
-                      "—"
-                    }
-                  </td>
-
-
-                  <td className="px-4 py-3">
-
-                    <Badge
-                      variant={
-                        getStatusVariant(
-                          medical.status,
-                        )
-                      }
+                    <DropdownMenuTrigger
+                      asChild
                     >
-                      {
-                        medical.status
-                      }
-                    </Badge>
 
-                  </td>
-
-
-                  <td className="px-4 py-3">
-
-                    <DropdownMenu>
-
-                      <DropdownMenuTrigger
-                        asChild
+                      <Button
+                        variant="ghost"
+                        size="icon"
                       >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                        >
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
+                        <MoreHorizontal />
+                      </Button>
+
+                    </DropdownMenuTrigger>
 
 
-                      <DropdownMenuContent
-                        align="end"
+                    <DropdownMenuContent
+                      align="end"
+                    >
+
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onEdit(
+                            medical,
+                          )
+                        }
                       >
-
-                        <DropdownMenuItem
-                          onClick={() =>
-                            onEdit(
-                              medical,
-                            )
-                          }
-                        >
-                          <Pencil />
-                          Edit
-                        </DropdownMenuItem>
+                        <Pencil />
+                        Edit
+                      </DropdownMenuItem>
 
 
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() =>
-                            onDelete(
-                              medical,
-                            )
-                          }
-                        >
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() =>
+                          onDelete(
+                            medical,
+                          )
+                        }
+                      >
+                        <Trash2 />
+                        Delete
+                      </DropdownMenuItem>
 
-                      </DropdownMenuContent>
+                    </DropdownMenuContent>
 
-                    </DropdownMenu>
+                  </DropdownMenu>
 
-                  </td>
+                </TableCell>
 
-                </tr>
+              </TableRow>
 
-              ),
-            )}
+            ),
+          )}
 
-          </tbody>
+        </TableBody>
 
-        </table>
-
-      </div>
+      </Table>
 
     </Card>
   );

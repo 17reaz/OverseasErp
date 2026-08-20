@@ -2,34 +2,17 @@ import {
   supabase,
 } from "@/lib/supabase/client";
 
-
-// =====================================================
-// MEDICAL STATUS
-// =====================================================
-
 export type MedicalStatus =
   | "new"
   | "fit"
   | "unfit"
   | "expired";
 
-
-// =====================================================
-// CANDIDATE
-// =====================================================
-
 export interface MedicalCandidate {
   id: string;
-
   name: string;
-
   passport_no: string;
 }
-
-
-// =====================================================
-// MEDICAL
-// =====================================================
 
 export interface Medical {
   id: string;
@@ -51,11 +34,6 @@ export interface Medical {
   candidate?: MedicalCandidate | null;
 }
 
-
-// =====================================================
-// MEDICAL INPUT
-// =====================================================
-
 export interface MedicalInput {
   candidate_id: string;
 
@@ -68,10 +46,10 @@ export interface MedicalInput {
 
 
 // =====================================================
-// CURRENT USER + TENANT
+// CURRENT TENANT
 // =====================================================
 
-export async function getCurrentUserContext() {
+export async function getCurrentTenantId() {
   const {
     data: {
       user,
@@ -94,9 +72,7 @@ export async function getCurrentUserContext() {
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select(
-      "tenant_id",
-    )
+    .select("tenant_id")
     .eq(
       "id",
       user.id,
@@ -113,12 +89,7 @@ export async function getCurrentUserContext() {
     );
   }
 
-  return {
-    user,
-
-    tenantId:
-      profile.tenant_id as string,
-  };
+  return profile.tenant_id as string;
 }
 
 
@@ -148,9 +119,7 @@ export async function getMedicals() {
     );
 
   return {
-    data:
-      data as Medical[] | null,
-
+    data: data as Medical[] | null,
     error,
   };
 }
@@ -183,9 +152,7 @@ export async function getMedical(
     .single();
 
   return {
-    data:
-      data as Medical | null,
-
+    data: data as Medical | null,
     error,
   };
 }
@@ -198,9 +165,8 @@ export async function getMedical(
 export async function createMedical(
   input: MedicalInput,
 ) {
-  const {
-    tenantId,
-  } = await getCurrentUserContext();
+  const tenantId =
+    await getCurrentTenantId();
 
   const {
     data,
@@ -215,11 +181,13 @@ export async function createMedical(
         input.candidate_id,
 
       medical_date:
-        input.medical_date || null,
+        input.medical_date ||
+        null,
 
       fit_date:
         input.status === "fit"
-          ? input.fit_date || null
+          ? input.fit_date ||
+            null
           : null,
 
       status:
@@ -236,9 +204,7 @@ export async function createMedical(
     .single();
 
   return {
-    data:
-      data as Medical | null,
-
+    data: data as Medical | null,
     error,
   };
 }
@@ -262,11 +228,13 @@ export async function updateMedical(
         input.candidate_id,
 
       medical_date:
-        input.medical_date || null,
+        input.medical_date ||
+        null,
 
       fit_date:
         input.status === "fit"
-          ? input.fit_date || null
+          ? input.fit_date ||
+            null
           : null,
 
       status:
@@ -290,9 +258,7 @@ export async function updateMedical(
     .single();
 
   return {
-    data:
-      data as Medical | null,
-
+    data: data as Medical | null,
     error,
   };
 }
@@ -316,6 +282,41 @@ export async function deleteMedical(
     );
 
   return {
+    error,
+  };
+}
+
+
+// =====================================================
+// GET CANDIDATES FOR PICKER
+// =====================================================
+
+export async function getMedicalCandidates() {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("candidates")
+    .select(`
+      id,
+      name,
+      passport_no
+    `)
+    .eq(
+      "is_deleted",
+      false,
+    )
+    .order(
+      "sl",
+      {
+        ascending: false,
+      },
+    );
+
+  return {
+    data:
+      data as MedicalCandidate[] | null,
+
     error,
   };
 }

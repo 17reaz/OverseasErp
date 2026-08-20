@@ -18,20 +18,22 @@ import {
 } from "@/components/shared/toast/toast";
 
 import {
-  getMedicals,
   deleteMedical,
+  getMedicals,
   type Medical,
 } from "./medical-service";
+
+import {
+  MedicalForm,
+} from "./components/medical-form";
 
 import {
   MedicalTable,
 } from "./components/medical-table";
 
-import {
-  MedicalFormDialog,
-} from "./components/medical-form-dialog";
 
 export function MedicalPage() {
+
   const [
     medicals,
     setMedicals,
@@ -56,13 +58,15 @@ export function MedicalPage() {
 
 
   // =====================================================
-  // LOAD
+  // LOAD MEDICALS
   // =====================================================
 
   const loadMedicals =
     useCallback(
       async () => {
+
         try {
+
           setLoading(true);
 
           const {
@@ -71,22 +75,15 @@ export function MedicalPage() {
           } = await getMedicals();
 
           if (error) {
-            console.error(
-              error,
-            );
-
-            toast.error(
-              "Failed to load medical records.",
-              "Please try again.",
-            );
-
-            return;
+            throw error;
           }
 
           setMedicals(
             data ?? [],
           );
+
         } catch (error) {
+
           console.error(
             error,
           );
@@ -95,9 +92,13 @@ export function MedicalPage() {
             "Failed to load medical records.",
             "Please try again.",
           );
+
         } finally {
+
           setLoading(false);
+
         }
+
       },
       [],
     );
@@ -108,7 +109,9 @@ export function MedicalPage() {
   // =====================================================
 
   useEffect(() => {
+
     loadMedicals();
+
   }, [
     loadMedicals,
   ]);
@@ -119,11 +122,15 @@ export function MedicalPage() {
   // =====================================================
 
   function handleCreate() {
+
     setEditingMedical(
       null,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
+
   }
 
 
@@ -134,11 +141,15 @@ export function MedicalPage() {
   function handleEdit(
     medical: Medical,
   ) {
+
     setEditingMedical(
       medical,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
+
   }
 
 
@@ -149,16 +160,22 @@ export function MedicalPage() {
   async function handleDelete(
     medical: Medical,
   ) {
+
     const confirmed =
       window.confirm(
-        `Delete medical record for ${medical.candidate?.name ?? "this candidate"}?`,
+        `Delete medical record for ${
+          medical.candidate?.name ??
+          "this candidate"
+        }?`,
       );
 
     if (!confirmed) {
       return;
     }
 
+
     try {
+
       const {
         error,
       } = await deleteMedical(
@@ -166,31 +183,31 @@ export function MedicalPage() {
       );
 
       if (error) {
-        console.error(
-          error,
-        );
-
-        toast.error(
-          "Failed to delete medical record.",
-          "Please try again.",
-        );
-
-        return;
+        throw error;
       }
 
+
       setMedicals(
-        (current) =>
+        (
+          current,
+        ) =>
           current.filter(
-            (item) =>
-              item.id !== medical.id,
+            (
+              item,
+            ) =>
+              item.id !==
+              medical.id,
           ),
       );
 
+
       toast.success(
-        "Medical record deleted.",
-        "The medical record was removed successfully.",
+        "Medical deleted.",
+        "The medical record was deleted successfully.",
       );
+
     } catch (error) {
+
       console.error(
         error,
       );
@@ -199,20 +216,23 @@ export function MedicalPage() {
         "Failed to delete medical record.",
         "Please try again.",
       );
+
     }
+
   }
 
 
   return (
     <div className="space-y-6">
 
-      {/* =================================================
-          HEADER
-          ================================================= */}
+      {/* ==================================================
+          PAGE HEADER
+          ================================================== */}
 
       <div className="flex items-center justify-between">
 
         <div>
+
           <h1 className="text-2xl font-semibold tracking-tight">
             Medical
           </h1>
@@ -220,7 +240,9 @@ export function MedicalPage() {
           <p className="text-sm text-muted-foreground">
             Manage candidate medical records.
           </p>
+
         </div>
+
 
         <div className="flex items-center gap-2">
 
@@ -234,16 +256,22 @@ export function MedicalPage() {
               loading
             }
           >
+
             <RefreshCw />
+
           </Button>
+
 
           <Button
             onClick={
               handleCreate
             }
           >
+
             <Plus />
+
             Add Medical
+
           </Button>
 
         </div>
@@ -251,53 +279,53 @@ export function MedicalPage() {
       </div>
 
 
-      {/* =================================================
+      {/* ==================================================
           TABLE
-          ================================================= */}
+          ================================================== */}
 
       <MedicalTable
         medicals={
           medicals
         }
-
         loading={
           loading
         }
-
         onEdit={
           handleEdit
         }
-
         onDelete={
           handleDelete
         }
       />
 
 
-      {/* =================================================
+      {/* ==================================================
           FORM
-          ================================================= */}
+          ================================================== */}
 
-      <MedicalFormDialog
+      <MedicalForm
         open={
           formOpen
         }
-
-        onOpenChange={
-          setFormOpen
-        }
-
         medical={
           editingMedical
         }
-
+        onOpenChange={
+          setFormOpen
+        }
         onSuccess={
           async () => {
+
             setFormOpen(
               false,
             );
 
+            setEditingMedical(
+              null,
+            );
+
             await loadMedicals();
+
           }
         }
       />
