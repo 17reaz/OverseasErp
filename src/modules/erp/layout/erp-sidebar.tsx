@@ -15,6 +15,8 @@ import {
   WalletCards,
   ListTodo,
   Phone,
+  FingerprintPattern,
+  Vault,
 } from "lucide-react";
 
 import {
@@ -79,19 +81,27 @@ const navigation = [
     url: "/app/mofa",
     icon: FileCheck,
   },
-
   {
-    title: "Visa",
-    url: "/app/visa",
-    icon: ShieldCheck,
+    title: "Finger",
+    url: "/app/mofa",
+    icon: FingerprintPattern,
   },
-
+  {
+    title: "PC",
+    url: "/app/mofa",
+    icon: Vault,
+  },  
   {
     title: "Takamul",
     url: "/app/takamul",
     icon: CheckCircle2,
   },
-
+  
+  {
+    title: "Visa",
+    url: "/app/visa",
+    icon: ShieldCheck,
+  },
   {
     title: "Flight",
     url: "/app/flight",
