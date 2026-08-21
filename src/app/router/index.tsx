@@ -60,7 +60,9 @@ import {
   MedicalPage,
 } from "@/modules/erp/medical/medical-page";
 
-
+import {
+  AgencyPage,
+} from "@/modules/erp/agency/agency-page";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -160,7 +162,14 @@ function AppRouter() {
               path="agents"
               element={<AgentsPage />}
             />
+{/* ==================================================
+    AGENCY
+    ================================================== */}
 
+<Route
+  path="agencies"
+  element={<AgencyPage />}
+/>
 
             {/* ==================================================
                 FILES
