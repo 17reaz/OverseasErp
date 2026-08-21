@@ -63,6 +63,9 @@ import {
 import {
   AgencyPage,
 } from "@/modules/erp/agency/agency-page";
+import {
+  MofaPage,
+} from "@/modules/erp/mofa/mofa-page";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -200,9 +203,9 @@ function AppRouter() {
                 ================================================== */}
 
             <Route
-              path="mofa"
-              element={<div>MOFA</div>}
-            />
+  path="mofa"
+  element={<MofaPage />}
+/>
 
             <Route
               path="visa"
