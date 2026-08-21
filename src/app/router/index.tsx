@@ -203,9 +203,9 @@ function AppRouter() {
                 ================================================== */}
 
             <Route
-  path="mofa"
-  element={<MofaPage />}
-/>
+            path="mofa"
+            element={<MofaPage />}
+              />
 
             <Route
               path="visa"
@@ -238,7 +238,7 @@ function AppRouter() {
 
         <Route
           path="*"
-          element={<div>Not Found</div>}
+          element={<div>Not Found you are wring</div>}
         />
 
       </Routes>
