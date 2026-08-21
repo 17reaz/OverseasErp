@@ -1,7 +1,10 @@
-import {
-  supabase,
-} from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
+/*
+ * =========================================================
+ * MOFA STAGE
+ * =========================================================
+ */
 
 export type MofaStage =
   | "new"
@@ -11,31 +14,111 @@ export type MofaStage =
   | "expired"
   | "invalid";
 
-  
+
+/*
+ * =========================================================
+ * CANDIDATE
+ * =========================================================
+ */
+
+export type MofaCandidateCountry =
+  | "Saudi Arabia"
+  | "Mauritius"
+  | "Laos"
+  | "Malaysia"
+  | "Belarus"
+  | null;
+
+
+export interface MofaCandidateAgent {
+  id: string;
+
+  name: string | null;
+
+  code: string | null;
+}
+
+
 export interface MofaCandidate {
   id: string;
-  sl: number | null;
+
   name: string;
+
   passport_no: string;
-  country: string | null;
+
   received_date: string | null;
 
-  agency: {
-    id: string;
-    name: string;
-    code: string | null;
-  } | null;
+  country: MofaCandidateCountry;
+
+  sl: number | null;
+
+  agent_id: string | null;
+
+  agent:
+    MofaCandidateAgent | null;
 }
+
+
+/*
+ * =========================================================
+ * MEDICAL
+ * =========================================================
+ */
+
+export type MofaMedicalStatus =
+  | "new"
+  | "fit"
+  | "unfit"
+  | "expired";
 
 
 export interface MofaMedical {
   id: string;
+
+  tenant_id: string;
+
   candidate_id: string;
+
   medical_date: string | null;
+
   fit_date: string | null;
-  status: string;
+
+  status: MofaMedicalStatus;
+
+  created_at: string;
+
+  updated_at: string;
 }
 
+
+/*
+ * =========================================================
+ * AGENCY
+ * =========================================================
+ */
+
+export interface MofaAgency {
+  id: string;
+
+  tenant_id: string;
+
+  sl: number | null;
+
+  name: string;
+
+  code: string | null;
+
+  country: string | null;
+
+  is_active: boolean;
+}
+
+
+/*
+ * =========================================================
+ * MOFA
+ * =========================================================
+ */
 
 export interface Mofa {
   id: string;
@@ -48,13 +131,13 @@ export interface Mofa {
 
   medical_id: string | null;
 
+  agency_id: string | null;
+
   application_number: string;
 
-  application_date: string;
+  application_date: string | null;
 
-  trade: string;
-
-  agency_id: string | null;
+  trade: string | null;
 
   stage: MofaStage;
 
@@ -62,40 +145,35 @@ export interface Mofa {
 
   updated_at: string;
 
-  candidate: {
-    id: string;
-    name: string;
-    passport_no: string;
-    country: string | null;
-  } | null;
+  candidate?:
+    MofaCandidate | null;
 
-  medical: {
-    id: string;
-    medical_date: string | null;
-    fit_date: string | null;
-    status: string;
-  } | null;
+  medical?:
+    MofaMedical | null;
 
-  agency: {
-    id: string;
-    name: string;
-    code: string | null;
-  } | null;
+  agency?:
+    MofaAgency | null;
 }
 
+
+/*
+ * =========================================================
+ * INPUT
+ * =========================================================
+ */
 
 export interface MofaInput {
   candidate_id: string;
 
-  medical_id?: string | null;
+  medical_id: string | null;
+
+  agency_id: string | null;
 
   application_number: string;
 
-  application_date: string;
+  application_date: string | null;
 
-  trade: string;
-
-  agency_id?: string | null;
+  trade: string | null;
 
   stage: MofaStage;
 }
@@ -103,93 +181,207 @@ export interface MofaInput {
 
 /*
  * =========================================================
- * GET MOFA RECORDS
+ * CANDIDATE SELECT
+ * =========================================================
+ */
+
+const candidateSelect = `
+  id,
+  name,
+  passport_no,
+  received_date,
+  country,
+  sl,
+  agent_id,
+  agent:agents (
+    id,
+    name,
+    code
+  )
+`;
+
+
+/*
+ * =========================================================
+ * MOFA SELECT
+ * =========================================================
+ */
+
+const mofaSelect = `
+  *,
+  candidate:candidates (
+    id,
+    name,
+    passport_no,
+    received_date,
+    country,
+    sl,
+    agent_id,
+    agent:agents (
+      id,
+      name,
+      code
+    )
+  ),
+  medical:medicals (
+    id,
+    tenant_id,
+    candidate_id,
+    medical_date,
+    fit_date,
+    status,
+    created_at,
+    updated_at
+  ),
+  agency:agencies (
+    id,
+    tenant_id,
+    sl,
+    name,
+    code,
+    country,
+    is_active
+  )
+`;
+
+
+/*
+ * =========================================================
+ * GET MOFAS
  * =========================================================
  */
 
 export async function getMofas() {
 
-  return supabase
-    .from("mofas")
-    .select(`
-      id,
-      tenant_id,
-      sl,
-      candidate_id,
-      medical_id,
-      application_number,
-      application_date,
-      trade,
-      agency_id,
-      stage,
-      created_at,
-      updated_at,
-
-      candidate:candidates (
-        id,
-        name,
-        passport_no,
-        country
-      ),
-
-      medical:medicals (
-        id,
-        medical_date,
-        fit_date,
-        status
-      ),
-
-      agency:agencies (
-        id,
-        name,
-        code
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("mofas")
+      .select(
+        mofaSelect,
       )
-    `)
-    .order(
-      "sl",
-      {
-        ascending: true,
-      },
-    );
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        },
+      );
+
+
+  return {
+    data:
+      data as
+        Mofa[] |
+        null,
+
+    error,
+  };
 }
 
 
 /*
  * =========================================================
- * GET CANDIDATES FOR MOFA
+ * GET CANDIDATES
  *
- * Candidate can create MOFA even without Medical.
+ * Candidate can have:
+ *
+ * 1. Medical
+ * 2. Multiple Medical
+ * 3. No Medical
+ *
+ * So we DO NOT filter candidates by medical here.
+ *
+ * Candidate selection is independent.
+ * Medical selection happens after candidate selection.
  * =========================================================
  */
 
-export async function getCandidatesForMofa() {
+export async function getMofaCandidates() {
 
-  return supabase
-    .from("candidates")
-    .select(`
-      id,
-      sl,
-      name,
-      passport_no,
-      country,
-      received_date,
-
-      agency:agents (
-        id,
-        name,
-        code
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("candidates")
+      .select(
+        candidateSelect,
       )
-    `)
-    .eq(
-      "is_deleted",
-      false,
-    )
-    .order(
-      "sl",
-      {
-        ascending: true,
-      },
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .order(
+        "sl",
+        {
+          ascending:
+            false,
+        },
+      );
+
+
+  if (error) {
+
+    return {
+      data:
+        null,
+
+      error,
+    };
+
+  }
+
+
+  const candidates:
+    MofaCandidate[] =
+    (data ?? []).map(
+      (
+        candidate,
+      ) => ({
+
+        id:
+          candidate.id,
+
+        name:
+          candidate.name,
+
+        passport_no:
+          candidate.passport_no,
+
+        received_date:
+          candidate.received_date,
+
+        country:
+          candidate.country,
+
+        sl:
+          candidate.sl,
+
+        agent_id:
+          candidate.agent_id,
+
+        agent:
+          Array.isArray(
+            candidate.agent,
+          )
+            ? candidate.agent[0] ??
+              null
+            : candidate.agent,
+
+      }),
     );
+
+
+  return {
+    data:
+      candidates,
+
+    error:
+      null,
+  };
 }
 
 
@@ -197,7 +389,18 @@ export async function getCandidatesForMofa() {
  * =========================================================
  * GET MEDICALS FOR CANDIDATE
  *
- * One Medical can be used by many MOFA records.
+ * IMPORTANT:
+ *
+ * Same candidate may have multiple medical records.
+ *
+ * Therefore:
+ *
+ * candidate_id
+ *      ↓
+ * medical #1
+ * medical #2
+ * medical #3
+ *
  * =========================================================
  */
 
@@ -205,25 +408,43 @@ export async function getCandidateMedicals(
   candidateId: string,
 ) {
 
-  return supabase
-    .from("medicals")
-    .select(`
-      id,
-      candidate_id,
-      medical_date,
-      fit_date,
-      status
-    `)
-    .eq(
-      "candidate_id",
-      candidateId,
-    )
-    .order(
-      "created_at",
-      {
-        ascending: false,
-      },
-    );
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("medicals")
+      .select(`
+        id,
+        tenant_id,
+        candidate_id,
+        medical_date,
+        fit_date,
+        status,
+        created_at,
+        updated_at
+      `)
+      .eq(
+        "candidate_id",
+        candidateId,
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        },
+      );
+
+
+  return {
+    data:
+      data as
+        MofaMedical[] |
+        null,
+
+    error,
+  };
 }
 
 
@@ -233,25 +454,44 @@ export async function getCandidateMedicals(
  * =========================================================
  */
 
-export async function getAgencies() {
+export async function getMofaAgencies() {
 
-  return supabase
-    .from("agencies")
-    .select(`
-      id,
-      name,
-      code
-    `)
-    .eq(
-      "is_active",
-      true,
-    )
-    .order(
-      "name",
-      {
-        ascending: true,
-      },
-    );
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("agencies")
+      .select(`
+        id,
+        tenant_id,
+        sl,
+        name,
+        code,
+        country,
+        is_active
+      `)
+      .eq(
+        "is_active",
+        true,
+      )
+      .order(
+        "sl",
+        {
+          ascending:
+            true,
+        },
+      );
+
+
+  return {
+    data:
+      data as
+        MofaAgency[] |
+        null,
+
+    error,
+  };
 }
 
 
@@ -259,77 +499,148 @@ export async function getAgencies() {
  * =========================================================
  * CREATE MOFA
  * =========================================================
+ *
+ * medical_id CAN be NULL.
+ *
+ * Example:
+ *
+ * Candidate
+ *    ↓
+ * MOFA
+ *    ↓
+ * medical_id = NULL
+ *    ↓
+ * stage = invalid
+ *
+ * This keeps the historical/dead MOFA record.
+ * =========================================================
  */
 
 export async function createMofa(
-  tenantId: string,
   input: MofaInput,
 ) {
 
-  return supabase
-    .from("mofas")
-    .insert({
-      tenant_id:
-        tenantId,
+  const {
+    data: {
+      user,
+    },
+    error:
+      userError,
+  } =
+    await supabase.auth.getUser();
 
-      candidate_id:
-        input.candidate_id,
 
-      medical_id:
-        input.medical_id ??
-        null,
+  if (userError) {
+    throw userError;
+  }
 
-      application_number:
-        input.application_number,
 
-      application_date:
-        input.application_date,
+  if (!user) {
 
-      trade:
-        input.trade,
+    throw new Error(
+      "User is not authenticated.",
+    );
 
-      agency_id:
-        input.agency_id ??
-        null,
+  }
 
-      stage:
-        input.stage,
-    })
-    .select(`
-      id,
-      tenant_id,
-      sl,
-      candidate_id,
-      medical_id,
-      application_number,
-      application_date,
-      trade,
-      agency_id,
-      stage,
-      created_at,
-      updated_at,
 
-      candidate:candidates (
-        id,
-        name,
-        passport_no,
-        country
-      ),
-
-      medical:medicals (
-        id,
-        medical_date,
-        fit_date,
-        status
-      ),
-
-      agency:agencies (
-        id,
-        name,
-        code
+  const {
+    data: profile,
+    error:
+      profileError,
+  } =
+    await supabase
+      .from("profiles")
+      .select(
+        "tenant_id",
       )
-    `)
-    .single();
+      .eq(
+        "id",
+        user.id,
+      )
+      .single();
+
+
+  if (profileError) {
+    throw profileError;
+  }
+
+
+  if (
+    !profile?.tenant_id
+  ) {
+
+    throw new Error(
+      "Tenant information is missing.",
+    );
+
+  }
+
+
+  /*
+   * If no medical is linked,
+   * the record should be invalid.
+   *
+   * This prevents an accidental
+   * "valid" MOFA without medical.
+   */
+
+  const stage =
+    input.medical_id
+      ? input.stage
+      : "invalid";
+
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("mofas")
+      .insert({
+
+        tenant_id:
+          profile.tenant_id,
+
+        candidate_id:
+          input.candidate_id,
+
+        medical_id:
+          input.medical_id ||
+          null,
+
+        agency_id:
+          input.agency_id ||
+          null,
+
+        application_number:
+          input.application_number,
+
+        application_date:
+          input.application_date ||
+          null,
+
+        trade:
+          input.trade ||
+          null,
+
+        stage,
+
+      })
+      .select(
+        mofaSelect,
+      )
+      .single();
+
+
+  return {
+    data:
+      data as
+        Mofa |
+        null,
+
+    error,
+  };
 }
 
 
@@ -341,55 +652,69 @@ export async function createMofa(
 
 export async function updateMofa(
   id: string,
-  input: Partial<MofaInput>,
+  input: MofaInput,
 ) {
 
-  return supabase
-    .from("mofas")
-    .update({
-      ...input,
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq(
-      "id",
-      id,
-    )
-    .select(`
-      id,
-      tenant_id,
-      sl,
-      candidate_id,
-      medical_id,
-      application_number,
-      application_date,
-      trade,
-      agency_id,
-      stage,
-      created_at,
-      updated_at,
+  const stage =
+    input.medical_id
+      ? input.stage
+      : "invalid";
 
-      candidate:candidates (
-        id,
-        name,
-        passport_no,
-        country
-      ),
 
-      medical:medicals (
-        id,
-        medical_date,
-        fit_date,
-        status
-      ),
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("mofas")
+      .update({
 
-      agency:agencies (
+        candidate_id:
+          input.candidate_id,
+
+        medical_id:
+          input.medical_id ||
+          null,
+
+        agency_id:
+          input.agency_id ||
+          null,
+
+        application_number:
+          input.application_number,
+
+        application_date:
+          input.application_date ||
+          null,
+
+        trade:
+          input.trade ||
+          null,
+
+        stage,
+
+        updated_at:
+          new Date().toISOString(),
+
+      })
+      .eq(
+        "id",
         id,
-        name,
-        code
       )
-    `)
-    .single();
+      .select(
+        mofaSelect,
+      )
+      .single();
+
+
+  return {
+    data:
+      data as
+        Mofa |
+        null,
+
+    error,
+  };
 }
 
 
@@ -403,11 +728,19 @@ export async function deleteMofa(
   id: string,
 ) {
 
-  return supabase
-    .from("mofas")
-    .delete()
-    .eq(
-      "id",
-      id,
-    );
+  const {
+    error,
+  } =
+    await supabase
+      .from("mofas")
+      .delete()
+      .eq(
+        "id",
+        id,
+      );
+
+
+  return {
+    error,
+  };
 }

@@ -1,26 +1,16 @@
 import {
-  BadgeCheck,
   CalendarDays,
-  FileText,
-  MoreHorizontal,
   Pencil,
-  Stethoscope,
   Trash2,
 } from "lucide-react";
-
-import {
-  Badge,
-} from "@/components/ui/badge";
 
 import {
   Button,
 } from "@/components/ui/button";
 
-import {
-  type Mofa,
-  type MofaStage,
+import type {
+  Mofa,
 } from "../mofa-service";
-
 
 interface MofaTableProps {
   mofas: Mofa[];
@@ -36,18 +26,15 @@ interface MofaTableProps {
   ) => void;
 }
 
-
 function getStageLabel(
-  stage: MofaStage,
+  stage: Mofa["stage"],
 ) {
-
   switch (stage) {
-
     case "new":
       return "New";
 
     case "medupdated":
-      return "Medical Updated";
+      return "Med Updated";
 
     case "approved":
       return "Approved";
@@ -65,33 +52,6 @@ function getStageLabel(
       return stage;
   }
 }
-
-
-function getStageVariant(
-  stage: MofaStage,
-): "default" | "secondary" | "destructive" | "outline" {
-
-  switch (stage) {
-
-    case "approved":
-      return "default";
-
-    case "medupdated":
-      return "secondary";
-
-    case "canceled":
-    case "invalid":
-      return "destructive";
-
-    case "expired":
-      return "outline";
-
-    case "new":
-    default:
-      return "secondary";
-  }
-}
-
 
 export function MofaTable({
   mofas,
@@ -153,7 +113,6 @@ export function MofaTable({
 
               <th
                 className="
-                  w-[220px]
                   px-4
                   py-3
                   text-left
@@ -195,7 +154,7 @@ export function MofaTable({
 
               <th
                 className="
-                  w-[130px]
+                  w-[140px]
                   px-4
                   py-3
                   text-left
@@ -217,27 +176,13 @@ export function MofaTable({
                   font-medium
                 "
               >
-                Trade
-              </th>
-
-
-              <th
-                className="
-                  w-[170px]
-                  px-4
-                  py-3
-                  text-left
-                  text-sm
-                  font-medium
-                "
-              >
                 Agency
               </th>
 
 
               <th
                 className="
-                  w-[140px]
+                  w-[130px]
                   px-4
                   py-3
                   text-left
@@ -245,13 +190,13 @@ export function MofaTable({
                   font-medium
                 "
               >
-                Medical
+                Trade
               </th>
 
 
               <th
                 className="
-                  w-[140px]
+                  w-[130px]
                   px-4
                   py-3
                   text-left
@@ -265,7 +210,7 @@ export function MofaTable({
 
               <th
                 className="
-                  w-[100px]
+                  w-[110px]
                   px-4
                   py-3
                   text-right
@@ -294,7 +239,7 @@ export function MofaTable({
           min-h-0
           flex-1
           overflow-y-auto
-          overflow-x-auto
+          overflow-x-hidden
         "
       >
 
@@ -303,7 +248,7 @@ export function MofaTable({
           <div
             className="
               flex
-              min-h-[240px]
+              min-h-[200px]
               items-center
               justify-center
             "
@@ -325,7 +270,7 @@ export function MofaTable({
           <div
             className="
               flex
-              min-h-[240px]
+              min-h-[200px]
               items-center
               justify-center
             "
@@ -336,16 +281,6 @@ export function MofaTable({
                 text-center
               "
             >
-
-              <FileText
-                className="
-                  mx-auto
-                  mb-3
-                  h-8
-                  w-8
-                  text-muted-foreground
-                "
-              />
 
               <p
                 className="
@@ -363,8 +298,7 @@ export function MofaTable({
                   text-muted-foreground
                 "
               >
-                Create a MOFA application
-                to get started.
+                Create a MOFA record to see it here.
               </p>
 
             </div>
@@ -385,19 +319,23 @@ export function MofaTable({
               {mofas.map(
                 (
                   mofa,
+                  index,
                 ) => (
 
                   <tr
-                    key={mofa.id}
+                    key={
+                      mofa.id
+                    }
+
                     className="
                       border-b
                       hover:bg-muted/40
                     "
                   >
 
-                    {/* ==================================================
+                    {/* ====================================
                         SL
-                        ================================================== */}
+                        ==================================== */}
 
                     <td
                       className="
@@ -407,17 +345,17 @@ export function MofaTable({
                         text-sm
                       "
                     >
-                      {mofa.sl}
+                      {mofa.sl ??
+                        index + 1}
                     </td>
 
 
-                    {/* ==================================================
+                    {/* ====================================
                         CANDIDATE
-                        ================================================== */}
+                        ==================================== */}
 
                     <td
                       className="
-                        w-[220px]
                         px-4
                         py-3
                       "
@@ -425,28 +363,124 @@ export function MofaTable({
 
                       <div
                         className="
-                          flex
                           min-w-0
-                          items-center
-                          gap-2
                         "
                       >
 
-                        <div
+                        <p
+                          className="
+                            truncate
+                            text-sm
+                            font-medium
+                          "
+                        >
+                          {
+                            mofa.candidate?.name ??
+                            "Unknown candidate"
+                          }
+                        </p>
+
+
+                        {mofa.candidate?.agent && (
+
+                          <p
+                            className="
+                              truncate
+                              text-xs
+                              text-muted-foreground
+                            "
+                          >
+                            {
+                              mofa.candidate.agent.name
+                            }
+                          </p>
+
+                        )}
+
+                      </div>
+
+                    </td>
+
+
+                    {/* ====================================
+                        PASSPORT
+                        ==================================== */}
+
+                    <td
+                      className="
+                        w-[150px]
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
+                      <span
+                        className="
+                          block
+                          truncate
+                        "
+                      >
+                        {
+                          mofa.candidate?.passport_no ??
+                          "—"
+                        }
+                      </span>
+                    </td>
+
+
+                    {/* ====================================
+                        APPLICATION
+                        ==================================== */}
+
+                    <td
+                      className="
+                        w-[180px]
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
+
+                      <span
+                        className="
+                          block
+                          truncate
+                          font-medium
+                        "
+                      >
+                        {
+                          mofa.application_number ??
+                          "—"
+                        }
+                      </span>
+
+                    </td>
+
+
+                    {/* ====================================
+                        DATE
+                        ==================================== */}
+
+                    <td
+                      className="
+                        w-[140px]
+                        px-4
+                        py-3
+                        text-sm
+                      "
+                    >
+
+                      {mofa.application_date ? (
+
+                        <span
                           className="
                             flex
-                            h-8
-                            w-8
-                            shrink-0
                             items-center
-                            justify-center
-                            rounded-full
-                            border
-                            bg-muted/30
+                            gap-2
                           "
                         >
 
-                          <FileText
+                          <CalendarDays
                             className="
                               h-4
                               w-4
@@ -454,135 +488,30 @@ export function MofaTable({
                             "
                           />
 
-                        </div>
+                          {
+                            mofa.application_date
+                          }
 
+                        </span>
 
-                        <div
+                      ) : (
+
+                        <span
                           className="
-                            min-w-0
-                          "
-                        >
-
-                          <p
-                            className="
-                              truncate
-                              text-sm
-                              font-medium
-                            "
-                          >
-                            {
-                              mofa.candidate
-                                ?.name ??
-                              "Unknown Candidate"
-                            }
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                    </td>
-
-
-                    {/* ==================================================
-                        PASSPORT
-                        ================================================== */}
-
-                    <td
-                      className="
-                        w-[150px]
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-
-                      <span
-                        className="
-                          block
-                          truncate
-                        "
-                      >
-                        {
-                          mofa.candidate
-                            ?.passport_no ??
-                          "—"
-                        }
-                      </span>
-
-                    </td>
-
-
-                    {/* ==================================================
-                        APPLICATION
-                        ================================================== */}
-
-                    <td
-                      className="
-                        w-[180px]
-                        px-4
-                        py-3
-                      "
-                    >
-
-                      <span
-                        className="
-                          block
-                          truncate
-                          text-sm
-                          font-medium
-                        "
-                      >
-                        {
-                          mofa.application_number
-                        }
-                      </span>
-
-                    </td>
-
-
-                    {/* ==================================================
-                        DATE
-                        ================================================== */}
-
-                    <td
-                      className="
-                        w-[130px]
-                        px-4
-                        py-3
-                        text-sm
-                      "
-                    >
-
-                      <span
-                        className="
-                          flex
-                          items-center
-                          gap-2
-                        "
-                      >
-
-                        <CalendarDays
-                          className="
-                            h-4
-                            w-4
-                            shrink-0
                             text-muted-foreground
                           "
-                        />
+                        >
+                          —
+                        </span>
 
-                        {
-                          mofa.application_date
-                        }
-
-                      </span>
+                      )}
 
                     </td>
 
 
-                    {/* ==================================================
-                        TRADE
-                        ================================================== */}
+                    {/* ====================================
+                        AGENCY
+                        ==================================== */}
 
                     <td
                       className="
@@ -590,33 +519,6 @@ export function MofaTable({
                         px-4
                         py-3
                         text-sm
-                      "
-                    >
-
-                      <span
-                        className="
-                          block
-                          truncate
-                        "
-                      >
-                        {
-                          mofa.trade ||
-                          "—"
-                        }
-                      </span>
-
-                    </td>
-
-
-                    {/* ==================================================
-                        AGENCY
-                        ================================================== */}
-
-                    <td
-                      className="
-                        w-[170px]
-                        px-4
-                        py-3
                       "
                     >
 
@@ -631,7 +533,6 @@ export function MofaTable({
                           <p
                             className="
                               truncate
-                              text-sm
                               font-medium
                             "
                           >
@@ -663,7 +564,6 @@ export function MofaTable({
 
                         <span
                           className="
-                            text-sm
                             text-muted-foreground
                           "
                         >
@@ -675,131 +575,92 @@ export function MofaTable({
                     </td>
 
 
-                    {/* ==================================================
-                        MEDICAL
-                        ================================================== */}
+                    {/* ====================================
+                        TRADE
+                        ==================================== */}
 
                     <td
                       className="
-                        w-[140px]
+                        w-[130px]
                         px-4
                         py-3
+                        text-sm
                       "
                     >
 
-                      {mofa.medical ? (
-
-                        <div
-                          className="
-                            flex
-                            items-center
-                            gap-2
-                          "
-                        >
-
-                          <Stethoscope
-                            className="
-                              h-4
-                              w-4
-                              text-muted-foreground
-                            "
-                          />
-
-                          <div>
-
-                            <p
-                              className="
-                                text-sm
-                                font-medium
-                              "
-                            >
-                              Connected
-                            </p>
-
-                            <p
-                              className="
-                                text-xs
-                                text-muted-foreground
-                              "
-                            >
-                              {
-                                mofa.medical.status
-                              }
-                            </p>
-
-                          </div>
-
-                        </div>
-
-                      ) : (
-
-                        <span
-                          className="
-                            text-xs
-                            text-muted-foreground
-                          "
-                        >
-                          Not connected
-                        </span>
-
-                      )}
+                      <span
+                        className="
+                          block
+                          truncate
+                        "
+                      >
+                        {
+                          mofa.trade ??
+                          "—"
+                        }
+                      </span>
 
                     </td>
 
 
-                    {/* ==================================================
+                    {/* ====================================
                         STAGE
-                        ================================================== */}
+                        ==================================== */}
 
                     <td
                       className="
-                        w-[140px]
+                        w-[130px]
                         px-4
                         py-3
                       "
                     >
 
-                      <Badge
-                        variant={
-                          getStageVariant(
+                      <span
+                        className="
+                          inline-flex
+                          items-center
+                          rounded-md
+                          border
+                          px-2
+                          py-1
+                          text-xs
+                          font-medium
+                        "
+                      >
+                        {
+                          getStageLabel(
                             mofa.stage,
                           )
                         }
-                      >
-                        {getStageLabel(
-                          mofa.stage,
-                        )}
-                      </Badge>
+                      </span>
 
                     </td>
 
 
-                    {/* ==================================================
+                    {/* ====================================
                         ACTION
-                        ================================================== */}
+                        ==================================== */}
 
                     <td
                       className="
-                        w-[100px]
+                        w-[110px]
                         px-4
                         py-3
-                        text-right
                       "
                     >
 
                       <div
                         className="
                           flex
-                          items-center
                           justify-end
                           gap-1
                         "
                       >
 
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
-                          type="button"
                           onClick={() =>
                             onEdit?.(
                               mofa,
@@ -807,12 +668,7 @@ export function MofaTable({
                           }
                         >
 
-                          <Pencil
-                            className="
-                              h-4
-                              w-4
-                            "
-                          />
+                          <Pencil />
 
                           <span
                             className="sr-only"
@@ -824,9 +680,9 @@ export function MofaTable({
 
 
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
-                          type="button"
                           onClick={() =>
                             onDelete?.(
                               mofa,
@@ -834,12 +690,7 @@ export function MofaTable({
                           }
                         >
 
-                          <Trash2
-                            className="
-                              h-4
-                              w-4
-                            "
-                          />
+                          <Trash2 />
 
                           <span
                             className="sr-only"
@@ -863,6 +714,48 @@ export function MofaTable({
           </table>
 
         )}
+
+      </div>
+
+
+      {/* ==================================================
+          FOOTER
+          ================================================== */}
+
+      <div
+        className="
+          shrink-0
+          border-t
+          bg-background
+          px-4
+          py-3
+        "
+      >
+
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+          "
+        >
+
+          <p
+            className="
+              text-sm
+              text-muted-foreground
+            "
+          >
+            {mofas.length === 0
+              ? "No results"
+              : `${mofas.length} result${
+                  mofas.length === 1
+                    ? ""
+                    : "s"
+                }`}
+          </p>
+
+        </div>
 
       </div>
 

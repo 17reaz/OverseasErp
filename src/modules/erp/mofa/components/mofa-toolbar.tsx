@@ -1,9 +1,11 @@
 import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  List,
+  Plus,
   RefreshCw,
   Search,
   SlidersHorizontal,
-  ArrowUpDown,
-  Plus,
 } from "lucide-react";
 
 import {
@@ -15,36 +17,86 @@ import {
 } from "@/components/ui/input";
 
 import {
-  type MofaStage,
+  Separator,
+} from "@/components/ui/separator";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import type {
+  MofaStage,
 } from "../mofa-service";
 
 
+/*
+ * =========================================================
+ * FILTER
+ * =========================================================
+ */
+
 export type MofaFilterState = {
-  stage: MofaStage | "all";
+  view:
+    | MofaStage
+    | "all";
+
+  month:
+    | "all"
+    | string;
 };
 
 
-export type MofaSortField =
-  | "sl"
-  | "application_number"
-  | "application_date"
-  | "candidate"
-  | "trade"
-  | "created_at";
-
-
-export type MofaSortMode =
-  | "ascending"
-  | "descending";
-
+/*
+ * =========================================================
+ * SORT
+ * =========================================================
+ */
 
 export type MofaSortState = {
-  field: MofaSortField;
-  mode: MofaSortMode;
+  mode:
+    | "ascending"
+    | "descending"
+    | "custom";
+
+  field:
+    | "name"
+    | "passport_no"
+    | "application_number"
+    | "application_date"
+    | "created_at"
+    | "updated_at";
 };
 
 
+/*
+ * =========================================================
+ * VIEW MODE
+ * =========================================================
+ */
+
+export type MofaViewMode =
+  | "list"
+  | "grid";
+
+
+/*
+ * =========================================================
+ * PROPS
+ * =========================================================
+ */
+
 interface MofaToolbarProps {
+
   search: string;
 
   searchPlaceholder?: string;
@@ -52,6 +104,12 @@ interface MofaToolbarProps {
   onSearchChange: (
     value: string,
   ) => void;
+
+  onRefresh: () => void;
+
+  onCreate: () => void;
+
+  refreshing?: boolean;
 
   filter: MofaFilterState;
 
@@ -65,55 +123,112 @@ interface MofaToolbarProps {
     sort: MofaSortState,
   ) => void;
 
-  onRefresh: () => void;
+  viewMode: MofaViewMode;
 
-  onCreate: () => void;
-
-  refreshing?: boolean;
+  onViewModeChange: (
+    mode: MofaViewMode,
+  ) => void;
 }
 
+
+/*
+ * =========================================================
+ * MONTH OPTIONS
+ * =========================================================
+ */
+
+function getMonthOptions() {
+
+  const months: {
+    value: string;
+    label: string;
+  }[] = [];
+
+
+  const currentDate =
+    new Date();
+
+
+  for (
+    let index = 0;
+    index < 12;
+    index++
+  ) {
+
+    const date =
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() -
+          index,
+        1,
+      );
+
+
+    const year =
+      date.getFullYear();
+
+
+    const month =
+      String(
+        date.getMonth() + 1,
+      ).padStart(
+        2,
+        "0",
+      );
+
+
+    const value =
+      `${year}-${month}`;
+
+
+    const label =
+      date.toLocaleDateString(
+        "en-US",
+        {
+          month:
+            "long",
+          year:
+            "numeric",
+        },
+      );
+
+
+    months.push({
+      value,
+      label,
+    });
+
+  }
+
+
+  return months;
+}
+
+
+/*
+ * =========================================================
+ * COMPONENT
+ * =========================================================
+ */
 
 export function MofaToolbar({
   search,
   searchPlaceholder =
     "Search candidate, passport or application...",
   onSearchChange,
+  onRefresh,
+  onCreate,
+  refreshing = false,
   filter,
   onFilterChange,
   sort,
   onSortChange,
-  onRefresh,
-  onCreate,
-  refreshing = false,
+  viewMode,
+  onViewModeChange,
 }: MofaToolbarProps) {
 
-  function toggleSort(
-    field: MofaSortField,
-  ) {
-
-    if (
-      sort.field !== field
-    ) {
-
-      onSortChange({
-        field,
-        mode: "ascending",
-      });
-
-      return;
-    }
-
-
-    onSortChange({
-      field,
-      mode:
-        sort.mode ===
-        "ascending"
-          ? "descending"
-          : "ascending",
-    });
-
-  }
+  const monthOptions =
+    getMonthOptions();
 
 
   return (
@@ -122,419 +237,584 @@ export function MofaToolbar({
         flex
         flex-col
         gap-3
+        md:flex-row
+        md:items-center
+        md:justify-between
       "
     >
 
-      {/* ==================================================
-          TITLE + ACTIONS
-          ================================================== */}
+      {/* =================================================
+          SEARCH
+          ================================================= */}
 
       <div
         className="
-          flex
-          items-center
-          justify-between
-          gap-3
+          relative
+          w-full
+          md:max-w-sm
         "
       >
 
-        <div>
-
-          <h1
-            className="
-              text-lg
-              font-semibold
-            "
-          >
-            MOFA
-          </h1>
-
-
-          <p
-            className="
-              text-sm
-              text-muted-foreground
-            "
-          >
-            Manage MOFA applications
-          </p>
-
-        </div>
-
-
-        <div
+        <Search
           className="
-            flex
-            items-center
-            gap-2
+            absolute
+            left-3
+            top-1/2
+            h-4
+            w-4
+            -translate-y-1/2
+            text-muted-foreground
           "
-        >
-
-          <Button
-            variant="outline"
-            size="sm"
-            type="button"
-            onClick={onRefresh}
-            disabled={refreshing}
-          >
-
-            <RefreshCw
-              className={
-                `
-                mr-2
-                h-4
-                w-4
-                ${
-                  refreshing
-                    ? "animate-spin"
-                    : ""
-                }
-                `
-              }
-            />
-
-            Refresh
-
-          </Button>
+        />
 
 
-          <Button
-            size="sm"
-            type="button"
-            onClick={onCreate}
-          >
+        <Input
+          value={
+            search
+          }
 
-            <Plus
-              className="
-                mr-2
-                h-4
-                w-4
-              "
-            />
+          onChange={(
+            event,
+          ) =>
+            onSearchChange(
+              event.target.value,
+            )
+          }
 
-            Create
+          placeholder={
+            searchPlaceholder
+          }
 
-          </Button>
-
-        </div>
+          className="
+            pl-9
+          "
+        />
 
       </div>
 
 
-      {/* ==================================================
-          TOOLBAR
-          ================================================== */}
+      {/* =================================================
+          ACTIONS
+          ================================================= */}
 
       <div
         className="
           flex
-          flex-wrap
           items-center
           gap-2
+          overflow-x-auto
         "
       >
 
-        {/* ==================================================
-            SEARCH
-            ================================================== */}
-
-        <div
-          className="
-            relative
-            min-w-[260px]
-            flex-1
-          "
-        >
-
-          <Search
-            className="
-              pointer-events-none
-              absolute
-              left-3
-              top-1/2
-              h-4
-              w-4
-              -translate-y-1/2
-              text-muted-foreground
-            "
-          />
-
-
-          <Input
-            value={search}
-            onChange={(event) =>
-              onSearchChange(
-                event.target.value,
-              )
-            }
-            placeholder={
-              searchPlaceholder
-            }
-            className="
-              pl-9
-            "
-          />
-
-        </div>
-
-
-        {/* ==================================================
+        {/* ===============================================
             FILTER
-            ================================================== */}
+            =============================================== */}
 
-        <div
-          className="
-            flex
-            items-center
-            gap-1
-            rounded-md
-            border
-            p-1
-          "
-        >
+        <Popover>
 
-          <SlidersHorizontal
-            className="
-              mx-2
-              h-4
-              w-4
-              text-muted-foreground
-            "
-          />
-
-
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "all"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "all",
-              })
-            }
+          <PopoverTrigger
+            asChild
           >
-            All
-          </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+            >
+
+              <SlidersHorizontal />
+
+              Filter
+
+            </Button>
+
+          </PopoverTrigger>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "new"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "new",
-              })
-            }
+          <PopoverContent
+            align="end"
+            className="w-72"
           >
-            New
-          </Button>
+
+            <div
+              className="
+                space-y-4
+              "
+            >
+
+              <div>
+
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  View
+                </p>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "medupdated"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "medupdated",
-              })
-            }
-          >
-            Medical Updated
-          </Button>
+                <p
+                  className="
+                    text-xs
+                    text-muted-foreground
+                  "
+                >
+                  Select MOFA stage
+                </p>
+
+              </div>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "approved"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "approved",
-              })
-            }
-          >
-            Approved
-          </Button>
+              <Select
+                value={
+                  filter.view
+                }
+
+                onValueChange={(
+                  value,
+                ) =>
+                  onFilterChange({
+                    ...filter,
+                    view:
+                      value as MofaFilterState["view"],
+                  })
+                }
+              >
+
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "canceled"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "canceled",
-              })
-            }
-          >
-            Canceled
-          </Button>
+                <SelectContent>
+
+                  <SelectItem
+                    value="all"
+                  >
+                    All
+                  </SelectItem>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "expired"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "expired",
-              })
-            }
-          >
-            Expired
-          </Button>
+                  <SelectItem
+                    value="new"
+                  >
+                    New
+                  </SelectItem>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              filter.stage ===
-              "invalid"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              onFilterChange({
-                stage: "invalid",
-              })
-            }
-          >
-            Invalid
-          </Button>
-
-        </div>
+                  <SelectItem
+                    value="medupdated"
+                  >
+                    Med Updated
+                  </SelectItem>
 
 
-        {/* ==================================================
+                  <SelectItem
+                    value="approved"
+                  >
+                    Approved
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="canceled"
+                  >
+                    Canceled
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="expired"
+                  >
+                    Expired
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="invalid"
+                  >
+                    Invalid
+                  </SelectItem>
+
+                </SelectContent>
+
+              </Select>
+
+
+              <Separator />
+
+
+              {/* =========================================
+                  MONTH
+                  ========================================= */}
+
+              <div>
+
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Month
+                </p>
+
+
+                <p
+                  className="
+                    text-xs
+                    text-muted-foreground
+                  "
+                >
+                  Filter by application date
+                </p>
+
+
+                <div
+                  className="
+                    mt-2
+                  "
+                >
+
+                  <Select
+                    value={
+                      filter.month
+                    }
+
+                    onValueChange={(
+                      value,
+                    ) =>
+                      onFilterChange({
+                        ...filter,
+                        month:
+                          value,
+                      })
+                    }
+                  >
+
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+
+
+                    <SelectContent>
+
+                      <SelectItem
+                        value="all"
+                      >
+                        All months
+                      </SelectItem>
+
+
+                      {monthOptions.map(
+                        (
+                          month,
+                        ) => (
+
+                          <SelectItem
+                            key={
+                              month.value
+                            }
+                            value={
+                              month.value
+                            }
+                          >
+                            {
+                              month.label
+                            }
+                          </SelectItem>
+
+                        ),
+                      )}
+
+                    </SelectContent>
+
+                  </Select>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </PopoverContent>
+
+        </Popover>
+
+
+        {/* ===============================================
             SORT
-            ================================================== */}
+            =============================================== */}
 
-        <div
-          className="
-            flex
-            items-center
-            gap-1
-            rounded-md
-            border
-            p-1
-          "
+        <Popover>
+
+          <PopoverTrigger
+            asChild
+          >
+
+            <Button
+              variant="outline"
+              size="sm"
+            >
+
+              {sort.mode ===
+              "descending" ? (
+
+                <ArrowDownAZ />
+
+              ) : (
+
+                <ArrowUpAZ />
+
+              )}
+
+              Sort
+
+            </Button>
+
+          </PopoverTrigger>
+
+
+          <PopoverContent
+            align="end"
+            className="w-64"
+          >
+
+            <div
+              className="
+                space-y-4
+              "
+            >
+
+              <p
+                className="
+                  text-sm
+                  font-medium
+                "
+              >
+                Sort by
+              </p>
+
+
+              <Select
+                value={
+                  sort.field
+                }
+
+                onValueChange={(
+                  value,
+                ) =>
+                  onSortChange({
+                    ...sort,
+                    field:
+                      value as MofaSortState["field"],
+                  })
+                }
+              >
+
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+
+                <SelectContent>
+
+                  <SelectItem
+                    value="created_at"
+                  >
+                    Created date
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="name"
+                  >
+                    Candidate name
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="passport_no"
+                  >
+                    Passport number
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="application_number"
+                  >
+                    Application number
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="application_date"
+                  >
+                    Application date
+                  </SelectItem>
+
+
+                  <SelectItem
+                    value="updated_at"
+                  >
+                    Updated date
+                  </SelectItem>
+
+                </SelectContent>
+
+              </Select>
+
+
+              {/* =========================================
+                  ASC / DESC
+                  ========================================= */}
+
+              <div
+                className="
+                  flex
+                  w-full
+                  gap-1
+                "
+              >
+
+                <Button
+                  type="button"
+                  variant={
+                    sort.mode ===
+                    "descending"
+                      ? "outline"
+                      : "secondary"
+                  }
+                  className="
+                    flex-1
+                  "
+                  onClick={() =>
+                    onSortChange({
+                      ...sort,
+                      mode:
+                        "ascending",
+                    })
+                  }
+                >
+
+                  <ArrowUpAZ />
+
+                  Asc
+
+                </Button>
+
+
+                <Button
+                  type="button"
+                  variant={
+                    sort.mode ===
+                    "descending"
+                      ? "secondary"
+                      : "outline"
+                  }
+                  className="
+                    flex-1
+                  "
+                  onClick={() =>
+                    onSortChange({
+                      ...sort,
+                      mode:
+                        "descending",
+                    })
+                  }
+                >
+
+                  <ArrowDownAZ />
+
+                  Desc
+
+                </Button>
+
+              </div>
+
+            </div>
+
+          </PopoverContent>
+
+        </Popover>
+
+
+        {/* ===============================================
+            REFRESH
+            =============================================== */}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={
+            onRefresh
+          }
+          disabled={
+            refreshing
+          }
         >
 
-          <ArrowUpDown
-            className="
-              mx-2
-              h-4
-              w-4
-              text-muted-foreground
-            "
+          <RefreshCw
+            className={
+              refreshing
+                ? "animate-spin"
+                : undefined
+            }
           />
 
+          <span className="sr-only">
+            Refresh
+          </span>
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              sort.field ===
-              "sl"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              toggleSort("sl")
-            }
-          >
-            SL
-          </Button>
+        </Button>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              sort.field ===
-              "application_date"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              toggleSort(
-                "application_date",
-              )
-            }
-          >
-            Date
-          </Button>
+        {/* ===============================================
+            LIST
+            =============================================== */}
+
+        <Button
+          type="button"
+          variant={
+            viewMode ===
+            "list"
+              ? "secondary"
+              : "outline"
+          }
+          size="icon"
+          onClick={() =>
+            onViewModeChange(
+              "list",
+            )
+          }
+        >
+
+          <List />
+
+          <span className="sr-only">
+            List view
+          </span>
+
+        </Button>
 
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              sort.field ===
-              "candidate"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              toggleSort(
-                "candidate",
-              )
-            }
-          >
-            Candidate
-          </Button>
+        {/* ===============================================
+            CREATE
+            =============================================== */}
 
+        <Button
+          type="button"
+          onClick={
+            onCreate
+          }
+        >
 
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              sort.field ===
-              "trade"
-                ? "secondary"
-                : "ghost"
-            }
-            onClick={() =>
-              toggleSort("trade")
-            }
-          >
-            Trade
-          </Button>
+          <Plus />
 
-        </div>
+          Add MOFA
+
+        </Button>
 
       </div>
 
