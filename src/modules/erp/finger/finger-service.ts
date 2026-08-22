@@ -37,9 +37,15 @@ export interface UpdateFingerInput {
   remarks?: string | null;
 }
 
+/**
+ * Get all finger records.
+ *
+ * Tenant isolation is handled by Supabase RLS.
+ * Do NOT add tenant_id from the frontend.
+ */
 export async function getFingerRecords(): Promise<FingerRecord[]> {
   const { data, error } = await supabase
-    .from("finger_records")
+    .from("fingers")
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -50,11 +56,17 @@ export async function getFingerRecords(): Promise<FingerRecord[]> {
   return (data ?? []) as FingerRecord[];
 }
 
+/**
+ * Get finger records for one candidate.
+ *
+ * RLS still applies, so a candidate from another tenant
+ * cannot expose another tenant's finger records.
+ */
 export async function getFingerRecordsByCandidate(
   candidateId: string,
 ): Promise<FingerRecord[]> {
   const { data, error } = await supabase
-    .from("finger_records")
+    .from("fingers")
     .select("*")
     .eq("candidate_id", candidateId)
     .order("created_at", { ascending: false });
@@ -66,11 +78,14 @@ export async function getFingerRecordsByCandidate(
   return (data ?? []) as FingerRecord[];
 }
 
+/**
+ * Get one finger record.
+ */
 export async function getFingerRecord(
   id: string,
 ): Promise<FingerRecord> {
   const { data, error } = await supabase
-    .from("finger_records")
+    .from("fingers")
     .select("*")
     .eq("id", id)
     .single();
@@ -82,11 +97,19 @@ export async function getFingerRecord(
   return data as FingerRecord;
 }
 
+/**
+ * Create a finger record.
+ *
+ * IMPORTANT:
+ * tenant_id and sl are intentionally NOT sent.
+ *
+ * They must be generated/assigned at database level.
+ */
 export async function createFingerRecord(
   input: CreateFingerInput,
 ): Promise<FingerRecord> {
   const { data, error } = await supabase
-    .from("finger_records")
+    .from("fingers")
     .insert({
       candidate_id: input.candidate_id,
       finger_date: input.finger_date ?? null,
@@ -94,7 +117,7 @@ export async function createFingerRecord(
       status: input.status ?? "pending",
       remarks: input.remarks ?? null,
     })
-    .select()
+    .select("*")
     .single();
 
   if (error) {
@@ -104,12 +127,17 @@ export async function createFingerRecord(
   return data as FingerRecord;
 }
 
+/**
+ * Update a finger record.
+ *
+ * tenant_id and sl cannot be changed from frontend.
+ */
 export async function updateFingerRecord(
   id: string,
   input: UpdateFingerInput,
 ): Promise<FingerRecord> {
   const { data, error } = await supabase
-    .from("finger_records")
+    .from("fingers")
     .update({
       finger_date: input.finger_date,
       finger_type: input.finger_type,
@@ -117,7 +145,7 @@ export async function updateFingerRecord(
       remarks: input.remarks,
     })
     .eq("id", id)
-    .select()
+    .select("*")
     .single();
 
   if (error) {
@@ -127,9 +155,14 @@ export async function updateFingerRecord(
   return data as FingerRecord;
 }
 
-export async function deleteFingerRecord(id: string): Promise<void> {
+/**
+ * Delete a finger record.
+ */
+export async function deleteFingerRecord(
+  id: string,
+): Promise<void> {
   const { error } = await supabase
-    .from("finger_records")
+    .from("fingers")
     .delete()
     .eq("id", id);
 

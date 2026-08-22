@@ -1,28 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, Search } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { FingerForm } from "./components/finger-form";
 import { FingerTable } from "./components/finger-table";
+import { FingerToolbar } from "./components/finger-toolbar";
 
 import {
   deleteFingerRecord,
   getFingerRecords,
+  type FingerRecord,
+  type FingerStatus,
 } from "./finger-service";
 
-import type {
-  FingerRecord,
-  FingerStatus,
-} from "./finger.types";
+import { getCandidates } from "../candidates/candidate-service";
 
 interface CandidateOption {
   id: string;
@@ -30,16 +19,14 @@ interface CandidateOption {
   passport_no: string;
 }
 
-interface FingerPageProps {
-  candidates: CandidateOption[];
-}
-
 type StatusFilter = "all" | FingerStatus;
 
-export function FingerPage({
-  candidates,
-}: FingerPageProps) {
+export function FingerPage() {
   const [records, setRecords] = useState<FingerRecord[]>([]);
+  const [candidates, setCandidates] = useState<
+    CandidateOption[]
+  >([]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -51,12 +38,28 @@ export function FingerPage({
   const [editingRecord, setEditingRecord] =
     useState<FingerRecord | null>(null);
 
-  const loadRecords = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const data = await getFingerRecords();
-      setRecords(data);
+      const [fingerRecords, candidateRecords] =
+        await Promise.all([
+          getFingerRecords(),
+          getCandidates(),
+        ]);
+
+      setRecords(fingerRecords);
+
+      setCandidates(
+        candidateRecords.map((candidate) => ({
+          id: candidate.id,
+          name: candidate.name,
+          passport_no: candidate.passport_no,
+        })),
+      );
     } catch (error) {
-      console.error("Failed to load finger records:", error);
+      console.error(
+        "Failed to load finger module:",
+        error,
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,8 +67,8 @@ export function FingerPage({
   }, []);
 
   useEffect(() => {
-    void loadRecords();
-  }, [loadRecords]);
+    void loadData();
+  }, [loadData]);
 
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -77,13 +80,21 @@ export function FingerPage({
 
       const matchesSearch =
         !query ||
-        candidate?.name.toLowerCase().includes(query) ||
+        candidate?.name
+          .toLowerCase()
+          .includes(query) ||
         candidate?.passport_no
           .toLowerCase()
           .includes(query) ||
-        record.finger_type.toLowerCase().includes(query) ||
-        record.status.toLowerCase().includes(query) ||
-        record.remarks?.toLowerCase().includes(query);
+        record.finger_type
+          .toLowerCase()
+          .includes(query) ||
+        record.status
+          .toLowerCase()
+          .includes(query) ||
+        record.remarks
+          ?.toLowerCase()
+          .includes(query);
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -91,7 +102,12 @@ export function FingerPage({
 
       return matchesSearch && matchesStatus;
     });
-  }, [records, candidates, search, statusFilter]);
+  }, [
+    records,
+    candidates,
+    search,
+    statusFilter,
+  ]);
 
   function handleCreate() {
     setEditingRecord(null);
@@ -116,19 +132,26 @@ export function FingerPage({
       await deleteFingerRecord(record.id);
 
       setRecords((previous) =>
-        previous.filter((item) => item.id !== record.id),
+        previous.filter(
+          (item) => item.id !== record.id,
+        ),
       );
     } catch (error) {
-      console.error("Failed to delete finger record:", error);
+      console.error(
+        "Failed to delete finger record:",
+        error,
+      );
     }
   }
 
   function handleRefresh() {
     setRefreshing(true);
-    void loadRecords();
+    void loadData();
   }
 
-  function handleFormSuccess(savedRecord: FingerRecord) {
+  function handleFormSuccess(
+    savedRecord: FingerRecord,
+  ) {
     setRecords((previous) => {
       const exists = previous.some(
         (item) => item.id === savedRecord.id,
@@ -146,6 +169,14 @@ export function FingerPage({
     });
   }
 
+  function handleFormOpenChange(open: boolean) {
+    setFormOpen(open);
+
+    if (!open) {
+      setEditingRecord(null);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       {/* Header */}
@@ -159,83 +190,18 @@ export function FingerPage({
             Manage candidate fingerprint records.
           </p>
         </div>
-
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create
-        </Button>
       </div>
 
       {/* Toolbar */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-          <Input
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            placeholder="Search candidate, passport..."
-            className="pl-9"
-          />
-        </div>
-
-        {/* Status filter */}
-        <Select
-          value={statusFilter}
-          onValueChange={(value) =>
-            setStatusFilter(value as StatusFilter)
-          }
-        >
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="all">
-              All Status
-            </SelectItem>
-
-            <SelectItem value="pending">
-              Pending
-            </SelectItem>
-
-            <SelectItem value="scheduled">
-              Scheduled
-            </SelectItem>
-
-            <SelectItem value="completed">
-              Completed
-            </SelectItem>
-
-            <SelectItem value="failed">
-              Failed
-            </SelectItem>
-
-            <SelectItem value="cancelled">
-              Cancelled
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Refresh */}
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          aria-label="Refresh finger records"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${
-              refreshing ? "animate-spin" : ""
-            }`}
-          />
-        </Button>
-      </div>
+      <FingerToolbar
+        search={search}
+        onSearchChange={setSearch}
+        status={statusFilter}
+        onStatusChange={setStatusFilter}
+        onRefresh={handleRefresh}
+        onCreate={handleCreate}
+        refreshing={refreshing}
+      />
 
       {/* Table */}
       <div className="min-h-0 flex-1">
@@ -251,7 +217,7 @@ export function FingerPage({
       {/* Form */}
       <FingerForm
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={handleFormOpenChange}
         record={editingRecord}
         candidates={candidates}
         onSuccess={handleFormSuccess}

@@ -1,5 +1,6 @@
 import { Pencil, Trash2 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -9,9 +10,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 
-import type { FingerRecord } from "../finger-service";
+import type {
+  FingerRecord,
+  FingerStatus,
+} from "../finger-service";
 
 interface CandidateInfo {
   id: string;
@@ -23,18 +26,8 @@ interface FingerTableProps {
   records: FingerRecord[];
   candidates: CandidateInfo[];
   loading?: boolean;
-
   onEdit: (record: FingerRecord) => void;
   onDelete: (record: FingerRecord) => void;
-}
-
-function getCandidate(
-  candidateId: string,
-  candidates: CandidateInfo[],
-) {
-  return candidates.find(
-    (candidate) => candidate.id === candidateId,
-  );
 }
 
 function formatDate(date: string | null) {
@@ -49,22 +42,32 @@ function formatDate(date: string | null) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
-function getStatusClass(status: FingerRecord["status"]) {
+function getStatusLabel(status: FingerStatus) {
+  return (
+    status.charAt(0).toUpperCase() +
+    status.slice(1)
+  );
+}
+
+function getStatusClassName(
+  status: FingerStatus,
+) {
   switch (status) {
     case "completed":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700";
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
 
     case "scheduled":
-      return "border-blue-500/30 bg-blue-500/10 text-blue-700";
+      return "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400";
 
     case "failed":
-      return "border-red-500/30 bg-red-500/10 text-red-700";
+      return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400";
 
     case "cancelled":
       return "border-muted-foreground/30 bg-muted text-muted-foreground";
 
+    case "pending":
     default:
-      return "border-amber-500/30 bg-amber-500/10 text-amber-700";
+      return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
   }
 }
 
@@ -75,8 +78,16 @@ export function FingerTable({
   onEdit,
   onDelete,
 }: FingerTableProps) {
+  const candidateMap = new Map(
+    candidates.map((candidate) => [
+      candidate.id,
+      candidate,
+    ]),
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
+      {/* Scrollable table */}
       <div className="min-h-0 flex-1 overflow-auto">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
@@ -136,58 +147,86 @@ export function FingerTable({
               </TableRow>
             ) : (
               records.map((record) => {
-                const candidate = getCandidate(
-                  record.candidate_id,
-                  candidates,
-                );
+                const candidate =
+                  candidateMap.get(
+                    record.candidate_id,
+                  );
 
                 return (
                   <TableRow key={record.id}>
+                    {/* SL */}
                     <TableCell className="font-medium">
                       {record.sl}
                     </TableCell>
 
+                    {/* Candidate */}
                     <TableCell>
-                      {candidate?.name ?? "Unknown candidate"}
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {candidate?.name ??
+                            "Unknown candidate"}
+                        </span>
+                      </div>
                     </TableCell>
 
+                    {/* Passport */}
                     <TableCell className="font-mono text-sm">
                       {candidate?.passport_no ?? "—"}
                     </TableCell>
 
+                    {/* Finger Date */}
                     <TableCell>
-                      {formatDate(record.finger_date)}
+                      {formatDate(
+                        record.finger_date,
+                      )}
                     </TableCell>
 
+                    {/* Type */}
                     <TableCell>
                       <Badge variant="outline">
-                        {record.finger_type === "fresh"
+                        {record.finger_type ===
+                        "fresh"
                           ? "Fresh"
                           : "Existing"}
                       </Badge>
                     </TableCell>
 
+                    {/* Status */}
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={getStatusClass(record.status)}
+                        className={getStatusClassName(
+                          record.status,
+                        )}
                       >
-                        {record.status.charAt(0).toUpperCase() +
-                          record.status.slice(1)}
+                        {getStatusLabel(
+                          record.status,
+                        )}
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="max-w-[220px] truncate">
-                      {record.remarks || "—"}
+                    {/* Remarks */}
+                    <TableCell className="max-w-[240px]">
+                      <span
+                        className="block truncate"
+                        title={
+                          record.remarks ?? undefined
+                        }
+                      >
+                        {record.remarks || "—"}
+                      </span>
                     </TableCell>
 
+                    {/* Actions */}
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => onEdit(record)}
+                          onClick={() =>
+                            onEdit(record)
+                          }
                           aria-label="Edit finger record"
                         >
                           <Pencil className="h-4 w-4" />
@@ -198,7 +237,9 @@ export function FingerTable({
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => onDelete(record)}
+                          onClick={() =>
+                            onDelete(record)
+                          }
                           aria-label="Delete finger record"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -213,7 +254,8 @@ export function FingerTable({
         </Table>
       </div>
 
-      <div className="flex h-12 shrink-0 items-center justify-between border-t px-4 text-sm text-muted-foreground">
+      {/* Fixed footer */}
+      <div className="flex h-12 shrink-0 items-center justify-between border-t bg-background px-4 text-sm text-muted-foreground">
         <span>
           {records.length} record
           {records.length === 1 ? "" : "s"}

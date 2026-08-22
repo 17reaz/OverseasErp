@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+} from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,12 +28,9 @@ import {
 import {
   createFingerRecord,
   updateFingerRecord,
-} from "../finger-service";
-
-import type {
-  FingerRecord,
-  FingerStatus,
-  FingerType,
+  type FingerRecord,
+  type FingerStatus,
+  type FingerType,
 } from "../finger-service";
 
 interface CandidateOption {
@@ -41,19 +42,24 @@ interface CandidateOption {
 interface FingerFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-
   record?: FingerRecord | null;
-
   candidates: CandidateOption[];
-
   onSuccess?: (record: FingerRecord) => void;
 }
 
-const DEFAULT_FORM = {
+interface FingerFormState {
+  candidate_id: string;
+  finger_date: string;
+  finger_type: FingerType;
+  status: FingerStatus;
+  remarks: string;
+}
+
+const DEFAULT_FORM: FingerFormState = {
   candidate_id: "",
   finger_date: "",
-  finger_type: "fresh" as FingerType,
-  status: "pending" as FingerStatus,
+  finger_type: "fresh",
+  status: "pending",
   remarks: "",
 };
 
@@ -64,7 +70,9 @@ export function FingerForm({
   candidates,
   onSuccess,
 }: FingerFormProps) {
-  const [form, setForm] = useState(DEFAULT_FORM);
+  const [form, setForm] =
+    useState<FingerFormState>(DEFAULT_FORM);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -90,9 +98,9 @@ export function FingerForm({
     setError("");
   }, [open, record]);
 
-  function updateField<K extends keyof typeof form>(
+  function updateField<K extends keyof FingerFormState>(
     field: K,
-    value: (typeof form)[K],
+    value: FingerFormState[K],
   ) {
     setForm((previous) => ({
       ...previous,
@@ -100,7 +108,9 @@ export function FingerForm({
     }));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (!form.candidate_id) {
@@ -112,27 +122,32 @@ export function FingerForm({
     setError("");
 
     try {
+      const input = {
+        finger_date: form.finger_date || null,
+        finger_type: form.finger_type,
+        status: form.status,
+        remarks: form.remarks.trim() || null,
+      };
+
       let savedRecord: FingerRecord;
 
-      if (isEdit && record) {
-        savedRecord = await updateFingerRecord(record.id, {
-          finger_date: form.finger_date || null,
-          finger_type: form.finger_type,
-          status: form.status,
-          remarks: form.remarks.trim() || null,
-        });
+      if (record) {
+        savedRecord = await updateFingerRecord(
+          record.id,
+          input,
+        );
       } else {
         savedRecord = await createFingerRecord({
           candidate_id: form.candidate_id,
-          finger_date: form.finger_date || null,
-          finger_type: form.finger_type,
-          status: form.status,
-          remarks: form.remarks.trim() || null,
+          ...input,
         });
       }
 
       onSuccess?.(savedRecord);
+
       onOpenChange(false);
+
+      setForm(DEFAULT_FORM);
     } catch (err) {
       setError(
         err instanceof Error
@@ -144,12 +159,25 @@ export function FingerForm({
     }
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (saving) {
+      return;
+    }
+
+    onOpenChange(nextOpen);
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+    <Sheet
+      open={open}
+      onOpenChange={handleOpenChange}
+    >
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>
-            {isEdit ? "Edit Finger Record" : "Create Finger Record"}
+            {isEdit
+              ? "Edit Finger Record"
+              : "Create Finger Record"}
           </SheetTitle>
 
           <SheetDescription>
@@ -165,36 +193,53 @@ export function FingerForm({
         >
           {/* Candidate */}
           <div className="space-y-2">
-            <Label htmlFor="candidate">
-              Candidate <span className="text-destructive">*</span>
+            <Label htmlFor="finger-candidate">
+              Candidate{" "}
+              <span className="text-destructive">
+                *
+              </span>
             </Label>
 
             <Select
               value={form.candidate_id}
               onValueChange={(value) =>
-                updateField("candidate_id", value)
+                updateField(
+                  "candidate_id",
+                  value,
+                )
               }
-              disabled={isEdit}
+              disabled={isEdit || saving}
             >
-              <SelectTrigger id="candidate">
+              <SelectTrigger id="finger-candidate">
                 <SelectValue placeholder="Select candidate" />
               </SelectTrigger>
 
               <SelectContent>
-                {candidates.map((candidate) => (
+                {candidates.length === 0 ? (
                   <SelectItem
-                    key={candidate.id}
-                    value={candidate.id}
+                    value="__no_candidates__"
+                    disabled
                   >
-                    {candidate.name} — {candidate.passport_no}
+                    No candidates found
                   </SelectItem>
-                ))}
+                ) : (
+                  candidates.map((candidate) => (
+                    <SelectItem
+                      key={candidate.id}
+                      value={candidate.id}
+                    >
+                      {candidate.name} —{" "}
+                      {candidate.passport_no}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
 
             {isEdit && (
               <p className="text-xs text-muted-foreground">
-                Candidate cannot be changed after the record is created.
+                Candidate cannot be changed after the
+                finger record is created.
               </p>
             )}
           </div>
@@ -210,22 +255,32 @@ export function FingerForm({
               type="date"
               value={form.finger_date}
               onChange={(event) =>
-                updateField("finger_date", event.target.value)
+                updateField(
+                  "finger_date",
+                  event.target.value,
+                )
               }
+              disabled={saving}
             />
           </div>
 
           {/* Finger Type */}
           <div className="space-y-2">
-            <Label>Finger Type</Label>
+            <Label htmlFor="finger-type">
+              Finger Type
+            </Label>
 
             <Select
               value={form.finger_type}
               onValueChange={(value) =>
-                updateField("finger_type", value as FingerType)
+                updateField(
+                  "finger_type",
+                  value as FingerType,
+                )
               }
+              disabled={saving}
             >
-              <SelectTrigger>
+              <SelectTrigger id="finger-type">
                 <SelectValue />
               </SelectTrigger>
 
@@ -243,15 +298,21 @@ export function FingerForm({
 
           {/* Status */}
           <div className="space-y-2">
-            <Label>Status</Label>
+            <Label htmlFor="finger-status">
+              Status
+            </Label>
 
             <Select
               value={form.status}
               onValueChange={(value) =>
-                updateField("status", value as FingerStatus)
+                updateField(
+                  "status",
+                  value as FingerStatus,
+                )
               }
+              disabled={saving}
             >
-              <SelectTrigger>
+              <SelectTrigger id="finger-status">
                 <SelectValue />
               </SelectTrigger>
 
@@ -281,24 +342,31 @@ export function FingerForm({
 
           {/* Remarks */}
           <div className="space-y-2">
-            <Label htmlFor="remarks">
+            <Label htmlFor="finger-remarks">
               Remarks
             </Label>
 
             <Textarea
-              id="remarks"
+              id="finger-remarks"
               placeholder="Add remarks..."
               value={form.remarks}
               onChange={(event) =>
-                updateField("remarks", event.target.value)
+                updateField(
+                  "remarks",
+                  event.target.value,
+                )
               }
               rows={4}
+              disabled={saving}
             />
           </div>
 
           {/* Error */}
           {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               {error}
             </div>
           )}
@@ -307,13 +375,21 @@ export function FingerForm({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() =>
+                handleOpenChange(false)
+              }
               disabled={saving}
             >
               Cancel
             </Button>
 
-            <Button type="submit" disabled={saving}>
+            <Button
+              type="submit"
+              disabled={
+                saving ||
+                !form.candidate_id
+              }
+            >
               {saving && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
