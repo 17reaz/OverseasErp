@@ -12,7 +12,10 @@ import {
   Plane,
 } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import {
   Avatar,
@@ -46,14 +49,62 @@ import {
 
 export function ErpHeader() {
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     user,
     profile,
-    tenant,
   } = useAuth();
+
+
+  // =====================================================
+  // PAGE NAME
+  // =====================================================
+
+  function getPageName(pathname: string) {
+
+    if (pathname.includes("/candidates")) {
+      return "Candidates";
+    }
+
+    if (pathname.includes("/medicals")) {
+      return "Medical";
+    }
+
+    if (pathname.includes("/mofas")) {
+      return "MOFA";
+    }
+
+    if (pathname.includes("/documents")) {
+      return "Documents";
+    }
+
+    if (pathname.includes("/visas")) {
+      return "Visa";
+    }
+
+    if (pathname.includes("/flights")) {
+      return "Flight";
+    }
+
+    if (pathname.includes("/settings")) {
+      return "Settings";
+    }
+
+    if (pathname.includes("/profile")) {
+      return "Profile";
+    }
+
+    if (pathname.includes("/dashboard")) {
+      return "Dashboard";
+    }
+
+    return "Dashboard";
+  }
+
+  const pageName =
+    getPageName(location.pathname);
 
 
   // =====================================================
@@ -143,7 +194,7 @@ export function ErpHeader() {
       >
 
         {/* =================================================
-            SIDEBAR
+            SIDEBAR TOGGLE
             ================================================= */}
 
         <SidebarTrigger
@@ -155,7 +206,7 @@ export function ErpHeader() {
 
 
         {/* =================================================
-            AGENCY / TENANT
+            PAGE NAME
             ================================================= */}
 
         <div
@@ -164,24 +215,16 @@ export function ErpHeader() {
           "
         >
 
-          <p
+          <h1
             className="
-              max-w-[180px]
               truncate
               text-sm
               font-semibold
-              md:max-w-[260px]
+              md:text-base
             "
-            title={
-              tenant?.name ||
-              "Agency"
-            }
           >
-            {
-              tenant?.name ||
-              "Agency"
-            }
-          </p>
+            {pageName}
+          </h1>
 
         </div>
 
@@ -285,54 +328,6 @@ export function ErpHeader() {
 
 
         {/* =================================================
-            GLOBAL ADD BUTTON (NEW)
-            ================================================= */}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              aria-label="Add New"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Quick Add</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem onClick={() => navigate("/app/candidates/new")}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Candidate
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onClick={() => navigate("/app/medicals/new")}>
-              <Stethoscope className="mr-2 h-4 w-4" />
-              Medical
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onClick={() => navigate("/app/mofas/new")}>
-              <FileText className="mr-2 h-4 w-4" />
-              Mofa
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onClick={() => navigate("/app/visas/new")}>
-              <CreditCard className="mr-2 h-4 w-4" />
-              Visa
-            </DropdownMenuItem>
-
-            <DropdownMenuItem onClick={() => navigate("/app/flights/new")}>
-              <Plane className="mr-2 h-4 w-4" />
-              Flight
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-
-        {/* =================================================
             NOTIFICATION
             ================================================= */}
 
@@ -354,7 +349,6 @@ export function ErpHeader() {
               w-4
             "
           />
-
 
           {/* Unread notification indicator */}
 
@@ -433,7 +427,6 @@ export function ErpHeader() {
                   {fullName}
                 </p>
 
-
                 <p
                   className="
                     mt-1
@@ -455,7 +448,7 @@ export function ErpHeader() {
 
 
           {/* =================================================
-              DROPDOWN
+              PROFILE DROPDOWN
               ================================================= */}
 
           <DropdownMenuContent
@@ -464,10 +457,6 @@ export function ErpHeader() {
               w-64
             "
           >
-
-            {/* =================================================
-                PROFILE INFORMATION
-                ================================================= */}
 
             <DropdownMenuLabel>
 
@@ -487,7 +476,6 @@ export function ErpHeader() {
                   {fullName}
                 </span>
 
-
                 <span
                   className="
                     text-xs
@@ -497,7 +485,6 @@ export function ErpHeader() {
                 >
                   {email}
                 </span>
-
 
                 {profile?.role && (
 
@@ -522,9 +509,7 @@ export function ErpHeader() {
             <DropdownMenuSeparator />
 
 
-            {/* =================================================
-                PROFILE
-                ================================================= */}
+            {/* PROFILE */}
 
             <DropdownMenuItem
               onClick={() =>
@@ -547,9 +532,7 @@ export function ErpHeader() {
             </DropdownMenuItem>
 
 
-            {/* =================================================
-                SETTINGS
-                ================================================= */}
+            {/* SETTINGS */}
 
             <DropdownMenuItem
               onClick={() =>
@@ -575,9 +558,7 @@ export function ErpHeader() {
             <DropdownMenuSeparator />
 
 
-            {/* =================================================
-                LOGOUT
-                ================================================= */}
+            {/* LOGOUT */}
 
             <DropdownMenuItem
               onClick={
@@ -598,6 +579,159 @@ export function ErpHeader() {
               />
 
               Logout
+
+            </DropdownMenuItem>
+
+          </DropdownMenuContent>
+
+        </DropdownMenu>
+
+
+        {/* =================================================
+            GLOBAL ADD
+            ================================================= */}
+
+        <DropdownMenu>
+
+          <DropdownMenuTrigger asChild>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="
+                h-9
+                w-9
+              "
+              aria-label="Global Add"
+            >
+
+              <Plus
+                className="
+                  h-4
+                  w-4
+                "
+              />
+
+            </Button>
+
+          </DropdownMenuTrigger>
+
+
+          <DropdownMenuContent
+            align="end"
+            className="
+              w-48
+            "
+          >
+
+            <DropdownMenuLabel>
+              Quick Add
+            </DropdownMenuLabel>
+
+            <DropdownMenuSeparator />
+
+
+            <DropdownMenuItem
+              onClick={() =>
+                navigate(
+                  "/app/candidates/new",
+                )
+              }
+            >
+
+              <UserPlus
+                className="
+                  mr-2
+                  h-4
+                  w-4
+                "
+              />
+
+              Candidate
+
+            </DropdownMenuItem>
+
+
+            <DropdownMenuItem
+              onClick={() =>
+                navigate(
+                  "/app/medicals/new",
+                )
+              }
+            >
+
+              <Stethoscope
+                className="
+                  mr-2
+                  h-4
+                  w-4
+                "
+              />
+
+              Medical
+
+            </DropdownMenuItem>
+
+
+            <DropdownMenuItem
+              onClick={() =>
+                navigate(
+                  "/app/mofas/new",
+                )
+              }
+            >
+
+              <FileText
+                className="
+                  mr-2
+                  h-4
+                  w-4
+                "
+              />
+
+              MOFA
+
+            </DropdownMenuItem>
+
+
+            <DropdownMenuItem
+              onClick={() =>
+                navigate(
+                  "/app/visas/new",
+                )
+              }
+            >
+
+              <CreditCard
+                className="
+                  mr-2
+                  h-4
+                  w-4
+                "
+              />
+
+              Visa
+
+            </DropdownMenuItem>
+
+
+            <DropdownMenuItem
+              onClick={() =>
+                navigate(
+                  "/app/flights/new",
+                )
+              }
+            >
+
+              <Plane
+                className="
+                  mr-2
+                  h-4
+                  w-4
+                "
+              />
+
+              Flight
 
             </DropdownMenuItem>
 
