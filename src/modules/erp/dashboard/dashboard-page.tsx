@@ -2,6 +2,7 @@ import { PageHeader } from "../shared/page-header";
 import { DashboardStats } from "./components/dashboard-stats";
 import { DashboardCharts } from "./components/dashboard-charts";
 import { DashboardTable } from "./components/dashboard-table";
+import { RecentCandidates } from "./components/RecentCandidates";
 
 export function DashboardPage() {
   return (
@@ -14,6 +15,7 @@ export function DashboardPage() {
       <DashboardStats />
 
       <DashboardCharts />
+      <RecentCandidates />
 
       <DashboardTable />
     </div>

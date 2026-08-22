@@ -1,0 +1,113 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Loader2, User, ArrowRight } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+
+interface Candidate {
+  id: string;
+  name: string;
+  passport_no: string;
+  created_at: string;
+  current_stage: string | null;
+}
+
+export function RecentCandidates() {
+  const navigate = useNavigate();
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchRecentCandidates() {
+      try {
+        setLoading(true);
+
+        // candidates টেবিল থেকে লেটেস্ট ৫টি রেকর্ড ফেচ করা হচ্ছে
+        const { data, error } = await supabase
+          .from("candidates")
+          .select("id, name, passport_no, created_at, current_stage")
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        if (error) throw error;
+        setCandidates(data ?? []);
+      } catch (error) {
+        console.error("Failed to fetch recent candidates:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void fetchRecentCandidates();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-48 items-center justify-center rounded-lg border bg-card">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold">Recent Candidates</h3>
+          <p className="text-sm text-muted-foreground">
+            Latest candidates added to the system
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1 text-muted-foreground hover:text-foreground"
+          onClick={() => navigate("/app/candidates")}
+        >
+          View All
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {candidates.length === 0 ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">
+          No candidates found.
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {candidates.map((candidate) => (
+            <div
+              key={candidate.id}
+              className="flex items-center justify-between py-3 first:pt-0 last:pb-0 cursor-pointer hover:bg-muted/50 px-2 rounded transition-colors"
+              onClick={() => navigate(`/app/candidates`)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium leading-none">
+                    {candidate.name}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Passport: {candidate.passport_no}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="inline-block rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  {candidate.current_stage || "New"}
+                </span>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {new Date(candidate.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
