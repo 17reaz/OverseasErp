@@ -67,6 +67,9 @@ import {
   MofaPage,
 } from "@/modules/erp/mofa/mofa-page";
 import { FingerPage } from "@/modules/erp/finger/finger-page";
+import {
+  PoliceClearancePage,
+} from "@/modules/erp/police-clearance/police-clearance-page";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -212,7 +215,10 @@ function AppRouter() {
               path="fingers"
               element={<FingerPage />}
             />
-
+            <Route
+  path="police-clearance"
+  element={<PoliceClearancePage />}
+/>
             <Route
               path="flight"
               element={<div>Flight</div>}

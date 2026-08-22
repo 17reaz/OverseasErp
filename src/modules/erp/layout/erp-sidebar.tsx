@@ -88,7 +88,7 @@ const navigation = [
   },
   {
     title: "PC",
-    url: "/app/mofa",
+    url: "/app/police-clearance",
     icon: Vault,
   },  
   {
