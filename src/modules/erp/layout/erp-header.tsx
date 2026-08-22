@@ -4,6 +4,12 @@ import {
   Search,
   User,
   Settings,
+  Plus,
+  UserPlus,
+  Stethoscope,
+  FileText,
+  CreditCard,
+  Plane,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -124,8 +130,8 @@ export function ErpHeader() {
     >
 
       {/* =================================================
-          LEFT
-          ================================================= */}
+        LEFT
+        ================================================= */}
 
       <div
         className="
@@ -183,8 +189,8 @@ export function ErpHeader() {
 
 
       {/* =================================================
-          RIGHT
-          ================================================= */}
+        RIGHT
+        ================================================= */}
 
       <div
         className="
@@ -276,6 +282,54 @@ export function ErpHeader() {
           />
 
         </Button>
+
+
+        {/* =================================================
+            GLOBAL ADD BUTTON (NEW)
+            ================================================= */}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9"
+              aria-label="Add New"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Quick Add</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem onClick={() => navigate("/app/candidates/new")}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Candidate
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={() => navigate("/app/medicals/new")}>
+              <Stethoscope className="mr-2 h-4 w-4" />
+              Medical
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={() => navigate("/app/mofas/new")}>
+              <FileText className="mr-2 h-4 w-4" />
+              Mofa
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={() => navigate("/app/visas/new")}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Visa
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={() => navigate("/app/flights/new")}>
+              <Plane className="mr-2 h-4 w-4" />
+              Flight
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
 
         {/* =================================================
