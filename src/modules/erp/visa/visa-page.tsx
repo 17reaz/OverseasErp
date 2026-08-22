@@ -4,15 +4,12 @@ import { VisaTable } from "./components/visa-table";
 import { VisaToolbar } from "./components/visa-toolbar";
 import { deleteVisa, getVisas, type Visa } from "./visa-service";
 import { getCandidates } from "../candidates/candidate-service";
-// Apnar project structure onujayi agency ba mofa service path adjust kore neben
-// import { getAgencies } from "../agencies/agency-service";
-// import { getMofas } from "../mofas/mofa-service";
 
 export function VisaPage() {
   const [records, setRecords] = useState<Visa[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
-  const [agencies, setAgencies] = useState<any[]>([]);
-  const [mofas, setMofas] = useState<any[]>([]);
+  const [agencies] = useState<any[]>([]); // setAgencies বাদ দেওয়া হয়েছে
+  const [mofas] = useState<any[]>([]); // setMofas বাদ দেওয়া হয়েছে
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -25,16 +22,12 @@ export function VisaPage() {
       const [visaList, candidateResult] = await Promise.all([
         getVisas(),
         getCandidates(),
-        // getAgencies(),
-        // getMofas()
       ]);
 
       if (candidateResult.error) throw candidateResult.error;
 
       setRecords(visaList);
       setCandidates(candidateResult.data ?? []);
-      // setAgencies(agencyList ?? []);
-      // setMofas(mofaList ?? []);
     } catch (error) {
       console.error("Failed to load visa module:", error);
     } finally {
