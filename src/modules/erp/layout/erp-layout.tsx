@@ -10,16 +10,18 @@ import { ErpHeader } from "./erp-header";
 
 export function ErpLayout() {
   return (
-    <SidebarProvider>
-      <ErpSidebar />
+   <SidebarProvider>
+  <ErpSidebar />
 
-      <SidebarInset>
-        <ErpHeader />
+  <SidebarInset className="flex h-svh flex-col overflow-hidden">
+    <ErpHeader />
 
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="p-6">
+        <Outlet />
+      </div>
+    </main>
+  </SidebarInset>
+</SidebarProvider>
   );
 }
