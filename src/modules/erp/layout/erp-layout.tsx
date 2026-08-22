@@ -17,7 +17,7 @@ export function ErpLayout() {
     <ErpHeader />
 
     <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-      <div className="p-6">
+      <div className="px-6 pb-6">
         <Outlet />
       </div>
     </main>

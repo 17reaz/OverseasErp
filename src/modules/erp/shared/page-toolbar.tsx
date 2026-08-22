@@ -209,19 +209,22 @@ export function PageToolbar({
 
   return (
     <div
-      className="
-        flex
-        w-full
-        items-center
-        justify-between
-        gap-4
-        border-b
-        bg-background
-        px-4
-        py-3
-        md:px-6
-      "
-    >
+  className="
+    sticky
+    top-0
+    z-30
+    flex
+    w-full
+    items-center
+    justify-between
+    gap-4
+    border-b
+    bg-background
+    px-4
+    py-3
+    md:px-6
+  "
+>
 
       {/* =================================================
           LEFT — SEARCH
