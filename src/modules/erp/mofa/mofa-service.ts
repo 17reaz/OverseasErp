@@ -1,8 +1,10 @@
 import { supabase } from "@/lib/supabase/client";
 
-/* =========================================================
+/*
+ * =========================================================
  * MOFA STAGE
- * ========================================================= */
+ * =========================================================
+ */
 
 export type MofaStage =
   | "new"
@@ -12,9 +14,12 @@ export type MofaStage =
   | "expired"
   | "invalid";
 
-/* =========================================================
+
+/*
+ * =========================================================
  * CANDIDATE
- * ========================================================= */
+ * =========================================================
+ */
 
 export type MofaCandidateCountry =
   | "Saudi Arabia"
@@ -24,11 +29,13 @@ export type MofaCandidateCountry =
   | "Belarus"
   | null;
 
+
 export interface MofaCandidateAgent {
   id: string;
   name: string | null;
   code: string | null;
 }
+
 
 export interface MofaCandidate {
   id: string;
@@ -41,15 +48,19 @@ export interface MofaCandidate {
   agent: MofaCandidateAgent | null;
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * MEDICAL
- * ========================================================= */
+ * =========================================================
+ */
 
 export type MofaMedicalStatus =
   | "new"
   | "fit"
   | "unfit"
   | "expired";
+
 
 export interface MofaMedical {
   id: string;
@@ -62,9 +73,15 @@ export interface MofaMedical {
   updated_at: string;
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * AGENCY
- * ========================================================= */
+ *
+ * IMPORTANT:
+ * agencies table does NOT have country.
+ * =========================================================
+ */
 
 export interface MofaAgency {
   id: string;
@@ -72,13 +89,20 @@ export interface MofaAgency {
   sl: number | null;
   name: string;
   code: string | null;
-  country: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * MOFA
- * ========================================================= */
+ * =========================================================
+ */
 
 export interface Mofa {
   id: string;
@@ -103,9 +127,12 @@ export interface Mofa {
   agency?: MofaAgency | null;
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * INPUT
- * ========================================================= */
+ * =========================================================
+ */
 
 export interface MofaInput {
   candidate_id: string;
@@ -123,9 +150,12 @@ export interface MofaInput {
   stage: MofaStage;
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * CANDIDATE SELECT
- * ========================================================= */
+ * =========================================================
+ */
 
 const candidateSelect = `
   id,
@@ -142,9 +172,15 @@ const candidateSelect = `
   )
 `;
 
-/* =========================================================
+
+/*
+ * =========================================================
  * MOFA SELECT
- * ========================================================= */
+ *
+ * IMPORTANT:
+ * agencies.country removed.
+ * =========================================================
+ */
 
 const mofaSelect = `
   *,
@@ -178,14 +214,21 @@ const mofaSelect = `
     sl,
     name,
     code,
-    country,
-    is_active
+    phone,
+    email,
+    address,
+    is_active,
+    created_at,
+    updated_at
   )
 `;
 
-/* =========================================================
+
+/*
+ * =========================================================
  * GET MOFAS
- * ========================================================= */
+ * =========================================================
+ */
 
 export async function getMofas() {
   const {
@@ -207,18 +250,23 @@ export async function getMofas() {
   };
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * GET CANDIDATES
  *
- * Candidate does NOT require medical.
+ * Medical is optional.
+ *
+ * Candidate can have:
  *
  * Candidate
- *   ├── Medical #1
- *   ├── Medical #2
- *   ├── Medical #3
- *   └── MOFA without medical
+ *   ├── MOFA
+ *   ├── Medical #1 → MOFA
+ *   ├── Medical #2 → MOFA
+ *   └── Medical #3 → MOFA
  *
- * ========================================================= */
+ * =========================================================
+ */
 
 export async function getMofaCandidates() {
   const {
@@ -282,11 +330,14 @@ export async function getMofaCandidates() {
   };
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * GET MEDICALS FOR CANDIDATE
  *
- * One candidate can have multiple medical records.
- * ========================================================= */
+ * Same candidate can have multiple medical records.
+ * =========================================================
+ */
 
 export async function getCandidateMedicals(
   candidateId: string,
@@ -323,9 +374,12 @@ export async function getCandidateMedicals(
   };
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * GET AGENCIES
- * ========================================================= */
+ * =========================================================
+ */
 
 export async function getMofaAgencies() {
   const {
@@ -339,8 +393,12 @@ export async function getMofaAgencies() {
       sl,
       name,
       code,
-      country,
-      is_active
+      phone,
+      email,
+      address,
+      is_active,
+      created_at,
+      updated_at
     `)
     .eq(
       "is_active",
@@ -359,11 +417,26 @@ export async function getMofaAgencies() {
   };
 }
 
-/* =========================================================
- * GET CURRENT USER TENANT
+
+/*
+ * =========================================================
+ * BACKWARD COMPATIBILITY
  *
- * Centralized tenant lookup.
- * ========================================================= */
+ * Current mofa-form.tsx may import getAgencies().
+ * Keep this alias so existing imports continue working.
+ * =========================================================
+ */
+
+export async function getAgencies() {
+  return getMofaAgencies();
+}
+
+
+/*
+ * =========================================================
+ * TENANT
+ * =========================================================
+ */
 
 async function getCurrentTenantId() {
   const {
@@ -410,16 +483,18 @@ async function getCurrentTenantId() {
   return profile.tenant_id;
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * NORMALIZE INPUT
  *
- * Important:
+ * Database requires:
  *
- * mofas.application_date -> NOT NULL
- * mofas.trade             -> NOT NULL
+ * application_date NOT NULL
+ * trade             NOT NULL
  *
- * Therefore we never send null for these fields.
- * ========================================================= */
+ * =========================================================
+ */
 
 function normalizeMofaInput(
   input: MofaInput,
@@ -450,15 +525,11 @@ function normalizeMofaInput(
     "Not Specified";
 
   /*
-   * Business rule:
+   * Medical is optional.
    *
-   * MOFA without medical is allowed.
-   *
-   * If there is no medical,
-   * it cannot be a medical-dependent
-   * active stage.
-   *
-   * We preserve the record as invalid.
+   * If medical_id is null,
+   * preserve the MOFA record but mark
+   * it as invalid.
    */
 
   const stage: MofaStage =
@@ -488,9 +559,12 @@ function normalizeMofaInput(
   };
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * CREATE MOFA
- * ========================================================= */
+ * =========================================================
+ */
 
 export async function createMofa(
   input: MofaInput,
@@ -511,12 +585,14 @@ export async function createMofa(
       .from("mofas")
       .insert({
         /*
-         * tenant_id is explicitly supplied.
+         * tenant_id:
+         * explicitly supplied from authenticated profile.
          *
-         * sl is NOT supplied.
+         * sl:
+         * NOT supplied.
          *
-         * mofas_set_sl trigger generates
-         * the tenant-wise serial automatically.
+         * Database trigger generates
+         * tenant-wise serial automatically.
          */
 
         tenant_id:
@@ -553,6 +629,7 @@ export async function createMofa(
   } catch (error) {
     return {
       data: null,
+
       error:
         error instanceof Error
           ? error
@@ -563,9 +640,12 @@ export async function createMofa(
   }
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * UPDATE MOFA
- * ========================================================= */
+ * =========================================================
+ */
 
 export async function updateMofa(
   id: string,
@@ -627,6 +707,7 @@ export async function updateMofa(
   } catch (error) {
     return {
       data: null,
+
       error:
         error instanceof Error
           ? error
@@ -637,9 +718,12 @@ export async function updateMofa(
   }
 }
 
-/* =========================================================
+
+/*
+ * =========================================================
  * DELETE MOFA
- * ========================================================= */
+ * =========================================================
+ */
 
 export async function deleteMofa(
   id: string,
