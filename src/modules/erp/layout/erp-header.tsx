@@ -68,11 +68,11 @@ export function ErpHeader() {
       return "Candidates";
     }
 
-    if (pathname.includes("/medicals")) {
+    if (pathname.includes("/medical")) {
       return "Medical";
     }
 
-    if (pathname.includes("/mofas")) {
+    if (pathname.includes("/mofa")) {
       return "MOFA";
     }
 
@@ -80,11 +80,11 @@ export function ErpHeader() {
       return "Documents";
     }
 
-    if (pathname.includes("/visas")) {
+    if (pathname.includes("/visa")) {
       return "Visa";
     }
 
-    if (pathname.includes("/flights")) {
+    if (pathname.includes("/flight")) {
       return "Flight";
     }
 
