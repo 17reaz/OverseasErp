@@ -536,19 +536,19 @@ export function MofaPage() {
    * Reserved for future Candidate → MOFA flow.
    * ======================================================= */
 
-  function handleAddMofa(
-    candidate: MofaCandidate,
-  ) {
+  // function handleAddMofa(
+  //   candidate: MofaCandidate,
+  // ) {
 
-    setEditingMofa(null);
+  //   setEditingMofa(null);
 
-    setSelectedCandidate(
-      candidate,
-    );
+  //   setSelectedCandidate(
+  //     candidate,
+  //   );
 
-    setFormOpen(true);
+  //   setFormOpen(true);
 
-  }
+  // }
 
 
   /* =======================================================
