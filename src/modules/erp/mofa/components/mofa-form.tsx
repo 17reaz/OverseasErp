@@ -1,19 +1,8 @@
-
 import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
 } from "react";
-
-import {
-  Building2,
-  Check,
-  ChevronsUpDown,
-  FileText,
-  Lock,
-  Stethoscope,
-} from "lucide-react";
 
 import {
   Button,
@@ -28,21 +17,6 @@ import {
 } from "@/components/ui/label";
 
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,270 +29,218 @@ import {
 } from "@/modules/erp/shared/ui/universal-sheet";
 
 import {
-  FormSection,
-} from "@/modules/erp/shared/forms/form-section";
-
-import {
-  cn,
-} from "@/lib/utils";
+  toast,
+} from "@/components/shared/toast/toast";
 
 import {
   createMofa,
-  getAgencies,
   getCandidateMedicals,
+  getMofaAgencies,
+  updateMofa,
   type Mofa,
   type MofaAgency,
   type MofaCandidate,
   type MofaInput,
   type MofaMedical,
   type MofaStage,
-  updateMofa,
 } from "../mofa-service";
 
 
+/* =========================================================
+ * PROPS
+ * ========================================================= */
+
 interface MofaFormProps {
   open: boolean;
-
   mofa: Mofa | null;
 
-  tenantId: string;
-
   candidates: MofaCandidate[];
+
+  selectedCandidate?: MofaCandidate | null;
 
   onOpenChange: (
     open: boolean,
   ) => void;
 
-  onSuccess: (
-    mofa: Mofa,
-  ) => void;
+  onSuccess: () => void;
 }
 
+
+/* =========================================================
+ * DEFAULT FORM
+ * ========================================================= */
+
+const emptyForm: MofaInput = {
+  candidate_id: "",
+  medical_id: null,
+  agency_id: null,
+  application_number: "",
+  application_date: "",
+  trade: "",
+  stage: "new",
+};
+
+
+/* =========================================================
+ * STAGE OPTIONS
+ * ========================================================= */
+
+const stageOptions: {
+  value: MofaStage;
+  label: string;
+}[] = [
+  {
+    value: "new",
+    label: "New",
+  },
+  {
+    value: "medupdated",
+    label: "Medical Updated",
+  },
+  {
+    value: "approved",
+    label: "Approved",
+  },
+  {
+    value: "canceled",
+    label: "Canceled",
+  },
+  {
+    value: "expired",
+    label: "Expired",
+  },
+  {
+    value: "invalid",
+    label: "Invalid",
+  },
+];
+
+
+/* =========================================================
+ * FORM
+ * ========================================================= */
 
 export function MofaForm({
   open,
   mofa,
-  tenantId,
   candidates,
+  selectedCandidate,
   onOpenChange,
   onSuccess,
 }: MofaFormProps) {
 
-  /*
-   * =========================================================
+  /* =======================================================
    * FORM STATE
-   * =========================================================
-   */
+   * ======================================================= */
 
   const [
-    candidateId,
-    setCandidateId,
-  ] = useState("");
-
-  const [
-    medicalId,
-    setMedicalId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    applicationNumber,
-    setApplicationNumber,
-  ] = useState("");
-
-  const [
-    applicationDate,
-    setApplicationDate,
-  ] = useState("");
-
-  const [
-    trade,
-    setTrade,
-  ] = useState("");
-
-  const [
-    agencyId,
-    setAgencyId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    stage,
-    setStage,
-  ] = useState<MofaStage>(
-    "new",
+    form,
+    setForm,
+  ] = useState<MofaInput>(
+    emptyForm,
   );
 
 
-  /*
-   * =========================================================
-   * LOADING
-   * =========================================================
-   */
+  /* =======================================================
+   * MEDICALS
+   * ======================================================= */
 
   const [
-    loading,
-    setLoading,
-  ] = useState(false);
+    medicals,
+    setMedicals,
+  ] = useState<MofaMedical[]>([]);
+
 
   const [
     medicalLoading,
     setMedicalLoading,
   ] = useState(false);
 
-  const [
-    agencyLoading,
-    setAgencyLoading,
-  ] = useState(false);
 
-
-  /*
-   * =========================================================
-   * DATA
-   * =========================================================
-   */
-
-  const [
-    medicals,
-    setMedicals,
-  ] = useState<MofaMedical[]>(
-    [],
-  );
+  /* =======================================================
+   * AGENCIES
+   * ======================================================= */
 
   const [
     agencies,
     setAgencies,
-  ] = useState<MofaAgency[]>(
-    [],
-  );
+  ] = useState<MofaAgency[]>([]);
 
-
-  /*
-   * =========================================================
-   * UI STATE
-   * =========================================================
-   */
 
   const [
-    candidateOpen,
-    setCandidateOpen,
+    agenciesLoading,
+    setAgenciesLoading,
   ] = useState(false);
 
+
+  /* =======================================================
+   * SUBMIT
+   * ======================================================= */
+
   const [
-    medicalOpen,
-    setMedicalOpen,
+    saving,
+    setSaving,
   ] = useState(false);
 
+
+  /* =======================================================
+   * DIRTY STATE
+   * ======================================================= */
+
   const [
-    agencyOpen,
-    setAgencyOpen,
+    dirty,
+    setDirty,
   ] = useState(false);
 
-  const [
-    error,
-    setError,
-  ] = useState("");
 
-
-  /*
-   * =========================================================
-   * EDIT MODE
-   * =========================================================
-   */
+  /* =======================================================
+   * EDITING
+   * ======================================================= */
 
   const isEditing =
     Boolean(mofa);
 
 
-  /*
-   * =========================================================
-   * CANDIDATE LOCK
-   *
-   * Existing MOFA candidate must not be changed.
-   *
-   * New MOFA can select candidate.
-   * =========================================================
-   */
-
-  const candidateLocked =
-    Boolean(mofa);
-
-
-  /*
-   * =========================================================
-   * CURRENT CANDIDATE
-   * =========================================================
-   */
+  /* =======================================================
+   * SELECTED CANDIDATE
+   * ======================================================= */
 
   const currentCandidate =
     useMemo(
-      () =>
-        candidates.find(
-          (candidate) =>
-            candidate.id ===
-            candidateId,
-        ) ??
-        null,
+      () => {
+
+        if (
+          selectedCandidate
+        ) {
+          return selectedCandidate;
+        }
+
+        if (
+          !form.candidate_id
+        ) {
+          return null;
+        }
+
+        return (
+          candidates.find(
+            (candidate) =>
+              candidate.id ===
+              form.candidate_id,
+          ) ?? null
+        );
+
+      },
       [
+        selectedCandidate,
+        form.candidate_id,
         candidates,
-        candidateId,
       ],
     );
 
 
-  /*
-   * =========================================================
-   * CURRENT MEDICAL
-   * =========================================================
-   */
-
-  const currentMedical =
-    useMemo(
-      () =>
-        medicals.find(
-          (medical) =>
-            medical.id ===
-            medicalId,
-        ) ??
-        null,
-      [
-        medicals,
-        medicalId,
-      ],
-    );
-
-
-  /*
-   * =========================================================
-   * CURRENT AGENCY
-   * =========================================================
-   */
-
-  const currentAgency =
-    useMemo(
-      () =>
-        agencies.find(
-          (agency) =>
-            agency.id ===
-            agencyId,
-        ) ??
-        null,
-      [
-        agencies,
-        agencyId,
-      ],
-    );
-
-
-  /*
-   * =========================================================
-   * LOAD AGENCIES
-   *
-   * Agency list is independent from candidate.
-   * =========================================================
-   */
+  /* =======================================================
+   * RESET FORM
+   * ======================================================= */
 
   useEffect(() => {
 
@@ -326,30 +248,90 @@ export function MofaForm({
       return;
     }
 
-    let cancelled = false;
+
+    if (mofa) {
+
+      setForm({
+        candidate_id:
+          mofa.candidate_id,
+
+        medical_id:
+          mofa.medical_id,
+
+        agency_id:
+          mofa.agency_id,
+
+        application_number:
+          mofa.application_number ?? "",
+
+        application_date:
+          mofa.application_date ?? "",
+
+        trade:
+          mofa.trade ?? "",
+
+        stage:
+          mofa.stage,
+      });
+
+    } else {
+
+      setForm({
+        ...emptyForm,
+
+        candidate_id:
+          selectedCandidate?.id ??
+          "",
+
+      });
+
+    }
+
+
+    setDirty(false);
+
+  }, [
+    open,
+    mofa,
+    selectedCandidate,
+  ]);
+
+
+  /* =======================================================
+   * LOAD AGENCIES
+   * ======================================================= */
+
+  useEffect(() => {
+
+    if (!open) {
+      return;
+    }
+
+
+    let active = true;
 
 
     async function loadAgencies() {
 
       try {
 
-        setAgencyLoading(
+        setAgenciesLoading(
           true,
         );
 
+
         const {
           data,
-          error: agencyError,
-        } =
-          await getAgencies();
+          error,
+        } = await getMofaAgencies();
 
 
-        if (agencyError) {
-          throw agencyError;
+        if (error) {
+          throw error;
         }
 
 
-        if (!cancelled) {
+        if (active) {
 
           setAgencies(
             data ?? [],
@@ -357,26 +339,27 @@ export function MofaForm({
 
         }
 
-      } catch (loadError) {
+      } catch (error) {
 
         console.error(
-          loadError,
+          error,
         );
 
 
-        if (!cancelled) {
+        if (active) {
 
-          setError(
+          toast.error(
             "Failed to load agencies.",
+            "Please try again.",
           );
 
         }
 
       } finally {
 
-        if (!cancelled) {
+        if (active) {
 
-          setAgencyLoading(
+          setAgenciesLoading(
             false,
           );
 
@@ -391,29 +374,32 @@ export function MofaForm({
 
 
     return () => {
-      cancelled = true;
+
+      active = false;
+
     };
 
-  }, [open]);
+  }, [
+    open,
+  ]);
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * LOAD MEDICALS
    *
-   * Whenever candidate changes:
+   * Medical is optional.
    *
-   * Candidate
-   *    ↓
-   * Medicals
-   *
-   * Same Medical can later be used by multiple MOFA.
-   * =========================================================
-   */
+   * Candidate selection itself does not require medical.
+   * ======================================================= */
 
   useEffect(() => {
 
-    if (!open || !candidateId) {
+    if (!open) {
+      return;
+    }
+
+
+    if (!form.candidate_id) {
 
       setMedicals([]);
 
@@ -422,7 +408,7 @@ export function MofaForm({
     }
 
 
-    let cancelled = false;
+    let active = true;
 
 
     async function loadMedicals() {
@@ -436,19 +422,19 @@ export function MofaForm({
 
         const {
           data,
-          error: medicalError,
+          error,
         } =
           await getCandidateMedicals(
-            candidateId,
+            form.candidate_id,
           );
 
 
-        if (medicalError) {
-          throw medicalError;
+        if (error) {
+          throw error;
         }
 
 
-        if (!cancelled) {
+        if (active) {
 
           setMedicals(
             data ?? [],
@@ -456,26 +442,27 @@ export function MofaForm({
 
         }
 
-      } catch (loadError) {
+      } catch (error) {
 
         console.error(
-          loadError,
+          error,
         );
 
 
-        if (!cancelled) {
+        if (active) {
 
           setMedicals([]);
 
-          setError(
+          toast.error(
             "Failed to load medical records.",
+            "Please try again.",
           );
 
         }
 
       } finally {
 
-        if (!cancelled) {
+        if (active) {
 
           setMedicalLoading(
             false,
@@ -492,397 +479,234 @@ export function MofaForm({
 
 
     return () => {
-      cancelled = true;
+
+      active = false;
+
     };
 
   }, [
     open,
-    candidateId,
+    form.candidate_id,
   ]);
 
 
-  /*
-   * =========================================================
-   * RESET / LOAD EXISTING RECORD
-   * =========================================================
-   */
+  /* =======================================================
+   * CHANGE HELPER
+   * ======================================================= */
 
-  useEffect(() => {
-
-    if (!open) {
-      return;
-    }
-
-
-    setError("");
-
-
-    if (mofa) {
-
-      setCandidateId(
-        mofa.candidate_id,
-      );
-
-      setMedicalId(
-        mofa.medical_id ??
-          null,
-      );
-
-      setApplicationNumber(
-        mofa.application_number ??
-          "",
-      );
-
-      setApplicationDate(
-        mofa.application_date ??
-          "",
-      );
-
-      setTrade(
-        mofa.trade ??
-          "",
-      );
-
-      setAgencyId(
-        mofa.agency_id ??
-          null,
-      );
-
-      setStage(
-        mofa.stage,
-      );
-
-    } else {
-
-      setCandidateId("");
-
-      setMedicalId(
-        null,
-      );
-
-      setApplicationNumber(
-        "",
-      );
-
-      setApplicationDate(
-        new Date()
-          .toISOString()
-          .slice(0, 10),
-      );
-
-      setTrade("");
-
-      setAgencyId(
-        null,
-      );
-
-      setStage(
-        "new",
-      );
-
-    }
-
-
-    setCandidateOpen(
-      false,
-    );
-
-    setMedicalOpen(
-      false,
-    );
-
-    setAgencyOpen(
-      false,
-    );
-
-  }, [
-    open,
-    mofa,
-  ]);
-
-
-  /*
-   * =========================================================
-   * WHEN CANDIDATE CHANGES
-   *
-   * Old Medical must not remain selected.
-   * =========================================================
-   */
-
-  function handleCandidateSelect(
-    nextCandidateId: string,
+  function updateField<
+    K extends keyof MofaInput
+  >(
+    field: K,
+    value: MofaInput[K],
   ) {
 
-    setCandidateId(
-      nextCandidateId,
+    setForm(
+      (current) => ({
+        ...current,
+        [field]: value,
+      }),
     );
 
-    setMedicalId(
-      null,
+    setDirty(true);
+
+  }
+
+
+  /* =======================================================
+   * CANDIDATE CHANGE
+   * ======================================================= */
+
+  function handleCandidateChange(
+    candidateId: string,
+  ) {
+
+    setForm(
+      (current) => ({
+        ...current,
+
+        candidate_id:
+          candidateId,
+
+        /*
+         * Medical belongs to candidate.
+         *
+         * When candidate changes,
+         * clear the previous medical.
+         */
+
+        medical_id:
+          null,
+      }),
     );
 
-    setError("");
+    setDirty(true);
 
-    setCandidateOpen(
-      false,
+  }
+
+
+  /* =======================================================
+   * STAGE CHANGE
+   * ======================================================= */
+
+  function handleStageChange(
+    stage: MofaStage,
+  ) {
+
+    updateField(
+      "stage",
+      stage,
     );
 
   }
 
 
-  /*
-   * =========================================================
-   * MEDICAL OPTIONS
-   *
-   * New / Fit / etc can be displayed.
-   *
-   * For Med Updated stage we require a Medical.
-   * =========================================================
-   */
+  /* =======================================================
+   * MEDICAL LABEL
+   * ======================================================= */
 
-  const fitMedicals =
-    medicals.filter(
-      (medical) =>
-        medical.status ===
-          "fit" ||
-        medical.status ===
-          "new",
-    );
+  function getMedicalLabel(
+    medical: MofaMedical,
+  ) {
 
+    const date =
+      medical.medical_date
+        ? new Date(
+            medical.medical_date,
+          ).toLocaleDateString()
+        : "No date";
 
-  /*
-   * =========================================================
-   * UNSAVED CHANGES
-   * =========================================================
-   */
+    const fitDate =
+      medical.fit_date
+        ? new Date(
+            medical.fit_date,
+          ).toLocaleDateString()
+        : null;
 
-  const hasChanges =
-    mofa
-      ? (
-          candidateId !==
-            mofa.candidate_id ||
+    return [
+      date,
+      medical.status.toUpperCase(),
+      fitDate
+        ? `Fit: ${fitDate}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" • ");
 
-          medicalId !==
-            (mofa.medical_id ??
-              null) ||
-
-          applicationNumber.trim() !==
-            (mofa.application_number ??
-              "") ||
-
-          applicationDate !==
-            (mofa.application_date ??
-              "") ||
-
-          trade.trim() !==
-            (mofa.trade ??
-              "") ||
-
-          agencyId !==
-            (mofa.agency_id ??
-              null) ||
-
-          stage !==
-            mofa.stage
-        )
-      : (
-          candidateId !== "" ||
-          medicalId !== null ||
-          applicationNumber.trim() !== "" ||
-          applicationDate !==
-            new Date()
-              .toISOString()
-              .slice(0, 10) ||
-          trade.trim() !== "" ||
-          agencyId !== null ||
-          stage !== "new"
-        );
+  }
 
 
-  /*
-   * =========================================================
-   * SUBMIT VALIDATION
-   * =========================================================
-   */
+  /* =======================================================
+   * VALIDATION
+   * ======================================================= */
+
+  function validate(): string | null {
+
+    if (!form.candidate_id) {
+
+      return "Please select a candidate.";
+
+    }
+
+
+    if (
+      !form.application_number.trim()
+    ) {
+
+      return "Application number is required.";
+
+    }
+
+
+    /*
+     * Medical is optional for MOFA.
+     *
+     * But these stages require medical:
+     *
+     * medupdated
+     * approved
+     */
+
+    if (
+      (
+        form.stage ===
+          "medupdated" ||
+        form.stage ===
+          "approved"
+      ) &&
+      !form.medical_id
+    ) {
+
+      return (
+        "A medical record is required for this stage."
+      );
+
+    }
+
+
+    return null;
+
+  }
+
+
+  /* =======================================================
+   * SUBMIT
+   * ======================================================= */
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event: React.FormEvent<HTMLFormElement>,
   ) {
 
     event.preventDefault();
 
-    setError("");
+
+    const validationError =
+      validate();
 
 
-    /*
-     * Candidate
-     */
+    if (validationError) {
 
-    if (!candidateId) {
-
-      setError(
-        "Candidate is required.",
+      toast.error(
+        "Cannot save MOFA.",
+        validationError,
       );
 
       return;
+
     }
-
-
-    /*
-     * Application number
-     */
-
-    const trimmedApplicationNumber =
-      applicationNumber.trim();
-
-
-    if (
-      !trimmedApplicationNumber
-    ) {
-
-      setError(
-        "Application number is required.",
-      );
-
-      return;
-    }
-
-
-    /*
-     * Application date
-     */
-
-    if (!applicationDate) {
-
-      setError(
-        "Application date is required.",
-      );
-
-      return;
-    }
-
-
-    /*
-     * Trade
-     */
-
-    const trimmedTrade =
-      trade.trim();
-
-
-    if (!trimmedTrade) {
-
-      setError(
-        "Trade is required.",
-      );
-
-      return;
-    }
-
-
-    /*
-     * =======================================================
-     * MEDICAL RULE
-     *
-     * new:
-     *     Medical optional.
-     *
-     * medupdated:
-     *     Medical mandatory.
-     *
-     * approved:
-     *     Medical should exist because this MOFA
-     *     is being used for visa.
-     *
-     * invalid:
-     *     Medical is intentionally not required.
-     * =======================================================
-     */
-
-    if (
-      stage ===
-        "medupdated" &&
-      !medicalId
-    ) {
-
-      setError(
-        "Medical is required before marking MOFA as Med Updated.",
-      );
-
-      return;
-    }
-
-
-    if (
-      stage ===
-        "approved" &&
-      !medicalId
-    ) {
-
-      setError(
-        "A linked medical record is required before approving this MOFA.",
-      );
-
-      return;
-    }
-
-
-    /*
-     * =======================================================
-     * MEDICAL VALIDATION
-     *
-     * Selected Medical must belong to selected Candidate.
-     * =======================================================
-     */
-
-    if (
-      medicalId &&
-      !currentMedical
-    ) {
-
-      setError(
-        "Selected medical record is no longer available.",
-      );
-
-      return;
-    }
-
-
-    /*
-     * =======================================================
-     * SAVE
-     * =======================================================
-     */
-
-    const input: MofaInput = {
-
-      candidate_id:
-        candidateId,
-
-      medical_id:
-        medicalId,
-
-      application_number:
-        trimmedApplicationNumber,
-
-      application_date:
-        applicationDate,
-
-      trade:
-        trimmedTrade,
-
-      agency_id:
-        agencyId,
-
-      stage,
-    };
 
 
     try {
 
-      setLoading(
-        true,
-      );
+      setSaving(true);
+
+
+      const input: MofaInput = {
+
+        candidate_id:
+          form.candidate_id,
+
+        medical_id:
+          form.medical_id || null,
+
+        agency_id:
+          form.agency_id || null,
+
+        application_number:
+          form.application_number.trim(),
+
+        application_date:
+          form.application_date ||
+          null,
+
+        trade:
+          form.trade?.trim() ||
+          null,
+
+        stage:
+          form.stage,
+
+      };
 
 
       const result =
@@ -892,7 +716,6 @@ export function MofaForm({
               input,
             )
           : await createMofa(
-              tenantId,
               input,
             );
 
@@ -902,49 +725,68 @@ export function MofaForm({
       }
 
 
-      if (!result.data) {
-
-        throw new Error(
-          "MOFA record was not returned after saving.",
-        );
-
-      }
-
-
-      onSuccess(
-        result.data,
+      toast.success(
+        isEditing
+          ? "MOFA updated."
+          : "MOFA created.",
+        isEditing
+          ? "The MOFA record was updated successfully."
+          : "The MOFA record was created successfully.",
       );
 
-    } catch (saveError) {
+
+      setDirty(false);
+
+      onSuccess();
+
+    } catch (error) {
 
       console.error(
-        "Failed to save MOFA:",
-        saveError,
+        error,
       );
 
 
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Failed to save MOFA record.",
+      toast.error(
+        isEditing
+          ? "Failed to update MOFA."
+          : "Failed to create MOFA.",
+        "Please check the information and try again.",
       );
 
     } finally {
 
-      setLoading(
-        false,
-      );
+      setSaving(false);
 
     }
 
   }
 
 
-  /*
-   * =========================================================
+  /* =======================================================
+   * CLOSE
+   * ======================================================= */
+
+  function handleOpenChange(
+    nextOpen: boolean,
+  ) {
+
+    /*
+     * UniversalSheet is responsible for
+     * unsaved-change confirmation.
+     *
+     * We only forward the state.
+     */
+
+    onOpenChange(
+      nextOpen,
+    );
+
+  }
+
+
+  /* =======================================================
    * RENDER
-   * =========================================================
-   */
+   * ======================================================= */
 
   return (
     <UniversalSheet
@@ -954,7 +796,7 @@ export function MofaForm({
       }
 
       onOpenChange={
-        onOpenChange
+        handleOpenChange
       }
 
       title={
@@ -965,74 +807,34 @@ export function MofaForm({
 
       description={
         isEditing
-          ? "Update the MOFA application record."
-          : "Create a new MOFA application record."
+          ? "Update the MOFA application details."
+          : "Create a new MOFA application for a candidate."
       }
 
-      onSubmit={
-        handleSubmit
+      dirty={
+        dirty
       }
 
-      submitLabel={
-        isEditing
-          ? "Update MOFA"
-          : "Create MOFA"
-      }
+      className="
+        sm:max-w-xl
+      "
 
-      loading={
-        loading
-      }
-
-      disabled={
-        !candidateId ||
-        !applicationNumber.trim() ||
-        !applicationDate ||
-        !trade.trim()
-      }
-
-      hasChanges={
-        hasChanges
-      }
     >
 
-      {/* ====================================================
-          ERROR
-          ==================================================== */}
-
-      {error && (
-
-        <div
-          className="
-            rounded-md
-            border
-            border-destructive/30
-            bg-destructive/10
-            px-3
-            py-2
-            text-sm
-            text-destructive
-          "
-        >
-          {error}
-        </div>
-
-      )}
-
-
-      {/* ====================================================
-          CANDIDATE
-          ==================================================== */}
-
-      <FormSection
-
-        title="Candidate"
-
-        description={
-          candidateLocked
-            ? "Candidate is locked for this MOFA record."
-            : "Select the candidate for this MOFA application."
+      <form
+        onSubmit={
+          handleSubmit
         }
+        className="
+          flex
+          flex-col
+          gap-6
+        "
       >
+
+        {/* =================================================
+         * CANDIDATE
+         * ================================================= */}
 
         <div
           className="
@@ -1040,284 +842,149 @@ export function MofaForm({
           "
         >
 
-          <Label>
+          <Label
+            htmlFor="mofa-candidate"
+          >
             Candidate
           </Label>
 
 
-          {candidateLocked ? (
+          <Select
 
-            <div
-              className="
-                flex
-                min-h-10
-                items-center
-                justify-between
-                rounded-md
-                border
-                bg-muted/40
-                px-3
-                py-2
-              "
+            value={
+              form.candidate_id
+            }
+
+            onValueChange={
+              handleCandidateChange
+            }
+
+            disabled={
+              saving
+            }
+
+          >
+
+            <SelectTrigger
+              id="mofa-candidate"
             >
 
-              <div
-                className="
-                  min-w-0
-                "
-              >
-
-                <p
-                  className="
-                    truncate
-                    text-sm
-                    font-medium
-                  "
-                >
-                  {
-                    mofa?.candidate?.name ??
-                    currentCandidate?.name ??
-                    "Unknown candidate"
-                  }
-                </p>
-
-
-                <p
-                  className="
-                    truncate
-                    text-xs
-                    text-muted-foreground
-                  "
-                >
-                  Passport:{" "}
-                  {
-                    mofa?.candidate?.passport_no ??
-                    currentCandidate?.passport_no ??
-                    "—"
-                  }
-                </p>
-
-              </div>
-
-
-              <Lock
-                className="
-                  ml-3
-                  h-4
-                  w-4
-                  shrink-0
-                  text-muted-foreground
+              <SelectValue
+                placeholder="
+                  Select candidate
                 "
               />
 
-            </div>
+            </SelectTrigger>
 
-          ) : (
 
-            <Popover
+            <SelectContent>
 
-              open={
-                candidateOpen
-              }
+              {candidates.length ===
+                0 ? (
 
-              onOpenChange={
-                setCandidateOpen
-              }
-            >
-
-              <PopoverTrigger
-                asChild
-              >
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={
-                    candidateOpen
-                  }
-                  className="
-                    w-full
-                    justify-between
-                    font-normal
-                  "
-                  disabled={
-                    loading
-                  }
+                <SelectItem
+                  value="__empty"
+                  disabled
                 >
+                  No candidates found
+                </SelectItem>
 
-                  {currentCandidate ? (
+              ) : (
 
-                    <span
-                      className="
-                        truncate
-                      "
-                    >
-                      {
-                        currentCandidate.name
+                candidates.map(
+                  (
+                    candidate,
+                  ) => (
+
+                    <SelectItem
+                      key={
+                        candidate.id
                       }
-                      {" — "}
-                      {
-                        currentCandidate.passport_no
+                      value={
+                        candidate.id
                       }
-                    </span>
-
-                  ) : (
-
-                    <span
-                      className="
-                        text-muted-foreground
-                      "
                     >
-                      Select candidate
-                    </span>
 
-                  )}
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-2
+                        "
+                      >
+
+                        <span>
+                          {
+                            candidate.name
+                          }
+                        </span>
+
+                        <span
+                          className="
+                            text-muted-foreground
+                          "
+                        >
+                          •
+                          {" "}
+                          {
+                            candidate.passport_no
+                          }
+                        </span>
+
+                      </div>
+
+                    </SelectItem>
+
+                  ),
+                )
+
+              )}
+
+            </SelectContent>
+
+          </Select>
 
 
-                  <ChevronsUpDown
-                    className="
-                      ml-2
-                      h-4
-                      w-4
-                      shrink-0
-                      opacity-50
-                    "
-                  />
+          {currentCandidate && (
 
-                </Button>
-
-              </PopoverTrigger>
-
-
-              <PopoverContent
-                align="start"
+            <p
+              className="
+                text-xs
+                text-muted-foreground
+              "
+            >
+              Passport:{" "}
+              <span
                 className="
-                  w-[var(--radix-popover-trigger-width)]
-                  p-0
+                  font-medium
+                  text-foreground
                 "
               >
+                {
+                  currentCandidate.passport_no
+                }
+              </span>
 
-                <Command>
-
-                  <CommandInput
-                    placeholder="
-                      Search candidate...
-                    "
-                  />
-
-                  <CommandList>
-
-                    <CommandEmpty>
-                      No candidate found.
-                    </CommandEmpty>
-
-
-                    <CommandGroup>
-
-                      {candidates.map(
-                        (
-                          candidate,
-                        ) => (
-
-                          <CommandItem
-
-                            key={
-                              candidate.id
-                            }
-
-                            value={`
-                              ${candidate.name}
-                              ${candidate.passport_no}
-                            `}
-
-                            onSelect={() =>
-                              handleCandidateSelect(
-                                candidate.id,
-                              )
-                            }
-                          >
-
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                candidateId ===
-                                  candidate.id
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
-
-
-                            <div
-                              className="
-                                min-w-0
-                              "
-                            >
-
-                              <p
-                                className="
-                                  truncate
-                                  text-sm
-                                  font-medium
-                                "
-                              >
-                                {
-                                  candidate.name
-                                }
-                              </p>
-
-
-                              <p
-                                className="
-                                  truncate
-                                  text-xs
-                                  text-muted-foreground
-                                "
-                              >
-                                Passport:{" "}
-                                {
-                                  candidate.passport_no
-                                }
-                              </p>
-
-                            </div>
-
-                          </CommandItem>
-
-                        ),
-                      )}
-
-                    </CommandGroup>
-
-                  </CommandList>
-
-                </Command>
-
-              </PopoverContent>
-
-            </Popover>
+              {currentCandidate.agent?.name && (
+                <>
+                  {" • "}
+                  Agent:{" "}
+                  {
+                    currentCandidate.agent.name
+                  }
+                </>
+              )}
+            </p>
 
           )}
 
         </div>
 
-      </FormSection>
 
-
-      {/* ====================================================
-          MEDICAL
-          ==================================================== */}
-
-      <FormSection
-
-        title="Medical"
-
-        description="
-          MOFA may initially exist without a medical.
-          Link a medical when the MOFA becomes Med Updated.
-        "
-      >
+        {/* =================================================
+         * MEDICAL
+         * ================================================= */}
 
         <div
           className="
@@ -1325,268 +992,113 @@ export function MofaForm({
           "
         >
 
-          <Label>
-            Medical Record
-          </Label>
-
-
-          <Popover
-
-            open={
-              medicalOpen
-            }
-
-            onOpenChange={
-              setMedicalOpen
-            }
+          <div
+            className="
+              flex
+              items-center
+              justify-between
+            "
           >
 
-            <PopoverTrigger
-              asChild
+            <Label
+              htmlFor="mofa-medical"
             >
-
-              <Button
-                type="button"
-                variant="outline"
-                role="combobox"
-                aria-expanded={
-                  medicalOpen
-                }
-                disabled={
-                  !candidateId ||
-                  medicalLoading ||
-                  loading
-                }
-                className="
-                  w-full
-                  justify-between
-                  font-normal
-                "
-              >
-
-                {currentMedical ? (
-
-                  <span
-                    className="
-                      flex
-                      min-w-0
-                      items-center
-                      gap-2
-                    "
-                  >
-
-                    <Stethoscope
-                      className="
-                        h-4
-                        w-4
-                        shrink-0
-                      "
-                    />
-
-                    <span
-                      className="
-                        truncate
-                      "
-                    >
-                      Medical{" "}
-                      {currentMedical.medical_date ??
-                        "Record"}
-                      {" — "}
-                      {
-                        currentMedical.status
-                      }
-                    </span>
-
-                  </span>
-
-                ) : (
-
-                  <span
-                    className="
-                      text-muted-foreground
-                    "
-                  >
-                    {medicalLoading
-                      ? "Loading medicals..."
-                      : candidateId
-                        ? "Select medical or leave empty"
-                        : "Select candidate first"}
-                  </span>
-
-                )}
+              Medical
+            </Label>
 
 
-                <ChevronsUpDown
-                  className="
-                    ml-2
-                    h-4
-                    w-4
-                    shrink-0
-                    opacity-50
-                  "
-                />
-
-              </Button>
-
-            </PopoverTrigger>
-
-
-            <PopoverContent
-              align="start"
+            <span
               className="
-                w-[var(--radix-popover-trigger-width)]
-                p-0
+                text-xs
+                text-muted-foreground
               "
             >
+              Optional
+            </span>
 
-              <Command>
-
-                <CommandInput
-                  placeholder="
-                    Search medical...
-                  "
-                />
+          </div>
 
 
-                <CommandList>
+          <Select
 
-                  <CommandEmpty>
-                    No medical record found.
-                  </CommandEmpty>
+            value={
+              form.medical_id ??
+              "__none"
+            }
+
+            onValueChange={
+              (value) => {
+
+                updateField(
+                  "medical_id",
+                  value === "__none"
+                    ? null
+                    : value,
+                );
+
+              }
+            }
+
+            disabled={
+              saving ||
+              !form.candidate_id ||
+              medicalLoading
+            }
+
+          >
+
+            <SelectTrigger
+              id="mofa-medical"
+            >
+
+              <SelectValue
+                placeholder={
+                  !form.candidate_id
+                    ? "Select candidate first"
+                    : medicalLoading
+                      ? "Loading medical records..."
+                      : "Select medical"
+                }
+              />
+
+            </SelectTrigger>
 
 
-                  <CommandGroup>
+            <SelectContent>
 
-                    <CommandItem
-
-                      value="no medical none"
-
-                      onSelect={() => {
-
-                        setMedicalId(
-                          null,
-                        );
-
-                        setMedicalOpen(
-                          false,
-                        );
-
-                      }}
-                    >
-
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          medicalId ===
-                            null
-                            ? "opacity-100"
-                            : "opacity-0",
-                        )}
-                      />
-
-                      No Medical
-
-                    </CommandItem>
+              <SelectItem
+                value="__none"
+              >
+                No medical
+              </SelectItem>
 
 
-                    {fitMedicals.map(
-                      (
+              {medicals.map(
+                (
+                  medical,
+                ) => (
+
+                  <SelectItem
+                    key={
+                      medical.id
+                    }
+                    value={
+                      medical.id
+                    }
+                  >
+                    {
+                      getMedicalLabel(
                         medical,
-                      ) => (
+                      )
+                    }
+                  </SelectItem>
 
-                        <CommandItem
+                ),
+              )}
 
-                          key={
-                            medical.id
-                          }
+            </SelectContent>
 
-                          value={`
-                            ${medical.medical_date ?? ""}
-                            ${medical.status}
-                            ${medical.id}
-                          `}
-
-                          onSelect={() => {
-
-                            setMedicalId(
-                              medical.id,
-                            );
-
-                            setMedicalOpen(
-                              false,
-                            );
-
-                            setError(
-                              "",
-                            );
-
-                          }}
-                        >
-
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              medicalId ===
-                                medical.id
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-
-
-                          <div>
-
-                            <p
-                              className="
-                                text-sm
-                                font-medium
-                              "
-                            >
-                              Medical{" "}
-                              {
-                                medical.medical_date ??
-                                "—"
-                              }
-                            </p>
-
-
-                            <p
-                              className="
-                                text-xs
-                                text-muted-foreground
-                              "
-                            >
-                              Status:{" "}
-                              {
-                                medical.status
-                              }
-
-                              {medical.fit_date && (
-                                <>
-                                  {" · Fit: "}
-                                  {
-                                    medical.fit_date
-                                  }
-                                </>
-                              )}
-                            </p>
-
-                          </div>
-
-                        </CommandItem>
-
-                      ),
-                    )}
-
-                  </CommandGroup>
-
-                </CommandList>
-
-              </Command>
-
-            </PopoverContent>
-
-          </Popover>
+          </Select>
 
 
           <p
@@ -1595,184 +1107,18 @@ export function MofaForm({
               text-muted-foreground
             "
           >
-            Leave empty when this MOFA is only being
-            recorded and has no medical linked yet.
+            MOFA can be created without
+            a medical record. Medical is
+            required for Medical Updated
+            and Approved stages.
           </p>
 
         </div>
 
-      </FormSection>
 
-
-      {/* ====================================================
-          APPLICATION
-          ==================================================== */}
-
-      <FormSection
-
-        title="Application"
-
-        description="
-          Enter the MOFA application information.
-        "
-      >
-
-        <div
-          className="
-            space-y-4
-          "
-        >
-
-          <div
-            className="
-              space-y-2
-            "
-          >
-
-            <Label
-              htmlFor="mofa-application-number"
-            >
-              Application Number
-            </Label>
-
-
-            <div
-              className="
-                relative
-              "
-            >
-
-              <FileText
-                className="
-                  absolute
-                  left-3
-                  top-1/2
-                  h-4
-                  w-4
-                  -translate-y-1/2
-                  text-muted-foreground
-                "
-              />
-
-
-              <Input
-                id="
-                  mofa-application-number
-                "
-                value={
-                  applicationNumber
-                }
-                onChange={(
-                  event,
-                ) =>
-                  setApplicationNumber(
-                    event.target.value,
-                  )
-                }
-                placeholder="
-                  Enter application number
-                "
-                disabled={
-                  loading
-                }
-                className="
-                  pl-9
-                "
-              />
-
-            </div>
-
-          </div>
-
-
-          <div
-            className="
-              space-y-2
-            "
-          >
-
-            <Label
-              htmlFor="mofa-application-date"
-            >
-              Application Date
-            </Label>
-
-
-            <Input
-              id="
-                mofa-application-date
-              "
-              type="date"
-              value={
-                applicationDate
-              }
-              onChange={(
-                event,
-              ) =>
-                setApplicationDate(
-                  event.target.value,
-                )
-              }
-              disabled={
-                loading
-              }
-            />
-
-          </div>
-
-
-          <div
-            className="
-              space-y-2
-            "
-          >
-
-            <Label
-              htmlFor="mofa-trade"
-            >
-              Trade
-            </Label>
-
-
-            <Input
-              id="mofa-trade"
-              value={
-                trade
-              }
-              onChange={(
-                event,
-              ) =>
-                setTrade(
-                  event.target.value,
-                )
-              }
-              placeholder="
-                Enter trade
-              "
-              disabled={
-                loading
-              }
-            />
-
-          </div>
-
-        </div>
-
-      </FormSection>
-
-
-      {/* ====================================================
-          AGENCY
-          ==================================================== */}
-
-      <FormSection
-
-        title="Agency"
-
-        description="
-          Select the agency responsible for this MOFA.
-        "
-      >
+        {/* =================================================
+         * APPLICATION NUMBER
+         * ================================================= */}
 
         <div
           className="
@@ -1780,413 +1126,409 @@ export function MofaForm({
           "
         >
 
-          <Label>
+          <Label
+            htmlFor="mofa-application-number"
+          >
+            Application Number
+          </Label>
+
+
+          <Input
+
+            id="mofa-application-number"
+
+            value={
+              form.application_number
+            }
+
+            onChange={
+              (event) =>
+                updateField(
+                  "application_number",
+                  event.target.value,
+                )
+            }
+
+            placeholder="
+              Enter application number
+            "
+
+            disabled={
+              saving
+            }
+
+          />
+
+        </div>
+
+
+        {/* =================================================
+         * APPLICATION DATE
+         * ================================================= */}
+
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <Label
+            htmlFor="mofa-application-date"
+          >
+            Application Date
+          </Label>
+
+
+          <Input
+
+            id="mofa-application-date"
+
+            type="date"
+
+            value={
+              form.application_date ??
+              ""
+            }
+
+            onChange={
+              (event) =>
+                updateField(
+                  "application_date",
+                  event.target.value,
+                )
+            }
+
+            disabled={
+              saving
+            }
+
+          />
+
+        </div>
+
+
+        {/* =================================================
+         * TRADE
+         * ================================================= */}
+
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <Label
+            htmlFor="mofa-trade"
+          >
+            Trade
+          </Label>
+
+
+          <Input
+
+            id="mofa-trade"
+
+            value={
+              form.trade ??
+              ""
+            }
+
+            onChange={
+              (event) =>
+                updateField(
+                  "trade",
+                  event.target.value,
+                )
+            }
+
+            placeholder="
+              Enter trade
+            "
+
+            disabled={
+              saving
+            }
+
+          />
+
+        </div>
+
+
+        {/* =================================================
+         * AGENCY
+         * ================================================= */}
+
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <Label
+            htmlFor="mofa-agency"
+          >
             Agency
           </Label>
 
 
-          <Popover
-
-            open={
-              agencyOpen
-            }
-
-            onOpenChange={
-              setAgencyOpen
-            }
-          >
-
-            <PopoverTrigger
-              asChild
-            >
-
-              <Button
-                type="button"
-                variant="outline"
-                role="combobox"
-                aria-expanded={
-                  agencyOpen
-                }
-                disabled={
-                  agencyLoading ||
-                  loading
-                }
-                className="
-                  w-full
-                  justify-between
-                  font-normal
-                "
-              >
-
-                {currentAgency ? (
-
-                  <span
-                    className="
-                      flex
-                      min-w-0
-                      items-center
-                      gap-2
-                    "
-                  >
-
-                    <Building2
-                      className="
-                        h-4
-                        w-4
-                        shrink-0
-                      "
-                    />
-
-                    <span
-                      className="
-                        truncate
-                      "
-                    >
-                      {
-                        currentAgency.name
-                      }
-
-                      {currentAgency.code && (
-                        <>
-                          {" — "}
-                          {
-                            currentAgency.code
-                          }
-                        </>
-                      )}
-                    </span>
-
-                  </span>
-
-                ) : (
-
-                  <span
-                    className="
-                      text-muted-foreground
-                    "
-                  >
-                    {agencyLoading
-                      ? "Loading agencies..."
-                      : "Select agency"}
-                  </span>
-
-                )}
-
-
-                <ChevronsUpDown
-                  className="
-                    ml-2
-                    h-4
-                    w-4
-                    shrink-0
-                    opacity-50
-                  "
-                />
-
-              </Button>
-
-            </PopoverTrigger>
-
-
-            <PopoverContent
-              align="start"
-              className="
-                w-[var(--radix-popover-trigger-width)]
-                p-0
-              "
-            >
-
-              <Command>
-
-                <CommandInput
-                  placeholder="
-                    Search agency...
-                  "
-                />
-
-
-                <CommandList>
-
-                  <CommandEmpty>
-                    No agency found.
-                  </CommandEmpty>
-
-
-                  <CommandGroup>
-
-                    <CommandItem
-
-                      value="no agency none"
-
-                      onSelect={() => {
-
-                        setAgencyId(
-                          null,
-                        );
-
-                        setAgencyOpen(
-                          false,
-                        );
-
-                      }}
-                    >
-
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          agencyId ===
-                            null
-                            ? "opacity-100"
-                            : "opacity-0",
-                        )}
-                      />
-
-                      No Agency
-
-                    </CommandItem>
-
-
-                    {agencies.map(
-                      (
-                        agency,
-                      ) => (
-
-                        <CommandItem
-
-                          key={
-                            agency.id
-                          }
-
-                          value={`
-                            ${agency.name}
-                            ${agency.code ?? ""}
-                          `}
-
-                          onSelect={() => {
-
-                            setAgencyId(
-                              agency.id,
-                            );
-
-                            setAgencyOpen(
-                              false,
-                            );
-
-                            setError(
-                              "",
-                            );
-
-                          }}
-                        >
-
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              agencyId ===
-                                agency.id
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-
-
-                          <div>
-
-                            <p
-                              className="
-                                text-sm
-                                font-medium
-                              "
-                            >
-                              {
-                                agency.name
-                              }
-                            </p>
-
-
-                            {agency.code && (
-
-                              <p
-                                className="
-                                  text-xs
-                                  text-muted-foreground
-                                "
-                              >
-                                {
-                                  agency.code
-                                }
-                              </p>
-
-                            )}
-
-                          </div>
-
-                        </CommandItem>
-
-                      ),
-                    )}
-
-                  </CommandGroup>
-
-                </CommandList>
-
-              </Command>
-
-            </PopoverContent>
-
-          </Popover>
-
-        </div>
-
-      </FormSection>
-
-
-      {/* ====================================================
-          STAGE
-          ==================================================== */}
-
-      <FormSection
-
-        title="MOFA Stage"
-
-        description="
-          Stage controls how this MOFA record can move
-          through the visa workflow.
-        "
-      >
-
-        <div
-          className="
-            space-y-2
-          "
-        >
-
-          <Label>
-            Stage
-          </Label>
-
-
           <Select
+
             value={
-              stage
+              form.agency_id ??
+              "__none"
             }
-            onValueChange={(
-              value,
-            ) =>
-              setStage(
-                value as MofaStage,
-              )
+
+            onValueChange={
+              (value) =>
+                updateField(
+                  "agency_id",
+                  value === "__none"
+                    ? null
+                    : value,
+                )
             }
+
             disabled={
-              loading
+              saving ||
+              agenciesLoading
             }
+
           >
 
-            <SelectTrigger>
-              <SelectValue />
+            <SelectTrigger
+              id="mofa-agency"
+            >
+
+              <SelectValue
+                placeholder={
+                  agenciesLoading
+                    ? "Loading agencies..."
+                    : "Select agency"
+                }
+              />
+
             </SelectTrigger>
 
 
             <SelectContent>
 
               <SelectItem
-                value="new"
+                value="__none"
               >
-                New
+                No agency
               </SelectItem>
 
 
-              <SelectItem
-                value="medupdated"
-              >
-                Med Updated
-              </SelectItem>
+              {agencies.map(
+                (
+                  agency,
+                ) => (
+
+                  <SelectItem
+                    key={
+                      agency.id
+                    }
+                    value={
+                      agency.id
+                    }
+                  >
+
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                      "
+                    >
+
+                      <span>
+                        {
+                          agency.name
+                        }
+                      </span>
+
+                      {agency.code && (
+                        <span
+                          className="
+                            text-muted-foreground
+                          "
+                        >
+                          (
+                          {
+                            agency.code
+                          }
+                          )
+                        </span>
+                      )}
+
+                    </div>
+
+                  </SelectItem>
+
+                ),
+              )}
+
+            </SelectContent>
+
+          </Select>
+
+        </div>
 
 
-              <SelectItem
-                value="approved"
-              >
-                Approved
-              </SelectItem>
+        {/* =================================================
+         * STAGE
+         * ================================================= */}
+
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <Label
+            htmlFor="mofa-stage"
+          >
+            Stage
+          </Label>
 
 
-              <SelectItem
-                value="canceled"
-              >
-                Canceled
-              </SelectItem>
+          <Select
+
+            value={
+              form.stage
+            }
+
+            onValueChange={
+              (value) =>
+                handleStageChange(
+                  value as MofaStage,
+                )
+            }
+
+            disabled={
+              saving
+            }
+
+          >
+
+            <SelectTrigger
+              id="mofa-stage"
+            >
+
+              <SelectValue
+                placeholder="
+                  Select stage
+                "
+              />
+
+            </SelectTrigger>
 
 
-              <SelectItem
-                value="expired"
-              >
-                Expired
-              </SelectItem>
+            <SelectContent>
 
+              {stageOptions.map(
+                (
+                  option,
+                ) => (
 
-              <SelectItem
-                value="invalid"
-              >
-                Invalid
-              </SelectItem>
+                  <SelectItem
+                    key={
+                      option.value
+                    }
+                    value={
+                      option.value
+                    }
+                  >
+                    {
+                      option.label
+                    }
+                  </SelectItem>
+
+                ),
+              )}
 
             </SelectContent>
 
           </Select>
 
 
-          {stage ===
-            "medupdated" && (
-
+          {(
+            form.stage ===
+              "medupdated" ||
+            form.stage ===
+              "approved"
+          ) && (
             <p
               className="
                 text-xs
-                text-muted-foreground
+                text-amber-600
               "
             >
-              Med Updated requires a linked
-              medical record.
+              A medical record is required
+              for this stage.
             </p>
-
-          )}
-
-
-          {stage ===
-            "approved" && (
-
-            <p
-              className="
-                text-xs
-                text-muted-foreground
-              "
-            >
-              Approved represents a MOFA that is
-              ready to be used for the visa process.
-            </p>
-
-          )}
-
-
-          {stage ===
-            "invalid" && (
-
-            <p
-              className="
-                text-xs
-                text-muted-foreground
-              "
-            >
-              Invalid can be used to keep a MOFA
-              record that has no valid medical linkage.
-            </p>
-
           )}
 
         </div>
 
-      </FormSection>
+
+        {/* =================================================
+         * ACTIONS
+         * ================================================= */}
+
+        <div
+          className="
+            flex
+            items-center
+            justify-end
+            gap-2
+            border-t
+            pt-4
+          "
+        >
+
+          <Button
+
+            type="button"
+
+            variant="outline"
+
+            onClick={() =>
+              onOpenChange(false)
+            }
+
+            disabled={
+              saving
+            }
+
+          >
+            Cancel
+
+          </Button>
+
+
+          <Button
+
+            type="submit"
+
+            disabled={
+              saving
+            }
+
+          >
+
+            {saving
+              ? "Saving..."
+              : isEditing
+                ? "Update MOFA"
+                : "Create MOFA"}
+
+          </Button>
+
+        </div>
+
+      </form>
 
     </UniversalSheet>
   );
 }
-

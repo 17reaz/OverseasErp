@@ -26,12 +26,16 @@ import {
 
 import {
   deleteMofa,
+  getMofaCandidates,
   getMofas,
   type Mofa,
   type MofaCandidate,
-  type MofaStage,
 } from "./mofa-service";
 
+
+/* =========================================================
+ * DEFAULT FILTER
+ * ========================================================= */
 
 const defaultFilter: MofaFilterState = {
   view: "all",
@@ -39,19 +43,25 @@ const defaultFilter: MofaFilterState = {
 };
 
 
+/* =========================================================
+ * DEFAULT SORT
+ * ========================================================= */
+
 const defaultSort: MofaSortState = {
-  mode: "custom",
+  mode: "descending",
   field: "created_at",
 };
 
 
+/* =========================================================
+ * PAGE
+ * ========================================================= */
+
 export function MofaPage() {
 
-  /*
-   * =========================================================
-   * STATE
-   * =========================================================
-   */
+  /* =======================================================
+   * MOFA DATA
+   * ======================================================= */
 
   const [
     mofas,
@@ -59,11 +69,35 @@ export function MofaPage() {
   ] = useState<Mofa[]>([]);
 
 
+  /* =======================================================
+   * CANDIDATES
+   * ======================================================= */
+
+  const [
+    candidates,
+    setCandidates,
+  ] = useState<MofaCandidate[]>([]);
+
+
+  /* =======================================================
+   * LOADING
+   * ======================================================= */
+
   const [
     loading,
     setLoading,
   ] = useState(true);
 
+
+  const [
+    candidatesLoading,
+    setCandidatesLoading,
+  ] = useState(false);
+
+
+  /* =======================================================
+   * FORM
+   * ======================================================= */
 
   const [
     formOpen,
@@ -74,19 +108,18 @@ export function MofaPage() {
   const [
     editingMofa,
     setEditingMofa,
-  ] = useState<Mofa | null>(
-    null,
-  );
+  ] = useState<Mofa | null>(null);
 
 
   const [
     selectedCandidate,
     setSelectedCandidate,
-  ] =
-    useState<MofaCandidate | null>(
-      null,
-    );
+  ] = useState<MofaCandidate | null>(null);
 
+
+  /* =======================================================
+   * SEARCH
+   * ======================================================= */
 
   const [
     search,
@@ -94,114 +127,159 @@ export function MofaPage() {
   ] = useState("");
 
 
+  /* =======================================================
+   * FILTER
+   * ======================================================= */
+
   const [
     filter,
     setFilter,
-  ] =
-    useState<MofaFilterState>(
-      defaultFilter,
-    );
+  ] = useState<MofaFilterState>(
+    defaultFilter,
+  );
 
+
+  /* =======================================================
+   * SORT
+   * ======================================================= */
 
   const [
     sort,
     setSort,
-  ] =
-    useState<MofaSortState>(
-      defaultSort,
-    );
+  ] = useState<MofaSortState>(
+    defaultSort,
+  );
 
+
+  /* =======================================================
+   * VIEW
+   * ======================================================= */
 
   const [
     viewMode,
     setViewMode,
-  ] =
-    useState<MofaViewMode>(
-      "list",
-    );
+  ] = useState<MofaViewMode>(
+    "list",
+  );
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * LOAD MOFA
-   * =========================================================
-   */
+   * ======================================================= */
 
-  const loadMofas =
-    useCallback(
-      async () => {
+  const loadMofas = useCallback(
+    async () => {
 
-        try {
+      try {
 
-          setLoading(
-            true,
-          );
+        setLoading(true);
 
+        const {
+          data,
+          error,
+        } = await getMofas();
 
-          const {
-            data,
-            error,
-          } =
-            await getMofas();
-
-
-          if (error) {
-            throw error;
-          }
-
-
-          setMofas(
-            data ?? [],
-          );
-
-        } catch (error) {
-
-          console.error(
-            error,
-          );
-
-
-          toast.error(
-            "Failed to load MOFA records.",
-            "Please try again.",
-          );
-
-        } finally {
-
-          setLoading(
-            false,
-          );
-
+        if (error) {
+          throw error;
         }
 
-      },
-      [],
-    );
+        setMofas(
+          data ?? [],
+        );
+
+      } catch (error) {
+
+        console.error(
+          error,
+        );
+
+        toast.error(
+          "Failed to load MOFA records.",
+          "Please try again.",
+        );
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    },
+    [],
+  );
 
 
-  /*
-   * =========================================================
+  /* =======================================================
+   * LOAD CANDIDATES
+   *
+   * MOFA does NOT require medical.
+   *
+   * Therefore candidates are loaded independently.
+   * ======================================================= */
+
+  const loadCandidates = useCallback(
+    async () => {
+
+      try {
+
+        setCandidatesLoading(true);
+
+        const {
+          data,
+          error,
+        } = await getMofaCandidates();
+
+        if (error) {
+          throw error;
+        }
+
+        setCandidates(
+          data ?? [],
+        );
+
+      } catch (error) {
+
+        console.error(
+          error,
+        );
+
+        toast.error(
+          "Failed to load candidates.",
+          "Please try again.",
+        );
+
+      } finally {
+
+        setCandidatesLoading(false);
+
+      }
+
+    },
+    [],
+  );
+
+
+  /* =======================================================
    * INITIAL LOAD
-   * =========================================================
-   */
+   * ======================================================= */
 
   useEffect(() => {
 
     void loadMofas();
+    void loadCandidates();
 
   }, [
     loadMofas,
+    loadCandidates,
   ]);
 
 
-  /*
-   * =========================================================
-   * FILTER + SEARCH
-   * =========================================================
-   */
+  /* =======================================================
+   * FILTER + SEARCH + SORT
+   * ======================================================= */
 
-  const filteredMofas =
-    useMemo(() => {
+  const filteredMofas = useMemo(
+    () => {
 
       const query =
         search
@@ -213,72 +291,78 @@ export function MofaPage() {
         mofas.filter(
           (mofa) => {
 
-            /*
+            /* =============================================
              * SEARCH
-             */
+             * ============================================= */
 
             const matchesSearch =
               !query ||
-              mofa.candidate?.name
-                ?.toLowerCase()
-                .includes(query) ||
-              mofa.candidate?.passport_no
-                ?.toLowerCase()
-                .includes(query) ||
-              mofa.application_number
-                ?.toLowerCase()
-                .includes(query) ||
-              mofa.trade
-                ?.toLowerCase()
-                .includes(query);
+              (
+                mofa.candidate?.name
+                  ?.toLowerCase()
+                  .includes(query)
+              ) ||
+              (
+                mofa.candidate?.passport_no
+                  ?.toLowerCase()
+                  .includes(query)
+              ) ||
+              (
+                mofa.application_number
+                  ?.toLowerCase()
+                  .includes(query)
+              ) ||
+              (
+                mofa.trade
+                  ?.toLowerCase()
+                  .includes(query)
+              ) ||
+              (
+                mofa.agency?.name
+                  ?.toLowerCase()
+                  .includes(query)
+              );
 
 
-            /*
+            /* =============================================
              * STAGE
-             */
+             * ============================================= */
 
             const matchesStage =
-              filter.view ===
-                "all" ||
-              mofa.stage ===
-                filter.view;
+              filter.view === "all" ||
+              mofa.stage === filter.view;
 
 
-            /*
+            /* =============================================
              * MONTH
-             */
+             *
+             * Toolbar gives:
+             *
+             * 2026-08
+             *
+             * So compare YYYY-MM directly.
+             * ============================================= */
 
-            let matchesMonth =
-              true;
-
+            let matchesMonth = true;
 
             if (
-              filter.month !==
-              "all"
+              filter.month !== "all"
             ) {
 
               const date =
                 mofa.application_date;
 
-
               if (!date) {
 
-                matchesMonth =
-                  false;
+                matchesMonth = false;
 
               } else {
 
-                const month =
-                  new Date(
-                    date,
-                  ).getMonth() + 1;
-
+                const monthKey =
+                  date.slice(0, 7);
 
                 matchesMonth =
-                  String(
-                    month,
-                  ) ===
-                  filter.month;
+                  monthKey === filter.month;
 
               }
 
@@ -295,22 +379,17 @@ export function MofaPage() {
         );
 
 
-      /*
-       * =======================================================
+      /* =====================================================
        * SORT
-       * =======================================================
-       */
+       * ===================================================== */
 
       result = [
         ...result,
       ].sort(
         (a, b) => {
 
-          let first =
-            "";
-
-          let second =
-            "";
+          let first = "";
+          let second = "";
 
 
           switch (
@@ -343,6 +422,19 @@ export function MofaPage() {
               break;
 
 
+            case "application_number":
+
+              first =
+                a.application_number ??
+                "";
+
+              second =
+                b.application_number ??
+                "";
+
+              break;
+
+
             case "application_date":
 
               first =
@@ -351,19 +443,6 @@ export function MofaPage() {
 
               second =
                 b.application_date ??
-                "";
-
-              break;
-
-
-            case "stage":
-
-              first =
-                a.stage ??
-                "";
-
-              second =
-                b.stage ??
                 "";
 
               break;
@@ -405,8 +484,7 @@ export function MofaPage() {
               undefined,
               {
                 numeric: true,
-                sensitivity:
-                  "base",
+                sensitivity: "base",
               },
             );
 
@@ -415,9 +493,7 @@ export function MofaPage() {
             sort.mode ===
             "descending"
           ) {
-
             return -comparison;
-
           }
 
 
@@ -429,73 +505,55 @@ export function MofaPage() {
 
       return result;
 
-    }, [
+    },
+    [
       mofas,
       search,
       filter,
       sort,
-    ]);
+    ],
+  );
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * CREATE
-   * =========================================================
-   */
+   * ======================================================= */
 
   function handleCreate() {
 
-    setEditingMofa(
-      null,
-    );
+    setEditingMofa(null);
 
+    setSelectedCandidate(null);
 
-    setSelectedCandidate(
-      null,
-    );
-
-
-    setFormOpen(
-      true,
-    );
+    setFormOpen(true);
 
   }
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * CREATE FROM CANDIDATE
    *
-   * Future use if MOFA is opened from another module.
-   * =========================================================
-   */
+   * Reserved for future Candidate → MOFA flow.
+   * ======================================================= */
 
   function handleAddMofa(
     candidate: MofaCandidate,
   ) {
 
-    setEditingMofa(
-      null,
-    );
-
+    setEditingMofa(null);
 
     setSelectedCandidate(
       candidate,
     );
 
-
-    setFormOpen(
-      true,
-    );
+    setFormOpen(true);
 
   }
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * EDIT
-   * =========================================================
-   */
+   * ======================================================= */
 
   function handleEdit(
     mofa: Mofa,
@@ -505,24 +563,18 @@ export function MofaPage() {
       mofa,
     );
 
-
     setSelectedCandidate(
       null,
     );
 
-
-    setFormOpen(
-      true,
-    );
+    setFormOpen(true);
 
   }
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * DELETE
-   * =========================================================
-   */
+   * ======================================================= */
 
   async function handleDelete(
     mofa: Mofa,
@@ -546,10 +598,9 @@ export function MofaPage() {
 
       const {
         error,
-      } =
-        await deleteMofa(
-          mofa.id,
-        );
+      } = await deleteMofa(
+        mofa.id,
+      );
 
 
       if (error) {
@@ -582,63 +633,76 @@ export function MofaPage() {
   }
 
 
-  /*
-   * =========================================================
+  /* =======================================================
    * FORM SUCCESS
-   * =========================================================
-   */
+   * ======================================================= */
 
   function handleFormSuccess() {
 
-    setFormOpen(
-      false,
-    );
+    setFormOpen(false);
 
+    setEditingMofa(null);
 
-    setEditingMofa(
-      null,
-    );
-
-
-    setSelectedCandidate(
-      null,
-    );
-
+    setSelectedCandidate(null);
 
     void loadMofas();
 
   }
 
 
-  /*
-   * =========================================================
-   * REFRESH
-   * =========================================================
-   */
+  /* =======================================================
+   * FORM OPEN CHANGE
+   * ======================================================= */
 
-  async function handleRefresh() {
+  function handleFormOpenChange(
+    open: boolean,
+  ) {
 
-    await loadMofas();
+    setFormOpen(open);
+
+
+    if (!open) {
+
+      setEditingMofa(null);
+
+      setSelectedCandidate(null);
+
+    }
 
   }
 
 
-  /*
-   * =========================================================
+  /* =======================================================
+   * REFRESH
+   * ======================================================= */
+
+  async function handleRefresh() {
+
+    await Promise.all([
+      loadMofas(),
+      loadCandidates(),
+    ]);
+
+  }
+
+
+  /* =======================================================
    * RENDER
-   * =========================================================
-   */
+   * ======================================================= */
 
   return (
     <div
       className="
-        space-y-6
+        flex
+        min-h-0
+        flex-col
+        gap-6
       "
     >
 
-      {/* ==================================================
-          TOOLBAR
-          ================================================== */}
+      {/* =================================================
+       * TOOLBAR
+       * ================================================= */}
 
       <MofaToolbar
 
@@ -663,7 +727,8 @@ export function MofaPage() {
         }
 
         refreshing={
-          loading
+          loading ||
+          candidatesLoading
         }
 
         filter={
@@ -693,9 +758,9 @@ export function MofaPage() {
       />
 
 
-      {/* ==================================================
-          TABLE
-          ================================================== */}
+      {/* =================================================
+       * TABLE
+       * ================================================= */}
 
       <MofaTable
 
@@ -715,16 +780,12 @@ export function MofaPage() {
           handleDelete
         }
 
-        onAddMofa={
-          handleAddMofa
-        }
-
       />
 
 
-      {/* ==================================================
-          MOFA SHEET
-          ================================================== */}
+      {/* =================================================
+       * FORM
+       * ================================================= */}
 
       <MofaForm
 
@@ -741,11 +802,11 @@ export function MofaPage() {
         }
 
         candidates={
-          []
+          candidates
         }
 
         onOpenChange={
-          setFormOpen
+          handleFormOpenChange
         }
 
         onSuccess={
