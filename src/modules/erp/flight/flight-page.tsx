@@ -1,51 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TradeTestForm } from "./components/takamul-form";
-import { TradeTestTable } from "./components/takamul-table";
-import { TradeTestToolbar, type ResultFilter } from "./components/takamul-toolbar";
-import {
-  deleteTradeTest,
-  getTradeTests,
-  type TradeTest,
-} from "./takamul-service";
+import { FlightForm } from "./components/flight-form";
+import { FlightTable } from "./components/flight-table";
+import { FlightToolbar } from "./components/flight-toolbar";
+import { deleteFlight, getFlights, type Flight } from "./flight-service";
 import { getCandidates } from "../candidates/candidate-service";
+// import { getVisas } from "../visas/visa-service";
 
-interface CandidateOption {
-  id: string;
-  name: string;
-  passport_no: string;
-}
+export function FlightPage() {
+  const [records, setRecords] = useState<Flight[]>([]);
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [visas, setVisas] = useState<any[]>([]);
 
-export function TradeTestPage() {
-  const [records, setRecords] = useState<TradeTest[]>([]);
-  const [candidates, setCandidates] = useState<CandidateOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<TradeTest | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Flight | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [tradeTests, candidateResult] = await Promise.all([
-        getTradeTests(),
+      const [flightList, candidateResult] = await Promise.all([
+        getFlights(),
         getCandidates(),
+        // getVisas(),
       ]);
 
-      if (candidateResult.error) {
-        throw candidateResult.error;
-      }
+      if (candidateResult.error) throw candidateResult.error;
 
-      setRecords(tradeTests);
-      setCandidates(
-        (candidateResult.data ?? []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          passport_no: c.passport_no,
-        })),
-      );
+      setRecords(flightList);
+      setCandidates(candidateResult.data ?? []);
+      // setVisas(visaList ?? []);
     } catch (error) {
-      console.error("Failed to load trade test module:", error);
+      console.error("Failed to load flight module:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -62,47 +48,45 @@ export function TradeTestPage() {
     return records.filter((record) => {
       const candidate = candidates.find((c) => c.id === record.candidate_id);
 
-      const matchesSearch =
+      return (
         !query ||
         candidate?.name.toLowerCase().includes(query) ||
         candidate?.passport_no.toLowerCase().includes(query) ||
-        record.test_center.toLowerCase().includes(query) ||
-        record.remarks?.toLowerCase().includes(query);
-
-      const matchesResult =
-        resultFilter === "all" || record.result === resultFilter;
-
-      return matchesSearch && matchesResult;
+        record.flight_no?.toLowerCase().includes(query) ||
+        record.airline?.toLowerCase().includes(query) ||
+        record.departure_city?.toLowerCase().includes(query) ||
+        record.arrival_city?.toLowerCase().includes(query)
+      );
     });
-  }, [records, candidates, search, resultFilter]);
+  }, [records, candidates, search]);
 
   function handleCreate() {
     setEditingRecord(null);
     setFormOpen(true);
   }
 
-  function handleEdit(record: TradeTest) {
+  function handleEdit(record: Flight) {
     setEditingRecord(record);
     setFormOpen(true);
   }
 
-  async function handleDelete(record: TradeTest) {
+  async function handleDelete(record: Flight) {
     const candidate = candidates.find((c) => c.id === record.candidate_id);
     const confirmed = window.confirm(
-      `Delete Trade Test #${record.sl}${candidate ? ` for ${candidate.name}` : ""}?`,
+      `Delete Flight #${record.flight_no ?? record.sl}${candidate ? ` for ${candidate.name}` : ""}?`,
     );
 
     if (!confirmed) return;
 
     try {
-      await deleteTradeTest(record.id);
+      await deleteFlight(record.id);
       setRecords((prev) => prev.filter((item) => item.id !== record.id));
     } catch (error) {
-      console.error("Failed to delete trade test:", error);
+      console.error("Failed to delete flight:", error);
     }
   }
 
-  function handleFormSuccess(savedRecord: TradeTest) {
+  function handleFormSuccess(savedRecord: Flight) {
     setRecords((prev) => {
       const exists = prev.some((item) => item.id === savedRecord.id);
       if (exists) {
@@ -116,18 +100,16 @@ export function TradeTestPage() {
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       <div className="flex shrink-0 items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Trade Tests</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage candidate trade test evaluations and results.
+          <h1 className="text-xl font-semibold">Flights</h1>
+          <p className="px-0 text-sm text-muted-foreground">
+            Manage candidate flight schedules and travel details.
           </p>
         </div>
       </div>
 
-      <TradeTestToolbar
+      <FlightToolbar
         search={search}
         onSearchChange={setSearch}
-        resultFilter={resultFilter}
-        onResultFilterChange={setResultFilter}
         onRefresh={() => {
           setRefreshing(true);
           void loadData();
@@ -137,7 +119,7 @@ export function TradeTestPage() {
       />
 
       <div className="min-h-0 flex-1">
-        <TradeTestTable
+        <FlightTable
           records={filteredRecords}
           candidates={candidates}
           loading={loading}
@@ -146,7 +128,7 @@ export function TradeTestPage() {
         />
       </div>
 
-      <TradeTestForm
+      <FlightForm
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);
@@ -154,6 +136,7 @@ export function TradeTestPage() {
         }}
         record={editingRecord}
         candidates={candidates}
+        visas={visas}
         onSuccess={handleFormSuccess}
       />
     </div>

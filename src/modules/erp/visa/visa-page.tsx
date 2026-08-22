@@ -1,51 +1,42 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TradeTestForm } from "./components/takamul-form";
-import { TradeTestTable } from "./components/takamul-table";
-import { TradeTestToolbar, type ResultFilter } from "./components/takamul-toolbar";
-import {
-  deleteTradeTest,
-  getTradeTests,
-  type TradeTest,
-} from "./takamul-service";
+import { VisaForm } from "./components/visa-form";
+import { VisaTable } from "./components/visa-table";
+import { VisaToolbar } from "./components/visa-toolbar";
+import { deleteVisa, getVisas, type Visa } from "./visa-service";
 import { getCandidates } from "../candidates/candidate-service";
+// Apnar project structure onujayi agency ba mofa service path adjust kore neben
+// import { getAgencies } from "../agencies/agency-service";
+// import { getMofas } from "../mofas/mofa-service";
 
-interface CandidateOption {
-  id: string;
-  name: string;
-  passport_no: string;
-}
-
-export function TradeTestPage() {
-  const [records, setRecords] = useState<TradeTest[]>([]);
-  const [candidates, setCandidates] = useState<CandidateOption[]>([]);
+export function VisaPage() {
+  const [records, setRecords] = useState<Visa[]>([]);
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [agencies, setAgencies] = useState<any[]>([]);
+  const [mofas, setMofas] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<TradeTest | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Visa | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [tradeTests, candidateResult] = await Promise.all([
-        getTradeTests(),
+      const [visaList, candidateResult] = await Promise.all([
+        getVisas(),
         getCandidates(),
+        // getAgencies(),
+        // getMofas()
       ]);
 
-      if (candidateResult.error) {
-        throw candidateResult.error;
-      }
+      if (candidateResult.error) throw candidateResult.error;
 
-      setRecords(tradeTests);
-      setCandidates(
-        (candidateResult.data ?? []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          passport_no: c.passport_no,
-        })),
-      );
+      setRecords(visaList);
+      setCandidates(candidateResult.data ?? []);
+      // setAgencies(agencyList ?? []);
+      // setMofas(mofaList ?? []);
     } catch (error) {
-      console.error("Failed to load trade test module:", error);
+      console.error("Failed to load visa module:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -62,47 +53,43 @@ export function TradeTestPage() {
     return records.filter((record) => {
       const candidate = candidates.find((c) => c.id === record.candidate_id);
 
-      const matchesSearch =
+      return (
         !query ||
         candidate?.name.toLowerCase().includes(query) ||
         candidate?.passport_no.toLowerCase().includes(query) ||
-        record.test_center.toLowerCase().includes(query) ||
-        record.remarks?.toLowerCase().includes(query);
-
-      const matchesResult =
-        resultFilter === "all" || record.result === resultFilter;
-
-      return matchesSearch && matchesResult;
+        record.visa_no.toLowerCase().includes(query) ||
+        record.visa_type.toLowerCase().includes(query)
+      );
     });
-  }, [records, candidates, search, resultFilter]);
+  }, [records, candidates, search]);
 
   function handleCreate() {
     setEditingRecord(null);
     setFormOpen(true);
   }
 
-  function handleEdit(record: TradeTest) {
+  function handleEdit(record: Visa) {
     setEditingRecord(record);
     setFormOpen(true);
   }
 
-  async function handleDelete(record: TradeTest) {
+  async function handleDelete(record: Visa) {
     const candidate = candidates.find((c) => c.id === record.candidate_id);
     const confirmed = window.confirm(
-      `Delete Trade Test #${record.sl}${candidate ? ` for ${candidate.name}` : ""}?`,
+      `Delete Visa #${record.visa_no}${candidate ? ` for ${candidate.name}` : ""}?`,
     );
 
     if (!confirmed) return;
 
     try {
-      await deleteTradeTest(record.id);
+      await deleteVisa(record.id);
       setRecords((prev) => prev.filter((item) => item.id !== record.id));
     } catch (error) {
-      console.error("Failed to delete trade test:", error);
+      console.error("Failed to delete visa:", error);
     }
   }
 
-  function handleFormSuccess(savedRecord: TradeTest) {
+  function handleFormSuccess(savedRecord: Visa) {
     setRecords((prev) => {
       const exists = prev.some((item) => item.id === savedRecord.id);
       if (exists) {
@@ -116,18 +103,16 @@ export function TradeTestPage() {
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       <div className="flex shrink-0 items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Trade Tests</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage candidate trade test evaluations and results.
+          <h1 className="text-xl font-semibold">Visas</h1>
+          <p className="px-0 text-sm text-muted-foreground">
+            Manage candidate visa processing and issuance details.
           </p>
         </div>
       </div>
 
-      <TradeTestToolbar
+      <VisaToolbar
         search={search}
         onSearchChange={setSearch}
-        resultFilter={resultFilter}
-        onResultFilterChange={setResultFilter}
         onRefresh={() => {
           setRefreshing(true);
           void loadData();
@@ -137,16 +122,17 @@ export function TradeTestPage() {
       />
 
       <div className="min-h-0 flex-1">
-        <TradeTestTable
+        <VisaTable
           records={filteredRecords}
           candidates={candidates}
+          agencies={agencies}
           loading={loading}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
       </div>
 
-      <TradeTestForm
+      <VisaForm
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);
@@ -154,6 +140,8 @@ export function TradeTestPage() {
         }}
         record={editingRecord}
         candidates={candidates}
+        agencies={agencies}
+        mofas={mofas}
         onSuccess={handleFormSuccess}
       />
     </div>

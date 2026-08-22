@@ -70,6 +70,9 @@ import { FingerPage } from "@/modules/erp/finger/finger-page";
 import {
   PoliceClearancePage,
 } from "@/modules/erp/police-clearance/police-clearance-page";
+import { TradeTestPage } from "@/modules/erp/takamul/takamul-page";
+import { VisaPage } from "@/modules/erp/visa/visa-page";
+import { FlightPage } from "@/modules/erp/flight/flight-page";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -220,8 +223,16 @@ function AppRouter() {
   element={<PoliceClearancePage />}
 />
             <Route
+              path="takamul"
+              element={<TradeTestPage />}
+            />
+            <Route
+              path="visa"
+              element={<VisaPage />}
+            />
+            <Route
               path="flight"
-              element={<div>Flight</div>}
+              element={<FlightPage />}
             />
 
 

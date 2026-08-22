@@ -26,10 +26,10 @@ import {
 } from "@/components/ui/select";
 
 import {
-  createTradeTest,
-  updateTradeTest,
-  type TradeTest,
-} from "../takamul-service";
+  createFlight,
+  updateFlight,
+  type Flight,
+} from "../flight-service";
 
 interface CandidateOption {
   id: string;
@@ -37,43 +37,52 @@ interface CandidateOption {
   passport_no: string;
 }
 
-interface TradeTestFormProps {
+interface VisaOption {
+  id: string;
+  visa_no: string;
+}
+
+interface FlightFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  record?: TradeTest | null;
+  record?: Flight | null;
   candidates: CandidateOption[];
-  onSuccess?: (record: TradeTest) => void;
+  visas: VisaOption[];
+  onSuccess?: (record: Flight) => void;
 }
 
 interface FormState {
   candidate_id: string;
-  test_center: string;
-  test_date: string;
-  result: "pending" | "pass" | "fail";
-  certificate_no: string;
-  expiry_date: string;
-  status: "scheduled" | "completed" | "expired" | "cancelled";
+  visa_id: string;
+  flight_date: string;
+  flight_no: string;
+  airline: string;
+  departure_city: string;
+  arrival_city: string;
+  status: "scheduled" | "departed" | "cancelled" | "rescheduled";
   remarks: string;
 }
 
 const DEFAULT_FORM: FormState = {
   candidate_id: "",
-  test_center: "",
-  test_date: "",
-  result: "pending",
-  certificate_no: "",
-  expiry_date: "",
+  visa_id: "",
+  flight_date: "",
+  flight_no: "",
+  airline: "",
+  departure_city: "",
+  arrival_city: "",
   status: "scheduled",
   remarks: "",
 };
 
-export function TradeTestForm({
+export function FlightForm({
   open,
   onOpenChange,
   record,
   candidates,
+  visas,
   onSuccess,
-}: TradeTestFormProps) {
+}: FlightFormProps) {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -86,11 +95,12 @@ export function TradeTestForm({
     if (record) {
       setForm({
         candidate_id: record.candidate_id,
-        test_center: record.test_center ?? "",
-        test_date: record.test_date ?? "",
-        result: record.result ?? "pending",
-        certificate_no: record.certificate_no ?? "",
-        expiry_date: record.expiry_date ?? "",
+        visa_id: record.visa_id ?? "",
+        flight_date: record.flight_date ?? "",
+        flight_no: record.flight_no ?? "",
+        airline: record.airline ?? "",
+        departure_city: record.departure_city ?? "",
+        arrival_city: record.arrival_city ?? "",
         status: record.status ?? "scheduled",
         remarks: record.remarks ?? "",
       });
@@ -116,31 +126,27 @@ export function TradeTestForm({
       return;
     }
 
-    if (!form.test_center.trim()) {
-      setError("Please enter the test center.");
-      return;
-    }
-
     setSaving(true);
     setError("");
 
     try {
       const input = {
-        test_center: form.test_center.trim(),
-        test_date: form.test_date || null,
-        result: form.result,
-        certificate_no: form.certificate_no.trim() || null,
-        expiry_date: form.expiry_date || null,
+        visa_id: form.visa_id || null,
+        flight_date: form.flight_date || null,
+        flight_no: form.flight_no.trim() || null,
+        airline: form.airline.trim() || null,
+        departure_city: form.departure_city.trim() || null,
+        arrival_city: form.arrival_city.trim() || null,
         status: form.status,
         remarks: form.remarks.trim() || null,
       };
 
-      let savedRecord: TradeTest;
+      let savedRecord: Flight;
 
       if (record) {
-        savedRecord = await updateTradeTest(record.id, input);
+        savedRecord = await updateFlight(record.id, input);
       } else {
-        savedRecord = await createTradeTest({
+        savedRecord = await createFlight({
           candidate_id: form.candidate_id,
           ...input,
         });
@@ -151,7 +157,7 @@ export function TradeTestForm({
       setForm(DEFAULT_FORM);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to save trade test record.",
+        err instanceof Error ? err.message : "Failed to save flight record.",
       );
     } finally {
       setSaving(false);
@@ -162,24 +168,20 @@ export function TradeTestForm({
     <Sheet open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>
-            {isEdit ? "Edit Trade Test" : "Create Trade Test"}
-          </SheetTitle>
+          <SheetTitle>{isEdit ? "Edit Flight Schedule" : "Create Flight Schedule"}</SheetTitle>
           <SheetDescription>
-            {isEdit
-              ? "Update the trade test record details."
-              : "Record a new candidate trade test evaluation."}
+            {isEdit ? "Update the flight record details." : "Record a new candidate flight schedule."}
           </SheetDescription>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-4 pb-6 mt-4">
           {/* Candidate */}
           <div className="space-y-2">
-            <Label htmlFor="tt-candidate">
+            <Label htmlFor="flight-candidate">
               Candidate <span className="text-destructive">*</span>
             </Label>
             <select
-              id="tt-candidate"
+              id="flight-candidate"
               value={form.candidate_id}
               onChange={(e) => updateField("candidate_id", e.target.value)}
               disabled={isEdit || saving}
@@ -192,58 +194,44 @@ export function TradeTestForm({
                 </option>
               ))}
             </select>
-            {isEdit && (
-              <p className="text-xs text-muted-foreground">
-                Candidate cannot be changed after creation.
-              </p>
-            )}
           </div>
 
-          {/* Test Center */}
-          <div className="space-y-2">
-            <Label htmlFor="tt-center">
-              Test Center <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="tt-center"
-              value={form.test_center}
-              onChange={(e) => updateField("test_center", e.target.value)}
-              placeholder="Enter test center name"
-              disabled={saving}
-            />
-          </div>
-
-          {/* Test Date */}
-          <div className="space-y-2">
-            <Label htmlFor="tt-date">Test Date</Label>
-            <Input
-              id="tt-date"
-              type="date"
-              value={form.test_date}
-              onChange={(e) => updateField("test_date", e.target.value)}
-              disabled={saving}
-            />
-          </div>
-
-          {/* Result & Status Row */}
+          {/* Flight No & Airline */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Result</Label>
-              <Select
-                value={form.result}
-                onValueChange={(val: any) => updateField("result", val)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select result" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="pass">Pass</SelectItem>
-                  <SelectItem value="fail">Fail</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="flight-no">Flight No</Label>
+              <Input
+                id="flight-no"
+                value={form.flight_no}
+                onChange={(e) => updateField("flight_no", e.target.value)}
+                placeholder="e.g. BG-012"
+                disabled={saving}
+              />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="flight-airline">Airline</Label>
+              <Input
+                id="flight-airline"
+                value={form.airline}
+                onChange={(e) => updateField("airline", e.target.value)}
+                placeholder="e.g. Biman Bangladesh"
+                disabled={saving}
+              />
+            </div>
+          </div>
 
+          {/* Flight Date & Status */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="flight-date">Flight Date</Label>
+              <Input
+                id="flight-date"
+                type="date"
+                value={form.flight_date}
+                onChange={(e) => updateField("flight_date", e.target.value)}
+                disabled={saving}
+              />
+            </div>
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
@@ -255,43 +243,62 @@ export function TradeTestForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="departed">Departed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="rescheduled">Rescheduled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Certificate No */}
-          <div className="space-y-2">
-            <Label htmlFor="tt-cert">Certificate No</Label>
-            <Input
-              id="tt-cert"
-              value={form.certificate_no}
-              onChange={(e) => updateField("certificate_no", e.target.value)}
-              placeholder="Certificate number if passed"
-              disabled={saving}
-            />
+          {/* Departure & Arrival Cities */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="flight-dep">Departure City</Label>
+              <Input
+                id="flight-dep"
+                value={form.departure_city}
+                onChange={(e) => updateField("departure_city", e.target.value)}
+                placeholder="e.g. Dhaka"
+                disabled={saving}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="flight-arr">Arrival City</Label>
+              <Input
+                id="flight-arr"
+                value={form.arrival_city}
+                onChange={(e) => updateField("arrival_city", e.target.value)}
+                placeholder="e.g. Riyadh"
+                disabled={saving}
+              />
+            </div>
           </div>
 
-          {/* Expiry Date */}
+          {/* Visa */}
           <div className="space-y-2">
-            <Label htmlFor="tt-expiry">Expiry Date</Label>
-            <Input
-              id="tt-expiry"
-              type="date"
-              value={form.expiry_date}
-              onChange={(e) => updateField("expiry_date", e.target.value)}
+            <Label htmlFor="flight-visa">Visa Link</Label>
+            <select
+              id="flight-visa"
+              value={form.visa_id}
+              onChange={(e) => updateField("visa_id", e.target.value)}
               disabled={saving}
-            />
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select visa (optional)</option>
+              {visas.map((v) => (
+                <option key={v.id} value={v.id}>
+                  Visa: {v.visa_no}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Remarks */}
           <div className="space-y-2">
-            <Label htmlFor="tt-remarks">Remarks</Label>
+            <Label htmlFor="flight-remarks">Remarks</Label>
             <Textarea
-              id="tt-remarks"
+              id="flight-remarks"
               value={form.remarks}
               onChange={(e) => updateField("remarks", e.target.value)}
               placeholder="Add remarks..."
@@ -317,7 +324,7 @@ export function TradeTestForm({
             </Button>
             <Button type="submit" disabled={saving || !form.candidate_id}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {saving ? "Saving..." : isEdit ? "Update Test" : "Create Test"}
+              {saving ? "Saving..." : isEdit ? "Update Flight" : "Create Flight"}
             </Button>
           </SheetFooter>
         </form>

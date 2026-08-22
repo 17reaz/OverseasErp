@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { TradeTest } from "../takamul-service";
+import type { Flight } from "../flight-service";
 
 interface CandidateOption {
   id: string;
@@ -14,12 +14,12 @@ interface CandidateOption {
   passport_no: string;
 }
 
-interface TradeTestTableProps {
-  records: TradeTest[];
+interface FlightTableProps {
+  records: Flight[];
   candidates: CandidateOption[];
   loading?: boolean;
-  onEdit: (record: TradeTest) => void;
-  onDelete: (record: TradeTest) => void;
+  onEdit: (record: Flight) => void;
+  onDelete: (record: Flight) => void;
 }
 
 function formatDate(value: string | null): string {
@@ -33,21 +33,21 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
-export function TradeTestTable({
+export function FlightTable({
   records,
   candidates,
   loading = false,
   onEdit,
   onDelete,
-}: TradeTestTableProps) {
-  function getCandidate(candidateId: string) {
-    return candidates.find((c) => c.id === candidateId);
+}: FlightTableProps) {
+  function getCandidate(id: string) {
+    return candidates.find((c) => c.id === id);
   }
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center rounded-md border">
-        <p className="text-sm text-muted-foreground">Loading trade tests...</p>
+        <p className="text-sm text-muted-foreground">Loading flights...</p>
       </div>
     );
   }
@@ -56,9 +56,9 @@ export function TradeTestTable({
     return (
       <div className="flex h-full items-center justify-center rounded-md border">
         <div className="text-center">
-          <p className="text-sm font-medium">No trade test records found.</p>
+          <p className="text-sm font-medium">No flight records found.</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Create a trade test record to get started.
+            Create a flight schedule to get started.
           </p>
         </div>
       </div>
@@ -74,51 +74,43 @@ export function TradeTestTable({
               <th className="h-11 px-4 text-left font-medium">SL</th>
               <th className="h-11 px-4 text-left font-medium">Candidate</th>
               <th className="h-11 px-4 text-left font-medium">Passport</th>
-              <th className="h-11 px-4 text-left font-medium">Test Center</th>
-              <th className="h-11 px-4 text-left font-medium">Test Date</th>
-              <th className="h-11 px-4 text-left font-medium">Result</th>
+              <th className="h-11 px-4 text-left font-medium">Flight No</th>
+              <th className="h-11 px-4 text-left font-medium">Airline</th>
+              <th className="h-11 px-4 text-left font-medium">Route</th>
+              <th className="h-11 px-4 text-left font-medium">Flight Date</th>
               <th className="h-11 px-4 text-left font-medium">Status</th>
-              <th className="h-11 px-4 text-left font-medium">Certificate</th>
               <th className="h-11 w-[70px] px-4 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {records.map((record) => {
               const candidate = getCandidate(record.candidate_id);
+              const route =
+                record.departure_city && record.arrival_city
+                  ? `${record.departure_city} → ${record.arrival_city}`
+                  : record.departure_city || record.arrival_city || "—";
 
               return (
                 <tr key={record.id} className="border-b transition-colors hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium">{record.sl}</td>
                   <td className="px-4 py-3">
-                    <div className="max-w-[180px] truncate font-medium">
+                    <div className="max-w-[160px] truncate font-medium">
                       {candidate?.name ?? "Unknown"}
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">
                     {candidate?.passport_no ?? "—"}
                   </td>
-                  <td className="px-4 py-3">{record.test_center}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {formatDate(record.test_date)}
+                  <td className="px-4 py-3 font-mono text-xs font-semibold">
+                    {record.flight_no ?? "—"}
                   </td>
+                  <td className="px-4 py-3">{record.airline ?? "—"}</td>
+                  <td className="px-4 py-3">{route}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{formatDate(record.flight_date)}</td>
                   <td className="px-4 py-3 capitalize">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        record.result === "pass"
-                          ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                          : record.result === "fail"
-                          ? "bg-destructive/10 text-destructive"
-                          : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                      }`}
-                    >
-                      {record.result}
+                    <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
+                      {record.status}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 capitalize">
-                    <span className="text-muted-foreground">{record.status}</span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs">
-                    {record.certificate_no ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <DropdownMenu>

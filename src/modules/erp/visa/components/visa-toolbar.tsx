@@ -1,35 +1,22 @@
 import { Plus, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-export type ResultFilter = "all" | "pending" | "pass" | "fail";
-
-interface TradeTestToolbarProps {
+interface VisaToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
-  resultFilter: ResultFilter;
-  onResultFilterChange: (value: ResultFilter) => void;
   onRefresh: () => void;
   onCreate: () => void;
   refreshing?: boolean;
 }
 
-export function TradeTestToolbar({
+export function VisaToolbar({
   search,
   onSearchChange,
-  resultFilter,
-  onResultFilterChange,
   onRefresh,
   onCreate,
   refreshing = false,
-}: TradeTestToolbarProps) {
+}: VisaToolbarProps) {
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
       <div className="relative min-w-[240px] flex-1">
@@ -37,7 +24,7 @@ export function TradeTestToolbar({
         <Input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search candidate, passport or center..."
+          placeholder="Search candidate, passport or visa no..."
           className="pr-9 pl-9"
         />
         {search && (
@@ -52,21 +39,6 @@ export function TradeTestToolbar({
           </Button>
         )}
       </div>
-
-      <Select
-        value={resultFilter}
-        onValueChange={(val) => onResultFilterChange(val as ResultFilter)}
-      >
-        <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="Result Filter" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Results</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="pass">Pass</SelectItem>
-          <SelectItem value="fail">Fail</SelectItem>
-        </SelectContent>
-      </Select>
 
       <Button
         type="button"
