@@ -83,7 +83,7 @@ const navigation = [
   },
   {
     title: "Finger",
-    url: "/app/mofa",
+    url: "/app/fingers",
     icon: FingerprintPattern,
   },
   {

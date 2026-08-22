@@ -66,6 +66,7 @@ import {
 import {
   MofaPage,
 } from "@/modules/erp/mofa/mofa-page";
+import { FingerPage } from "@/modules/erp/finger/finger-page";
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -208,8 +209,8 @@ function AppRouter() {
               />
 
             <Route
-              path="visa"
-              element={<div>Visa</div>}
+              path="fingers"
+              element={<FingerPage />}
             />
 
             <Route
