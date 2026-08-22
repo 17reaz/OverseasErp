@@ -40,20 +40,26 @@ export function FingerPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [fingerRecords, candidateRecords] =
+      const [fingerRecords, candidateResult] =
         await Promise.all([
           getFingerRecords(),
           getCandidates(),
         ]);
 
+      if (candidateResult.error) {
+        throw candidateResult.error;
+      }
+
       setRecords(fingerRecords);
 
       setCandidates(
-        candidateRecords.map((candidate) => ({
-          id: candidate.id,
-          name: candidate.name,
-          passport_no: candidate.passport_no,
-        })),
+        (candidateResult.data ?? []).map(
+          (candidate) => ({
+            id: candidate.id,
+            name: candidate.name,
+            passport_no: candidate.passport_no,
+          }),
+        ),
       );
     } catch (error) {
       console.error(
@@ -179,7 +185,6 @@ export function FingerPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      {/* Header */}
       <div className="flex shrink-0 items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">
@@ -192,7 +197,6 @@ export function FingerPage() {
         </div>
       </div>
 
-      {/* Toolbar */}
       <FingerToolbar
         search={search}
         onSearchChange={setSearch}
@@ -203,7 +207,6 @@ export function FingerPage() {
         refreshing={refreshing}
       />
 
-      {/* Table */}
       <div className="min-h-0 flex-1">
         <FingerTable
           records={filteredRecords}
@@ -214,7 +217,6 @@ export function FingerPage() {
         />
       </div>
 
-      {/* Form */}
       <FingerForm
         open={formOpen}
         onOpenChange={handleFormOpenChange}
