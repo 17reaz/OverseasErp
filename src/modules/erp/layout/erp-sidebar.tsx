@@ -108,17 +108,17 @@ const navigation = [
     icon: Plane,
   },
 
-  // {
-  //   title: "Reports",
-  //   url: "/app/reports",
-  //   icon: BarChart3,
-  // },
+  {
+    title: "Reports",
+    url: "/app/reports",
+    icon: BarChart3,
+  },
 
-  // {
-  //   title: "Finance",
-  //   url: "/app/finance",
-  //   icon: WalletCards,
-  // },
+  {
+    title: "Finance",
+    url: "/app/finance",
+    icon: WalletCards,
+  },
 
   {
     title: "Files",
@@ -126,11 +126,11 @@ const navigation = [
     icon: Files,
   },
 
-  // {
-  //   title: "Todo",
-  //   url: "/app/todo",
-  //   icon: ListTodo,
-  // },
+  {
+    title: "Todo",
+    url: "/app/todo",
+    icon: ListTodo,
+  },
 
 ];
 
