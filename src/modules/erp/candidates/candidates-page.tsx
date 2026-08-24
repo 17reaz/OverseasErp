@@ -1006,7 +1006,7 @@ export function CandidatesPage() {
           RESULT SUMMARY
           ================================================= */}
 
-      <div
+      {/* <div
         className="
           flex
           items-center
@@ -1036,7 +1036,7 @@ export function CandidatesPage() {
           Returned {returnedCount}
         </p>
 
-      </div>
+      </div> */}
 
 
       {/* =================================================
