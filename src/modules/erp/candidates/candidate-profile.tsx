@@ -5,50 +5,52 @@ import {
   Clock3,
   FileText,
   Fingerprint,
-  Plane,
   Pencil,
+  Plane,
   Stethoscope,
   XCircle,
-} from "lucide-react";
+} from "lucide-react"
 
 import {
   useEffect,
   useState,
-} from "react";
+} from "react"
 
 import {
   Link,
   useParams,
-} from "react-router-dom";
+} from "react-router-dom"
+
+import { QRCodeSVG } from "qrcode.react"
 
 import {
   toast,
-} from "@/components/shared/toast/toast";
+} from "@/components/shared/toast/toast"
+
+import {
+  Badge,
+} from "@/components/ui/badge"
 
 import {
   Button,
-} from "@/components/ui/button";
+} from "@/components/ui/button"
 
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-
-import {
-  Badge,
-} from "@/components/ui/badge";
+} from "@/components/ui/card"
 
 import {
   Separator,
-} from "@/components/ui/separator";
+} from "@/components/ui/separator"
 
 import {
   getCandidate,
   type Candidate,
-} from "./candidate-service";
-import { QRCodeSVG } from "qrcode.react"
+} from "./candidate-service"
+
 
 /* =========================================================
  * MODULE STATUS
@@ -59,15 +61,15 @@ type ModuleStatus =
   | "processing"
   | "completed"
   | "failed"
-  | "not_started";
+  | "not_started"
 
 
 interface ModuleCardProps {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  status: ModuleStatus;
-  href: string;
+  title: string
+  description: string
+  icon: React.ReactNode
+  status: ModuleStatus
+  href: string
 }
 
 
@@ -79,41 +81,40 @@ function getStatusConfig(
   status: ModuleStatus,
 ) {
   switch (status) {
-
     case "completed":
       return {
         label: "Completed",
         variant: "default" as const,
         icon: CheckCircle2,
-      };
+      }
 
     case "processing":
       return {
         label: "Processing",
         variant: "secondary" as const,
         icon: Clock3,
-      };
+      }
 
     case "failed":
       return {
         label: "Failed",
         variant: "destructive" as const,
         icon: XCircle,
-      };
+      }
 
     case "pending":
       return {
         label: "Pending",
         variant: "secondary" as const,
         icon: Clock3,
-      };
+      }
 
     default:
       return {
         label: "Not Started",
         variant: "outline" as const,
         icon: Clock3,
-      };
+      }
   }
 }
 
@@ -129,115 +130,170 @@ function ModuleCard({
   status,
   href,
 }: ModuleCardProps) {
-
   const config =
-    getStatusConfig(
-      status,
-    );
+    getStatusConfig(status)
 
   const StatusIcon =
-    config.icon;
+    config.icon
 
   return (
     <Card
       className="
+        group
         transition-colors
         hover:bg-muted/30
       "
     >
-
       <CardHeader
         className="
-          flex
-          flex-row
-          items-start
-          justify-between
-          gap-4
+          space-y-0
+          pb-3
         "
       >
-
         <div
           className="
             flex
-            items-center
+            items-start
+            justify-between
             gap-3
           "
         >
-
           <div
             className="
               flex
-              h-9
-              w-9
+              min-w-0
               items-center
-              justify-center
-              rounded-md
-              border
-              bg-background
+              gap-3
             "
           >
-            {icon}
-          </div>
-
-          <div>
-
-            <CardTitle
+            <div
               className="
-                text-sm
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-md
+                border
+                bg-background
               "
             >
-              {title}
-            </CardTitle>
+              {icon}
+            </div>
 
-            <p
-              className="
-                mt-1
-                text-xs
-                text-muted-foreground
-              "
-            >
-              {description}
-            </p>
+            <div className="min-w-0">
+              <CardTitle
+                className="
+                  text-sm
+                  font-medium
+                "
+              >
+                {title}
+              </CardTitle>
 
+              <p
+                className="
+                  mt-1
+                  line-clamp-2
+                  text-xs
+                  leading-relaxed
+                  text-muted-foreground
+                "
+              >
+                {description}
+              </p>
+            </div>
           </div>
 
-        </div>
-
-        <Badge
-          variant={
-            config.variant
-          }
-          className="
-            gap-1
-          "
-        >
-          <StatusIcon
+          <Badge
+            variant={config.variant}
             className="
-              h-3 w-3
+              shrink-0
+              gap-1
+              text-[11px]
             "
-          />
+          >
+            <StatusIcon
+              className="h-3 w-3"
+            />
 
-          {config.label}
-        </Badge>
-
+            {config.label}
+          </Badge>
+        </div>
       </CardHeader>
 
-      <CardContent>
-
+      <CardContent className="pt-0">
         <Button
           variant="outline"
           size="sm"
           asChild
+          className="
+            w-full
+            justify-center
+          "
         >
           <Link to={href}>
             Open {title}
           </Link>
         </Button>
-
       </CardContent>
-
     </Card>
-  );
+  )
+}
+
+
+/* =========================================================
+ * INFORMATION ITEM
+ * ========================================================= */
+
+function InfoItem({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: React.ReactNode
+  icon?: React.ReactNode
+}) {
+  return (
+    <div
+      className="
+        rounded-md
+        border
+        bg-muted/20
+        px-4
+        py-3
+      "
+    >
+      <p
+        className="
+          text-[11px]
+          font-medium
+          uppercase
+          tracking-wide
+          text-muted-foreground
+        "
+      >
+        {label}
+      </p>
+
+      <p
+        className="
+          mt-1.5
+          flex
+          items-center
+          gap-2
+          text-sm
+          font-medium
+        "
+      >
+        {icon}
+
+        {value}
+      </p>
+    </div>
+  )
 }
 
 
@@ -246,34 +302,30 @@ function ModuleCard({
  * ========================================================= */
 
 export function CandidateProfilePage() {
-
   const {
     candidateId,
   } = useParams<{
-    candidateId: string;
-  }>();
-
+    candidateId: string
+  }>()
 
   const [
     candidate,
     setCandidate,
   ] = useState<Candidate | null>(
     null,
-  );
-
+  )
 
   const [
     loading,
     setLoading,
-  ] = useState(true);
-
+  ] = useState(true)
 
   const [
     error,
     setError,
   ] = useState<string | null>(
     null,
-  );
+  )
 
 
   /* =======================================================
@@ -281,91 +333,71 @@ export function CandidateProfilePage() {
    * ======================================================= */
 
   useEffect(() => {
-
     async function loadCandidate() {
-
       if (!candidateId) {
-
         const message =
-          "Candidate ID is missing.";
+          "Candidate ID is missing."
 
-        setError(message);
-        setLoading(false);
+        setError(message)
+        setLoading(false)
 
         toast.error(
           "Candidate ID is missing.",
           "Please return to the Candidates page and select a candidate.",
-        );
+        )
 
-        return;
+        return
       }
 
-
       try {
-
-        setLoading(true);
-        setError(null);
-
+        setLoading(true)
+        setError(null)
 
         const {
           data,
           error,
         } = await getCandidate(
           candidateId,
-        );
-
+        )
 
         if (error) {
-          throw error;
+          throw error
         }
 
-
         if (!data) {
-
           const message =
-            "Candidate not found.";
+            "Candidate not found."
 
-          setError(message);
+          setError(message)
 
           toast.error(
             "Candidate not found.",
             "The requested candidate profile could not be found.",
-          );
+          )
 
-          return;
+          return
         }
 
-
-        setCandidate(data);
-
+        setCandidate(data)
       } catch (error) {
-
-        console.error(error);
+        console.error(error)
 
         const message =
-          "Failed to load candidate profile.";
+          "Failed to load candidate profile."
 
-        setError(message);
+        setError(message)
 
         toast.error(
           "Failed to load candidate profile.",
           "Please try again.",
-        );
-
+        )
       } finally {
-
-        setLoading(false);
-
+        setLoading(false)
       }
-
     }
 
-
-    void loadCandidate();
-
-  }, [
-    candidateId,
-  ]);
+    void loadCandidate()
+  }, [candidateId])
 
 
   /* =======================================================
@@ -373,7 +405,6 @@ export function CandidateProfilePage() {
    * ======================================================= */
 
   if (loading) {
-
     return (
       <div
         className="
@@ -383,7 +414,6 @@ export function CandidateProfilePage() {
           justify-center
         "
       >
-
         <p
           className="
             text-sm
@@ -392,10 +422,8 @@ export function CandidateProfilePage() {
         >
           Loading candidate...
         </p>
-
       </div>
-    );
-
+    )
   }
 
 
@@ -407,28 +435,17 @@ export function CandidateProfilePage() {
     error ||
     !candidate
   ) {
-
     return (
-      <div
-        className="
-          space-y-4
-        "
-      >
-
+      <div className="space-y-4">
         <Button
           variant="ghost"
           asChild
         >
-
-          <Link
-            to="/app/candidates"
-          >
+          <Link to="/app/candidates">
             <ArrowLeft />
             Back to Candidates
           </Link>
-
         </Button>
-
 
         <div
           className="
@@ -444,10 +461,8 @@ export function CandidateProfilePage() {
           {error ??
             "Candidate not found."}
         </div>
-
       </div>
-    );
-
+    )
   }
 
 
@@ -458,7 +473,9 @@ export function CandidateProfilePage() {
   return (
     <div
       className="
+        min-h-0
         space-y-6
+        pb-6
       "
     >
 
@@ -469,50 +486,68 @@ export function CandidateProfilePage() {
       <div
         className="
           flex
-          items-center
-          justify-between
+          flex-col
           gap-4
+          sm:flex-row
+          sm:items-center
+          sm:justify-between
         "
       >
-
         <div
           className="
             flex
+            min-w-0
             items-center
             gap-3
           "
         >
-
           <Button
             variant="ghost"
             size="icon"
             asChild
+            className="shrink-0"
           >
-
-            <Link
-              to="/app/candidates"
-            >
+            <Link to="/app/candidates">
               <ArrowLeft />
             </Link>
-
           </Button>
 
-
-          <div>
-
-            <h1
+          <div className="min-w-0">
+            <div
               className="
-                text-2xl
-                font-semibold
-                tracking-tight
+                flex
+                flex-wrap
+                items-center
+                gap-2
               "
             >
-              {candidate.name}
-            </h1>
+              <h1
+                className="
+                  truncate
+                  text-2xl
+                  font-semibold
+                  tracking-tight
+                "
+              >
+                {candidate.name}
+              </h1>
 
+              <Badge
+                variant={
+                  candidate.is_returned
+                    ? "destructive"
+                    : "default"
+                }
+              >
+                {candidate.is_returned
+                  ? "Returned"
+                  : "Active"}
+              </Badge>
+            </div>
 
             <p
               className="
+                mt-1
                 text-sm
                 text-muted-foreground
               "
@@ -520,313 +555,190 @@ export function CandidateProfilePage() {
               Passport:{" "}
               {candidate.passport_no}
             </p>
-
           </div>
-
         </div>
-
 
         <Button>
           <Pencil />
           Edit Candidate
         </Button>
-
       </div>
 
 
       {/* =================================================
-       * BASIC INFORMATION
+       * OVERVIEW
        * ================================================= */}
 
       <div
         className="
           grid
           gap-6
-          md:grid-cols-2
+          lg:grid-cols-[minmax(0,1fr)_300px]
         "
       >
-        
-        {/* PERSONAL */}
+
+        {/* BASIC INFORMATION */}
 
         <Card>
-
           <CardHeader>
-
             <CardTitle>
-              Personal Information
+              Candidate Information
             </CardTitle>
-
           </CardHeader>
 
+          <CardContent>
+            <div
+              className="
+                grid
+                gap-3
+                sm:grid-cols-2
+              "
+            >
+              <InfoItem
+                label="Candidate Name"
+                value={candidate.name}
+              />
 
-          <CardContent
-            className="
-              space-y-5
-            "
-          >
+              <InfoItem
+                label="Passport Number"
+                value={candidate.passport_no}
+              />
 
-            <div>
+              <InfoItem
+                label="Country"
+                value={
+                  candidate.country ??
+                  "—"
+                }
+              />
 
-              <p
-                className="
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Candidate Name
-              </p>
+              <InfoItem
+                label="Received Date"
+                value={
+                  candidate.received_date ??
+                  "—"
+                }
+                icon={
+                  <CalendarDays
+                    className="
+                      h-4
+                      w-4
+                      text-muted-foreground
+                    "
+                  />
+                }
+              />
 
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {candidate.name}
-              </p>
-              <QRCodeSVG
-  value={`https://your-app.com/candidate/${candidate.id}`}
-  size={160}
-  level="M"
-/>
+              <InfoItem
+                label="Candidate SL"
+                value={
+                  candidate.sl ??
+                  "—"
+                }
+              />
 
-            </div>
+              <InfoItem
+                label="Current Stage"
+                value={
+                  candidate.current_stage ??
+                  "Pending"
+                }
+              />
 
+              <InfoItem
+                label="Status"
+                value={
+                  <Badge
+                    variant={
+                      candidate.is_returned
+                        ? "destructive"
+                        : "default"
+                    }
+                  >
+                    {candidate.is_returned
+                      ? "Returned"
+                      : "Active"}
+                  </Badge>
+                }
+              />
 
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Passport Number
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {candidate.passport_no}
-              </p>
-
-            </div>
-
-
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Country
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {candidate.country ??
-                  "—"}
-              </p>
-
-            </div>
-
-
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Received Date
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  flex
-                  items-center
-                  gap-2
-                  text-sm
-                  font-medium
-                "
-              >
-
-                <CalendarDays
-                  className="
-                    h-4
-                    w-4
-                    text-muted-foreground
-                  "
+              {candidate.is_returned && (
+                <InfoItem
+                  label="Returned Date"
+                  value={
+                    candidate.returned_date ??
+                    "—"
+                  }
                 />
-
-                {candidate.received_date ??
-                  "—"}
-
-              </p>
-
+              )}
             </div>
-
           </CardContent>
-
         </Card>
 
 
-        {/* PROCESSING */}
+        {/* QR */}
 
         <Card>
-
           <CardHeader>
-
             <CardTitle>
-              Processing Information
+              Candidate QR
             </CardTitle>
-
           </CardHeader>
 
-
-          <CardContent
-            className="
-              space-y-5
-            "
-          >
-
-            <div>
-
-              <p
+          <CardContent>
+            <div
+              className="
+                flex
+                flex-col
+                items-center
+                justify-center
+                rounded-lg
+                border
+                bg-muted/20
+                p-6
+              "
+            >
+              <div
                 className="
-                  text-xs
-                  text-muted-foreground
+                  rounded-lg
+                  border
+                  bg-background
+                  p-3
+                  shadow-sm
                 "
               >
-                Candidate SL
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {candidate.sl ??
-                  "—"}
-              </p>
-
-            </div>
-
-
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Current Stage
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {candidate.current_stage ??
-                  "Pending"}
-              </p>
-
-            </div>
-
-
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Status
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {candidate.is_returned
-                  ? "Returned"
-                  : "Active"}
-              </p>
-
-            </div>
-
-
-            {candidate.is_returned && (
-
-              <div>
-
-                <p
-                  className="
-                    text-xs
-                    text-muted-foreground
-                  "
-                >
-                  Returned Date
-                </p>
-
-                <p
-                  className="
-                    mt-1
-                    text-sm
-                    font-medium
-                  "
-                >
-                  {candidate.returned_date ??
-                    "—"}
-                </p>
-
+                <QRCodeSVG
+                  value={
+                    `https://overseaserp.vercel.app/candidate/${candidate.id}`
+                  }
+                  size={150}
+                  level="M"
+                />
               </div>
 
-            )}
-
+              <p
+                className="
+                  mt-4
+                  text-center
+                  text-xs
+                  text-muted-foreground
+                "
+              >
+                Scan to open candidate
+                profile
+              </p>
+            </div>
           </CardContent>
-
         </Card>
-
       </div>
 
 
       {/* =================================================
-       * MODULE PROCESSING
+       * PROCESSING MODULES
        * ================================================= */}
 
-      <div
-        className="
-          space-y-4
-        "
-      >
-
+      <div className="space-y-4">
         <div>
-
           <h2
             className="
               text-lg
@@ -838,25 +750,23 @@ export function CandidateProfilePage() {
 
           <p
             className="
+              mt-1
               text-sm
               text-muted-foreground
             "
           >
-            Manage all processing activities
-            for this candidate.
+            Manage all processing
+            activities for this candidate.
           </p>
-
         </div>
 
-
         <Separator />
-
 
         <div
           className="
             grid
             gap-4
-            md:grid-cols-2
+            sm:grid-cols-2
             xl:grid-cols-3
           "
         >
@@ -864,174 +774,117 @@ export function CandidateProfilePage() {
           {/* MEDICAL */}
 
           <ModuleCard
-
             title="Medical"
-
             description="
               Medical examination and fitness records.
             "
-
             icon={
               <Stethoscope
-                className="
-                  h-4
-                  w-4
-                "
+                className="h-4 w-4"
               />
             }
-
             status="not_started"
-
             href={
               `/app/medical?candidate=${candidate.id}`
             }
-
           />
 
 
           {/* MOFA */}
 
           <ModuleCard
-
             title="MOFA"
-
             description="
               Ministry approval and application processing.
             "
-
             icon={
               <FileText
-                className="
-                  h-4
-                  w-4
-                "
+                className="h-4 w-4"
               />
             }
-
             status="not_started"
-
             href={
               `/app/mofa?candidate=${candidate.id}`
             }
-
           />
 
 
           {/* FINGER */}
 
           <ModuleCard
-
             title="Finger"
-
             description="
               Fingerprint registration and records.
             "
-
             icon={
               <Fingerprint
-                className="
-                  h-4
-                  w-4
-                "
+                className="h-4 w-4"
               />
             }
-
             status="not_started"
-
             href={
               `/app/finger?candidate=${candidate.id}`
             }
-
           />
 
 
-          {/* DOCUMENT */}
+          {/* DOCUMENTS */}
 
           <ModuleCard
-
             title="Documents"
-
             description="
               Candidate documents and file records.
             "
-
             icon={
               <FileText
-                className="
-                  h-4
-                  w-4
-                "
+                className="h-4 w-4"
               />
             }
-
             status="not_started"
-
             href={
-              `/app/documents?candidate=${candidate.id}`
+              `/app/files?candidate=${candidate.id}`
             }
-
           />
 
 
           {/* VISA */}
 
           <ModuleCard
-
             title="Visa"
-
             description="
-              Visa application and processing.
+              Visa application and processing records.
             "
-
             icon={
-              <CheckCircle2
-                className="
-                  h-4
-                  w-4
-                "
+              <FileText
+                className="h-4 w-4"
               />
             }
-
             status="not_started"
-
             href={
               `/app/visa?candidate=${candidate.id}`
             }
-
           />
 
 
           {/* FLIGHT */}
 
           <ModuleCard
-
             title="Flight"
-
             description="
               Flight booking and travel information.
             "
-
             icon={
               <Plane
-                className="
-                  h-4
-                  w-4
-                "
+                className="h-4 w-4"
               />
             }
-
             status="not_started"
-
             href={
               `/app/flight?candidate=${candidate.id}`
             }
-
           />
-
         </div>
-
       </div>
-
     </div>
-  );
+  )
 }
