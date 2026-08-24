@@ -25,7 +25,6 @@ export type ReportConfig = {
   columns: string[]
   filters: ReportFilters
 }
-
 export type ReportRow = {
   id: string
   sl?: number | string | null
@@ -36,4 +35,6 @@ export type ReportRow = {
   stage?: string | null
   status?: string | null
   received_date?: string | null
+
+  airline?: string | null
 }
