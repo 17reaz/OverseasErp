@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { Button } from "@/components/ui/button";
-
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -664,83 +664,39 @@ export function CandidatesTable({
                           STATUS
                           ================================================= */}
 
-                      <td
-                        className="
-                          w-[110px]
-                          px-4
-                          py-3
-                        "
-                      >
+                   <td className="w-[110px] px-4 py-3">
+  {candidate.is_returned ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="destructive"
+          className="cursor-help"
+        >
+          Returned
+        </Badge>
+      </TooltipTrigger>
 
-                        {candidate.is_returned ? (
-
-                          <Tooltip>
-
-                            <TooltipTrigger
-                              asChild
-                            >
-
-                              <span
-                                className="
-                                  inline-flex
-                                  cursor-help
-                                  rounded-full
-                                  border
-                                  px-2
-                                  py-1
-                                  text-xs
-                                  font-medium
-                                "
-                              >
-                                Returned
-                              </span>
-
-                            </TooltipTrigger>
-
-
-                            <TooltipContent>
-
-                              <p>
-                                Returned date:{" "}
-
-                                {candidate.returned_date
-                                  ? new Date(
-                                      candidate.returned_date,
-                                    ).toLocaleDateString(
-                                      "en-GB",
-                                      {
-                                        day: "2-digit",
-                                        month: "short",
-                                        year: "numeric",
-                                      },
-                                    )
-                                  : "Not available"}
-                              </p>
-
-                            </TooltipContent>
-
-                          </Tooltip>
-
-                        ) : (
-
-                          <span
-                            className="
-                              inline-flex
-                              rounded-full
-                              border
-                              px-2
-                              py-1
-                              text-xs
-                              font-medium
-                            "
-                          >
-                            Active
-                          </span>
-
-                        )}
-
-                      </td>
-
+      <TooltipContent>
+        <p>
+          Returned date:{" "}
+          {candidate.returned_date
+            ? new Date(
+                candidate.returned_date,
+              ).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "Not available"}
+        </p>
+      </TooltipContent>
+    </Tooltip>
+  ) : (
+    <Badge variant="default">
+      Active
+    </Badge>
+  )}
+</td>
 
                       {/* =================================================
                           ACTION
