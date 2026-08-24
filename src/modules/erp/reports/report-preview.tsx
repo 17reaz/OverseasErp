@@ -1,11 +1,9 @@
 import { useState } from "react"
 import { Download, FileText, Loader2, Printer } from "lucide-react"
-import { pdf } from "@react-pdf/renderer"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
-import { ReportDocument } from "./pdf/report-document"
 
 import type {
   ReportColumn,
@@ -155,25 +153,31 @@ export function ReportPreview({
     }))
 
   const generatePdf = async () => {
-    if (columns.length === 0) {
-      return null
-    }
-
-    setIsGenerating(true)
-
-    try {
-      const blob = await pdf(
-        <ReportDocument
-          config={config}
-          rows={rows}
-        />,
-      ).toBlob()
-
-      return blob
-    } finally {
-      setIsGenerating(false)
-    }
+  if (columns.length === 0) {
+    return null
   }
+
+  setIsGenerating(true)
+
+  try {
+    const [{ pdf }, { ReportDocument }] =
+      await Promise.all([
+        import("@react-pdf/renderer"),
+        import("./pdf/report-document"),
+      ])
+
+    const blob = await pdf(
+      <ReportDocument
+        config={config}
+        rows={rows}
+      />,
+    ).toBlob()
+
+    return blob
+  } finally {
+    setIsGenerating(false)
+  }
+}
 
   const handleDownload = async () => {
     const blob = await generatePdf()
