@@ -73,6 +73,7 @@ import {
 import { TradeTestPage } from "@/modules/erp/takamul/takamul-page";
 import { VisaPage } from "@/modules/erp/visa/visa-page";
 import { FlightPage } from "@/modules/erp/flight/flight-page";
+import { ReportsPage } from "@/modules/erp/reports/reports-page"
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -233,6 +234,10 @@ function AppRouter() {
             <Route
               path="flight"
               element={<FlightPage />}
+            />
+            <Route
+              path="reports"
+              element={<ReportsPage />}
             />
 
 
