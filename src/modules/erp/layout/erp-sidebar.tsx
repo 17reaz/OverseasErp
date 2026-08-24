@@ -218,7 +218,7 @@ export function ErpSidebar() {
             CONTENT
             ================================================= */}
 
-        <SidebarContent>
+        <SidebarContent className="flex-1 overflow-auto">
 
           {/* =================================================
               MAIN NAVIGATION
@@ -446,6 +446,7 @@ export function ErpSidebar() {
           {/* =================================================
               TENANT / PLAN / COMMIT
               ================================================= */}
+          </SidebarContent>
 
           <SidebarFooter
             className="
@@ -513,7 +514,6 @@ export function ErpSidebar() {
 
           </SidebarFooter>
 
-        </SidebarContent>
 
       </Sidebar>
 
