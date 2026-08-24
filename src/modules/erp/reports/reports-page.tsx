@@ -20,7 +20,6 @@ const demoRows: ReportRow[] = [
     status: "Active",
     received_date: "2026-08-01",
   },
-
   {
     id: "2",
     sl: 2,
@@ -32,7 +31,6 @@ const demoRows: ReportRow[] = [
     status: "Active",
     received_date: "2026-08-03",
   },
-
   {
     id: "3",
     sl: 3,
@@ -151,25 +149,51 @@ export function ReportsPage() {
   )
 
   return (
-    <div className="flex h-full min-h-0 gap-6">
+    <div className="flex h-full min-h-0 w-full gap-5 overflow-hidden">
+      {/* Report Builder */}
 
-      {/* Builder */}
+      <section
+        className="
+          flex
+          w-[380px]
+          shrink-0
+          min-h-0
+          flex-col
+          overflow-hidden
+          rounded-lg
+          border
+          bg-background
+        "
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          <ReportBuilder
+            onChange={setConfig}
+          />
+        </div>
+      </section>
 
-      <div className="w-[380px] shrink-0 overflow-hidden rounded-lg border bg-background p-6">
-        <ReportBuilder
-          onChange={setConfig}
-        />
-      </div>
+      {/* Report Preview */}
 
-      {/* Preview */}
-
-      <div className="min-w-0 flex-1 overflow-hidden rounded-lg border bg-background p-6">
-        <ReportPreview
-          config={config}
-          rows={filteredRows}
-        />
-      </div>
-
+      <section
+        className="
+          flex
+          min-w-0
+          min-h-0
+          flex-1
+          flex-col
+          overflow-hidden
+          rounded-lg
+          border
+          bg-background
+        "
+      >
+        <div className="min-h-0 flex-1 overflow-hidden p-6">
+          <ReportPreview
+            config={config}
+            rows={filteredRows}
+          />
+        </div>
+      </section>
     </div>
   )
 }
