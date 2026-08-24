@@ -48,7 +48,7 @@ import {
   getCandidate,
   type Candidate,
 } from "./candidate-service";
-
+import { QRCodeSVG } from "qrcode.react"
 
 /* =========================================================
  * MODULE STATUS
@@ -545,7 +545,7 @@ export function CandidateProfilePage() {
           md:grid-cols-2
         "
       >
-
+        
         {/* PERSONAL */}
 
         <Card>
@@ -585,6 +585,11 @@ export function CandidateProfilePage() {
               >
                 {candidate.name}
               </p>
+              <QRCodeSVG
+  value={`https://your-app.com/candidate/${candidate.id}`}
+  size={160}
+  level="M"
+/>
 
             </div>
 
