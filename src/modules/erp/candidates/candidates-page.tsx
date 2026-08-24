@@ -1006,38 +1006,6 @@ export function CandidatesPage() {
           RESULT SUMMARY
           ================================================= */}
 
-      {/* <div
-        className="
-          flex
-          items-center
-          justify-between
-        "
-      >
-
-        <p
-          className="
-            text-sm
-            text-muted-foreground
-          "
-        >
-          {filteredCandidates.length}{" "}
-          candidates
-        </p>
-
-
-        <p
-          className="
-            text-xs
-            text-muted-foreground
-          "
-        >
-          Active {activeCount}
-          {" · "}
-          Returned {returnedCount}
-        </p>
-
-      </div> */}
-
 
       {/* =================================================
           ERROR
@@ -1207,6 +1175,39 @@ export function CandidatesPage() {
         }}
 
       />
+      
+      <div
+        className="
+          flex
+          items-center
+          justify-between
+        "
+      >
+
+        <p
+          className="
+            text-sm
+            text-muted-foreground
+          "
+        >
+          {filteredCandidates.length}{" "}
+          candidates
+        </p>
+
+
+        <p
+          className="
+            text-xs
+            text-muted-foreground
+          "
+        >
+          Active {activeCount}
+          {" · "}
+          Returned {returnedCount}
+        </p>
+
+      </div>
+
 
     </div>
 
