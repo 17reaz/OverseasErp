@@ -1,6 +1,11 @@
-import { FileText } from "lucide-react"
+import { useState } from "react"
+import { Download, FileText, Loader2, Printer } from "lucide-react"
+import { pdf } from "@react-pdf/renderer"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+
+import { ReportDocument } from "./pdf/report-document"
 
 import type {
   ReportColumn,
@@ -13,10 +18,7 @@ type ReportPreviewProps = {
   rows: ReportRow[]
 }
 
-const columnLabels: Record<
-  string,
-  string
-> = {
+const columnLabels: Record<string, string> = {
   sl: "SL",
   name: "Candidate",
   passport_no: "Passport",
@@ -72,8 +74,9 @@ function getColumnValue(
     case "visa_date":
     case "flight_date":
       return (
-        row[column as keyof ReportRow] ??
-        "—"
+        row[
+          column as keyof ReportRow
+        ] ?? "—"
       )
 
     case "airline":
@@ -122,16 +125,115 @@ function renderValue(
   return value
 }
 
+function createFileName(
+  config: ReportConfig,
+) {
+  const reportName =
+    config.name.trim() ||
+    "OverseasErp-Report"
+
+  return (
+    reportName
+      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .replace(/\s+/g, "-")
+      .toLowerCase() + ".pdf"
+  )
+}
+
 export function ReportPreview({
   config,
   rows,
 }: ReportPreviewProps) {
+  const [isGenerating, setIsGenerating] =
+    useState(false)
+
   const columns: ReportColumn[] =
     config.columns.map((id) => ({
       id,
       label:
         columnLabels[id] ?? id,
     }))
+
+  const generatePdf = async () => {
+    if (columns.length === 0) {
+      return null
+    }
+
+    setIsGenerating(true)
+
+    try {
+      const blob = await pdf(
+        <ReportDocument
+          config={config}
+          rows={rows}
+        />,
+      ).toBlob()
+
+      return blob
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownload = async () => {
+    const blob = await generatePdf()
+
+    if (!blob) {
+      return
+    }
+
+    const url =
+      URL.createObjectURL(blob)
+
+    const link =
+      document.createElement("a")
+
+    link.href = url
+    link.download =
+      createFileName(config)
+
+    document.body.appendChild(link)
+
+    link.click()
+
+    link.remove()
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 1000)
+  }
+
+  const handlePrint = async () => {
+    const blob = await generatePdf()
+
+    if (!blob) {
+      return
+    }
+
+    const url =
+      URL.createObjectURL(blob)
+
+    const printWindow =
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer",
+      )
+
+    if (!printWindow) {
+      URL.revokeObjectURL(url)
+
+      return
+    }
+
+    /*
+     * Keep the Blob URL alive while the
+     * new browser tab is using the PDF.
+     */
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 60000)
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -144,14 +246,53 @@ export function ReportPreview({
           </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Review the report before generating
-            the PDF.
+            Review the report before exporting
+            it as PDF.
           </p>
         </div>
 
-        <Badge variant="outline">
-          {config.type}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={
+              isGenerating ||
+              columns.length === 0
+            }
+            onClick={handlePrint}
+          >
+            {isGenerating ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Printer className="mr-2 size-4" />
+            )}
+
+            Print
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            disabled={
+              isGenerating ||
+              columns.length === 0
+            }
+            onClick={handleDownload}
+          >
+            {isGenerating ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 size-4" />
+            )}
+
+            Download PDF
+          </Button>
+
+          <Badge variant="outline">
+            {config.type}
+          </Badge>
+        </div>
       </div>
 
       {/* Preview */}
@@ -204,12 +345,10 @@ export function ReportPreview({
                 {rows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={
-                        Math.max(
-                          columns.length,
-                          1,
-                        )
-                      }
+                      colSpan={Math.max(
+                        columns.length,
+                        1,
+                      )}
                       className="px-4 py-12 text-center text-sm text-muted-foreground"
                     >
                       No records found for

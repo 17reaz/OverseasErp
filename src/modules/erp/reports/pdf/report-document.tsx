@@ -18,24 +18,27 @@ type ReportDocumentProps = {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 32,
+    paddingTop: 32,
+    paddingBottom: 36,
+    paddingHorizontal: 32,
     fontSize: 9,
   },
 
   header: {
-    marginBottom: 20,
+    marginBottom: 18,
     paddingBottom: 12,
     borderBottomWidth: 1,
+    borderBottomColor: "#d4d4d8",
   },
 
   title: {
     fontSize: 18,
-    fontWeight: 700,
     marginBottom: 5,
   },
 
   subtitle: {
     fontSize: 9,
+    color: "#71717a",
   },
 
   table: {
@@ -44,14 +47,19 @@ const styles = StyleSheet.create({
 
   tableHeader: {
     flexDirection: "row",
+    backgroundColor: "#f4f4f5",
     borderBottomWidth: 1,
-    paddingVertical: 6,
+    borderBottomColor: "#d4d4d8",
+    paddingVertical: 7,
+    paddingHorizontal: 5,
   },
 
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    paddingVertical: 6,
+    borderBottomColor: "#e4e4e7",
+    paddingVertical: 7,
+    paddingHorizontal: 5,
   },
 
   cell: {
@@ -61,10 +69,12 @@ const styles = StyleSheet.create({
 
   footer: {
     position: "absolute",
-    bottom: 20,
+    bottom: 18,
     left: 32,
     right: 32,
     fontSize: 8,
+    color: "#71717a",
+    textAlign: "center",
   },
 })
 
@@ -81,10 +91,14 @@ const labels: Record<
   stage: "Stage",
   status: "Status",
   received_date: "Received Date",
+
   medical_date: "Medical Date",
   fit_date: "Fit Date",
+
   mofa_date: "MOFA Date",
+
   visa_date: "Visa Date",
+
   flight_date: "Flight Date",
   airline: "Airline",
 }
@@ -100,8 +114,9 @@ function getValue(
   }
 
   return (
-    row[column as keyof ReportRow] ??
-    "—"
+    row[
+      column as keyof ReportRow
+    ] ?? "—"
   )
 }
 
@@ -116,7 +131,7 @@ export function ReportDocument({
         orientation="landscape"
         style={styles.page}
       >
-        {/* Header */}
+        {/* Report Header */}
 
         <View style={styles.header}>
           <Text style={styles.title}>
@@ -135,7 +150,7 @@ export function ReportDocument({
         {/* Table */}
 
         <View style={styles.table}>
-          {/* Header */}
+          {/* Table Header */}
 
           <View
             style={styles.tableHeader}
@@ -160,6 +175,7 @@ export function ReportDocument({
             <View
               key={row.id}
               style={styles.row}
+              wrap
             >
               {config.columns.map(
                 (column) => (
@@ -184,10 +200,13 @@ export function ReportDocument({
 
         <Text
           style={styles.footer}
-          render={({ pageNumber, totalPages }) =>
+          fixed
+          render={({
+            pageNumber,
+            totalPages,
+          }) =>
             `OverseasErp • Page ${pageNumber} of ${totalPages}`
           }
-          fixed
         />
       </Page>
     </Document>
