@@ -1,4 +1,10 @@
-import { useMemo, useState } from "react"
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
+
+import { Loader2 } from "lucide-react"
 
 import { ReportBuilder } from "./report-builder"
 import { ReportPreview } from "./report-preview"
@@ -8,41 +14,7 @@ import type {
   ReportRow,
 } from "./report-types"
 
-const demoRows: ReportRow[] = [
-  {
-    id: "1",
-    sl: 1,
-    name: "Rahim Ahmed",
-    passport_no: "AB123456",
-    country: "Saudi Arabia",
-    agent: "Agent 01",
-    stage: "Medical",
-    status: "Active",
-    received_date: "2026-08-01",
-  },
-  {
-    id: "2",
-    sl: 2,
-    name: "Karim Hasan",
-    passport_no: "CD789012",
-    country: "UAE",
-    agent: "Agent 02",
-    stage: "MOFA",
-    status: "Active",
-    received_date: "2026-08-03",
-  },
-  {
-    id: "3",
-    sl: 3,
-    name: "Hasan Ali",
-    passport_no: "EF345678",
-    country: "Qatar",
-    agent: "Agent 01",
-    stage: "Visa",
-    status: "Returned",
-    received_date: "2026-08-05",
-  },
-]
+import { supabase } from "@/lib/supabase/client"
 
 const initialConfig: ReportConfig = {
   name: "",
@@ -139,13 +111,150 @@ export function ReportsPage() {
       initialConfig,
     )
 
+  const [rows, setRows] =
+    useState<ReportRow[]>([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState<string | null>(null)
+
+  const loadCandidates = async () => {
+    try {
+      setError(null)
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("candidates")
+        .select(
+          `
+            id,
+            sl,
+            name,
+            passport_no,
+            country,
+            current_stage,
+            is_returned,
+            received_date,
+            agent_id,
+            agents (
+              name
+            )
+          `,
+        )
+        .eq(
+          "is_deleted",
+          false,
+        )
+        .order(
+          "sl",
+          {
+            ascending: true,
+            nullsFirst: false,
+          },
+        )
+
+      if (error) {
+        throw error
+      }
+
+      const mappedRows: ReportRow[] =
+        (data ?? []).map(
+          (candidate) => {
+            const agentData =
+              Array.isArray(
+                candidate.agents,
+              )
+                ? candidate.agents[0]
+                : candidate.agents
+
+            return {
+              id: candidate.id,
+
+              sl: candidate.sl,
+
+              name:
+                candidate.name,
+
+              passport_no:
+                candidate.passport_no,
+
+              country:
+                candidate.country,
+
+              agent:
+                agentData?.name ??
+                null,
+
+              stage:
+                candidate.current_stage,
+
+              status:
+                candidate.is_returned
+                  ? "Returned"
+                  : "Active",
+
+              received_date:
+                candidate.received_date,
+            }
+          },
+        )
+
+      setRows(mappedRows)
+    } catch (err) {
+      console.error(
+        "Failed to load report data:",
+        err,
+      )
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load report data",
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCandidates()
+
+    const channel =
+      supabase
+        .channel(
+          "reports-candidates-realtime",
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "candidates",
+          },
+          () => {
+            loadCandidates()
+          },
+        )
+        .subscribe()
+
+    return () => {
+      supabase.removeChannel(
+        channel,
+      )
+    }
+  }, [])
+
   const filteredRows = useMemo(
     () =>
       filterRows(
-        demoRows,
+        rows,
         config,
       ),
-    [config],
+    [rows, config],
   )
 
   return (
@@ -188,10 +297,32 @@ export function ReportsPage() {
         "
       >
         <div className="min-h-0 flex-1 overflow-hidden p-6">
-          <ReportPreview
-            config={config}
-            rows={filteredRows}
-          />
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+
+                Loading report data...
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="max-w-md rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
+                <p className="text-sm font-medium text-destructive">
+                  Failed to load report
+                </p>
+
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {error}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ReportPreview
+              config={config}
+              rows={filteredRows}
+            />
+          )}
         </div>
       </section>
     </div>
