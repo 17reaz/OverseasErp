@@ -1,19 +1,9 @@
 import {
-  ArrowLeft,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  FileText,
-  Fingerprint,
-  Pencil,
-  Plane,
-  Stethoscope,
-  XCircle,
-} from "lucide-react"
-
-import {
+  useCallback,
   useEffect,
   useState,
+  type FormEvent,
+  type ReactNode,
 } from "react"
 
 import {
@@ -24,27 +14,49 @@ import {
 import { QRCodeSVG } from "qrcode.react"
 
 import {
-  toast,
-} from "@/components/shared/toast/toast"
+  ArrowLeft,
+  Award,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  Fingerprint,
+  FolderOpen,
+  IdCard,
+  Pencil,
+  Plane,
+  Plus,
+  ShieldCheck,
+  Stethoscope,
+  XCircle,
+} from "lucide-react"
 
-import {
-  Badge,
-} from "@/components/ui/badge"
-
-import {
-  Button,
-} from "@/components/ui/button"
-
+import { toast } from "@/components/shared/toast/toast"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
-  Separator,
-} from "@/components/ui/separator"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+
+import { useAuth } from "@/modules/auth/components/auth-provider"
+import { supabase } from "@/lib/supabase/client"
+
+import { UniversalSheet } from "@/modules/erp/shared/forms/universal-sheet"
+import { CandidateFormDialog } from "./components/candidate-form-dialog"
 
 import {
   getCandidate,
@@ -63,23 +75,42 @@ type ModuleStatus =
   | "failed"
   | "not_started"
 
+type FieldValues = Record<string, string | boolean>
 
-interface ModuleCardProps {
+interface ModuleField {
+  key: string
+  label: string
+  type: "text" | "date" | "select" | "switch"
+  required?: boolean
+  placeholder?: string
+  options?: { value: string; label: string }[]
+  showIf?: (values: FieldValues) => boolean
+}
+
+interface ModuleConfig {
+  key: string
   title: string
   description: string
-  icon: React.ReactNode
-  status: ModuleStatus
-  href: string
+  icon: ReactNode
+  table: string
+  statusSelect: string
+  href: (candidateId: string) => string
+  fields: ModuleField[]
+  defaultValues: () => FieldValues
+  buildPayload: (
+    values: FieldValues,
+    candidateId: string,
+    tenantId: string,
+  ) => Record<string, unknown>
+  mapStatus: (row: Record<string, unknown> | null) => ModuleStatus
 }
 
 
 /* =========================================================
- * STATUS CONFIG
+ * STATUS CONFIG (display)
  * ========================================================= */
 
-function getStatusConfig(
-  status: ModuleStatus,
-) {
+function getStatusConfig(status: ModuleStatus) {
   switch (status) {
     case "completed":
       return {
@@ -120,104 +151,817 @@ function getStatusConfig(
 
 
 /* =========================================================
+ * MODULE DEFINITIONS
+ *
+ * Single source of truth for every processing module shown
+ * on the candidate profile. Adding a new module to the ERP
+ * only requires a new entry here — the status badge and the
+ * quick-add sheet are both generated from this config.
+ * ========================================================= */
+
+const MODULES: ModuleConfig[] = [
+  {
+    key: "medical",
+    title: "Medical",
+    description: "Medical examination and fitness records.",
+    icon: <Stethoscope className="h-4 w-4" />,
+    table: "medicals",
+    statusSelect: "status, created_at",
+    href: (id) => `/app/medical?candidate=${id}`,
+    fields: [
+      {
+        key: "medical_date",
+        label: "Medical Date",
+        type: "date",
+        required: true,
+      },
+      {
+        key: "status",
+        label: "Status",
+        type: "select",
+        options: [
+          { value: "new", label: "New" },
+          { value: "fit", label: "Fit" },
+          { value: "unfit", label: "Unfit" },
+          { value: "expired", label: "Expired" },
+        ],
+      },
+    ],
+    defaultValues: () => ({
+      medical_date: "",
+      status: "new",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      medical_date: v.medical_date || null,
+      status: v.status,
+      fit_date: v.status === "fit" ? v.medical_date || null : null,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+
+      switch (row.status) {
+        case "fit":
+          return "completed"
+        case "unfit":
+        case "expired":
+          return "failed"
+        default:
+          return "pending"
+      }
+    },
+  },
+
+  {
+    key: "police_clearance",
+    title: "Police Clearance",
+    description: "Police clearance verification records.",
+    icon: <ShieldCheck className="h-4 w-4" />,
+    table: "police_clearances",
+    statusSelect: "verified, created_at",
+    href: (id) => `/app/police-clearance?candidate=${id}`,
+    fields: [
+      {
+        key: "received_date",
+        label: "Received Date",
+        type: "date",
+      },
+      {
+        key: "verified",
+        label: "Verified",
+        type: "switch",
+      },
+      {
+        key: "verified_date",
+        label: "Verified Date",
+        type: "date",
+        showIf: (v) => v.verified === true,
+      },
+    ],
+    defaultValues: () => ({
+      received_date: "",
+      verified: false,
+      verified_date: "",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      received_date: v.received_date || null,
+      verified: !!v.verified,
+      verified_date: v.verified ? v.verified_date || null : null,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+      return row.verified ? "completed" : "pending"
+    },
+  },
+
+  {
+    key: "finger",
+    title: "Finger",
+    description: "Fingerprint registration and records.",
+    icon: <Fingerprint className="h-4 w-4" />,
+    table: "fingers",
+    statusSelect: "status, created_at",
+    href: (id) => `/app/fingers?candidate=${id}`,
+    fields: [
+      {
+        key: "finger_date",
+        label: "Finger Date",
+        type: "date",
+      },
+      {
+        key: "finger_type",
+        label: "Finger Type",
+        type: "select",
+        options: [
+          { value: "fresh", label: "Fresh" },
+          { value: "existing", label: "Existing" },
+        ],
+      },
+      {
+        key: "status",
+        label: "Status",
+        type: "select",
+        options: [
+          { value: "pending", label: "Pending" },
+          { value: "scheduled", label: "Scheduled" },
+          { value: "completed", label: "Completed" },
+          { value: "failed", label: "Failed" },
+          { value: "cancelled", label: "Cancelled" },
+        ],
+      },
+    ],
+    defaultValues: () => ({
+      finger_date: "",
+      finger_type: "fresh",
+      status: "pending",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      finger_date: v.finger_date || null,
+      finger_type: v.finger_type,
+      status: v.status,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+
+      switch (row.status) {
+        case "completed":
+          return "completed"
+        case "scheduled":
+          return "processing"
+        case "failed":
+        case "cancelled":
+          return "failed"
+        default:
+          return "pending"
+      }
+    },
+  },
+
+  {
+    key: "mofa",
+    title: "MOFA",
+    description: "Ministry approval and application processing.",
+    icon: <FileText className="h-4 w-4" />,
+    table: "mofas",
+    statusSelect: "stage, created_at",
+    href: (id) => `/app/mofa?candidate=${id}`,
+    fields: [
+      {
+        key: "application_number",
+        label: "Application Number",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "application_date",
+        label: "Application Date",
+        type: "date",
+        required: true,
+      },
+      {
+        key: "trade",
+        label: "Trade",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "stage",
+        label: "Stage",
+        type: "select",
+        options: [
+          { value: "new", label: "New" },
+          { value: "medupdated", label: "Medical Updated" },
+          { value: "approved", label: "Approved" },
+          { value: "canceled", label: "Canceled" },
+          { value: "expired", label: "Expired" },
+          { value: "invalid", label: "Invalid" },
+        ],
+      },
+    ],
+    defaultValues: () => ({
+      application_number: "",
+      application_date: "",
+      trade: "",
+      stage: "new",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      application_number: v.application_number,
+      application_date: v.application_date || null,
+      trade: v.trade,
+      stage: v.stage,
+      medical_id: null,
+      agency_id: null,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+
+      switch (row.stage) {
+        case "approved":
+          return "completed"
+        case "canceled":
+        case "expired":
+        case "invalid":
+          return "failed"
+        default:
+          return "processing"
+      }
+    },
+  },
+
+  {
+    key: "takamul",
+    title: "Takamul",
+    description: "Trade test scheduling and results.",
+    icon: <Award className="h-4 w-4" />,
+    table: "trade_tests",
+    statusSelect: "status, result, created_at",
+    href: (id) => `/app/takamul?candidate=${id}`,
+    fields: [
+      {
+        key: "test_center",
+        label: "Test Center",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "test_date",
+        label: "Test Date",
+        type: "date",
+      },
+      {
+        key: "result",
+        label: "Result",
+        type: "select",
+        options: [
+          { value: "pending", label: "Pending" },
+          { value: "pass", label: "Pass" },
+          { value: "fail", label: "Fail" },
+        ],
+      },
+      {
+        key: "status",
+        label: "Status",
+        type: "select",
+        options: [
+          { value: "scheduled", label: "Scheduled" },
+          { value: "completed", label: "Completed" },
+          { value: "expired", label: "Expired" },
+          { value: "cancelled", label: "Cancelled" },
+        ],
+      },
+    ],
+    defaultValues: () => ({
+      test_center: "",
+      test_date: "",
+      result: "pending",
+      status: "scheduled",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      test_center: v.test_center,
+      test_date: v.test_date || null,
+      result: v.result,
+      status: v.status,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+
+      if (row.status === "completed") {
+        return row.result === "fail" ? "failed" : "completed"
+      }
+
+      switch (row.status) {
+        case "scheduled":
+          return "processing"
+        case "expired":
+        case "cancelled":
+          return "failed"
+        default:
+          return "pending"
+      }
+    },
+  },
+
+  {
+    key: "visa",
+    title: "Visa",
+    description: "Visa application and processing records.",
+    icon: <IdCard className="h-4 w-4" />,
+    table: "visas",
+    statusSelect: "status, created_at",
+    href: (id) => `/app/visa?candidate=${id}`,
+    fields: [
+      {
+        key: "visa_no",
+        label: "Visa Number",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "visa_date",
+        label: "Visa Date",
+        type: "date",
+      },
+      {
+        key: "expiry_date",
+        label: "Expiry Date",
+        type: "date",
+      },
+      {
+        key: "status",
+        label: "Status",
+        type: "text",
+        placeholder: "e.g. issued, pending, rejected",
+      },
+    ],
+    defaultValues: () => ({
+      visa_no: "",
+      visa_date: "",
+      expiry_date: "",
+      status: "",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      visa_no: v.visa_no,
+      visa_date: v.visa_date || null,
+      expiry_date: v.expiry_date || null,
+      status: v.status || null,
+      mofa_id: null,
+      agency_id: null,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+
+      const status = String(row.status ?? "").toLowerCase()
+
+      if (!status) return "processing"
+
+      if (/(issued|approved|active)/.test(status)) return "completed"
+      if (/(reject|cancel|expired|denied)/.test(status)) return "failed"
+
+      return "processing"
+    },
+  },
+
+  {
+    key: "flight",
+    title: "Flight",
+    description: "Flight booking and travel information.",
+    icon: <Plane className="h-4 w-4" />,
+    table: "flights",
+    statusSelect: "status, created_at",
+    href: (id) => `/app/flight?candidate=${id}`,
+    fields: [
+      {
+        key: "flight_date",
+        label: "Flight Date",
+        type: "date",
+      },
+      {
+        key: "flight_no",
+        label: "Flight Number",
+        type: "text",
+      },
+      {
+        key: "airline",
+        label: "Airline",
+        type: "text",
+      },
+      {
+        key: "status",
+        label: "Status",
+        type: "select",
+        options: [
+          { value: "scheduled", label: "Scheduled" },
+          { value: "departed", label: "Departed" },
+          { value: "cancelled", label: "Cancelled" },
+          { value: "rescheduled", label: "Rescheduled" },
+        ],
+      },
+    ],
+    defaultValues: () => ({
+      flight_date: "",
+      flight_no: "",
+      airline: "",
+      status: "scheduled",
+    }),
+    buildPayload: (v, candidateId, tenantId) => ({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      flight_date: v.flight_date || null,
+      flight_no: v.flight_no || null,
+      airline: v.airline || null,
+      status: v.status,
+      visa_id: null,
+    }),
+    mapStatus: (row) => {
+      if (!row) return "not_started"
+
+      switch (row.status) {
+        case "departed":
+          return "completed"
+        case "cancelled":
+          return "failed"
+        case "rescheduled":
+          return "pending"
+        default:
+          return "processing"
+      }
+    },
+  },
+]
+
+
+/* =========================================================
+ * MODULE STATUS FETCHING
+ * ========================================================= */
+
+async function fetchModuleStatuses(
+  candidateId: string,
+): Promise<Record<string, ModuleStatus>> {
+  const entries = await Promise.all(
+    MODULES.map(async (module) => {
+      const { data, error } = await supabase
+        .from(module.table)
+        .select(module.statusSelect)
+        .eq("candidate_id", candidateId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        console.error(`Failed to load ${module.table} status`, error)
+        return [module.key, "not_started" as ModuleStatus] as const
+      }
+
+      return [
+        module.key,
+        module.mapStatus(data as Record<string, unknown> | null),
+      ] as const
+    }),
+  )
+
+  return Object.fromEntries(entries)
+}
+
+async function fetchDocumentsStatus(
+  candidateId: string,
+): Promise<ModuleStatus> {
+  const { count, error } = await supabase
+    .from("files")
+    .select("id", { count: "exact", head: true })
+    .eq("candidate_id", candidateId)
+    .eq("is_active", true)
+
+  if (error) {
+    console.error("Failed to load documents status", error)
+    return "not_started"
+  }
+
+  return (count ?? 0) > 0 ? "completed" : "not_started"
+}
+
+
+/* =========================================================
+ * MODULE QUICK-ADD SHEET
+ *
+ * One generic sheet, driven by ModuleConfig, so every
+ * module gets the exact same add-record experience instead
+ * of each module reimplementing its own form/sheet pattern.
+ * ========================================================= */
+
+function ModuleQuickAddSheet({
+  module,
+  candidateId,
+  tenantId,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  module: ModuleConfig
+  candidateId: string
+  tenantId: string | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: () => void
+}) {
+  const [values, setValues] = useState<FieldValues>(
+    module.defaultValues(),
+  )
+
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setValues(module.defaultValues())
+    }
+  }, [open, module])
+
+  function setField(key: string, value: string | boolean) {
+    setValues((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!tenantId) {
+      toast.error(
+        "Missing tenant information.",
+        "Please refresh the page and try again.",
+      )
+      return
+    }
+
+    for (const field of module.fields) {
+      const visible = field.showIf ? field.showIf(values) : true
+
+      if (field.required && visible && !values[field.key]) {
+        toast.error(
+          `${field.label} is required.`,
+          `Please fill in ${field.label.toLowerCase()} before saving.`,
+        )
+        return
+      }
+    }
+
+    setLoading(true)
+
+    try {
+      const payload = module.buildPayload(
+        values,
+        candidateId,
+        tenantId,
+      )
+
+      const { error } = await supabase
+        .from(module.table)
+        .insert(payload)
+
+      if (error) throw error
+
+      toast.success(
+        `${module.title} record added.`,
+        `A new ${module.title.toLowerCase()} record has been created for this candidate.`,
+      )
+
+      onOpenChange(false)
+      onSuccess()
+    } catch (error) {
+      console.error(error)
+
+      toast.error(
+        `Failed to add ${module.title.toLowerCase()} record.`,
+        "Please try again.",
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <UniversalSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Add ${module.title} Record`}
+      description={`Create a new ${module.title.toLowerCase()} record for this candidate.`}
+      onSubmit={handleSubmit}
+      submitLabel="Add Record"
+      loading={loading}
+      hasChanges
+    >
+      <div className="space-y-4">
+        {module.fields.map((field) => {
+          if (field.showIf && !field.showIf(values)) {
+            return null
+          }
+
+          const inputId = `${module.key}-${field.key}`
+
+          return (
+            <div
+              key={field.key}
+              className="space-y-1.5"
+            >
+              <Label htmlFor={inputId}>
+                {field.label}
+                {field.required && " *"}
+              </Label>
+
+              {field.type === "text" && (
+                <Input
+                  id={inputId}
+                  value={String(values[field.key] ?? "")}
+                  placeholder={field.placeholder}
+                  onChange={(event) =>
+                    setField(field.key, event.target.value)
+                  }
+                />
+              )}
+
+              {field.type === "date" && (
+                <Input
+                  id={inputId}
+                  type="date"
+                  value={String(values[field.key] ?? "")}
+                  onChange={(event) =>
+                    setField(field.key, event.target.value)
+                  }
+                />
+              )}
+
+              {field.type === "select" && (
+                <Select
+                  value={String(values[field.key] ?? "")}
+                  onValueChange={(value) =>
+                    setField(field.key, value)
+                  }
+                >
+                  <SelectTrigger id={inputId}>
+                    <SelectValue />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {field.options?.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {field.type === "switch" && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Switch
+                    id={inputId}
+                    checked={!!values[field.key]}
+                    onCheckedChange={(checked) =>
+                      setField(field.key, checked)
+                    }
+                  />
+
+                  <span className="text-sm text-muted-foreground">
+                    {values[field.key] ? "Yes" : "No"}
+                  </span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </UniversalSheet>
+  )
+}
+
+
+/* =========================================================
  * MODULE CARD
  * ========================================================= */
 
 function ModuleCard({
-  title,
-  description,
-  icon,
+  module,
   status,
   href,
-}: ModuleCardProps) {
-  const config =
-    getStatusConfig(status)
-
-  const StatusIcon =
-    config.icon
+  onAdd,
+}: {
+  module: ModuleConfig
+  status: ModuleStatus
+  href: string
+  onAdd: () => void
+}) {
+  const config = getStatusConfig(status)
+  const StatusIcon = config.icon
 
   return (
-    <Card
-      className="
-        group
-        transition-colors
-        hover:bg-muted/30
-      "
-    >
-      <CardHeader
-        className="
-          space-y-0
-          pb-3
-        "
-      >
-        <div
-          className="
-            flex
-            items-start
-            justify-between
-            gap-3
-          "
-        >
-          <div
-            className="
-              flex
-              min-w-0
-              items-center
-              gap-3
-            "
-          >
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                shrink-0
-                items-center
-                justify-center
-                rounded-md
-                border
-                bg-background
-              "
-            >
-              {icon}
+    <Card className="group transition-colors hover:bg-muted/30">
+      <CardHeader className="space-y-0 pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background">
+              {module.icon}
             </div>
 
             <div className="min-w-0">
-              <CardTitle
-                className="
-                  text-sm
-                  font-medium
-                "
-              >
-                {title}
+              <CardTitle className="text-sm font-medium">
+                {module.title}
               </CardTitle>
 
-              <p
-                className="
-                  mt-1
-                  line-clamp-2
-                  text-xs
-                  leading-relaxed
-                  text-muted-foreground
-                "
-              >
-                {description}
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                {module.description}
               </p>
             </div>
           </div>
 
           <Badge
             variant={config.variant}
-            className="
-              shrink-0
-              gap-1
-              text-[11px]
-            "
+            className="shrink-0 gap-1 text-[11px]"
           >
-            <StatusIcon
-              className="h-3 w-3"
-            />
+            <StatusIcon className="h-3 w-3" />
+            {config.label}
+          </Badge>
+        </div>
+      </CardHeader>
 
+      <CardContent className="flex items-center gap-2 pt-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 justify-center"
+          onClick={onAdd}
+        >
+          <Plus />
+          Add Record
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          asChild
+          className="flex-1 justify-center"
+        >
+          <Link to={href}>View All</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+
+/* =========================================================
+ * DOCUMENTS CARD (no quick-add — file uploads live on
+ * the Files page, so this card just links there.)
+ * ========================================================= */
+
+function DocumentsCard({
+  status,
+  href,
+}: {
+  status: ModuleStatus
+  href: string
+}) {
+  const config = getStatusConfig(status)
+  const StatusIcon = config.icon
+
+  return (
+    <Card className="group transition-colors hover:bg-muted/30">
+      <CardHeader className="space-y-0 pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background">
+              <FolderOpen className="h-4 w-4" />
+            </div>
+
+            <div className="min-w-0">
+              <CardTitle className="text-sm font-medium">
+                Documents
+              </CardTitle>
+
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Candidate documents and file records.
+              </p>
+            </div>
+          </div>
+
+          <Badge
+            variant={config.variant}
+            className="shrink-0 gap-1 text-[11px]"
+          >
+            <StatusIcon className="h-3 w-3" />
             {config.label}
           </Badge>
         </div>
@@ -228,14 +972,9 @@ function ModuleCard({
           variant="outline"
           size="sm"
           asChild
-          className="
-            w-full
-            justify-center
-          "
+          className="w-full justify-center"
         >
-          <Link to={href}>
-            Open {title}
-          </Link>
+          <Link to={href}>Open Documents</Link>
         </Button>
       </CardContent>
     </Card>
@@ -257,39 +996,13 @@ function InfoItem({
   icon?: React.ReactNode
 }) {
   return (
-    <div
-      className="
-        rounded-md
-        border
-        bg-muted/20
-        px-4
-        py-3
-      "
-    >
-      <p
-        className="
-          text-[11px]
-          font-medium
-          uppercase
-          tracking-wide
-          text-muted-foreground
-        "
-      >
+    <div className="rounded-md border bg-muted/20 px-4 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
 
-      <p
-        className="
-          mt-1.5
-          flex
-          items-center
-          gap-2
-          text-sm
-          font-medium
-        "
-      >
+      <p className="mt-1.5 flex items-center gap-2 text-sm font-medium">
         {icon}
-
         {value}
       </p>
     </div>
@@ -302,102 +1015,122 @@ function InfoItem({
  * ========================================================= */
 
 export function CandidateProfilePage() {
-  const {
-    candidateId,
-  } = useParams<{
-    candidateId: string
-  }>()
+  const { candidateId } = useParams<{ candidateId: string }>()
+  const { profile } = useAuth()
 
-  const [
-    candidate,
-    setCandidate,
-  ] = useState<Candidate | null>(
+  const [candidate, setCandidate] = useState<Candidate | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [moduleStatuses, setModuleStatuses] = useState<
+    Record<string, ModuleStatus>
+  >({})
+
+  const [documentsStatus, setDocumentsStatus] =
+    useState<ModuleStatus>("not_started")
+
+  const [activeModuleKey, setActiveModuleKey] = useState<string | null>(
     null,
   )
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true)
-
-  const [
-    error,
-    setError,
-  ] = useState<string | null>(
-    null,
-  )
+  const [editOpen, setEditOpen] = useState(false)
 
 
   /* =======================================================
-   * LOAD CANDIDATE
+   * LOAD CANDIDATE + MODULE STATUSES
    * ======================================================= */
 
-  useEffect(() => {
-    async function loadCandidate() {
-      if (!candidateId) {
-        const message =
-          "Candidate ID is missing."
+  const loadCandidate = useCallback(async () => {
+    if (!candidateId) {
+      const message = "Candidate ID is missing."
+
+      setError(message)
+      setLoading(false)
+
+      toast.error(
+        "Candidate ID is missing.",
+        "Please return to the Candidates page and select a candidate.",
+      )
+
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      const { data, error } = await getCandidate(candidateId)
+
+      if (error) throw error
+
+      if (!data) {
+        const message = "Candidate not found."
 
         setError(message)
-        setLoading(false)
 
         toast.error(
-          "Candidate ID is missing.",
-          "Please return to the Candidates page and select a candidate.",
+          "Candidate not found.",
+          "The requested candidate profile could not be found.",
         )
 
         return
       }
 
-      try {
-        setLoading(true)
-        setError(null)
+      setCandidate(data)
 
-        const {
-          data,
-          error,
-        } = await getCandidate(
-          candidateId,
-        )
+      const [statuses, docsStatus] = await Promise.all([
+        fetchModuleStatuses(candidateId),
+        fetchDocumentsStatus(candidateId),
+      ])
 
-        if (error) {
-          throw error
-        }
+      setModuleStatuses(statuses)
+      setDocumentsStatus(docsStatus)
+    } catch (error) {
+      console.error(error)
 
-        if (!data) {
-          const message =
-            "Candidate not found."
+      const message = "Failed to load candidate profile."
 
-          setError(message)
+      setError(message)
 
-          toast.error(
-            "Candidate not found.",
-            "The requested candidate profile could not be found.",
-          )
+      toast.error(
+        "Failed to load candidate profile.",
+        "Please try again.",
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [candidateId])
 
-          return
-        }
+  useEffect(() => {
+    void loadCandidate()
+  }, [loadCandidate])
 
-        setCandidate(data)
-      } catch (error) {
-        console.error(error)
+  async function refreshModuleStatus(moduleKey: string) {
+    if (!candidateId) return
 
-        const message =
-          "Failed to load candidate profile."
+    const module = MODULES.find((m) => m.key === moduleKey)
+    if (!module) return
 
-        setError(message)
+    const { data, error } = await supabase
+      .from(module.table)
+      .select(module.statusSelect)
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-        toast.error(
-          "Failed to load candidate profile.",
-          "Please try again.",
-        )
-      } finally {
-        setLoading(false)
-      }
+    if (error) {
+      console.error(`Failed to refresh ${module.table} status`, error)
+      return
     }
 
-    void loadCandidate()
-  }, [candidateId])
+    setModuleStatuses((prev) => ({
+      ...prev,
+      [moduleKey]: module.mapStatus(
+        data as Record<string, unknown> | null,
+      ),
+    }))
+  }
 
 
   /* =======================================================
@@ -406,20 +1139,8 @@ export function CandidateProfilePage() {
 
   if (loading) {
     return (
-      <div
-        className="
-          flex
-          min-h-[400px]
-          items-center
-          justify-center
-        "
-      >
-        <p
-          className="
-            text-sm
-            text-muted-foreground
-          "
-        >
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-sm text-muted-foreground">
           Loading candidate...
         </p>
       </div>
@@ -431,35 +1152,18 @@ export function CandidateProfilePage() {
    * ERROR
    * ======================================================= */
 
-  if (
-    error ||
-    !candidate
-  ) {
+  if (error || !candidate) {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          asChild
-        >
+        <Button variant="ghost" asChild>
           <Link to="/app/candidates">
             <ArrowLeft />
             Back to Candidates
           </Link>
         </Button>
 
-        <div
-          className="
-            rounded-lg
-            border
-            border-destructive/30
-            bg-destructive/5
-            p-6
-            text-sm
-            text-destructive
-          "
-        >
-          {error ??
-            "Candidate not found."}
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+          {error ?? "Candidate not found."}
         </div>
       </div>
     )
@@ -470,37 +1174,17 @@ export function CandidateProfilePage() {
    * PAGE
    * ======================================================= */
 
+  const activeModule = MODULES.find((m) => m.key === activeModuleKey) ?? null
+
   return (
-    <div
-      className="
-        min-h-0
-        space-y-6
-        pb-6
-      "
-    >
+    <div className="min-h-0 space-y-6 pb-6">
 
       {/* =================================================
        * HEADER
        * ================================================= */}
 
-      <div
-        className="
-          flex
-          flex-col
-          gap-4
-          sm:flex-row
-          sm:items-center
-          sm:justify-between
-        "
-      >
-        <div
-          className="
-            flex
-            min-w-0
-            items-center
-            gap-3
-          "
-        >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -513,52 +1197,27 @@ export function CandidateProfilePage() {
           </Button>
 
           <div className="min-w-0">
-            <div
-              className="
-                flex
-                flex-wrap
-                items-center
-                gap-2
-              "
-            >
-              <h1
-                className="
-                  truncate
-                  text-2xl
-                  font-semibold
-                  tracking-tight
-                "
-              >
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
                 {candidate.name}
               </h1>
 
               <Badge
                 variant={
-                  candidate.is_returned
-                    ? "destructive"
-                    : "default"
+                  candidate.is_returned ? "destructive" : "default"
                 }
               >
-                {candidate.is_returned
-                  ? "Returned"
-                  : "Active"}
+                {candidate.is_returned ? "Returned" : "Active"}
               </Badge>
             </div>
 
-            <p
-              className="
-                mt-1
-                text-sm
-                text-muted-foreground
-              "
-            >
-              Passport:{" "}
-              {candidate.passport_no}
+            <p className="mt-1 text-sm text-muted-foreground">
+              Passport: {candidate.passport_no}
             </p>
           </div>
         </div>
 
-        <Button>
+        <Button onClick={() => setEditOpen(true)}>
           <Pencil />
           Edit Candidate
         </Button>
@@ -569,31 +1228,17 @@ export function CandidateProfilePage() {
        * OVERVIEW
        * ================================================= */}
 
-      <div
-        className="
-          grid
-          gap-6
-          lg:grid-cols-[minmax(0,1fr)_300px]
-        "
-      >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
 
         {/* BASIC INFORMATION */}
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              Candidate Information
-            </CardTitle>
+            <CardTitle>Candidate Information</CardTitle>
           </CardHeader>
 
           <CardContent>
-            <div
-              className="
-                grid
-                gap-3
-                sm:grid-cols-2
-              "
-            >
+            <div className="grid gap-3 sm:grid-cols-2">
               <InfoItem
                 label="Candidate Name"
                 value={candidate.name}
@@ -606,43 +1251,30 @@ export function CandidateProfilePage() {
 
               <InfoItem
                 label="Country"
-                value={
-                  candidate.country ??
-                  "—"
-                }
+                value={candidate.country ?? "—"}
               />
 
               <InfoItem
                 label="Received Date"
-                value={
-                  candidate.received_date ??
-                  "—"
-                }
+                value={candidate.received_date ?? "—"}
                 icon={
-                  <CalendarDays
-                    className="
-                      h-4
-                      w-4
-                      text-muted-foreground
-                    "
-                  />
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 }
               />
 
               <InfoItem
                 label="Candidate SL"
-                value={
-                  candidate.sl ??
-                  "—"
-                }
+                value={candidate.sl ?? "—"}
               />
 
               <InfoItem
                 label="Current Stage"
-                value={
-                  candidate.current_stage ??
-                  "Pending"
-                }
+                value={candidate.current_stage ?? "Pending"}
+              />
+
+              <InfoItem
+                label="Agent"
+                value={candidate.agent?.name ?? "—"}
               />
 
               <InfoItem
@@ -650,14 +1282,10 @@ export function CandidateProfilePage() {
                 value={
                   <Badge
                     variant={
-                      candidate.is_returned
-                        ? "destructive"
-                        : "default"
+                      candidate.is_returned ? "destructive" : "default"
                     }
                   >
-                    {candidate.is_returned
-                      ? "Returned"
-                      : "Active"}
+                    {candidate.is_returned ? "Returned" : "Active"}
                   </Badge>
                 }
               />
@@ -665,10 +1293,7 @@ export function CandidateProfilePage() {
               {candidate.is_returned && (
                 <InfoItem
                   label="Returned Date"
-                  value={
-                    candidate.returned_date ??
-                    "—"
-                  }
+                  value={candidate.returned_date ?? "—"}
                 />
               )}
             </div>
@@ -680,52 +1305,21 @@ export function CandidateProfilePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              Candidate QR
-            </CardTitle>
+            <CardTitle>Candidate QR</CardTitle>
           </CardHeader>
 
           <CardContent>
-            <div
-              className="
-                flex
-                flex-col
-                items-center
-                justify-center
-                rounded-lg
-                border
-                bg-muted/20
-                p-6
-              "
-            >
-              <div
-                className="
-                  rounded-lg
-                  border
-                  bg-background
-                  p-3
-                  shadow-sm
-                "
-              >
+            <div className="flex flex-col items-center justify-center rounded-lg border bg-muted/20 p-6">
+              <div className="rounded-lg border bg-background p-3 shadow-sm">
                 <QRCodeSVG
-                  value={
-                    `https://overseaserp.vercel.app/candidate/${candidate.id}`
-                  }
+                  value={`https://overseaserp.vercel.app/candidate/${candidate.id}`}
                   size={150}
                   level="M"
                 />
               </div>
 
-              <p
-                className="
-                  mt-4
-                  text-center
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Scan to open candidate
-                profile
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                Scan to open candidate profile
               </p>
             </div>
           </CardContent>
@@ -739,152 +1333,67 @@ export function CandidateProfilePage() {
 
       <div className="space-y-4">
         <div>
-          <h2
-            className="
-              text-lg
-              font-semibold
-            "
-          >
-            Processing Modules
-          </h2>
+          <h2 className="text-lg font-semibold">Processing Modules</h2>
 
-          <p
-            className="
-              mt-1
-              text-sm
-              text-muted-foreground
-            "
-          >
-            Manage all processing
-            activities for this candidate.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add and track every processing stage for this candidate,
+            right from here.
           </p>
         </div>
 
         <Separator />
 
-        <div
-          className="
-            grid
-            gap-4
-            sm:grid-cols-2
-            xl:grid-cols-3
-          "
-        >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {MODULES.map((module) => (
+            <ModuleCard
+              key={module.key}
+              module={module}
+              href={module.href(candidate.id)}
+              status={moduleStatuses[module.key] ?? "not_started"}
+              onAdd={() => setActiveModuleKey(module.key)}
+            />
+          ))}
 
-          {/* MEDICAL */}
-
-          <ModuleCard
-            title="Medical"
-            description="
-              Medical examination and fitness records.
-            "
-            icon={
-              <Stethoscope
-                className="h-4 w-4"
-              />
-            }
-            status="not_started"
-            href={
-              `/app/medical?candidate=${candidate.id}`
-            }
-          />
-
-
-          {/* MOFA */}
-
-          <ModuleCard
-            title="MOFA"
-            description="
-              Ministry approval and application processing.
-            "
-            icon={
-              <FileText
-                className="h-4 w-4"
-              />
-            }
-            status="not_started"
-            href={
-              `/app/mofa?candidate=${candidate.id}`
-            }
-          />
-
-
-          {/* FINGER */}
-
-          <ModuleCard
-            title="Finger"
-            description="
-              Fingerprint registration and records.
-            "
-            icon={
-              <Fingerprint
-                className="h-4 w-4"
-              />
-            }
-            status="not_started"
-            href={
-              `/app/finger?candidate=${candidate.id}`
-            }
-          />
-
-
-          {/* DOCUMENTS */}
-
-          <ModuleCard
-            title="Documents"
-            description="
-              Candidate documents and file records.
-            "
-            icon={
-              <FileText
-                className="h-4 w-4"
-              />
-            }
-            status="not_started"
-            href={
-              `/app/files?candidate=${candidate.id}`
-            }
-          />
-
-
-          {/* VISA */}
-
-          <ModuleCard
-            title="Visa"
-            description="
-              Visa application and processing records.
-            "
-            icon={
-              <FileText
-                className="h-4 w-4"
-              />
-            }
-            status="not_started"
-            href={
-              `/app/visa?candidate=${candidate.id}`
-            }
-          />
-
-
-          {/* FLIGHT */}
-
-          <ModuleCard
-            title="Flight"
-            description="
-              Flight booking and travel information.
-            "
-            icon={
-              <Plane
-                className="h-4 w-4"
-              />
-            }
-            status="not_started"
-            href={
-              `/app/flight?candidate=${candidate.id}`
-            }
+          <DocumentsCard
+            status={documentsStatus}
+            href={`/app/files?candidate=${candidate.id}`}
           />
         </div>
       </div>
+
+
+      {/* =================================================
+       * QUICK-ADD SHEET (shared across every module)
+       * ================================================= */}
+
+      {activeModule && (
+        <ModuleQuickAddSheet
+          module={activeModule}
+          candidateId={candidate.id}
+          tenantId={profile?.tenant_id ?? null}
+          open={!!activeModuleKey}
+          onOpenChange={(open) => {
+            if (!open) setActiveModuleKey(null)
+          }}
+          onSuccess={() => {
+            void refreshModuleStatus(activeModule.key)
+          }}
+        />
+      )}
+
+
+      {/* =================================================
+       * EDIT CANDIDATE
+       * ================================================= */}
+
+      <CandidateFormDialog
+        open={editOpen}
+        candidate={candidate}
+        onOpenChange={setEditOpen}
+        onSuccess={(updated) => {
+          setCandidate(updated)
+        }}
+      />
     </div>
   )
 }
