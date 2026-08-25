@@ -7,7 +7,7 @@ import {DashboardInsights} from "./components/dashboard-insights";
 import { DashboardShortcuts } from "./components/dashboard-shortcuts";
 import { DashboardOperations } from "./components/dashboard-operations";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
-import { ModuleBottlenecks } from "./components/module-bottlenecks";
+// import { ModuleBottlenecks } from "./components/module-bottlenecks";
 export function DashboardPage() {
   return (
     <div className="space-y-6">
@@ -17,7 +17,7 @@ export function DashboardPage() {
       />
 
       <DashboardStats />
-      <ModuleBottlenecks />
+      {/* <ModuleBottlenecks /> */}
       <DashboardOperations />
       <DashboardDocumentAlerts />
       <DashboardCharts />
