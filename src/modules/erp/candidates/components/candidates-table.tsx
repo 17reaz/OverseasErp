@@ -6,6 +6,7 @@ import {
   RotateCcw,
   Trash2,
   Download,
+  Plus,
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
@@ -740,6 +741,23 @@ export function CandidatesTable({
                             align="end"
                           >
 
+                            {/* =================================================
+                                ADD MODULE
+                                ================================================= */}
+
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onDownloadPassport?.(
+                                  candidate,
+                                )
+                              }
+                            >
+
+                              <Plus />
+
+                              Add to..
+
+                            </DropdownMenuItem>
                             {/* =================================================
                                 DOWNLOAD PASSPORT
                                 ================================================= */}
