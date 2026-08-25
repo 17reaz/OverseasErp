@@ -59,7 +59,7 @@ import {
 
 import {
   UniversalSheet,
-} from "../../shared/ui/universal-sheet";
+} from "../../shared/forms/universal-sheet";
 
 import {
   FormSection,

@@ -3,21 +3,13 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+
+import { UniversalSheet } from "../../shared/forms/universal-sheet";
 
 import {
   createPoliceClearance,
@@ -68,6 +60,12 @@ export function PoliceClearanceForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  /* =======================================================
+   * DIRTY STATE
+   * ======================================================= */
+
+  const [dirty, setDirty] = useState(false);
+
   const isEdit = Boolean(record);
 
   useEffect(() => {
@@ -90,6 +88,7 @@ export function PoliceClearanceForm({
     }
 
     setError("");
+    setDirty(false);
   }, [open, record]);
 
   function updateField<K extends keyof FormState>(
@@ -100,6 +99,8 @@ export function PoliceClearanceForm({
       ...previous,
       [field]: value,
     }));
+
+    setDirty(true);
   }
 
   async function handleSubmit(
@@ -156,6 +157,8 @@ export function PoliceClearanceForm({
 
       onSuccess?.(savedRecord);
 
+      setDirty(false);
+
       onOpenChange(false);
 
       setForm(DEFAULT_FORM);
@@ -170,226 +173,185 @@ export function PoliceClearanceForm({
     }
   }
 
-  function handleOpenChange(nextOpen: boolean) {
-    if (saving) {
-      return;
-    }
-
-    onOpenChange(nextOpen);
-  }
-
   return (
-    <Sheet
+    <UniversalSheet
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
+      title={
+        isEdit
+          ? "Edit Police Clearance"
+          : "Create Police Clearance"
+      }
+      description={
+        isEdit
+          ? "Update the police clearance record."
+          : "Record a new hard-copy police clearance certificate."
+      }
+      hasChanges={dirty}
+      onSubmit={handleSubmit}
+      submitLabel={
+        isEdit ? "Update PCC" : "Create PCC"
+      }
+      loading={saving}
+      disabled={!form.candidate_id}
     >
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>
-            {isEdit
-              ? "Edit Police Clearance"
-              : "Create Police Clearance"}
-          </SheetTitle>
+      <div className="flex flex-col gap-5">
+        {/* Candidate */}
+        <div className="space-y-2">
+          <Label htmlFor="pcc-candidate">
+            Candidate{" "}
+            <span className="text-destructive">
+              *
+            </span>
+          </Label>
 
-          <SheetDescription>
-            {isEdit
-              ? "Update the police clearance record."
-              : "Record a new hard-copy police clearance certificate."}
-          </SheetDescription>
-        </SheetHeader>
+          <select
+            id="pcc-candidate"
+            value={form.candidate_id}
+            onChange={(event) =>
+              updateField(
+                "candidate_id",
+                event.target.value,
+              )
+            }
+            disabled={isEdit || saving}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">
+              Select candidate
+            </option>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-5 px-4 pb-6"
-        >
-          {/* Candidate */}
+            {candidates.map((candidate) => (
+              <option
+                key={candidate.id}
+                value={candidate.id}
+              >
+                {candidate.name} —{" "}
+                {candidate.passport_no}
+              </option>
+            ))}
+          </select>
+
+          {isEdit && (
+            <p className="text-xs text-muted-foreground">
+              Candidate cannot be changed after
+              the PCC record is created.
+            </p>
+          )}
+        </div>
+
+        {/* Received Date */}
+        <div className="space-y-2">
+          <Label htmlFor="pcc-received-date">
+            Received Date
+          </Label>
+
+          <Input
+            id="pcc-received-date"
+            type="date"
+            value={form.received_date}
+            onChange={(event) =>
+              updateField(
+                "received_date",
+                event.target.value,
+              )
+            }
+            disabled={saving}
+          />
+
+          <p className="text-xs text-muted-foreground">
+            Date the physical PCC was received.
+          </p>
+        </div>
+
+        {/* Verified */}
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-1">
+            <Label htmlFor="pcc-verified">
+              Verified
+            </Label>
+
+            <p className="text-xs text-muted-foreground">
+              Mark after manual checking.
+            </p>
+          </div>
+
+          <Switch
+            id="pcc-verified"
+            checked={form.verified}
+            onCheckedChange={(checked) => {
+              updateField(
+                "verified",
+                checked,
+              );
+
+              if (!checked) {
+                updateField(
+                  "verified_date",
+                  "",
+                );
+              }
+            }}
+            disabled={saving}
+          />
+        </div>
+
+        {/* Verified Date */}
+        {form.verified && (
           <div className="space-y-2">
-            <Label htmlFor="pcc-candidate">
-              Candidate{" "}
+            <Label htmlFor="pcc-verified-date">
+              Verification Date{" "}
               <span className="text-destructive">
                 *
               </span>
             </Label>
 
-            <select
-              id="pcc-candidate"
-              value={form.candidate_id}
-              onChange={(event) =>
-                updateField(
-                  "candidate_id",
-                  event.target.value,
-                )
-              }
-              disabled={isEdit || saving}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">
-                Select candidate
-              </option>
-
-              {candidates.map((candidate) => (
-                <option
-                  key={candidate.id}
-                  value={candidate.id}
-                >
-                  {candidate.name} —{" "}
-                  {candidate.passport_no}
-                </option>
-              ))}
-            </select>
-
-            {isEdit && (
-              <p className="text-xs text-muted-foreground">
-                Candidate cannot be changed after
-                the PCC record is created.
-              </p>
-            )}
-          </div>
-
-          {/* Received Date */}
-          <div className="space-y-2">
-            <Label htmlFor="pcc-received-date">
-              Received Date
-            </Label>
-
             <Input
-              id="pcc-received-date"
+              id="pcc-verified-date"
               type="date"
-              value={form.received_date}
+              value={form.verified_date}
               onChange={(event) =>
                 updateField(
-                  "received_date",
+                  "verified_date",
                   event.target.value,
                 )
               }
               disabled={saving}
             />
-
-            <p className="text-xs text-muted-foreground">
-              Date the physical PCC was received.
-            </p>
           </div>
+        )}
 
-          {/* Verified */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-1">
-              <Label htmlFor="pcc-verified">
-                Verified
-              </Label>
+        {/* Remarks */}
+        <div className="space-y-2">
+          <Label htmlFor="pcc-remarks">
+            Remarks
+          </Label>
 
-              <p className="text-xs text-muted-foreground">
-                Mark after manual checking.
-              </p>
-            </div>
+          <Textarea
+            id="pcc-remarks"
+            placeholder="Add remarks..."
+            value={form.remarks}
+            onChange={(event) =>
+              updateField(
+                "remarks",
+                event.target.value,
+              )
+            }
+            rows={4}
+            disabled={saving}
+          />
+        </div>
 
-            <Switch
-              id="pcc-verified"
-              checked={form.verified}
-              onCheckedChange={(checked) => {
-                updateField(
-                  "verified",
-                  checked,
-                );
-
-                if (!checked) {
-                  updateField(
-                    "verified_date",
-                    "",
-                  );
-                }
-              }}
-              disabled={saving}
-            />
+        {/* Error */}
+        {error && (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {error}
           </div>
-
-          {/* Verified Date */}
-          {form.verified && (
-            <div className="space-y-2">
-              <Label htmlFor="pcc-verified-date">
-                Verification Date{" "}
-                <span className="text-destructive">
-                  *
-                </span>
-              </Label>
-
-              <Input
-                id="pcc-verified-date"
-                type="date"
-                value={form.verified_date}
-                onChange={(event) =>
-                  updateField(
-                    "verified_date",
-                    event.target.value,
-                  )
-                }
-                disabled={saving}
-              />
-            </div>
-          )}
-
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label htmlFor="pcc-remarks">
-              Remarks
-            </Label>
-
-            <Textarea
-              id="pcc-remarks"
-              placeholder="Add remarks..."
-              value={form.remarks}
-              onChange={(event) =>
-                updateField(
-                  "remarks",
-                  event.target.value,
-                )
-              }
-              rows={4}
-              disabled={saving}
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </div>
-          )}
-
-          <SheetFooter className="px-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                handleOpenChange(false)
-              }
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              disabled={
-                saving ||
-                !form.candidate_id
-              }
-            >
-              {saving && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-
-              {saving
-                ? "Saving..."
-                : isEdit
-                  ? "Update PCC"
-                  : "Create PCC"}
-            </Button>
-          </SheetFooter>
-        </form>
-      </SheetContent>
-    </Sheet>
+        )}
+      </div>
+    </UniversalSheet>
   );
 }

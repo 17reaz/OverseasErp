@@ -3,17 +3,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { UniversalSheet } from "../../shared/forms/universal-sheet";
 
 import {
   createFlight,
@@ -87,6 +79,12 @@ export function FlightForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  /* =======================================================
+   * DIRTY STATE
+   * ======================================================= */
+
+  const [dirty, setDirty] = useState(false);
+
   const isEdit = Boolean(record);
 
   useEffect(() => {
@@ -109,6 +107,7 @@ export function FlightForm({
     }
 
     setError("");
+    setDirty(false);
   }, [open, record]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -116,6 +115,8 @@ export function FlightForm({
       ...previous,
       [field]: value,
     }));
+
+    setDirty(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -153,6 +154,7 @@ export function FlightForm({
       }
 
       onSuccess?.(savedRecord);
+      setDirty(false);
       onOpenChange(false);
       setForm(DEFAULT_FORM);
     } catch (err) {
@@ -165,170 +167,160 @@ export function FlightForm({
   }
 
   return (
-    <Sheet open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>{isEdit ? "Edit Flight Schedule" : "Create Flight Schedule"}</SheetTitle>
-          <SheetDescription>
-            {isEdit ? "Update the flight record details." : "Record a new candidate flight schedule."}
-          </SheetDescription>
-        </SheetHeader>
+    <UniversalSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? "Edit Flight Schedule" : "Create Flight Schedule"}
+      description={
+        isEdit
+          ? "Update the flight record details."
+          : "Record a new candidate flight schedule."
+      }
+      hasChanges={dirty}
+      onSubmit={handleSubmit}
+      submitLabel={isEdit ? "Update Flight" : "Create Flight"}
+      loading={saving}
+      disabled={!form.candidate_id}
+    >
+      <div className="flex flex-col gap-5">
+        {/* Candidate */}
+        <div className="space-y-2">
+          <Label htmlFor="flight-candidate">
+            Candidate <span className="text-destructive">*</span>
+          </Label>
+          <select
+            id="flight-candidate"
+            value={form.candidate_id}
+            onChange={(e) => updateField("candidate_id", e.target.value)}
+            disabled={isEdit || saving}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Select candidate</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} — {c.passport_no}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-4 pb-6 mt-4">
-          {/* Candidate */}
+        {/* Flight No & Airline */}
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="flight-candidate">
-              Candidate <span className="text-destructive">*</span>
-            </Label>
-            <select
-              id="flight-candidate"
-              value={form.candidate_id}
-              onChange={(e) => updateField("candidate_id", e.target.value)}
-              disabled={isEdit || saving}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select candidate</option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} — {c.passport_no}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Flight No & Airline */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="flight-no">Flight No</Label>
-              <Input
-                id="flight-no"
-                value={form.flight_no}
-                onChange={(e) => updateField("flight_no", e.target.value)}
-                placeholder="e.g. BG-012"
-                disabled={saving}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="flight-airline">Airline</Label>
-              <Input
-                id="flight-airline"
-                value={form.airline}
-                onChange={(e) => updateField("airline", e.target.value)}
-                placeholder="e.g. Biman Bangladesh"
-                disabled={saving}
-              />
-            </div>
-          </div>
-
-          {/* Flight Date & Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="flight-date">Flight Date</Label>
-              <Input
-                id="flight-date"
-                type="date"
-                value={form.flight_date}
-                onChange={(e) => updateField("flight_date", e.target.value)}
-                disabled={saving}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(val: any) => updateField("status", val)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="departed">Departed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Departure & Arrival Cities */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="flight-dep">Departure City</Label>
-              <Input
-                id="flight-dep"
-                value={form.departure_city}
-                onChange={(e) => updateField("departure_city", e.target.value)}
-                placeholder="e.g. Dhaka"
-                disabled={saving}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="flight-arr">Arrival City</Label>
-              <Input
-                id="flight-arr"
-                value={form.arrival_city}
-                onChange={(e) => updateField("arrival_city", e.target.value)}
-                placeholder="e.g. Riyadh"
-                disabled={saving}
-              />
-            </div>
-          </div>
-
-          {/* Visa */}
-          <div className="space-y-2">
-            <Label htmlFor="flight-visa">Visa Link</Label>
-            <select
-              id="flight-visa"
-              value={form.visa_id}
-              onChange={(e) => updateField("visa_id", e.target.value)}
-              disabled={saving}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Select visa (optional)</option>
-              {visas.map((v) => (
-                <option key={v.id} value={v.id}>
-                  Visa: {v.visa_no}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label htmlFor="flight-remarks">Remarks</Label>
-            <Textarea
-              id="flight-remarks"
-              value={form.remarks}
-              onChange={(e) => updateField("remarks", e.target.value)}
-              placeholder="Add remarks..."
-              rows={3}
+            <Label htmlFor="flight-no">Flight No</Label>
+            <Input
+              id="flight-no"
+              value={form.flight_no}
+              onChange={(e) => updateField("flight_no", e.target.value)}
+              placeholder="e.g. BG-012"
               disabled={saving}
             />
           </div>
-
-          {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <SheetFooter className="px-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
+          <div className="space-y-2">
+            <Label htmlFor="flight-airline">Airline</Label>
+            <Input
+              id="flight-airline"
+              value={form.airline}
+              onChange={(e) => updateField("airline", e.target.value)}
+              placeholder="e.g. Biman Bangladesh"
               disabled={saving}
+            />
+          </div>
+        </div>
+
+        {/* Flight Date & Status */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="flight-date">Flight Date</Label>
+            <Input
+              id="flight-date"
+              type="date"
+              value={form.flight_date}
+              onChange={(e) => updateField("flight_date", e.target.value)}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select
+              value={form.status}
+              onValueChange={(val: FormState["status"]) => updateField("status", val)}
             >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving || !form.candidate_id}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {saving ? "Saving..." : isEdit ? "Update Flight" : "Create Flight"}
-            </Button>
-          </SheetFooter>
-        </form>
-      </SheetContent>
-    </Sheet>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="departed">Departed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="rescheduled">Rescheduled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Departure & Arrival Cities */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="flight-dep">Departure City</Label>
+            <Input
+              id="flight-dep"
+              value={form.departure_city}
+              onChange={(e) => updateField("departure_city", e.target.value)}
+              placeholder="e.g. Dhaka"
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="flight-arr">Arrival City</Label>
+            <Input
+              id="flight-arr"
+              value={form.arrival_city}
+              onChange={(e) => updateField("arrival_city", e.target.value)}
+              placeholder="e.g. Riyadh"
+              disabled={saving}
+            />
+          </div>
+        </div>
+
+        {/* Visa */}
+        <div className="space-y-2">
+          <Label htmlFor="flight-visa">Visa Link</Label>
+          <select
+            id="flight-visa"
+            value={form.visa_id}
+            onChange={(e) => updateField("visa_id", e.target.value)}
+            disabled={saving}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Select visa (optional)</option>
+            {visas.map((v) => (
+              <option key={v.id} value={v.id}>
+                Visa: {v.visa_no}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Remarks */}
+        <div className="space-y-2">
+          <Label htmlFor="flight-remarks">Remarks</Label>
+          <Textarea
+            id="flight-remarks"
+            value={form.remarks}
+            onChange={(e) => updateField("remarks", e.target.value)}
+            placeholder="Add remarks..."
+            rows={3}
+            disabled={saving}
+          />
+        </div>
+
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+      </div>
+    </UniversalSheet>
   );
 }

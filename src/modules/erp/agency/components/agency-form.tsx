@@ -29,7 +29,7 @@ import {
 
 import {
   UniversalSheet,
-} from "@/modules/erp/shared/ui/universal-sheet";
+} from "@/modules/erp/shared/forms/universal-sheet";
 
 import {
   createAgency,
