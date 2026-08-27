@@ -37,10 +37,10 @@ import {
 } from "./medical-service";
 
 
-const defaultFilter: MedicalFilterState = {
-  view: "medicalable",
-  month: "all",
-};
+// const defaultFilter: MedicalFilterState = {
+//   view: "medicalable",
+//   month: "all",
+// };
 
 
 const defaultSort: MedicalSortState = {
