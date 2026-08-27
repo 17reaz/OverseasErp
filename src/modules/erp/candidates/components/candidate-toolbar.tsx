@@ -73,7 +73,7 @@ interface CandidateToolbarProps {
 }
 
 const defaultFilter: CandidateFilterState = {
-  status: "active",
+  status: "all",
   agentId: "all",
   stage: "all",
   month: "all",
@@ -111,8 +111,8 @@ export function CandidateToolbar({
     onFilterChange?.({ ...filter, ...changes });
   }
 
+  // Status is now handled by the separate status dropdown.
   const activeFilterCount = [
-    filter.status !== "all" ? "status" : null,
     filter.agentId !== "all" ? "agent" : null,
     filter.stage !== "all" ? "stage" : null,
     filter.month !== "all" ? "month" : null,
@@ -129,6 +129,13 @@ export function CandidateToolbar({
         ? "Descending"
         : "Custom";
 
+  const statusLabel =
+    filter.status === "active"
+      ? "Active"
+      : filter.status === "returned"
+        ? "Returned"
+        : "All";
+
   return (
     <PageToolbar
       search={search}
@@ -140,14 +147,81 @@ export function CandidateToolbar({
       createLabel="Create"
     >
       {/* ===================================================
-          FILTER
+          STATUS FILTER — ALL / ACTIVE / RETURNED
           =================================================== */}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" type="button" className="h-9">
+          <Button
+            variant="outline"
+            type="button"
+            className="h-9 shrink-0"
+          >
             <SlidersHorizontal className="mr-2 h-4 w-4" />
-            Filter
+
+            <span className="hidden sm:inline">
+              {statusLabel}
+            </span>
+
+            <span className="sm:hidden">
+              {filter.status === "all"
+                ? "All"
+                : filter.status === "active"
+                  ? "Active"
+                  : "Returned"}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel>
+            Candidate status
+          </DropdownMenuLabel>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuRadioGroup
+            value={filter.status}
+            onValueChange={(value) =>
+              updateFilter({
+                status:
+                  value as CandidateFilterState["status"],
+              })
+            }
+          >
+            <DropdownMenuRadioItem value="all">
+              All
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="active">
+              Active
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="returned">
+              Returned
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ===================================================
+          MAIN FILTER
+          Agent / Stage / Month
+          =================================================== */}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            type="button"
+            className="h-9 shrink-0"
+          >
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+
+            <span className="hidden sm:inline">
+              Filter
+            </span>
+
             {activeFilterCount > 0 && (
               <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                 {activeFilterCount}
@@ -157,44 +231,37 @@ export function CandidateToolbar({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" className="w-64">
-          <DropdownMenuLabel>Filter candidates</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            Status
+          <DropdownMenuLabel>
+            Filter candidates
           </DropdownMenuLabel>
 
-          <DropdownMenuRadioGroup
-            value={filter.status}
-            onValueChange={(value) =>
-              updateFilter({
-                status: value as CandidateFilterState["status"],
-              })
-            }
-          >
-            <DropdownMenuRadioItem value="active">
-              Active
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="returned">
-              Returned
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-
           <DropdownMenuSeparator />
 
+          {/* AGENT */}
+
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Agent</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger>
+              Agent
+            </DropdownMenuSubTrigger>
+
             <DropdownMenuSubContent>
               <DropdownMenuRadioGroup
                 value={filter.agentId}
-                onValueChange={(value) => updateFilter({ agentId: value })}
+                onValueChange={(value) =>
+                  updateFilter({
+                    agentId: value,
+                  })
+                }
               >
                 <DropdownMenuRadioItem value="all">
                   All agents
                 </DropdownMenuRadioItem>
+
                 {agentOptions.map((agent) => (
-                  <DropdownMenuRadioItem key={agent.value} value={agent.value}>
+                  <DropdownMenuRadioItem
+                    key={agent.value}
+                    value={agent.value}
+                  >
                     {agent.label}
                   </DropdownMenuRadioItem>
                 ))}
@@ -202,18 +269,31 @@ export function CandidateToolbar({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
+          {/* STAGE */}
+
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Stage</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger>
+              Stage
+            </DropdownMenuSubTrigger>
+
             <DropdownMenuSubContent>
               <DropdownMenuRadioGroup
                 value={filter.stage}
-                onValueChange={(value) => updateFilter({ stage: value })}
+                onValueChange={(value) =>
+                  updateFilter({
+                    stage: value,
+                  })
+                }
               >
                 <DropdownMenuRadioItem value="all">
                   All stages
                 </DropdownMenuRadioItem>
+
                 {stageOptions.map((stage) => (
-                  <DropdownMenuRadioItem key={stage} value={stage}>
+                  <DropdownMenuRadioItem
+                    key={stage}
+                    value={stage}
+                  >
                     {stage}
                   </DropdownMenuRadioItem>
                 ))}
@@ -221,18 +301,31 @@ export function CandidateToolbar({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
+          {/* MONTH */}
+
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Month</DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger>
+              Month
+            </DropdownMenuSubTrigger>
+
             <DropdownMenuSubContent>
               <DropdownMenuRadioGroup
                 value={filter.month}
-                onValueChange={(value) => updateFilter({ month: value })}
+                onValueChange={(value) =>
+                  updateFilter({
+                    month: value,
+                  })
+                }
               >
                 <DropdownMenuRadioItem value="all">
                   All months
                 </DropdownMenuRadioItem>
+
                 {monthOptions.map((month) => (
-                  <DropdownMenuRadioItem key={month.value} value={month.value}>
+                  <DropdownMenuRadioItem
+                    key={month.value}
+                    value={month.value}
+                  >
                     {month.label}
                   </DropdownMenuRadioItem>
                 ))}
@@ -244,7 +337,14 @@ export function CandidateToolbar({
 
           <DropdownMenuCheckboxItem
             checked={activeFilterCount === 0}
-            onCheckedChange={() => onFilterChange?.({ ...defaultFilter })}
+            onCheckedChange={() =>
+              onFilterChange?.({
+                ...filter,
+                agentId: "all",
+                stage: "all",
+                month: "all",
+              })
+            }
           >
             <Check className="mr-2 h-4 w-4" />
             Clear filters
@@ -258,9 +358,17 @@ export function CandidateToolbar({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" type="button" className="h-9">
+          <Button
+            variant="outline"
+            type="button"
+            className="h-9 shrink-0"
+          >
             <ArrowUpDown className="mr-2 h-4 w-4" />
-            Sort
+
+            <span className="hidden sm:inline">
+              Sort
+            </span>
+
             <span className="ml-1 text-xs text-muted-foreground">
               · {sortLabel}
             </span>
@@ -268,23 +376,31 @@ export function CandidateToolbar({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" className="w-56">
-          <DropdownMenuLabel>Sort candidates</DropdownMenuLabel>
+          <DropdownMenuLabel>
+            Sort candidates
+          </DropdownMenuLabel>
+
           <DropdownMenuSeparator />
 
           <DropdownMenuRadioGroup
             value={sort.mode}
             onValueChange={(value) =>
-              updateSort({ mode: value as CandidateSortState["mode"] })
+              updateSort({
+                mode:
+                  value as CandidateSortState["mode"],
+              })
             }
           >
             <DropdownMenuRadioItem value="ascending">
               <ArrowUpAZ className="mr-2 h-4 w-4" />
               Ascending
             </DropdownMenuRadioItem>
+
             <DropdownMenuRadioItem value="descending">
               <ArrowDownAZ className="mr-2 h-4 w-4" />
               Descending
             </DropdownMenuRadioItem>
+
             <DropdownMenuRadioItem value="custom">
               <SlidersHorizontal className="mr-2 h-4 w-4" />
               Custom
@@ -294,6 +410,7 @@ export function CandidateToolbar({
           {sort.mode === "custom" && (
             <>
               <DropdownMenuSeparator />
+
               <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                 Sort by
               </DropdownMenuLabel>
@@ -301,18 +418,24 @@ export function CandidateToolbar({
               <DropdownMenuRadioGroup
                 value={sort.field}
                 onValueChange={(value) =>
-                  updateSort({ field: value as CandidateSortState["field"] })
+                  updateSort({
+                    field:
+                      value as CandidateSortState["field"],
+                  })
                 }
               >
                 <DropdownMenuRadioItem value="name">
                   Name
                 </DropdownMenuRadioItem>
+
                 <DropdownMenuRadioItem value="passport_no">
                   Passport
                 </DropdownMenuRadioItem>
+
                 <DropdownMenuRadioItem value="created_at">
                   Created date
                 </DropdownMenuRadioItem>
+
                 <DropdownMenuRadioItem value="updated_at">
                   Updated date
                 </DropdownMenuRadioItem>
@@ -326,7 +449,7 @@ export function CandidateToolbar({
           LIST / GRID TOGGLE
           =================================================== */}
 
-      <div className="inline-flex h-9 items-center rounded-md border bg-muted/30 p-0.5">
+      <div className="inline-flex h-9 shrink-0 items-center rounded-md border bg-muted/30 p-0.5">
         <Button
           type="button"
           variant={viewMode === "list" ? "secondary" : "ghost"}
@@ -335,7 +458,10 @@ export function CandidateToolbar({
           onClick={() => onViewModeChange?.("list")}
         >
           <List className="h-4 w-4" />
-          <span className="hidden sm:inline">List</span>
+
+          <span className="hidden sm:inline">
+            List
+          </span>
         </Button>
 
         <Button
@@ -346,7 +472,10 @@ export function CandidateToolbar({
           onClick={() => onViewModeChange?.("grid")}
         >
           <Grid2X2 className="h-4 w-4" />
-          <span className="hidden sm:inline">Grid</span>
+
+          <span className="hidden sm:inline">
+            Grid
+          </span>
         </Button>
       </div>
     </PageToolbar>
