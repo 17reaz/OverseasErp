@@ -1,16 +1,4 @@
 // src/modules/erp/shared/ui/page-toolbar.tsx
-//
-// Universal ERP page toolbar.
-//
-// Layout contract (used by every module page):
-//   LEFT    -> search input (always the same)
-//   MIDDLE  -> module-specific controls (filters, sort, view toggle, ...)
-//              passed in as `children`
-//   RIGHT   -> refresh (optional) + create/"add new" action (optional)
-//
-// Each module keeps its own <XyzToolbar /> component for its own filter/
-// sort UI and types, but that component renders <PageToolbar> for the
-// actual shell instead of re-implementing search/refresh/create markup.
 
 import type { ReactNode } from "react";
 
@@ -50,6 +38,7 @@ export interface PageToolbarProps {
   onCreate?: () => void;
   createLabel?: string;
   createDisabled?: boolean;
+
   className?: string;
 }
 
@@ -66,12 +55,20 @@ export function PageToolbar({
   onCreate,
   createLabel = "Create",
   createDisabled = false,
+
   className,
 }: PageToolbarProps) {
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-wrap items-center gap-2",
+        `
+          flex
+          w-full
+          min-w-0
+          shrink-0
+          items-center
+          gap-2
+        `,
         className,
       )}
     >
@@ -79,14 +76,38 @@ export function PageToolbar({
           LEFT — SEARCH
           ================================================= */}
 
-      <div className="relative min-w-[240px] flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div
+        className="
+          relative
+          min-w-0
+          flex-1
+        "
+      >
+        <Search
+          className="
+            pointer-events-none
+            absolute
+            left-3
+            top-1/2
+            h-4
+            w-4
+            -translate-y-1/2
+            text-muted-foreground
+          "
+        />
 
         <Input
           value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
+          onChange={(event) =>
+            onSearchChange(event.target.value)
+          }
           placeholder={searchPlaceholder}
-          className="pr-9 pl-9"
+          className="
+            h-9
+            w-full
+            pl-9
+            pr-9
+          "
         />
 
         {search && (
@@ -94,7 +115,14 @@ export function PageToolbar({
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+            className="
+              absolute
+              right-1
+              top-1/2
+              h-7
+              w-7
+              -translate-y-1/2
+            "
             onClick={() => onSearchChange("")}
             aria-label="Clear search"
           >
@@ -104,42 +132,102 @@ export function PageToolbar({
       </div>
 
       {/* =================================================
-          MIDDLE — PER-PAGE CONTROLS (filters, sort, view...)
+          MIDDLE — PAGE SPECIFIC CONTROLS
           ================================================= */}
 
-      {children}
-
-      {/* =================================================
-          RIGHT — REFRESH
-          ================================================= */}
-
-      {onRefresh && (
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={onRefresh}
-          disabled={refreshing}
-          aria-label="Refresh"
+      {children && (
+        <div
+          className="
+            flex
+            shrink-0
+            items-center
+            gap-2
+          "
         >
-          <RefreshCw
-            className={
-              refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"
-            }
-          />
-        </Button>
+          {children}
+        </div>
       )}
 
       {/* =================================================
-          RIGHT — CREATE / ADD NEW
+          RIGHT — ACTIONS
+          NEVER WRAPS
           ================================================= */}
 
-      {onCreate && (
-        <Button type="button" onClick={onCreate} disabled={createDisabled}>
-          <Plus className="mr-2 h-4 w-4" />
-          {createLabel}
-        </Button>
-      )}
+      <div
+        className="
+          flex
+          shrink-0
+          items-center
+          gap-1
+          md:gap-2
+        "
+      >
+        {/* =================================================
+            REFRESH
+            ================================================= */}
+
+        {onRefresh && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="
+              h-9
+              w-9
+              shrink-0
+            "
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-label="Refresh"
+          >
+            <RefreshCw
+              className={
+                refreshing
+                  ? "h-4 w-4 animate-spin"
+                  : "h-4 w-4"
+              }
+            />
+          </Button>
+        )}
+
+        {/* =================================================
+            ADD NEW
+            ================================================= */}
+
+        {onCreate && (
+          <Button
+            type="button"
+            disabled={createDisabled}
+            onClick={onCreate}
+            className="
+              h-9
+              shrink-0
+              px-3
+              sm:px-4
+            "
+            aria-label={createLabel}
+          >
+            <Plus
+              className="
+                h-4
+                w-4
+                shrink-0
+                sm:mr-2
+              "
+            />
+
+            <span
+              className="
+                hidden
+                whitespace-nowrap
+                sm:inline
+              "
+            >
+              {createLabel}
+            </span>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
