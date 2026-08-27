@@ -1,24 +1,30 @@
+// src/modules/erp/mofa/components/mofa-toolbar.tsx
+
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  ArrowUpDown,
+  Check,
+  Grid2X2,
   List,
   SlidersHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import type { MofaStage } from "../mofa-service";
 
@@ -43,26 +49,44 @@ export type MofaSortState = {
 export type MofaViewMode = "list" | "grid";
 
 interface MofaToolbarProps {
-  search: string;
+  search?: string;
   searchPlaceholder?: string;
-  onSearchChange: (value: string) => void;
+  onSearchChange?: (value: string) => void;
 
-  onRefresh: () => void;
-  onCreate: () => void;
+  onRefresh?: () => void;
+  onCreate?: () => void;
 
   refreshing?: boolean;
 
-  filter: MofaFilterState;
-  onFilterChange: (filter: MofaFilterState) => void;
+  // FILTER
 
-  sort: MofaSortState;
-  onSortChange: (sort: MofaSortState) => void;
+  filter?: MofaFilterState;
+  onFilterChange?: (filter: MofaFilterState) => void;
 
-  viewMode: MofaViewMode;
-  onViewModeChange: (mode: MofaViewMode) => void;
+  monthOptions?: Array<{ value: string; label: string }>;
+
+  // SORT
+
+  sort?: MofaSortState;
+  onSortChange?: (sort: MofaSortState) => void;
+
+  // VIEW
+
+  viewMode?: MofaViewMode;
+  onViewModeChange?: (mode: MofaViewMode) => void;
 }
 
-function getMonthOptions() {
+const defaultFilter: MofaFilterState = {
+  view: "all",
+  month: "all",
+};
+
+const defaultSort: MofaSortState = {
+  mode: "custom",
+  field: "created_at",
+};
+
+function getDefaultMonthOptions() {
   const months: { value: string; label: string }[] = [];
   const currentDate = new Date();
 
@@ -89,183 +113,313 @@ function getMonthOptions() {
 }
 
 export function MofaToolbar({
-  search,
+  search = "",
   searchPlaceholder = "Search candidate, passport or application...",
   onSearchChange,
+
   onRefresh,
   onCreate,
+
   refreshing = false,
-  filter,
+
+  filter = defaultFilter,
   onFilterChange,
-  sort,
+
+  monthOptions,
+
+  sort = defaultSort,
   onSortChange,
-  viewMode,
+
+  viewMode = "list",
   onViewModeChange,
 }: MofaToolbarProps) {
-  const monthOptions = getMonthOptions();
+  const months = monthOptions ?? getDefaultMonthOptions();
+
+  function updateFilter(changes: Partial<MofaFilterState>) {
+    onFilterChange?.({ ...filter, ...changes });
+  }
+
+  function updateSort(changes: Partial<MofaSortState>) {
+    onSortChange?.({ ...sort, ...changes });
+  }
+
+  // Status is handled by its own dropdown.
+  const activeFilterCount = [filter.month !== "all" ? "month" : null].filter(
+    Boolean,
+  ).length;
+
+  const sortLabel =
+    sort.mode === "ascending"
+      ? "Ascending"
+      : sort.mode === "descending"
+        ? "Descending"
+        : "Custom";
+
+  const statusLabel =
+    filter.view === "new"
+      ? "New"
+      : filter.view === "medupdated"
+        ? "Med Updated"
+        : filter.view === "approved"
+          ? "Approved"
+          : filter.view === "canceled"
+            ? "Canceled"
+            : filter.view === "expired"
+              ? "Expired"
+              : filter.view === "invalid"
+                ? "Invalid"
+                : "All";
 
   return (
     <PageToolbar
       search={search}
       searchPlaceholder={searchPlaceholder}
-      onSearchChange={onSearchChange}
+      onSearchChange={(value) => onSearchChange?.(value)}
       onRefresh={onRefresh}
       refreshing={refreshing}
       onCreate={onCreate}
       createLabel="Add MOFA"
     >
-      {/* FILTER */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
-            <SlidersHorizontal />
-            Filter
+      {/* ===================================================
+          STATUS FILTER — ALL / NEW / MED UPDATED / APPROVED /
+          CANCELED / EXPIRED / INVALID
+          =================================================== */}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+
+            <span className="hidden sm:inline">{statusLabel}</span>
+
+            <span className="sm:hidden">
+              {filter.view === "all" ? "All" : statusLabel}
+            </span>
           </Button>
-        </PopoverTrigger>
+        </DropdownMenuTrigger>
 
-        <PopoverContent align="end" className="w-72">
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium">View</p>
-              <p className="text-xs text-muted-foreground">
-                Select MOFA stage
-              </p>
-            </div>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel>MOFA status</DropdownMenuLabel>
 
-            <Select
-              value={filter.view}
-              onValueChange={(value) =>
-                onFilterChange({
-                  ...filter,
-                  view: value as MofaFilterState["view"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+          <DropdownMenuSeparator />
 
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="medupdated">Med Updated</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="canceled">Canceled</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="invalid">Invalid</SelectItem>
-              </SelectContent>
-            </Select>
+          <DropdownMenuRadioGroup
+            value={filter.view}
+            onValueChange={(value) =>
+              updateFilter({
+                view: value as MofaFilterState["view"],
+              })
+            }
+          >
+            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="new">New</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="medupdated">
+              Med Updated
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="approved">
+              Approved
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="canceled">
+              Canceled
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="expired">
+              Expired
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="invalid">
+              Invalid
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-            <Separator />
+      {/* ===================================================
+          MAIN FILTER
+          Month
+          =================================================== */}
 
-            <div>
-              <p className="text-sm font-medium">Month</p>
-              <p className="text-xs text-muted-foreground">
-                Filter by application date
-              </p>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
 
-              <div className="mt-2">
-                <Select
-                  value={filter.month}
-                  onValueChange={(value) =>
-                    onFilterChange({ ...filter, month: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+            <span className="hidden sm:inline">Filter</span>
 
-                  <SelectContent>
-                    <SelectItem value="all">All months</SelectItem>
-                    {monthOptions.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* SORT */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
-            {sort.mode === "descending" ? <ArrowDownAZ /> : <ArrowUpAZ />}
-            Sort
+            {activeFilterCount > 0 && (
+              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
-        </PopoverTrigger>
+        </DropdownMenuTrigger>
 
-        <PopoverContent align="end" className="w-64">
-          <div className="space-y-4">
-            <p className="text-sm font-medium">Sort by</p>
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuLabel>Filter MOFA</DropdownMenuLabel>
 
-            <Select
-              value={sort.field}
-              onValueChange={(value) =>
-                onSortChange({
-                  ...sort,
-                  field: value as MofaSortState["field"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+          <DropdownMenuSeparator />
 
-              <SelectContent>
-                <SelectItem value="created_at">Created date</SelectItem>
-                <SelectItem value="name">Candidate name</SelectItem>
-                <SelectItem value="passport_no">Passport number</SelectItem>
-                <SelectItem value="application_number">
+          {/* MONTH */}
+
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Month</DropdownMenuSubTrigger>
+
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={filter.month}
+                onValueChange={(value) => updateFilter({ month: value })}
+              >
+                <DropdownMenuRadioItem value="all">
+                  All months
+                </DropdownMenuRadioItem>
+
+                {months.map((month) => (
+                  <DropdownMenuRadioItem
+                    key={month.value}
+                    value={month.value}
+                  >
+                    {month.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuCheckboxItem
+            checked={activeFilterCount === 0}
+            onCheckedChange={() =>
+              onFilterChange?.({
+                ...filter,
+                month: "all",
+              })
+            }
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Clear filters
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ===================================================
+          SORT
+          =================================================== */}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <ArrowUpDown className="mr-2 h-4 w-4" />
+
+            <span className="hidden sm:inline">Sort</span>
+
+            <span className="ml-1 text-xs text-muted-foreground">
+              · {sortLabel}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="start" className="w-56">
+          <DropdownMenuLabel>Sort MOFA</DropdownMenuLabel>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuRadioGroup
+            value={sort.mode}
+            onValueChange={(value) =>
+              updateSort({
+                mode: value as MofaSortState["mode"],
+              })
+            }
+          >
+            <DropdownMenuRadioItem value="ascending">
+              <ArrowUpAZ className="mr-2 h-4 w-4" />
+              Ascending
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="descending">
+              <ArrowDownAZ className="mr-2 h-4 w-4" />
+              Descending
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="custom">
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Custom
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+
+          {sort.mode === "custom" && (
+            <>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Sort by
+              </DropdownMenuLabel>
+
+              <DropdownMenuRadioGroup
+                value={sort.field}
+                onValueChange={(value) =>
+                  updateSort({
+                    field: value as MofaSortState["field"],
+                  })
+                }
+              >
+                <DropdownMenuRadioItem value="name">
+                  Candidate name
+                </DropdownMenuRadioItem>
+
+                <DropdownMenuRadioItem value="passport_no">
+                  Passport number
+                </DropdownMenuRadioItem>
+
+                <DropdownMenuRadioItem value="application_number">
                   Application number
-                </SelectItem>
-                <SelectItem value="application_date">
+                </DropdownMenuRadioItem>
+
+                <DropdownMenuRadioItem value="application_date">
                   Application date
-                </SelectItem>
-                <SelectItem value="updated_at">Updated date</SelectItem>
-              </SelectContent>
-            </Select>
+                </DropdownMenuRadioItem>
 
-            {/* ASC / DESC */}
-            <div className="flex w-full gap-1">
-              <Button
-                type="button"
-                variant={sort.mode === "descending" ? "outline" : "secondary"}
-                className="flex-1"
-                onClick={() => onSortChange({ ...sort, mode: "ascending" })}
-              >
-                <ArrowUpAZ />
-                Asc
-              </Button>
+                <DropdownMenuRadioItem value="created_at">
+                  Created date
+                </DropdownMenuRadioItem>
 
-              <Button
-                type="button"
-                variant={sort.mode === "descending" ? "secondary" : "outline"}
-                className="flex-1"
-                onClick={() => onSortChange({ ...sort, mode: "descending" })}
-              >
-                <ArrowDownAZ />
-                Desc
-              </Button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+                <DropdownMenuRadioItem value="updated_at">
+                  Updated date
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* LIST */}
-      <Button
-        type="button"
-        variant={viewMode === "list" ? "secondary" : "outline"}
-        size="icon"
-        onClick={() => onViewModeChange("list")}
-      >
-        <List />
-        <span className="sr-only">List view</span>
-      </Button>
+      {/* ===================================================
+          LIST / GRID TOGGLE
+          =================================================== */}
+
+      <div className="inline-flex h-9 shrink-0 items-center rounded-md border bg-muted/30 p-0.5">
+        <Button
+          type="button"
+          variant={viewMode === "list" ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 gap-1.5 px-2.5"
+          onClick={() => onViewModeChange?.("list")}
+        >
+          <List className="h-4 w-4" />
+
+          <span className="hidden sm:inline">List</span>
+        </Button>
+
+        <Button
+          type="button"
+          variant={viewMode === "grid" ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 gap-1.5 px-2.5"
+          onClick={() => onViewModeChange?.("grid")}
+        >
+          <Grid2X2 className="h-4 w-4" />
+
+          <span className="hidden sm:inline">Grid</span>
+        </Button>
+      </div>
     </PageToolbar>
   );
 }

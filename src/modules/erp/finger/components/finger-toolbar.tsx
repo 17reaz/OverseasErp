@@ -1,10 +1,16 @@
+import { SlidersHorizontal } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import type { FingerStatus } from "../finger-service";
 
@@ -34,6 +40,19 @@ export function FingerToolbar({
   onCreate,
   refreshing = false,
 }: FingerToolbarProps) {
+  const statusLabel =
+    status === "pending"
+      ? "Pending"
+      : status === "scheduled"
+        ? "Scheduled"
+        : status === "completed"
+          ? "Completed"
+          : status === "failed"
+            ? "Failed"
+            : status === "cancelled"
+              ? "Cancelled"
+              : "All Status";
+
   return (
     <PageToolbar
       search={search}
@@ -44,23 +63,60 @@ export function FingerToolbar({
       onCreate={onCreate}
       createLabel="Create"
     >
-      <Select
-        value={status}
-        onValueChange={(value) => onStatusChange(value as FingerStatusFilter)}
-      >
-        <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
+      {/* ===================================================
+          STATUS FILTER
+          =================================================== */}
 
-        <SelectContent>
-          <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="scheduled">Scheduled</SelectItem>
-          <SelectItem value="completed">Completed</SelectItem>
-          <SelectItem value="failed">Failed</SelectItem>
-          <SelectItem value="cancelled">Cancelled</SelectItem>
-        </SelectContent>
-      </Select>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+
+            <span className="hidden sm:inline">{statusLabel}</span>
+
+            <span className="sm:hidden">
+              {status === "all" ? "All" : statusLabel}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel>Finger status</DropdownMenuLabel>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuRadioGroup
+            value={status}
+            onValueChange={(value) =>
+              onStatusChange(value as FingerStatusFilter)
+            }
+          >
+            <DropdownMenuRadioItem value="all">
+              All Status
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="pending">
+              Pending
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="scheduled">
+              Scheduled
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="completed">
+              Completed
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="failed">
+              Failed
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="cancelled">
+              Cancelled
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </PageToolbar>
   );
 }
