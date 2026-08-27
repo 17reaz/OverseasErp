@@ -101,13 +101,10 @@ export function MedicalPage() {
   ] = useState("");
 
 
-  const [
-    filter,
-    setFilter,
-  ] = useState<MedicalFilterState>(
-    defaultFilter,
-  );
-
+ const [filter, setFilter] = useState<MedicalFilterState>({
+  view: "all", // default view = all, medicalable না
+  month: "all",
+});
 
   const [
     sort,

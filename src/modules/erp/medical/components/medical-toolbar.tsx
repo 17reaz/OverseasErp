@@ -3,6 +3,7 @@ import {
   ArrowUpAZ,
   List,
   SlidersHorizontal,
+  Stethoscope,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ export function MedicalToolbar({
   onViewModeChange,
 }: MedicalToolbarProps) {
   const monthOptions = getMonthOptions();
+  const isMedicalable = filter.view === "medicalable";
 
   return (
     <PageToolbar
@@ -108,6 +110,22 @@ export function MedicalToolbar({
       onCreate={onCreate}
       createLabel="Add Medical"
     >
+      {/* MEDICALABLE TOGGLE (separate from filter popover) */}
+      <Button
+        type="button"
+        variant={isMedicalable ? "secondary" : "outline"}
+        size="sm"
+        onClick={() =>
+          onFilterChange({
+            ...filter,
+            view: isMedicalable ? "all" : "medicalable",
+          })
+        }
+      >
+        <Stethoscope />
+        Medicalable
+      </Button>
+
       {/* FILTER */}
       <Popover>
         <PopoverTrigger asChild>
@@ -120,34 +138,35 @@ export function MedicalToolbar({
         <PopoverContent align="end" className="w-72">
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-medium">View</p>
+              <p className="text-sm font-medium">Status</p>
               <p className="text-xs text-muted-foreground">
                 Select medical stage
               </p>
+
+              <div className="mt-2">
+                <Select
+                  value={isMedicalable ? "all" : filter.view}
+                  onValueChange={(value: string) =>
+                    onFilterChange({
+                      ...filter,
+                      view: value as MedicalFilterState["view"],
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="fit">Fit</SelectItem>
+                    <SelectItem value="unfit">Unfit</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-
-            <Select
-              value={filter.view}
-              onValueChange={(value: string) =>
-                onFilterChange({
-                  ...filter,
-                  view: value as MedicalFilterState["view"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="medicalable">Medicalable</SelectItem>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="fit">Fit</SelectItem>
-                <SelectItem value="unfit">Unfit</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
 
             <Separator />
 
