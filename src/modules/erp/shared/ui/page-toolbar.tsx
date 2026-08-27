@@ -49,7 +49,7 @@ export interface PageToolbarProps {
 
   onCreate?: () => void;
   createLabel?: string;
-
+  createDisabled?: boolean;
   className?: string;
 }
 
@@ -65,7 +65,7 @@ export function PageToolbar({
 
   onCreate,
   createLabel = "Create",
-
+  createDisabled = false,
   className,
 }: PageToolbarProps) {
   return (
@@ -135,7 +135,7 @@ export function PageToolbar({
           ================================================= */}
 
       {onCreate && (
-        <Button type="button" onClick={onCreate}>
+        <Button type="button" onClick={onCreate} disabled={createDisabled}>
           <Plus className="mr-2 h-4 w-4" />
           {createLabel}
         </Button>
