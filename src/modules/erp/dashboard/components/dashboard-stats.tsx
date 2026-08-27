@@ -1,110 +1,111 @@
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import {
+  Activity,
+  ArrowDownLeft,
+  ClipboardCheck,
+  FileCheck2,
+  Plane,
+  Users,
+} from "lucide-react";
 
-interface StatsData {
-  totalCandidates: number;
-  activeCandidates: number;
-  completedCandidates: number;
-  returnedCandidates: number;
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import type {
+  DashboardData,
+} from "../dashboard-service";
+
+
+interface Props {
+  stats: DashboardData["stats"];
 }
 
-export function DashboardStats() {
-  const [stats, setStats] = useState<StatsData>({
-    totalCandidates: 0,
-    activeCandidates: 0,
-    completedCandidates: 0,
-    returnedCandidates: 0,
-  });
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchDashboardStats() {
-      try {
-        setLoading(true);
+export function DashboardStats({
+  stats,
+}: Props) {
+  const items = [
+    {
+      title: "Total Candidates",
+      value: stats.totalCandidates,
+      icon: Users,
+      description: "All active records",
+    },
 
-        // প্যারাレルভাবে কুয়েরিগুলো রান করার জন্য Promise.all ব্যবহার করা হয়েছে
-        const [
-          totalRes,
-          activeRes,
-          completedRes,
-          returnedRes,
-        ] = await Promise.all([
-          // ১. Total Candidates (যেগুলো ডিলিট হয়নি)
-          supabase
-            .from("candidates")
-            .select("*", { count: "exact", head: true })
-            .eq("is_deleted", false),
+    {
+      title: "Active Candidates",
+      value: stats.activeCandidates,
+      icon: Activity,
+      description: "Currently processing",
+    },
 
-          // ২. Active Candidates (ডিলিট বা রিটার্ন হয়নি)
-          supabase
-            .from("candidates")
-            .select("*", { count: "exact", head: true })
-            .eq("is_deleted", false)
-            .eq("is_returned", false),
+    {
+      title: "Medical Pending",
+      value: stats.medicalPending,
+      icon: ClipboardCheck,
+      description: `${stats.medicalFit} fit`,
+    },
 
-          // ৩. Completed Candidates (যাদের ফ্লাইট সম্পন্ন বা প্রসেস শেষ)
-          supabase
-            .from("flights")
-            .select("*", { count: "exact", head: true })
-            .eq("status", "departed"),
+    {
+      title: "MOFA Pending",
+      value: stats.mofaPending,
+      icon: FileCheck2,
+      description: `${stats.mofaApproved} approved`,
+    },
 
-          // ৪. Returned / Cancelled Candidates (is_returned = true)
-          supabase
-            .from("candidates")
-            .select("*", { count: "exact", head: true })
-            .eq("is_returned", true),
-        ]);
+    {
+      title: "Visa Pending",
+      value: stats.visaPending,
+      icon: FileCheck2,
+      description: `${stats.visaIssued} issued`,
+    },
 
-        setStats({
-          totalCandidates: totalRes.count ?? 0,
-          activeCandidates: activeRes.count ?? 0,
-          completedCandidates: completedRes.count ?? 0,
-          returnedCandidates: returnedRes.count ?? 0,
-        });
-      } catch (error) {
-        console.error("Failed to load dashboard stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+    {
+      title: "Flights Scheduled",
+      value: stats.flightScheduled,
+      icon: Plane,
+      description: `${stats.flightDeparted} departed`,
+    },
 
-    void fetchDashboardStats();
-  }, []);
+    {
+      title: "Returned",
+      value: stats.returnedCandidates,
+      icon: ArrowDownLeft,
+      description: "Returned candidates",
+    },
+  ];
 
-  if (loading) {
-    return (
-      <div className="flex h-32 items-center justify-center rounded-lg border">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {/* Total Candidates */}
-      <div className="rounded-lg border p-4 shadow-sm">
-        <p className="text-sm text-muted-foreground">Total Candidates</p>
-        <p className="mt-2 text-2xl font-semibold">{stats.totalCandidates}</p>
-      </div>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon;
 
-      {/* Active Candidates */}
-      <div className="rounded-lg border p-4 shadow-sm">
-        <p className="text-sm text-muted-foreground">Active Candidates</p>
-        <p className="mt-2 text-2xl font-semibold">{stats.activeCandidates}</p>
-      </div>
+        return (
+          <Card key={item.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {item.title}
+              </CardTitle>
 
-      {/* Completed Candidates */}
-      <div className="rounded-lg border p-4 shadow-sm">
-        <p className="text-sm text-muted-foreground">Completed</p>
-        <p className="mt-2 text-2xl font-semibold">{stats.completedCandidates}</p>
-      </div>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
 
-      {/* Returned / Cancelled */}
-      <div className="rounded-lg border p-4 shadow-sm">
-        <p className="text-sm text-muted-foreground">Returned / Cancelled</p>
-        <p className="mt-2 text-2xl font-semibold">{stats.returnedCandidates}</p>
-      </div>
+            <CardContent>
+              <div className="text-2xl font-semibold">
+                {item.value}
+              </div>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                {item.description}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

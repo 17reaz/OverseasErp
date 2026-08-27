@@ -185,18 +185,6 @@ export function FingerPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      <div className="flex shrink-0 items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">
-            Finger
-          </h1>
-
-          <p className="text-sm text-muted-foreground">
-            Manage candidate fingerprint records.
-          </p>
-        </div>
-      </div>
-
       <FingerToolbar
         search={search}
         onSearchChange={setSearch}

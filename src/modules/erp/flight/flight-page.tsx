@@ -95,15 +95,7 @@ export function FlightPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      <div className="flex shrink-0 items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Flights</h1>
-          <p className="px-0 text-sm text-muted-foreground">
-            Manage candidate flight schedules and travel details.
-          </p>
-        </div>
-      </div>
-
+      
       <FlightToolbar
         search={search}
         onSearchChange={setSearch}

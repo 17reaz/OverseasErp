@@ -5,10 +5,10 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { UniversalSheet } from "../shared/forms/universal-sheet";
-import { FormSection } from "../shared/forms/form-section";
+import { UniversalSheet } from "../../shared/forms/universal-sheet";
+import { FormSection } from "../../shared/forms/form-section";
 
-import { createAgent } from "./agents-service";
+import { createAgent } from "../agents-service";
 
 interface AgentFormProps {
   open: boolean;

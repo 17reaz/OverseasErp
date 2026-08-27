@@ -213,20 +213,8 @@ export function PoliceClearancePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">
-            Police Clearance
-          </h1>
-
-          <p className="text-sm text-muted-foreground">
-            Manage candidate police clearance
-            certificates.
-          </p>
-        </div>
-      </div>
-
+      
+      
       {/* Toolbar */}
       <PoliceClearanceToolbar
         search={search}
