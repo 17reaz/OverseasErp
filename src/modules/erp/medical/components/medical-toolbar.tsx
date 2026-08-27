@@ -1,25 +1,31 @@
+// src/modules/erp/medical/components/medical-toolbar.tsx
+
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  ArrowUpDown,
+  Check,
+  Grid2X2,
   List,
   SlidersHorizontal,
   Stethoscope,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import type { MedicalStatus } from "../medical-service";
 
@@ -38,26 +44,44 @@ export type MedicalSortState = {
 export type MedicalViewMode = "list" | "grid";
 
 interface MedicalToolbarProps {
-  search: string;
+  search?: string;
   searchPlaceholder?: string;
-  onSearchChange: (value: string) => void;
+  onSearchChange?: (value: string) => void;
 
-  onRefresh: () => void;
-  onCreate: () => void;
+  onRefresh?: () => void;
+  onCreate?: () => void;
 
   refreshing?: boolean;
 
-  filter: MedicalFilterState;
-  onFilterChange: (filter: MedicalFilterState) => void;
+  // FILTER
 
-  sort: MedicalSortState;
-  onSortChange: (sort: MedicalSortState) => void;
+  filter?: MedicalFilterState;
+  onFilterChange?: (filter: MedicalFilterState) => void;
 
-  viewMode: MedicalViewMode;
-  onViewModeChange: (mode: MedicalViewMode) => void;
+  monthOptions?: Array<{ value: string; label: string }>;
+
+  // SORT
+
+  sort?: MedicalSortState;
+  onSortChange?: (sort: MedicalSortState) => void;
+
+  // VIEW
+
+  viewMode?: MedicalViewMode;
+  onViewModeChange?: (mode: MedicalViewMode) => void;
 }
 
-function getMonthOptions() {
+const defaultFilter: MedicalFilterState = {
+  view: "all",
+  month: "all",
+};
+
+const defaultSort: MedicalSortState = {
+  mode: "custom",
+  field: "created_at",
+};
+
+function getDefaultMonthOptions() {
   const months: { value: string; label: string }[] = [];
   const currentDate = new Date();
 
@@ -84,194 +108,314 @@ function getMonthOptions() {
 }
 
 export function MedicalToolbar({
-  search,
+  search = "",
   searchPlaceholder = "Search candidate or passport...",
   onSearchChange,
+
   onRefresh,
   onCreate,
+
   refreshing = false,
-  filter,
+
+  filter = defaultFilter,
   onFilterChange,
-  sort,
+
+  monthOptions,
+
+  sort = defaultSort,
   onSortChange,
-  viewMode,
+
+  viewMode = "list",
   onViewModeChange,
 }: MedicalToolbarProps) {
-  const monthOptions = getMonthOptions();
+  const months = monthOptions ?? getDefaultMonthOptions();
+
+  function updateFilter(changes: Partial<MedicalFilterState>) {
+    onFilterChange?.({ ...filter, ...changes });
+  }
+
+  function updateSort(changes: Partial<MedicalSortState>) {
+    onSortChange?.({ ...sort, ...changes });
+  }
+
   const isMedicalable = filter.view === "medicalable";
+  const statusValue = isMedicalable ? "all" : filter.view;
+
+  // Medicalable + status are handled by their own controls.
+  const activeFilterCount = [filter.month !== "all" ? "month" : null].filter(
+    Boolean,
+  ).length;
+
+  const sortLabel =
+    sort.mode === "ascending"
+      ? "Ascending"
+      : sort.mode === "descending"
+        ? "Descending"
+        : "Custom";
+
+  const statusLabel =
+    statusValue === "new"
+      ? "New"
+      : statusValue === "fit"
+        ? "Fit"
+        : statusValue === "unfit"
+          ? "Unfit"
+          : statusValue === "expired"
+            ? "Expired"
+            : "All";
 
   return (
     <PageToolbar
       search={search}
       searchPlaceholder={searchPlaceholder}
-      onSearchChange={onSearchChange}
+      onSearchChange={(value) => onSearchChange?.(value)}
       onRefresh={onRefresh}
       refreshing={refreshing}
       onCreate={onCreate}
       createLabel="Add Medical"
     >
-      {/* MEDICALABLE TOGGLE (separate from filter popover) */}
+      {/* ===================================================
+          MEDICALABLE — standalone toggle
+          =================================================== */}
+
       <Button
         type="button"
         variant={isMedicalable ? "secondary" : "outline"}
-        size="sm"
+        className="h-9 shrink-0"
         onClick={() =>
-          onFilterChange({
-            ...filter,
-            view: isMedicalable ? "all" : "medicalable",
-          })
+          updateFilter({ view: isMedicalable ? "all" : "medicalable" })
         }
       >
-        <Stethoscope />
-        Medicalable
+        <Stethoscope className="mr-2 h-4 w-4" />
+
+        <span className="hidden sm:inline">Medicalable</span>
       </Button>
 
-      {/* FILTER */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
-            <SlidersHorizontal />
-            Filter
+      {/* ===================================================
+          STATUS FILTER — ALL / NEW / FIT / UNFIT / EXPIRED
+          =================================================== */}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+
+            <span className="hidden sm:inline">{statusLabel}</span>
+
+            <span className="sm:hidden">
+              {statusValue === "all" ? "All" : statusLabel}
+            </span>
           </Button>
-        </PopoverTrigger>
+        </DropdownMenuTrigger>
 
-        <PopoverContent align="end" className="w-72">
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium">Status</p>
-              <p className="text-xs text-muted-foreground">
-                Select medical stage
-              </p>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel>Medical status</DropdownMenuLabel>
 
-              <div className="mt-2">
-                <Select
-                  value={isMedicalable ? "all" : filter.view}
-                  onValueChange={(value: string) =>
-                    onFilterChange({
-                      ...filter,
-                      view: value as MedicalFilterState["view"],
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+          <DropdownMenuSeparator />
 
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="fit">Fit</SelectItem>
-                    <SelectItem value="unfit">Unfit</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <DropdownMenuRadioGroup
+            value={statusValue}
+            onValueChange={(value) =>
+              updateFilter({
+                view: value as MedicalFilterState["view"],
+              })
+            }
+          >
+            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="new">New</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="fit">Fit</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="unfit">Unfit</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="expired">
+              Expired
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-            <Separator />
+      {/* ===================================================
+          MAIN FILTER
+          Month
+          =================================================== */}
 
-            <div>
-              <p className="text-sm font-medium">Month</p>
-              <p className="text-xs text-muted-foreground">
-                Filter by medical date
-              </p>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
 
-              <div className="mt-2">
-                <Select
-                  value={filter.month}
-                  onValueChange={(value: string) =>
-                    onFilterChange({ ...filter, month: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+            <span className="hidden sm:inline">Filter</span>
 
-                  <SelectContent>
-                    <SelectItem value="all">All months</SelectItem>
-                    {monthOptions.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* SORT */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
-            {sort.mode === "descending" ? <ArrowDownAZ /> : <ArrowUpAZ />}
-            Sort
+            {activeFilterCount > 0 && (
+              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
-        </PopoverTrigger>
+        </DropdownMenuTrigger>
 
-        <PopoverContent align="end" className="w-64">
-          <div className="space-y-4">
-            <p className="text-sm font-medium">Sort by</p>
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuLabel>Filter medicals</DropdownMenuLabel>
 
-            <Select
-              value={sort.field}
-              onValueChange={(value: string) =>
-                onSortChange({
-                  ...sort,
-                  field: value as MedicalSortState["field"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+          <DropdownMenuSeparator />
 
-              <SelectContent>
-                <SelectItem value="created_at">Created date</SelectItem>
-                <SelectItem value="name">Candidate name</SelectItem>
-                <SelectItem value="passport_no">Passport number</SelectItem>
-                <SelectItem value="medical_date">Medical date</SelectItem>
-                <SelectItem value="updated_at">Updated date</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* MONTH */}
 
-            {/* Asc / Desc */}
-            <div className="flex w-full gap-1">
-              <Button
-                type="button"
-                variant={sort.mode === "descending" ? "outline" : "secondary"}
-                className="flex-1"
-                onClick={() => onSortChange({ ...sort, mode: "ascending" })}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Month</DropdownMenuSubTrigger>
+
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={filter.month}
+                onValueChange={(value) => updateFilter({ month: value })}
               >
-                <ArrowUpAZ />
-                Asc
-              </Button>
+                <DropdownMenuRadioItem value="all">
+                  All months
+                </DropdownMenuRadioItem>
 
-              <Button
-                type="button"
-                variant={sort.mode === "descending" ? "secondary" : "outline"}
-                className="flex-1"
-                onClick={() => onSortChange({ ...sort, mode: "descending" })}
+                {months.map((month) => (
+                  <DropdownMenuRadioItem
+                    key={month.value}
+                    value={month.value}
+                  >
+                    {month.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuCheckboxItem
+            checked={activeFilterCount === 0}
+            onCheckedChange={() =>
+              onFilterChange?.({
+                ...filter,
+                month: "all",
+              })
+            }
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Clear filters
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ===================================================
+          SORT
+          =================================================== */}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" type="button" className="h-9 shrink-0">
+            <ArrowUpDown className="mr-2 h-4 w-4" />
+
+            <span className="hidden sm:inline">Sort</span>
+
+            <span className="ml-1 text-xs text-muted-foreground">
+              · {sortLabel}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="start" className="w-56">
+          <DropdownMenuLabel>Sort medicals</DropdownMenuLabel>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuRadioGroup
+            value={sort.mode}
+            onValueChange={(value) =>
+              updateSort({
+                mode: value as MedicalSortState["mode"],
+              })
+            }
+          >
+            <DropdownMenuRadioItem value="ascending">
+              <ArrowUpAZ className="mr-2 h-4 w-4" />
+              Ascending
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="descending">
+              <ArrowDownAZ className="mr-2 h-4 w-4" />
+              Descending
+            </DropdownMenuRadioItem>
+
+            <DropdownMenuRadioItem value="custom">
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Custom
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+
+          {sort.mode === "custom" && (
+            <>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Sort by
+              </DropdownMenuLabel>
+
+              <DropdownMenuRadioGroup
+                value={sort.field}
+                onValueChange={(value) =>
+                  updateSort({
+                    field: value as MedicalSortState["field"],
+                  })
+                }
               >
-                <ArrowDownAZ />
-                Desc
-              </Button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+                <DropdownMenuRadioItem value="name">
+                  Candidate name
+                </DropdownMenuRadioItem>
 
-      {/* LIST VIEW */}
-      <Button
-        type="button"
-        variant={viewMode === "list" ? "secondary" : "outline"}
-        size="icon"
-        onClick={() => onViewModeChange("list")}
-      >
-        <List />
-      </Button>
+                <DropdownMenuRadioItem value="passport_no">
+                  Passport number
+                </DropdownMenuRadioItem>
+
+                <DropdownMenuRadioItem value="medical_date">
+                  Medical date
+                </DropdownMenuRadioItem>
+
+                <DropdownMenuRadioItem value="created_at">
+                  Created date
+                </DropdownMenuRadioItem>
+
+                <DropdownMenuRadioItem value="updated_at">
+                  Updated date
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ===================================================
+          LIST / GRID TOGGLE
+          =================================================== */}
+
+      <div className="inline-flex h-9 shrink-0 items-center rounded-md border bg-muted/30 p-0.5">
+        <Button
+          type="button"
+          variant={viewMode === "list" ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 gap-1.5 px-2.5"
+          onClick={() => onViewModeChange?.("list")}
+        >
+          <List className="h-4 w-4" />
+
+          <span className="hidden sm:inline">List</span>
+        </Button>
+
+        <Button
+          type="button"
+          variant={viewMode === "grid" ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 gap-1.5 px-2.5"
+          onClick={() => onViewModeChange?.("grid")}
+        >
+          <Grid2X2 className="h-4 w-4" />
+
+          <span className="hidden sm:inline">Grid</span>
+        </Button>
+      </div>
     </PageToolbar>
   );
 }
