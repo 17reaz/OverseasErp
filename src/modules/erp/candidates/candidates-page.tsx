@@ -8,11 +8,11 @@ import {
   CandidatesGrid,
 } from "./components/candidates-grid";
 import {
-  PageToolbar,
+  CandidateToolbar,
   type CandidateFilterState,
   type CandidateSortState,
   type ViewMode,
-} from "../shared/page-toolbar";
+} from "./components/candidate-toolbar";
 
 import {
   CandidatesTable,
@@ -937,9 +937,9 @@ export function CandidatesPage() {
           TOOLBAR
           ================================================= */}
 
-      <PageToolbar
+      <CandidateToolbar
 
-        title="Candidates"
+        
 
         search={
           search
