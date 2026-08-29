@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabase/client";
 
+/* =========================================================
+   TYPES
+========================================================= */
+
 export interface DashboardCandidate {
   id: string;
   name: string;
@@ -54,7 +58,6 @@ export interface DashboardData {
   }[];
 }
 
-
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -73,6 +76,19 @@ function getStartOfMonth(date: Date) {
   );
 }
 
+function getDaysSince(dateString: string) {
+  const now = new Date();
+
+  const date = new Date(dateString);
+
+  const difference =
+    now.getTime() - date.getTime();
+
+  return Math.floor(
+    difference /
+      (1000 * 60 * 60 * 24),
+  );
+}
 
 /* =========================================================
    DASHBOARD
@@ -81,18 +97,72 @@ function getStartOfMonth(date: Date) {
 export async function getDashboardData(): Promise<DashboardData> {
   const now = new Date();
 
-  /*
-   * -------------------------------------------------------
-   * CANDIDATES
-   * -------------------------------------------------------
-   */
+  const sixMonthsAgo =
+    getStartOfMonth(
+      new Date(
+        now.getFullYear(),
+        now.getMonth() - 5,
+        1,
+      ),
+    );
+
+  /* =======================================================
+     STEP 1
+     Candidate IDs
+
+     We need active IDs later for:
+     - medical pending
+     - passport alerts
+     - aging
+  ======================================================= */
+
+  const activeCandidateIdsPromise =
+    supabase
+      .from("candidates")
+      .select("id")
+      .eq("is_deleted", false)
+      .eq("is_returned", false);
+
+  /* =======================================================
+     STEP 2
+     ALL DASHBOARD QUERIES RUN IN PARALLEL
+  ======================================================= */
 
   const [
-    candidatesResult,
+    totalCandidatesResult,
     activeCandidatesResult,
     returnedCandidatesResult,
+
     recentCandidatesResult,
+
+    medicalFitResult,
+    medicalUnfitResult,
+    medicalCandidateIdsResult,
+
+    mofaPendingResult,
+    mofaApprovedResult,
+    mofaTotalResult,
+
+    visaPendingResult,
+    visaIssuedResult,
+    visaTotalResult,
+
+    flightScheduledResult,
+    flightDepartedResult,
+    flightTotalResult,
+
+    trendCandidatesResult,
+
+    agingCandidatesResult,
+
+    passportFilesResult,
+
+    activeCandidateIdsResult,
   ] = await Promise.all([
+    /* -------------------------------------------------------
+       CANDIDATES
+    ------------------------------------------------------- */
+
     supabase
       .from("candidates")
       .select("id", {
@@ -119,6 +189,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("is_deleted", false)
       .eq("is_returned", true),
 
+    /* -------------------------------------------------------
+       RECENT CANDIDATES
+       Only 5 rows
+    ------------------------------------------------------- */
+
     supabase
       .from("candidates")
       .select(`
@@ -134,326 +209,151 @@ export async function getDashboardData(): Promise<DashboardData> {
         ascending: false,
       })
       .limit(5),
-  ]);
 
+    /* -------------------------------------------------------
+       MEDICAL
+    ------------------------------------------------------- */
 
-  if (candidatesResult.error) {
-    throw candidatesResult.error;
-  }
-
-  if (activeCandidatesResult.error) {
-    throw activeCandidatesResult.error;
-  }
-
-  if (returnedCandidatesResult.error) {
-    throw returnedCandidatesResult.error;
-  }
-
-  if (recentCandidatesResult.error) {
-    throw recentCandidatesResult.error;
-  }
-
-
-  /*
-   * -------------------------------------------------------
-   * MEDICAL
-   * -------------------------------------------------------
-   */
-
-  const { data: medicals, error: medicalError } =
-    await supabase
+    supabase
       .from("medicals")
-      .select(`
-        id,
-        candidate_id,
-        medical_date,
-        fit_date,
-        status
-      `);
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "fit"),
 
-  if (medicalError) {
-    throw medicalError;
-  }
+    supabase
+      .from("medicals")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "unfit"),
 
+    /*
+     * Only candidate_id.
+     *
+     * We don't need:
+     * id
+     * medical_date
+     * fit_date
+     * status
+     */
+    supabase
+      .from("medicals")
+      .select("candidate_id"),
 
-  const medicalRows = medicals ?? [];
+    /* -------------------------------------------------------
+       MOFA
+    ------------------------------------------------------- */
 
-
-  const medicalFit = medicalRows.filter(
-    (item) =>
-      item.status === "fit",
-  ).length;
-
-
-  const medicalUnfit = medicalRows.filter(
-    (item) =>
-      item.status === "unfit",
-  ).length;
-
-
-  /*
-   * Candidate যাদের কোনো medical নেই
-   */
-
-  const medicalCandidateIds = new Set(
-    medicalRows.map(
-      (item) => item.candidate_id,
-    ),
-  );
-
-
-  const { data: activeCandidateIds, error: activeIdError } =
-    await supabase
-      .from("candidates")
-      .select("id")
-      .eq("is_deleted", false)
-      .eq("is_returned", false);
-
-  if (activeIdError) {
-    throw activeIdError;
-  }
-
-
-  const medicalPending =
-    (activeCandidateIds ?? []).filter(
-      (candidate) =>
-        !medicalCandidateIds.has(
-          candidate.id,
-        ),
-    ).length;
-
-
-  /*
-   * -------------------------------------------------------
-   * MOFA
-   * -------------------------------------------------------
-   */
-
-  const { data: mofas, error: mofaError } =
-    await supabase
+    supabase
       .from("mofas")
-      .select(`
-        id,
-        candidate_id,
-        medical_id,
-        stage,
-        application_date
-      `);
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .in("stage", [
+        "new",
+        "medupdated",
+      ]),
 
-  if (mofaError) {
-    throw mofaError;
-  }
+    supabase
+      .from("mofas")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("stage", "approved"),
 
+    supabase
+      .from("mofas")
+      .select("id", {
+        count: "exact",
+        head: true,
+      }),
 
-  const mofaRows = mofas ?? [];
+    /* -------------------------------------------------------
+       VISA
+    ------------------------------------------------------- */
 
-
-  const mofaPending = mofaRows.filter(
-    (item) =>
-      item.stage === "new" ||
-      item.stage === "medupdated",
-  ).length;
-
-
-  const mofaApproved = mofaRows.filter(
-    (item) =>
-      item.stage === "approved",
-  ).length;
-
-
-  /*
-   * -------------------------------------------------------
-   * VISA
-   * -------------------------------------------------------
-   */
-
-  const { data: visas, error: visaError } =
-    await supabase
+    supabase
       .from("visas")
-      .select(`
-        id,
-        candidate_id,
-        mofa_id,
-        status,
-        visa_date,
-        expiry_date
-      `);
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .not(
+        "status",
+        "in",
+        "(issued,approved,cancelled,expired)",
+      ),
 
-  if (visaError) {
-    throw visaError;
-  }
-
-
-  const visaRows = visas ?? [];
-
-
-  const visaIssued = visaRows.filter(
-    (item) => {
-      const status =
-        String(item.status ?? "")
-          .toLowerCase();
-
-      return (
-        status === "issued" ||
-        status === "approved"
-      );
-    },
-  ).length;
-
-
-  const visaPending = visaRows.filter(
-    (item) => {
-      const status =
-        String(item.status ?? "")
-          .toLowerCase();
-
-      return ![
+    supabase
+      .from("visas")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .in("status", [
         "issued",
         "approved",
-        "cancelled",
-        "expired",
-      ].includes(status);
-    },
-  ).length;
+      ]),
 
+    supabase
+      .from("visas")
+      .select("id", {
+        count: "exact",
+        head: true,
+      }),
 
-  /*
-   * -------------------------------------------------------
-   * FLIGHTS
-   * -------------------------------------------------------
-   */
+    /* -------------------------------------------------------
+       FLIGHTS
+    ------------------------------------------------------- */
 
-  const { data: flights, error: flightError } =
-    await supabase
+    supabase
       .from("flights")
-      .select(`
-        id,
-        candidate_id,
-        visa_id,
-        flight_date,
-        flight_no,
-        airline,
-        status
-      `);
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "scheduled"),
 
-  if (flightError) {
-    throw flightError;
-  }
+    supabase
+      .from("flights")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "departed"),
 
+    supabase
+      .from("flights")
+      .select("id", {
+        count: "exact",
+        head: true,
+      }),
 
-  const flightRows = flights ?? [];
+    /* -------------------------------------------------------
+       TREND
+       Only last 6 months
+    ------------------------------------------------------- */
 
-
-  const flightScheduled =
-    flightRows.filter(
-      (item) =>
-        item.status === "scheduled",
-    ).length;
-
-
-  const flightDeparted =
-    flightRows.filter(
-      (item) =>
-        item.status === "departed",
-    ).length;
-
-
-  /*
-   * -------------------------------------------------------
-   * 6 MONTH CANDIDATE TREND
-   * -------------------------------------------------------
-   */
-
-  const sixMonthsAgo = getStartOfMonth(
-    new Date(
-      now.getFullYear(),
-      now.getMonth() - 5,
-      1,
-    ),
-  );
-
-
-  const { data: trendCandidates, error: trendError } =
-    await supabase
+    supabase
       .from("candidates")
       .select("created_at")
       .eq("is_deleted", false)
       .gte(
         "created_at",
         sixMonthsAgo.toISOString(),
-      );
+      ),
 
+    /* -------------------------------------------------------
+       AGING
+       Only active candidates + received_date
+    ------------------------------------------------------- */
 
-  if (trendError) {
-    throw trendError;
-  }
-
-
-  const trend = Array.from(
-    {
-      length: 6,
-    },
-    (_, index) => {
-      const date = new Date(
-        now.getFullYear(),
-        now.getMonth() - (5 - index),
-        1,
-      );
-
-      return {
-        month: getMonthLabel(date),
-        candidates: 0,
-        start: date,
-      };
-    },
-  );
-
-
-  for (
-    const candidate of
-    trendCandidates ?? []
-  ) {
-    const created =
-      new Date(
-        candidate.created_at,
-      );
-
-    const item =
-      trend.find(
-        (month, index) => {
-          const next =
-            trend[index + 1];
-
-          if (!next) {
-            return (
-              created >=
-              month.start
-            );
-          }
-
-          return (
-            created >=
-              month.start &&
-            created <
-              next.start
-          );
-        },
-      );
-
-    if (item) {
-      item.candidates += 1;
-    }
-  }
-
-
-  /*
-   * -------------------------------------------------------
-   * CANDIDATE AGING
-   * -------------------------------------------------------
-   */
-
-  const { data: agingCandidates, error: agingError } =
-    await supabase
+    supabase
       .from("candidates")
       .select("received_date")
       .eq("is_deleted", false)
@@ -462,60 +362,336 @@ export async function getDashboardData(): Promise<DashboardData> {
         "received_date",
         "is",
         null,
-      );
+      ),
 
+    /* -------------------------------------------------------
+       PASSPORT ALERT
+       Only active passport candidate IDs
+    ------------------------------------------------------- */
 
-  if (agingError) {
-    throw agingError;
+    supabase
+      .from("files")
+      .select("candidate_id")
+      .eq("is_active", true)
+      .eq("doc_type", "passport"),
+
+    /* -------------------------------------------------------
+       ACTIVE CANDIDATE IDS
+    ------------------------------------------------------- */
+
+    activeCandidateIdsPromise,
+  ]);
+
+  /* =======================================================
+     ERROR HANDLING
+  ======================================================= */
+
+  const results = [
+    totalCandidatesResult,
+    activeCandidatesResult,
+    returnedCandidatesResult,
+
+    recentCandidatesResult,
+
+    medicalFitResult,
+    medicalUnfitResult,
+    medicalCandidateIdsResult,
+
+    mofaPendingResult,
+    mofaApprovedResult,
+    mofaTotalResult,
+
+    visaPendingResult,
+    visaIssuedResult,
+    visaTotalResult,
+
+    flightScheduledResult,
+    flightDepartedResult,
+    flightTotalResult,
+
+    trendCandidatesResult,
+
+    agingCandidatesResult,
+
+    passportFilesResult,
+
+    activeCandidateIdsResult,
+  ];
+
+  for (const result of results) {
+    if (result.error) {
+      throw result.error;
+    }
   }
 
+  /* =======================================================
+     BASIC COUNTS
+  ======================================================= */
+
+  const totalCandidates =
+    totalCandidatesResult.count ?? 0;
+
+  const activeCandidates =
+    activeCandidatesResult.count ?? 0;
+
+  const returnedCandidates =
+    returnedCandidatesResult.count ?? 0;
+
+  /* =======================================================
+     ACTIVE CANDIDATE IDS
+  ======================================================= */
+
+  const activeCandidateIds =
+    activeCandidateIdsResult.data ?? [];
+
+  /* =======================================================
+     MEDICAL
+  ======================================================= */
+
+  const medicalFit =
+    medicalFitResult.count ?? 0;
+
+  const medicalUnfit =
+    medicalUnfitResult.count ?? 0;
+
+  /*
+   * Set gives O(1) lookup.
+   *
+   * Important:
+   * Multiple medical records for one candidate
+   * won't count as multiple candidates.
+   */
+
+  const medicalCandidateIds =
+    new Set(
+      (
+        medicalCandidateIdsResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(Boolean),
+    );
+
+  const medicalPending =
+    activeCandidateIds.filter(
+      (candidate) =>
+        !medicalCandidateIds.has(
+          candidate.id,
+        ),
+    ).length;
+
+  /* =======================================================
+     MOFA
+  ======================================================= */
+
+  const mofaPending =
+    mofaPendingResult.count ?? 0;
+
+  const mofaApproved =
+    mofaApprovedResult.count ?? 0;
+
+  const mofaTotal =
+    mofaTotalResult.count ?? 0;
+
+  /* =======================================================
+     VISA
+  ======================================================= */
+
+  const visaPending =
+    visaPendingResult.count ?? 0;
+
+  const visaIssued =
+    visaIssuedResult.count ?? 0;
+
+  const visaTotal =
+    visaTotalResult.count ?? 0;
+
+  /* =======================================================
+     FLIGHTS
+  ======================================================= */
+
+  const flightScheduled =
+    flightScheduledResult.count ?? 0;
+
+  const flightDeparted =
+    flightDepartedResult.count ?? 0;
+
+  const flightTotal =
+    flightTotalResult.count ?? 0;
+
+  /* =======================================================
+     PIPELINE
+  ======================================================= */
+
+  const pipeline = [
+    {
+      label: "Candidates",
+      value: activeCandidates,
+    },
+
+    {
+      label: "Medical",
+      value: medicalFit,
+    },
+
+    {
+      label: "MOFA",
+      value: mofaApproved,
+    },
+
+    {
+      label: "Visa",
+      value: visaIssued,
+    },
+
+    {
+      label: "Flight",
+      value: flightScheduled,
+    },
+  ];
+
+  /* =======================================================
+     6 MONTH TREND
+  ======================================================= */
+
+  const trendMap =
+    new Map<string, number>();
+
+  /*
+   * Pre-create six months.
+   *
+   * Key:
+   * YYYY-MM
+   */
+
+  const trendMeta: {
+    key: string;
+    month: string;
+  }[] = [];
+
+  for (
+    let index = 0;
+    index < 6;
+    index++
+  ) {
+    const date =
+      new Date(
+        now.getFullYear(),
+        now.getMonth() -
+          (5 - index),
+        1,
+      );
+
+    const key =
+      `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}`;
+
+    trendMeta.push({
+      key,
+      month:
+        getMonthLabel(date),
+    });
+
+    trendMap.set(
+      key,
+      0,
+    );
+  }
+
+  /*
+   * O(n)
+   *
+   * Previous implementation:
+   * candidate → trend.find()
+   *
+   * Now:
+   * candidate → Map lookup
+   */
+
+  for (
+    const candidate of
+    trendCandidatesResult.data ??
+    []
+  ) {
+    const date =
+      new Date(
+        candidate.created_at,
+      );
+
+    const key =
+      `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}`;
+
+    if (
+      trendMap.has(key)
+    ) {
+      trendMap.set(
+        key,
+        (trendMap.get(key) ?? 0) +
+          1,
+      );
+    }
+  }
+
+  const trend =
+    trendMeta.map(
+      ({
+        key,
+        month,
+      }) => ({
+        month,
+        candidates:
+          trendMap.get(key) ??
+          0,
+      }),
+    );
+
+  /* =======================================================
+     AGING
+  ======================================================= */
 
   const aging = [
     {
       label: "0–3 days",
       count: 0,
     },
+
     {
       label: "4–7 days",
       count: 0,
     },
+
     {
       label: "8–14 days",
       count: 0,
     },
+
     {
       label: "15+ days",
       count: 0,
     },
   ];
 
-
   for (
     const candidate of
-    agingCandidates ?? []
+    agingCandidatesResult.data ??
+    []
   ) {
-    if (!candidate.received_date) {
+    if (
+      !candidate.received_date
+    ) {
       continue;
     }
 
-    const received =
-      new Date(
+    const days =
+      getDaysSince(
         candidate.received_date,
       );
-
-    const days = Math.floor(
-      (
-        now.getTime() -
-        received.getTime()
-      ) /
-        (
-          1000 *
-          60 *
-          60 *
-          24
-        ),
-    );
-
 
     if (days <= 3) {
       aging[0].count += 1;
@@ -528,78 +704,52 @@ export async function getDashboardData(): Promise<DashboardData> {
     }
   }
 
+  /* =======================================================
+     DOCUMENT ALERTS
+  ======================================================= */
 
-  /*
-   * -------------------------------------------------------
-   * DOCUMENT ALERTS
-   * -------------------------------------------------------
-   */
-
-  const {
-    data: files,
-    error: filesError,
-  } = await supabase
-    .from("files")
-    .select(`
-      candidate_id,
-      doc_type,
-      is_active
-    `)
-    .eq(
-      "is_active",
-      true,
-    );
-
-
-  if (filesError) {
-    throw filesError;
-  }
-
-
-  const activeCandidates =
-    activeCandidateIds ?? [];
-
-
-  const passportCandidates =
+  const passportCandidateIds =
     new Set(
-      (files ?? [])
-        .filter(
-          (file) =>
-            file.doc_type ===
-              "passport",
-        )
+      (
+        passportFilesResult.data ??
+        []
+      )
         .map(
           (file) =>
             file.candidate_id,
-        ),
+        )
+        .filter(Boolean),
     );
 
-
   const missingPassport =
-    activeCandidates.filter(
+    activeCandidateIds.filter(
       (candidate) =>
-        !passportCandidates.has(
+        !passportCandidateIds.has(
           candidate.id,
         ),
     ).length;
 
+  /* =======================================================
+     RECENT CANDIDATES
+  ======================================================= */
 
-  /*
-   * -------------------------------------------------------
-   * RETURN
-   * -------------------------------------------------------
-   */
+  const recentCandidates =
+    (
+      recentCandidatesResult.data ??
+      []
+    ) as DashboardCandidate[];
+
+  /* =======================================================
+     RETURN
+  ======================================================= */
 
   return {
     stats: {
-      totalCandidates:
-        candidatesResult.count ?? 0,
+      totalCandidates,
 
-      activeCandidates:
-        activeCandidatesResult.count ?? 0,
+      activeCandidates,
 
-      returnedCandidates:
-        returnedCandidatesResult.count ?? 0,
+      returnedCandidates,
 
       medicalPending,
 
@@ -620,54 +770,13 @@ export async function getDashboardData(): Promise<DashboardData> {
       flightDeparted,
     },
 
+    pipeline,
 
-    pipeline: [
-      {
-        label: "Candidates",
-        value:
-          activeCandidatesResult.count ?? 0,
-      },
-      {
-        label: "Medical",
-        value:
-          medicalRows.length,
-      },
-      {
-        label: "MOFA",
-        value:
-          mofaRows.length,
-      },
-      {
-        label: "Visa",
-        value:
-          visaRows.length,
-      },
-      {
-        label: "Flight",
-        value:
-          flightRows.length,
-      },
-    ],
-
-
-    trend: trend.map(
-      ({
-        month,
-        candidates,
-      }) => ({
-        month,
-        candidates,
-      }),
-    ),
-
+    trend,
 
     aging,
 
-
-    recentCandidates:
-      (recentCandidatesResult.data ??
-        []) as DashboardCandidate[],
-
+    recentCandidates,
 
     documentAlerts: [
       {
