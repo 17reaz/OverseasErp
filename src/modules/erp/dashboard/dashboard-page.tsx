@@ -11,9 +11,7 @@ import { DashboardStats } from "./components/dashboard-stats";
 import { DashboardTable } from "./components/dashboard-table";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
 import { DashboardShortcuts } from "./components/dashboard-shortcuts";
-import { DashboardMofaCard } from "./components/dashboard-mofa-card";
-import { DashboardVisaCard } from "./components/dashboard-visa-card";
-import { DashboardFlightCard } from "./components/dashboard-flight-card";
+
 export function DashboardPage() {
   const [data, setData] =
     useState<DashboardData | null>(null);
@@ -48,6 +46,10 @@ export function DashboardPage() {
     void loadDashboard();
   }, []);
 
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -56,38 +58,29 @@ export function DashboardPage() {
           description="Overview of your overseas recruitment operations."
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map(
-            (_, index) => (
-              <div
-                key={index}
-                className="h-28 animate-pulse rounded-lg border bg-muted/40"
-              />
-            ),
-          )}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({
+            length: 7,
+          }).map((_, index) => (
+            <div
+              key={index}
+              className="h-28 animate-pulse rounded-lg border bg-muted/40"
+            />
+          ))}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-  <DashboardMofaCard
-    total={data.stats.mofaTotal}
-    pending={data.stats.mofaPending}
-    approved={data.stats.mofaApproved}
-  />
 
-  <DashboardVisaCard
-    total={data.stats.visaTotal}
-    pending={data.stats.visaPending}
-    issued={data.stats.visaIssued}
-  />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />
 
-  <DashboardFlightCard
-    total={data.stats.flightTotal}
-    scheduled={data.stats.flightScheduled}
-    departed={data.stats.flightDeparted}
-  />
-</div>
+          <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />
+        </div>
       </div>
     );
   }
+
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
   if (error) {
     return (
@@ -105,14 +98,43 @@ export function DashboardPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {error}
           </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              void loadDashboard();
+            }}
+            className="mt-4 text-sm font-medium underline underline-offset-4"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
   }
 
+  /* =======================================================
+     NO DATA
+  ======================================================= */
+
   if (!data) {
-    return null;
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Dashboard"
+          description="Overview of your overseas recruitment operations."
+        />
+
+        <div className="rounded-lg border p-6 text-sm text-muted-foreground">
+          No dashboard data available.
+        </div>
+      </div>
+    );
   }
+
+  /* =======================================================
+     DASHBOARD
+  ======================================================= */
 
   return (
     <div className="space-y-6">
@@ -121,15 +143,31 @@ export function DashboardPage() {
         description="Overview of your overseas recruitment operations."
       />
 
+      {/* ===================================================
+          KPI STATS
+      =================================================== */}
+
       <DashboardStats
         stats={data.stats}
       />
+
+      {/* ===================================================
+          DOCUMENT ALERTS
+      =================================================== */}
 
       <DashboardDocumentAlerts
         alerts={data.documentAlerts}
       />
 
+      {/* ===================================================
+          QUICK SHORTCUTS
+      =================================================== */}
+
       <DashboardShortcuts />
+
+      {/* ===================================================
+          RECENT CANDIDATES
+      =================================================== */}
 
       <DashboardTable
         candidates={data.recentCandidates}

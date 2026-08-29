@@ -18,21 +18,19 @@ import type {
   DashboardData,
 } from "../dashboard-service";
 
-
-interface Props {
+interface DashboardStatsProps {
   stats: DashboardData["stats"];
 }
 
-
 export function DashboardStats({
   stats,
-}: Props) {
+}: DashboardStatsProps) {
   const items = [
     {
       title: "Total Candidates",
       value: stats.totalCandidates,
       icon: Users,
-      description: "All active records",
+      description: "All candidate records",
     },
 
     {
@@ -78,7 +76,6 @@ export function DashboardStats({
     },
   ];
 
-
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => {
@@ -91,11 +88,11 @@ export function DashboardStats({
                 {item.title}
               </CardTitle>
 
-              <Icon className="h-4 w-4 text-muted-foreground" />
+              <Icon className="size-4 text-muted-foreground" />
             </CardHeader>
 
             <CardContent>
-              <div className="text-2xl font-semibold">
+              <div className="text-2xl font-semibold tracking-tight">
                 {item.value}
               </div>
 
