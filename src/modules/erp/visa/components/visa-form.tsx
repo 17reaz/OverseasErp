@@ -4,9 +4,12 @@ import {
   type FormEvent,
 } from "react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  FormDate,
+  FormInput,
+  FormSelect,
+  FormTextarea,
+} from "@/modules/erp/shared/ui/form-field";
 
 import { UniversalSheet } from "@/modules/erp/shared/forms/universal-sheet";
 import { FormSection } from "@/modules/erp/shared/forms/form-section";
@@ -16,6 +19,10 @@ import {
   updateVisa,
   type Visa,
 } from "../visa-service";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 interface CandidateOption {
   id: string;
@@ -35,12 +42,22 @@ interface MofaOption {
 
 interface VisaFormProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+
+  onOpenChange: (
+    open: boolean,
+  ) => void;
+
   record?: Visa | null;
+
   candidates: CandidateOption[];
+
   agencies: AgencyOption[];
+
   mofas: MofaOption[];
-  onSuccess?: (record: Visa) => void;
+
+  onSuccess?: (
+    record: Visa,
+  ) => void;
 }
 
 interface FormState {
@@ -55,6 +72,10 @@ interface FormState {
   remarks: string;
 }
 
+/* =========================================================
+   DEFAULT
+========================================================= */
+
 const DEFAULT_FORM: FormState = {
   candidate_id: "",
   mofa_id: "",
@@ -67,6 +88,10 @@ const DEFAULT_FORM: FormState = {
   remarks: "",
 };
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export function VisaForm({
   open,
   onOpenChange,
@@ -77,12 +102,22 @@ export function VisaForm({
   onSuccess,
 }: VisaFormProps) {
   const [form, setForm] =
-    useState<FormState>(DEFAULT_FORM);
+    useState<FormState>(
+      DEFAULT_FORM,
+    );
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [saving, setSaving] =
+    useState(false);
 
-  const isEdit = Boolean(record);
+  const [error, setError] =
+    useState("");
+
+  const isEdit =
+    Boolean(record);
+
+  /* =======================================================
+     DIRTY STATE
+  ======================================================= */
 
   const hasChanges =
     form.candidate_id !== "" ||
@@ -90,42 +125,84 @@ export function VisaForm({
     form.visa_no !== "" ||
     form.visa_date !== "" ||
     form.expiry_date !== "" ||
-    form.visa_type !== DEFAULT_FORM.visa_type ||
-    form.status !== DEFAULT_FORM.status ||
+    form.visa_type !==
+      DEFAULT_FORM.visa_type ||
+    form.status !==
+      DEFAULT_FORM.status ||
     form.agency_id !== "" ||
     form.remarks !== "";
+
+  /* =======================================================
+     LOAD RECORD
+  ======================================================= */
 
   useEffect(() => {
     if (!open) return;
 
     if (record) {
       setForm({
-        candidate_id: record.candidate_id,
-        mofa_id: record.mofa_id ?? "",
-        visa_no: record.visa_no ?? "",
-        visa_date: record.visa_date ?? "",
-        expiry_date: record.expiry_date ?? "",
-        visa_type: record.visa_type ?? "employment",
-        status: record.status ?? "processing",
-        agency_id: record.agency_id ?? "",
-        remarks: record.remarks ?? "",
+        candidate_id:
+          record.candidate_id,
+
+        mofa_id:
+          record.mofa_id ?? "",
+
+        visa_no:
+          record.visa_no ?? "",
+
+        visa_date:
+          record.visa_date ?? "",
+
+        expiry_date:
+          record.expiry_date ?? "",
+
+        visa_type:
+          record.visa_type ??
+          "employment",
+
+        status:
+          record.status ??
+          "processing",
+
+        agency_id:
+          record.agency_id ?? "",
+
+        remarks:
+          record.remarks ?? "",
       });
     } else {
-      setForm(DEFAULT_FORM);
+      setForm(
+        DEFAULT_FORM,
+      );
     }
 
     setError("");
-  }, [open, record]);
+  }, [
+    open,
+    record,
+  ]);
 
-  function updateField<K extends keyof FormState>(
+  /* =======================================================
+     UPDATE FIELD
+  ======================================================= */
+
+  function updateField<
+    K extends keyof FormState,
+  >(
     field: K,
     value: FormState[K],
   ) {
-    setForm((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setForm(
+      (previous) => ({
+        ...previous,
+        [field]: value,
+      }),
+    );
   }
+
+  /* =======================================================
+     SUBMIT
+  ======================================================= */
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -133,12 +210,16 @@ export function VisaForm({
     event.preventDefault();
 
     if (!form.candidate_id) {
-      setError("Please select a candidate.");
+      setError(
+        "Please select a candidate.",
+      );
       return;
     }
 
     if (!form.visa_no.trim()) {
-      setError("Please enter the visa number.");
+      setError(
+        "Please enter the visa number.",
+      );
       return;
     }
 
@@ -147,37 +228,61 @@ export function VisaForm({
 
     try {
       const input = {
-        mofa_id: form.mofa_id || null,
-        visa_no: form.visa_no.trim(),
-        visa_date: form.visa_date || null,
-        expiry_date: form.expiry_date || null,
+        mofa_id:
+          form.mofa_id || null,
+
+        visa_no:
+          form.visa_no.trim(),
+
+        visa_date:
+          form.visa_date || null,
+
+        expiry_date:
+          form.expiry_date || null,
+
         visa_type:
-          form.visa_type.trim() || "employment",
+          form.visa_type.trim() ||
+          "employment",
+
         status:
-          form.status.trim() || "processing",
-        agency_id: form.agency_id || null,
-        remarks: form.remarks.trim() || null,
+          form.status.trim() ||
+          "processing",
+
+        agency_id:
+          form.agency_id || null,
+
+        remarks:
+          form.remarks.trim() ||
+          null,
       };
 
       let savedRecord: Visa;
 
       if (record) {
-        savedRecord = await updateVisa(
-          record.id,
-          input,
-        );
+        savedRecord =
+          await updateVisa(
+            record.id,
+            input,
+          );
       } else {
-        savedRecord = await createVisa({
-          candidate_id: form.candidate_id,
-          ...input,
-        });
+        savedRecord =
+          await createVisa({
+            candidate_id:
+              form.candidate_id,
+
+            ...input,
+          });
       }
 
-      onSuccess?.(savedRecord);
+      onSuccess?.(
+        savedRecord,
+      );
 
       onOpenChange(false);
 
-      setForm(DEFAULT_FORM);
+      setForm(
+        DEFAULT_FORM,
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -189,6 +294,41 @@ export function VisaForm({
     }
   }
 
+  /* =======================================================
+     OPTIONS
+  ======================================================= */
+
+  const candidateOptions =
+    candidates.map(
+      (candidate) => ({
+        value: candidate.id,
+
+        label:
+          `${candidate.name} — ${candidate.passport_no}`,
+      }),
+    );
+
+  const agencyOptions =
+    agencies.map(
+      (agency) => ({
+        value: agency.id,
+        label: agency.name,
+      }),
+    );
+
+  const mofaOptions =
+    mofas.map(
+      (mofa) => ({
+        value: mofa.id,
+        label:
+          mofa.application_number,
+      }),
+    );
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
     <UniversalSheet
       open={open}
@@ -197,7 +337,11 @@ export function VisaForm({
           onOpenChange(next);
         }
       }}
-      title={isEdit ? "Edit Visa" : "Create Visa"}
+      title={
+        isEdit
+          ? "Edit Visa"
+          : "Create Visa"
+      }
       description={
         isEdit
           ? "Update the visa record details."
@@ -205,7 +349,9 @@ export function VisaForm({
       }
       onSubmit={handleSubmit}
       submitLabel={
-        isEdit ? "Update Visa" : "Create Visa"
+        isEdit
+          ? "Update Visa"
+          : "Create Visa"
       }
       loading={saving}
       disabled={
@@ -213,251 +359,242 @@ export function VisaForm({
         !form.candidate_id ||
         !form.visa_no.trim()
       }
-      hasChanges={hasChanges}
+      hasChanges={
+        hasChanges
+      }
     >
+      {/* ===================================================
+          ERROR
+      =================================================== */}
+
       {error && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       )}
+
+      {/* ===================================================
+          CANDIDATE
+      =================================================== */}
 
       <FormSection
         title="Candidate Information"
         description="Select the candidate for this visa record."
       >
-        <div className="space-y-2">
-          <Label htmlFor="visa-candidate">
-            Candidate{" "}
-            <span className="text-destructive">
-              *
-            </span>
-          </Label>
-
-          <select
-            id="visa-candidate"
-            value={form.candidate_id}
-            onChange={(event) =>
-              updateField(
-                "candidate_id",
-                event.target.value,
-              )
-            }
-            disabled={isEdit || saving}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="">
-              Select candidate
-            </option>
-
-            {candidates.map((candidate) => (
-              <option
-                key={candidate.id}
-                value={candidate.id}
-              >
-                {candidate.name} —{" "}
-                {candidate.passport_no}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FormSelect
+          label="Candidate"
+          placeholder="Select candidate"
+          value={
+            form.candidate_id
+          }
+          onValueChange={(
+            value,
+          ) =>
+            updateField(
+              "candidate_id",
+              value,
+            )
+          }
+          disabled={
+            isEdit || saving
+          }
+          required
+          options={
+            candidateOptions
+          }
+        />
       </FormSection>
+
+      {/* ===================================================
+          VISA INFORMATION
+      =================================================== */}
 
       <FormSection
         title="Visa Information"
         description="Basic visa information and processing status."
       >
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="visa-no">
-              Visa No{" "}
-              <span className="text-destructive">
-                *
-              </span>
-            </Label>
+          <FormInput
+            id="visa-no"
+            label="Visa No"
+            value={
+              form.visa_no
+            }
+            onChange={(
+              event,
+            ) =>
+              updateField(
+                "visa_no",
+                event.target
+                  .value,
+              )
+            }
+            placeholder="Enter visa number"
+            disabled={saving}
+            required
+          />
 
-            <Input
-              id="visa-no"
-              value={form.visa_no}
-              onChange={(event) =>
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput
+              id="visa-type"
+              label="Visa Type"
+              value={
+                form.visa_type
+              }
+              onChange={(
+                event,
+              ) =>
                 updateField(
-                  "visa_no",
-                  event.target.value,
+                  "visa_type",
+                  event.target
+                    .value,
                 )
               }
-              placeholder="Enter visa number"
+              placeholder="e.g. employment"
+              disabled={saving}
+            />
+
+            <FormInput
+              id="visa-status"
+              label="Status"
+              value={
+                form.status
+              }
+              onChange={(
+                event,
+              ) =>
+                updateField(
+                  "status",
+                  event.target
+                    .value,
+                )
+              }
+              placeholder="e.g. processing, issued"
               disabled={saving}
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="visa-type">
-                Visa Type
-              </Label>
-
-              <Input
-                id="visa-type"
-                value={form.visa_type}
-                onChange={(event) =>
-                  updateField(
-                    "visa_type",
-                    event.target.value,
-                  )
-                }
-                placeholder="e.g. employment"
-                disabled={saving}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="visa-status">
-                Status
-              </Label>
-
-              <Input
-                id="visa-status"
-                value={form.status}
-                onChange={(event) =>
-                  updateField(
-                    "status",
-                    event.target.value,
-                  )
-                }
-                placeholder="e.g. processing, issued"
-                disabled={saving}
-              />
-            </div>
-          </div>
         </div>
       </FormSection>
+
+      {/* ===================================================
+          VISA DATES
+      =================================================== */}
 
       <FormSection
         title="Visa Dates"
         description="Visa issue and expiry information."
       >
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="visa-date">
-              Visa Date
-            </Label>
+          <FormDate
+            id="visa-date"
+            label="Visa Date"
+            value={
+              form.visa_date
+            }
+            onChange={(
+              event,
+            ) =>
+              updateField(
+                "visa_date",
+                event.target
+                  .value,
+              )
+            }
+            disabled={saving}
+          />
 
-            <Input
-              id="visa-date"
-              type="date"
-              value={form.visa_date}
-              onChange={(event) =>
-                updateField(
-                  "visa_date",
-                  event.target.value,
-                )
-              }
-              disabled={saving}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="visa-expiry">
-              Expiry Date
-            </Label>
-
-            <Input
-              id="visa-expiry"
-              type="date"
-              value={form.expiry_date}
-              onChange={(event) =>
-                updateField(
-                  "expiry_date",
-                  event.target.value,
-                )
-              }
-              disabled={saving}
-            />
-          </div>
+          <FormDate
+            id="visa-expiry"
+            label="Expiry Date"
+            value={
+              form.expiry_date
+            }
+            onChange={(
+              event,
+            ) =>
+              updateField(
+                "expiry_date",
+                event.target
+                  .value,
+              )
+            }
+            disabled={saving}
+          />
         </div>
       </FormSection>
+
+      {/* ===================================================
+          AGENCY & MOFA
+      =================================================== */}
 
       <FormSection
         title="Agency & MOFA"
         description="Optional agency and MOFA information."
       >
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="visa-agency">
-              Agency
-            </Label>
+          <FormSelect
+            label="Agency"
+            placeholder="Select agency (optional)"
+            value={
+              form.agency_id
+            }
+            onValueChange={(
+              value,
+            ) =>
+              updateField(
+                "agency_id",
+                value,
+              )
+            }
+            disabled={saving}
+            options={
+              agencyOptions
+            }
+          />
 
-            <select
-              id="visa-agency"
-              value={form.agency_id}
-              onChange={(event) =>
-                updateField(
-                  "agency_id",
-                  event.target.value,
-                )
-              }
-              disabled={saving}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">
-                Select agency (optional)
-              </option>
-
-              {agencies.map((agency) => (
-                <option
-                  key={agency.id}
-                  value={agency.id}
-                >
-                  {agency.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="visa-mofa">
-              MOFA Application
-            </Label>
-
-            <select
-              id="visa-mofa"
-              value={form.mofa_id}
-              onChange={(event) =>
-                updateField(
-                  "mofa_id",
-                  event.target.value,
-                )
-              }
-              disabled={saving}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">
-                Select MOFA (optional)
-              </option>
-
-              {mofas.map((mofa) => (
-                <option
-                  key={mofa.id}
-                  value={mofa.id}
-                >
-                  {mofa.application_number}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FormSelect
+            label="MOFA Application"
+            placeholder="Select MOFA (optional)"
+            value={
+              form.mofa_id
+            }
+            onValueChange={(
+              value,
+            ) =>
+              updateField(
+                "mofa_id",
+                value,
+              )
+            }
+            disabled={saving}
+            options={
+              mofaOptions
+            }
+          />
         </div>
       </FormSection>
+
+      {/* ===================================================
+          REMARKS
+      =================================================== */}
 
       <FormSection
         title="Remarks"
         description="Additional notes for this visa record."
       >
-        <Textarea
+        <FormTextarea
           id="visa-remarks"
-          value={form.remarks}
-          onChange={(event) =>
+          label="Remarks"
+          value={
+            form.remarks
+          }
+          onChange={(
+            event,
+          ) =>
             updateField(
               "remarks",
-              event.target.value,
+              event.target
+                .value,
             )
           }
           placeholder="Add remarks..."
