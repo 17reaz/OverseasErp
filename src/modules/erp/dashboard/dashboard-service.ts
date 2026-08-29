@@ -62,13 +62,13 @@ export interface DashboardData {
    HELPERS
 ========================================================= */
 
-function getMonthLabel(date: Date) {
+function getMonthLabel(date: Date): string {
   return date.toLocaleDateString("en-US", {
     month: "short",
   });
 }
 
-function getStartOfMonth(date: Date) {
+function getStartOfMonth(date: Date): Date {
   return new Date(
     date.getFullYear(),
     date.getMonth(),
@@ -76,9 +76,8 @@ function getStartOfMonth(date: Date) {
   );
 }
 
-function getDaysSince(dateString: string) {
+function getDaysSince(dateString: string): number {
   const now = new Date();
-
   const date = new Date(dateString);
 
   const difference =
@@ -91,11 +90,15 @@ function getDaysSince(dateString: string) {
 }
 
 /* =========================================================
-   DASHBOARD
+   DASHBOARD SERVICE
 ========================================================= */
 
 export async function getDashboardData(): Promise<DashboardData> {
   const now = new Date();
+
+  /* -------------------------------------------------------
+     Last 6 months
+  ------------------------------------------------------- */
 
   const sixMonthsAgo =
     getStartOfMonth(
@@ -107,13 +110,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     );
 
   /* =======================================================
-     STEP 1
-     Candidate IDs
+     ACTIVE CANDIDATE IDS
 
-     We need active IDs later for:
-     - medical pending
-     - passport alerts
-     - aging
+     Used for:
+     - Medical pending
+     - Passport alerts
   ======================================================= */
 
   const activeCandidateIdsPromise =
@@ -124,8 +125,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("is_returned", false);
 
   /* =======================================================
-     STEP 2
-     ALL DASHBOARD QUERIES RUN IN PARALLEL
+     ALL QUERIES RUN IN PARALLEL
   ======================================================= */
 
   const [
@@ -141,15 +141,12 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     mofaPendingResult,
     mofaApprovedResult,
-    mofaTotalResult,
 
     visaPendingResult,
     visaIssuedResult,
-    visaTotalResult,
 
     flightScheduledResult,
     flightDepartedResult,
-    flightTotalResult,
 
     trendCandidatesResult,
 
@@ -159,9 +156,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     activeCandidateIdsResult,
   ] = await Promise.all([
-    /* -------------------------------------------------------
+    /* =====================================================
        CANDIDATES
-    ------------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -189,10 +186,10 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("is_deleted", false)
       .eq("is_returned", true),
 
-    /* -------------------------------------------------------
+    /* =====================================================
        RECENT CANDIDATES
        Only 5 rows
-    ------------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -210,9 +207,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       })
       .limit(5),
 
-    /* -------------------------------------------------------
+    /* =====================================================
        MEDICAL
-    ------------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("medicals")
@@ -231,21 +228,19 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("status", "unfit"),
 
     /*
-     * Only candidate_id.
+     * Only candidate_id is required.
      *
-     * We don't need:
-     * id
-     * medical_date
-     * fit_date
-     * status
+     * We use a Set later so duplicate medical
+     * records don't create duplicate candidates.
      */
+
     supabase
       .from("medicals")
       .select("candidate_id"),
 
-    /* -------------------------------------------------------
+    /* =====================================================
        MOFA
-    ------------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("mofas")
@@ -266,16 +261,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       })
       .eq("stage", "approved"),
 
-    supabase
-      .from("mofas")
-      .select("id", {
-        count: "exact",
-        head: true,
-      }),
-
-    /* -------------------------------------------------------
+    /* =====================================================
        VISA
-    ------------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("visas")
@@ -300,16 +288,9 @@ export async function getDashboardData(): Promise<DashboardData> {
         "approved",
       ]),
 
-    supabase
-      .from("visas")
-      .select("id", {
-        count: "exact",
-        head: true,
-      }),
-
-    /* -------------------------------------------------------
+    /* =====================================================
        FLIGHTS
-    ------------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("flights")
@@ -327,17 +308,10 @@ export async function getDashboardData(): Promise<DashboardData> {
       })
       .eq("status", "departed"),
 
-    supabase
-      .from("flights")
-      .select("id", {
-        count: "exact",
-        head: true,
-      }),
-
-    /* -------------------------------------------------------
-       TREND
-       Only last 6 months
-    ------------------------------------------------------- */
+    /* =====================================================
+       CANDIDATE TREND
+       Last 6 months only
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -348,10 +322,10 @@ export async function getDashboardData(): Promise<DashboardData> {
         sixMonthsAgo.toISOString(),
       ),
 
-    /* -------------------------------------------------------
+    /* =====================================================
        AGING
-       Only active candidates + received_date
-    ------------------------------------------------------- */
+       Active candidates only
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -364,10 +338,11 @@ export async function getDashboardData(): Promise<DashboardData> {
         null,
       ),
 
-    /* -------------------------------------------------------
-       PASSPORT ALERT
-       Only active passport candidate IDs
-    ------------------------------------------------------- */
+    /* =====================================================
+       PASSPORT DOCUMENTS
+
+       Only active passport files
+    ===================================================== */
 
     supabase
       .from("files")
@@ -375,9 +350,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("is_active", true)
       .eq("doc_type", "passport"),
 
-    /* -------------------------------------------------------
+    /* =====================================================
        ACTIVE CANDIDATE IDS
-    ------------------------------------------------------- */
+    ===================================================== */
 
     activeCandidateIdsPromise,
   ]);
@@ -399,15 +374,12 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     mofaPendingResult,
     mofaApprovedResult,
-    mofaTotalResult,
 
     visaPendingResult,
     visaIssuedResult,
-    visaTotalResult,
 
     flightScheduledResult,
     flightDepartedResult,
-    flightTotalResult,
 
     trendCandidatesResult,
 
@@ -425,7 +397,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   /* =======================================================
-     BASIC COUNTS
+     BASIC CANDIDATE COUNTS
   ======================================================= */
 
   const totalCandidates =
@@ -455,11 +427,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     medicalUnfitResult.count ?? 0;
 
   /*
-   * Set gives O(1) lookup.
+   * Convert medical candidate IDs into a Set.
    *
-   * Important:
-   * Multiple medical records for one candidate
-   * won't count as multiple candidates.
+   * Set lookup = O(1)
    */
 
   const medicalCandidateIds =
@@ -474,6 +444,11 @@ export async function getDashboardData(): Promise<DashboardData> {
         )
         .filter(Boolean),
     );
+
+  /*
+   * Active candidates that don't have
+   * any medical record.
+   */
 
   const medicalPending =
     activeCandidateIds.filter(
@@ -493,9 +468,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const mofaApproved =
     mofaApprovedResult.count ?? 0;
 
-  const mofaTotal =
-    mofaTotalResult.count ?? 0;
-
   /* =======================================================
      VISA
   ======================================================= */
@@ -506,9 +478,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const visaIssued =
     visaIssuedResult.count ?? 0;
 
-  const visaTotal =
-    visaTotalResult.count ?? 0;
-
   /* =======================================================
      FLIGHTS
   ======================================================= */
@@ -518,9 +487,6 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const flightDeparted =
     flightDepartedResult.count ?? 0;
-
-  const flightTotal =
-    flightTotalResult.count ?? 0;
 
   /* =======================================================
      PIPELINE
@@ -554,23 +520,20 @@ export async function getDashboardData(): Promise<DashboardData> {
   ];
 
   /* =======================================================
-     6 MONTH TREND
+     SIX MONTH TREND
   ======================================================= */
 
   const trendMap =
     new Map<string, number>();
 
-  /*
-   * Pre-create six months.
-   *
-   * Key:
-   * YYYY-MM
-   */
-
   const trendMeta: {
     key: string;
     month: string;
   }[] = [];
+
+  /*
+   * Create the last six months first.
+   */
 
   for (
     let index = 0;
@@ -603,13 +566,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   /*
-   * O(n)
+   * Count candidates by month.
    *
-   * Previous implementation:
-   * candidate → trend.find()
-   *
-   * Now:
-   * candidate → Map lookup
+   * Map lookup avoids repeated .find().
    */
 
   for (
@@ -646,8 +605,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       }) => ({
         month,
         candidates:
-          trendMap.get(key) ??
-          0,
+          trendMap.get(key) ?? 0,
       }),
     );
 
@@ -705,7 +663,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   /* =======================================================
-     DOCUMENT ALERTS
+     PASSPORT DOCUMENT ALERT
   ======================================================= */
 
   const passportCandidateIds =
@@ -740,10 +698,14 @@ export async function getDashboardData(): Promise<DashboardData> {
     ) as DashboardCandidate[];
 
   /* =======================================================
-     RETURN
+     FINAL DASHBOARD DATA
   ======================================================= */
 
   return {
+    /* -----------------------------------------------------
+       STATS
+    ----------------------------------------------------- */
+
     stats: {
       totalCandidates,
 
@@ -770,13 +732,33 @@ export async function getDashboardData(): Promise<DashboardData> {
       flightDeparted,
     },
 
+    /* -----------------------------------------------------
+       PIPELINE
+    ----------------------------------------------------- */
+
     pipeline,
+
+    /* -----------------------------------------------------
+       TREND
+    ----------------------------------------------------- */
 
     trend,
 
+    /* -----------------------------------------------------
+       AGING
+    ----------------------------------------------------- */
+
     aging,
 
+    /* -----------------------------------------------------
+       RECENT CANDIDATES
+    ----------------------------------------------------- */
+
     recentCandidates,
+
+    /* -----------------------------------------------------
+       DOCUMENT ALERTS
+    ----------------------------------------------------- */
 
     documentAlerts: [
       {

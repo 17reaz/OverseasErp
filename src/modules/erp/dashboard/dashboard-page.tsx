@@ -11,7 +11,9 @@ import { DashboardStats } from "./components/dashboard-stats";
 import { DashboardTable } from "./components/dashboard-table";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
 import { DashboardShortcuts } from "./components/dashboard-shortcuts";
-
+import { DashboardMofaCard } from "./components/dashboard-mofa-card";
+import { DashboardVisaCard } from "./components/dashboard-visa-card";
+import { DashboardFlightCard } from "./components/dashboard-flight-card";
 export function DashboardPage() {
   const [data, setData] =
     useState<DashboardData | null>(null);
@@ -64,6 +66,25 @@ export function DashboardPage() {
             ),
           )}
         </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+  <DashboardMofaCard
+    total={data.stats.mofaTotal}
+    pending={data.stats.mofaPending}
+    approved={data.stats.mofaApproved}
+  />
+
+  <DashboardVisaCard
+    total={data.stats.visaTotal}
+    pending={data.stats.visaPending}
+    issued={data.stats.visaIssued}
+  />
+
+  <DashboardFlightCard
+    total={data.stats.flightTotal}
+    scheduled={data.stats.flightScheduled}
+    departed={data.stats.flightDeparted}
+  />
+</div>
       </div>
     );
   }
