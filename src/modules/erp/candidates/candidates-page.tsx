@@ -7,6 +7,8 @@ import {
 import {
   CandidatesGrid,
 } from "./components/candidates-grid";
+import { CandidatePassportDialog } from "./components/candidate-passport-dialog";
+
 import {
   CandidateToolbar,
   type CandidateFilterState,
@@ -58,7 +60,8 @@ export function CandidatesPage() {
     setSearch,
   ] = useState("");
 
-
+const [passportCandidate, setPassportCandidate] =
+  useState<Candidate | null>(null);
   // =====================================================
   // FILTER
   // =====================================================
@@ -1071,6 +1074,7 @@ export function CandidatesPage() {
   <CandidatesTable
     candidates={filteredCandidates}
     loading={loading}
+    onPassportAction={setPassportCandidate}
     onEdit={handleEdit}
     onDelete={handleDelete}
     onReturn={handleReturn}
@@ -1087,7 +1091,13 @@ export function CandidatesPage() {
   />
 )}
 
-
+<CandidatePassportDialog
+  candidate={passportCandidate}
+  open={!!passportCandidate}
+  onOpenChange={(open) => {
+    if (!open) setPassportCandidate(null);
+  }}
+/>
       {/* =================================================
           CREATE / EDIT
           ================================================= */}

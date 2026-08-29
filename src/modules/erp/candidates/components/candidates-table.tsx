@@ -1,10 +1,9 @@
 // src/modules/erp/candidates/components/candidates-table.tsx
 
 import {
-  Download,
+  FileText,
   MoreHorizontal,
   Pencil,
-  Plus,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -38,17 +37,14 @@ import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
 interface CandidatesTableProps {
   candidates: Candidate[];
-
   loading?: boolean;
 
-  // Optional controlled pagination — omit to let DataTable
-  // paginate the full `candidates` array itself.
   page?: number;
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
 
-  onDownloadPassport?: (candidate: Candidate) => void;
+  onPassportAction?: (candidate: Candidate) => void;
   onEdit?: (candidate: Candidate) => void;
   onDelete?: (candidate: Candidate) => void;
   onReturn?: (candidate: Candidate) => void;
@@ -68,7 +64,7 @@ export function CandidatesTable({
   total,
   onPageChange,
 
-  onDownloadPassport,
+  onPassportAction,
   onEdit,
   onDelete,
   onReturn,
@@ -189,18 +185,9 @@ export function CandidatesTable({
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => onDownloadPassport?.(candidate)}
-            >
-              <Plus />
-              Add to..
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              onClick={() => onDownloadPassport?.(candidate)}
-            >
-              <Download />
-              Download Passport
+            <DropdownMenuItem onClick={() => onPassportAction?.(candidate)}>
+              <FileText />
+              Passport
             </DropdownMenuItem>
 
             <DropdownMenuItem onClick={() => onEdit?.(candidate)}>
