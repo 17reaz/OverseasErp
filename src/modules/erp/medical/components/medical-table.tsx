@@ -1,27 +1,9 @@
-import {
-  ArrowRight,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+// src/modules/erp/medical/components/medical-table.tsx
 
-import {
-  Badge,
-} from "@/components/ui/badge";
+import { ArrowRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
-import {
-  Button,
-} from "@/components/ui/button";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,71 +11,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import type {
-  Medical,
-  MedicalStatus,
-} from "../medical-service";
+import type { Medical, MedicalStatus } from "../medical-service";
 
+import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
 interface MedicalTableProps {
   medicals: Medical[];
-
   loading: boolean;
 
-  onEdit: (
-    medical: Medical,
-  ) => void;
-
-  onDelete: (
-    medical: Medical,
-  ) => void;
-
-  onNext?: (
-    medical: Medical,
-  ) => void;
+  onEdit: (medical: Medical) => void;
+  onDelete: (medical: Medical) => void;
+  onNext?: (medical: Medical) => void;
 }
 
-
-function getStatusVariant(
-  status: MedicalStatus,
-) {
-
-  if (
-    status === "unfit"
-  ) {
-    return "destructive" as const;
-  }
-
-
-  if (
-    status === "fit"
-  ) {
-    return "default" as const;
-  }
-
-
-  if (
-    status === "expired"
-  ) {
-    return "secondary" as const;
-  }
-
-
+function getStatusVariant(status: MedicalStatus) {
+  if (status === "unfit") return "destructive" as const;
+  if (status === "fit") return "default" as const;
+  if (status === "expired") return "secondary" as const;
   return "outline" as const;
 }
 
-
-function getStatusLabel(
-  status: MedicalStatus,
-) {
-
-  return (
-    status.charAt(0).toUpperCase() +
-    status.slice(1)
-  );
-
+function getStatusLabel(status: MedicalStatus) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
-
 
 export function MedicalTable({
   medicals,
@@ -102,352 +42,93 @@ export function MedicalTable({
   onDelete,
   onNext,
 }: MedicalTableProps) {
+  const columns: DataTableColumn<Medical>[] = [
+    {
+      key: "candidate",
+      header: "Candidate",
+      className: "font-medium",
+      cell: (medical) => medical.candidate?.name ?? "—",
+    },
+    {
+      key: "passport",
+      header: "Passport",
+      hideOnMobile: true,
+      cell: (medical) => medical.candidate?.passport_no ?? "—",
+    },
+    {
+      key: "medical_date",
+      header: "Medical Date",
+      cell: (medical) => medical.medical_date ?? "—",
+    },
+    {
+      key: "fit_date",
+      header: "Fit Date",
+      hideOnMobile: true,
+      cell: (medical) => medical.fit_date ?? "—",
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (medical) => (
+        <Badge variant={getStatusVariant(medical.status)}>
+          {getStatusLabel(medical.status)}
+        </Badge>
+      ),
+    },
+    {
+      key: "action",
+      header: "Action",
+      className: "w-[150px] text-right",
+      cell: (medical) => (
+        <div className="flex items-center justify-end gap-1">
+          {medical.status === "fit" && (
+            <Button
+              size="sm"
+              variant="outline"
+              type="button"
+              onClick={() => onNext?.(medical)}
+            >
+              Next
+              <ArrowRight />
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" type="button">
+                <MoreHorizontal />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(medical)}>
+                <Pencil />
+                Edit
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onDelete(medical)}
+              >
+                <Trash2 />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div
-      className="
-        flex
-        h-[calc(100vh-250px)]
-        min-h-[400px]
-        flex-col
-        overflow-hidden
-        rounded-lg
-        border
-        bg-background
-      "
-    >
-
-      {/* ==================================================
-          TABLE
-          ================================================== */}
-
-      <div
-        className="
-          min-h-0
-          flex-1
-          overflow-y-auto
-          overflow-x-hidden
-        "
-      >
-
-        {loading ? (
-
-          <div
-            className="
-              flex
-              min-h-[200px]
-              items-center
-              justify-center
-            "
-          >
-
-            <p
-              className="
-                text-sm
-                text-muted-foreground
-              "
-            >
-              Loading medical records...
-            </p>
-
-          </div>
-
-        ) : medicals.length === 0 ? (
-
-          <div
-            className="
-              flex
-              min-h-[200px]
-              items-center
-              justify-center
-            "
-          >
-
-            <div
-              className="
-                text-center
-              "
-            >
-
-              <p
-                className="
-                  text-sm
-                  font-medium
-                "
-              >
-                No medical records found
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Medical records will appear here.
-              </p>
-
-            </div>
-
-          </div>
-
-        ) : (
-
-          <Table>
-
-            <TableHeader>
-
-              <TableRow>
-
-                <TableHead>
-                  Candidate
-                </TableHead>
-
-                <TableHead>
-                  Passport
-                </TableHead>
-
-                <TableHead>
-                  Medical Date
-                </TableHead>
-
-                <TableHead>
-                  Fit Date
-                </TableHead>
-
-                <TableHead>
-                  Status
-                </TableHead>
-
-                <TableHead
-                  className="
-                    w-[150px]
-                    text-right
-                  "
-                >
-                  Action
-                </TableHead>
-
-              </TableRow>
-
-            </TableHeader>
-
-
-            <TableBody>
-
-              {medicals.map(
-                (medical) => (
-
-                  <TableRow
-                    key={
-                      medical.id
-                    }
-                  >
-
-                    {/* Candidate */}
-
-                    <TableCell
-                      className="
-                        font-medium
-                      "
-                    >
-                      {
-                        medical.candidate
-                          ?.name ??
-                        "—"
-                      }
-                    </TableCell>
-
-
-                    {/* Passport */}
-
-                    <TableCell>
-
-                      {
-                        medical.candidate
-                          ?.passport_no ??
-                        "—"
-                      }
-
-                    </TableCell>
-
-
-                    {/* Medical Date */}
-
-                    <TableCell>
-
-                      {
-                        medical.medical_date ??
-                        "—"
-                      }
-
-                    </TableCell>
-
-
-                    {/* Fit Date */}
-
-                    <TableCell>
-
-                      {
-                        medical.fit_date ??
-                        "—"
-                      }
-
-                    </TableCell>
-
-
-                    {/* Status */}
-
-                    <TableCell>
-
-                      <Badge
-                        variant={
-                          getStatusVariant(
-                            medical.status,
-                          )
-                        }
-                      >
-                        {
-                          getStatusLabel(
-                            medical.status,
-                          )
-                        }
-                      </Badge>
-
-                    </TableCell>
-
-
-                    {/* Actions */}
-
-                    <TableCell>
-
-                      <div
-                        className="
-                          flex
-                          items-center
-                          justify-end
-                          gap-1
-                        "
-                      >
-
-                        {/* ==================================
-                            FIT → NEXT
-                            ================================== */}
-
-                        {medical.status ===
-                          "fit" && (
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            type="button"
-                            onClick={() =>
-                              onNext?.(
-                                medical,
-                              )
-                            }
-                          >
-
-                            Next
-
-                            <ArrowRight />
-
-                          </Button>
-
-                        )}
-
-
-                        {/* ==================================
-                            MORE
-                            ================================== */}
-
-                        <DropdownMenu>
-
-                          <DropdownMenuTrigger
-                            asChild
-                          >
-
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                            >
-
-                              <MoreHorizontal />
-
-                              <span
-                                className="
-                                  sr-only
-                                "
-                              >
-                                Actions
-                              </span>
-
-                            </Button>
-
-                          </DropdownMenuTrigger>
-
-
-                          <DropdownMenuContent
-                            align="end"
-                          >
-
-                            {/* Edit */}
-
-                            <DropdownMenuItem
-                              onClick={() =>
-                                onEdit(
-                                  medical,
-                                )
-                              }
-                            >
-
-                              <Pencil />
-
-                              Edit
-
-                            </DropdownMenuItem>
-
-
-                            {/* Delete */}
-
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() =>
-                                onDelete(
-                                  medical,
-                                )
-                              }
-                            >
-
-                              <Trash2 />
-
-                              Delete
-
-                            </DropdownMenuItem>
-
-                          </DropdownMenuContent>
-
-                        </DropdownMenu>
-
-                      </div>
-
-                    </TableCell>
-
-                  </TableRow>
-
-                ),
-              )}
-
-            </TableBody>
-
-          </Table>
-
-        )}
-
-      </div>
-
-    </div>
+    <DataTable
+      columns={columns}
+      data={medicals}
+      getRowKey={(medical) => medical.id}
+      loading={loading}
+      emptyTitle="No medical records found"
+      emptyDescription="Medical records will appear here."
+    />
   );
 }

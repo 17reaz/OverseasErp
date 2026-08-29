@@ -1,4 +1,7 @@
+// src/modules/erp/flight/components/flight-table.tsx
+
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,7 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
 import type { Flight } from "../flight-service";
+
+import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
 interface CandidateOption {
   id: string;
@@ -18,6 +24,12 @@ interface FlightTableProps {
   records: Flight[];
   candidates: CandidateOption[];
   loading?: boolean;
+
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  onPageChange?: (page: number) => void;
+
   onEdit: (record: Flight) => void;
   onDelete: (record: Flight) => void;
 }
@@ -37,6 +49,12 @@ export function FlightTable({
   records,
   candidates,
   loading = false,
+
+  page,
+  pageSize = 10,
+  total,
+  onPageChange,
+
   onEdit,
   onDelete,
 }: FlightTableProps) {
@@ -44,100 +62,113 @@ export function FlightTable({
     return candidates.find((c) => c.id === id);
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center rounded-md border">
-        <p className="text-sm text-muted-foreground">Loading flights...</p>
-      </div>
-    );
-  }
-
-  if (records.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center rounded-md border">
-        <div className="text-center">
-          <p className="text-sm font-medium">No flight records found.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Create a flight schedule to get started.
-          </p>
+  const columns: DataTableColumn<Flight>[] = [
+    {
+      key: "sl",
+      header: "SL",
+      className: "font-medium",
+      cell: (record) => record.sl,
+    },
+    {
+      key: "candidate",
+      header: "Candidate",
+      cell: (record) => (
+        <div className="max-w-[160px] truncate font-medium">
+          {getCandidate(record.candidate_id)?.name ?? "Unknown"}
         </div>
-      </div>
-    );
-  }
+      ),
+    },
+    {
+      key: "passport",
+      header: "Passport",
+      hideOnMobile: true,
+      cell: (record) => (
+        <span className="font-mono text-xs">
+          {getCandidate(record.candidate_id)?.passport_no ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "flight_no",
+      header: "Flight No",
+      cell: (record) => (
+        <span className="font-mono text-xs font-semibold">
+          {record.flight_no ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "airline",
+      header: "Airline",
+      hideOnMobile: true,
+      cell: (record) => record.airline ?? "—",
+    },
+    {
+      key: "route",
+      header: "Route",
+      cell: (record) =>
+        record.departure_city && record.arrival_city
+          ? `${record.departure_city} → ${record.arrival_city}`
+          : record.departure_city || record.arrival_city || "—",
+    },
+    {
+      key: "flight_date",
+      header: "Flight Date",
+      className: "whitespace-nowrap",
+      cell: (record) => formatDate(record.flight_date),
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "capitalize",
+      cell: (record) => (
+        <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
+          {record.status}
+        </span>
+      ),
+    },
+    {
+      key: "action",
+      header: "Actions",
+      className: "w-[70px] text-right",
+      cell: (record) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(record)}>
+              <Pencil className="mr-2 h-4 w-4" /> Edit
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(record)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 
   return (
-    <div className="h-full overflow-hidden rounded-md border">
-      <div className="h-full overflow-auto">
-        <table className="w-full caption-bottom text-sm">
-          <thead className="sticky top-0 z-10 bg-background">
-            <tr className="border-b">
-              <th className="h-11 px-4 text-left font-medium">SL</th>
-              <th className="h-11 px-4 text-left font-medium">Candidate</th>
-              <th className="h-11 px-4 text-left font-medium">Passport</th>
-              <th className="h-11 px-4 text-left font-medium">Flight No</th>
-              <th className="h-11 px-4 text-left font-medium">Airline</th>
-              <th className="h-11 px-4 text-left font-medium">Route</th>
-              <th className="h-11 px-4 text-left font-medium">Flight Date</th>
-              <th className="h-11 px-4 text-left font-medium">Status</th>
-              <th className="h-11 w-[70px] px-4 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((record) => {
-              const candidate = getCandidate(record.candidate_id);
-              const route =
-                record.departure_city && record.arrival_city
-                  ? `${record.departure_city} → ${record.arrival_city}`
-                  : record.departure_city || record.arrival_city || "—";
-
-              return (
-                <tr key={record.id} className="border-b transition-colors hover:bg-muted/50">
-                  <td className="px-4 py-3 font-medium">{record.sl}</td>
-                  <td className="px-4 py-3">
-                    <div className="max-w-[160px] truncate font-medium">
-                      {candidate?.name ?? "Unknown"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs">
-                    {candidate?.passport_no ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs font-semibold">
-                    {record.flight_no ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">{record.airline ?? "—"}</td>
-                  <td className="px-4 py-3">{route}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{formatDate(record.flight_date)}</td>
-                  <td className="px-4 py-3 capitalize">
-                    <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
-                      {record.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(record)}>
-                          <Pencil className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => onDelete(record)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable
+      columns={columns}
+      data={records}
+      getRowKey={(record) => record.id}
+      loading={loading}
+      emptyTitle="No flight records found"
+      emptyDescription="Create a flight schedule to get started."
+      pageSize={pageSize}
+      page={page}
+      onPageChange={onPageChange}
+      total={total}
+      serverPagination={typeof total === "number" && total !== records.length}
+    />
   );
 }
