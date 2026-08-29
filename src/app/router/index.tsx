@@ -42,7 +42,7 @@ import {
 
 import {
   CandidateProfilePage,
-} from "@/modules/erp/candidates/candidate-profile";
+} from "@/modules/erp/candidates/profile/candidate-profile-page";
 
 import {
   TrashPage,
