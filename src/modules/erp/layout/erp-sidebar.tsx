@@ -44,95 +44,9 @@ import {
 // NAVIGATION
 // =====================================================
 
-const navigation = [
-
-  {
-    title: "Dashboard",
-    url: "/app",
-    icon: LayoutDashboard,
-  },
-
-  {
-    title: "Candidates",
-    url: "/app/candidates",
-    icon: Users,
-  },
-
-  {
-    title: "Agents",
-    url: "/app/agents",
-    icon: UserRoundCog,
-  },
-
-  {
-    title: "Agencies",
-    url: "/app/agencies",
-    icon: Building2,
-  },
-
-  {
-    title: "Medical",
-    url: "/app/medical",
-    icon: Stethoscope,
-  },
-
-  {
-    title: "MOFA",
-    url: "/app/mofa",
-    icon: FileCheck,
-  },
-  {
-    title: "Finger",
-    url: "/app/fingers",
-    icon: FingerprintPattern,
-  },
-  {
-    title: "PC",
-    url: "/app/police-clearance",
-    icon: Vault,
-  },  
-  {
-    title: "Takamul",
-    url: "/app/takamul",
-    icon: CheckCircle2,
-  },
-  
-  {
-    title: "Visa",
-    url: "/app/visa",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Flight",
-    url: "/app/flight",
-    icon: Plane,
-  },
-
-  {
-    title: "Reports",
-    url: "/app/reports",
-    icon: BarChart3,
-  },
-
-  {
-    title: "Finance",
-    url: "/app/finance",
-    icon: WalletCards,
-  },
-
-  {
-    title: "Files",
-    url: "/app/files",
-    icon: Files,
-  },
-
-  {
-    title: "Todo",
-    url: "/app/todo",
-    icon: ListTodo,
-  },
-
-];
+import {
+  erpNavigation,
+} from "./erp-navigation";
 
 // =====================================================
 // ERP SIDEBAR
@@ -239,7 +153,7 @@ export function ErpSidebar() {
 
               <SidebarMenu>
 
-                {navigation.map(
+                {erpNavigation.map(
                   (
                     item,
                   ) => (

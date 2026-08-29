@@ -1,3 +1,4 @@
+
 import {
   Bell,
   LogOut,
@@ -44,6 +45,10 @@ import {
 } from "@/modules/auth/components/auth-provider";
 
 import {
+  erpNavigation,
+} from "./erp-navigation";
+
+import {
   signOut,
 } from "@/lib/supabase/auth";
 
@@ -62,49 +67,18 @@ export function ErpHeader() {
   // PAGE NAME
   // =====================================================
 
-  function getPageName(pathname: string) {
-
-    if (pathname.includes("/candidates")) {
-      return "Candidates";
-    }
-
-    if (pathname.includes("/medical")) {
-      return "Medical";
-    }
-
-    if (pathname.includes("/mofa")) {
-      return "MOFA";
-    }
-
-    if (pathname.includes("/documents")) {
-      return "Documents";
-    }
-
-    if (pathname.includes("/visa")) {
-      return "Visa";
-    }
-
-    if (pathname.includes("/flight")) {
-      return "Flight";
-    }
-
-    if (pathname.includes("/settings")) {
-      return "Settings";
-    }
-
-    if (pathname.includes("/profile")) {
-      return "Profile";
-    }
-
-    if (pathname.includes("/dashboard")) {
-      return "Dashboard";
-    }
-
-    return "Dashboard";
-  }
+  const currentNavigation =
+    erpNavigation.find(
+      (item) =>
+        location.pathname === item.url ||
+        location.pathname.startsWith(
+          `${item.url}/`,
+        ),
+    );
 
   const pageName =
-    getPageName(location.pathname);
+    currentNavigation?.title ??
+    "Dashboard";
 
 
   // =====================================================
