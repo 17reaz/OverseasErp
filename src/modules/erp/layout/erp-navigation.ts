@@ -9,8 +9,6 @@ import {
   Plane,
   ShieldCheck,
   Files,
-  Trash2,
-  Settings,
   BarChart3,
   WalletCards,
   ListTodo,
@@ -119,17 +117,6 @@ export const erpNavigation = [
     icon: ListTodo,
   },
 
-  {
-    title: "Settings",
-    url: "/app/settings",
-    icon: Settings,
-  },
-
-  {
-    title: "Trash",
-    url: "/app/trash",
-    icon: Trash2,
-  },
 ];
 
 /* =========================================================
