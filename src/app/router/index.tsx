@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter,
   Navigate,
@@ -8,6 +9,10 @@ import {
 import {
   ProtectedRoute,
 } from "@/modules/auth/components/protected-route";
+
+import {
+  PublicRoute,
+} from "@/modules/auth/components/public-route";
 
 import {
   LandingPage,
@@ -99,12 +104,16 @@ function AppRouter() {
       <Routes>
 
         {/* ==================================================
-            LANDING
+            PUBLIC
             ================================================== */}
 
         <Route
           path="/"
-          element={<LandingPage />}
+          element={
+            <PublicRoute>
+              <LandingPage />
+            </PublicRoute>
+          }
         />
 
         {/* ==================================================
@@ -113,22 +122,38 @@ function AppRouter() {
 
         <Route
           path="/login"
-          element={<LoginPage />}
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
         />
 
         <Route
           path="/signup"
-          element={<SignupPage />}
+          element={
+            <PublicRoute>
+              <SignupPage />
+            </PublicRoute>
+          }
         />
 
         <Route
           path="/forgot-password"
-          element={<ForgotPasswordPage />}
+          element={
+            <PublicRoute>
+              <ForgotPasswordPage />
+            </PublicRoute>
+          }
         />
 
         <Route
           path="/reset-password"
-          element={<ResetPasswordPage />}
+          element={
+            <PublicRoute>
+              <ResetPasswordPage />
+            </PublicRoute>
+          }
         />
 
         {/* ==================================================
@@ -141,6 +166,7 @@ function AppRouter() {
             path="/app"
             element={<ErpLayout />}
           >
+
             {/* /app → /app/dashboard */}
 
             <Route
