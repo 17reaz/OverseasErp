@@ -457,21 +457,6 @@ export function ErpHeader() {
 
               Profile
             </DropdownMenuItem>
-
-
-            {/* SETTINGS */}
-
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/settings",
-                )
-              }
-            >
-              Settings
-            </DropdownMenuItem>
-
-
             <DropdownMenuSeparator />
 
 
