@@ -1,405 +1,209 @@
+// src/modules/erp/candidates/candidate-service.ts
+
 import { supabase } from "@/lib/supabase/client";
 
-
-export type CandidateCountry =
-  | "Saudi Arabia"
-  | "Mauritius"
-  | "Laos"
-  | "Malaysia"
-  | "Belarus"
-  | null;
+import type {
+  Candidate,
+  CandidateReference,
+} from "./candidate-types";
 
 
-export interface CandidateAgent {
-  id: string;
-  name: string | null;
-  code: string | null;
-}
+/* =========================================================
+   CANDIDATE SELECT CONTRACT
+   ---------------------------------------------------------
+   Candidate module-এর full read model.
+
+   অন্য module-এর প্রয়োজন না হলে এটি ব্যবহার করবে না।
+========================================================= */
+
+const CANDIDATE_SELECT = `
+  id,
+  tenant_id,
+  sl,
+  passport_no,
+  name,
+  received_date,
+  country,
+  created_by,
+  agent_id,
+  current_stage,
+  is_returned,
+  returned_date,
+  returned_reason,
+  final_status,
+  final_reason,
+  is_deleted,
+  created_at,
+  updated_at
+`;
 
 
-export interface Candidate {
-  id: string;
-  tenant_id: string;
+/* =========================================================
+   CANDIDATE REFERENCE SELECT
+   ---------------------------------------------------------
+   Medical / MOFA / Finger / Visa / Flight
+   candidate identify করার জন্য শুধু প্রয়োজনীয় data.
 
-  passport_no: string;
-  name: string;
+   IMPORTANT:
+   অন্য module পুরো Candidate row fetch করবে না
+   যদি শুধু identity দরকার হয়।
+========================================================= */
 
-  received_date: string | null;
-  country: CandidateCountry;
-
-  created_by: string | null;
-  current_stage: string | null;
-
-  is_deleted: boolean;
-
-  created_at: string;
-  updated_at: string;
-
-  is_returned: boolean;
-  returned_date: string | null;
-
-  sl: number | null;
-
-  agent_id: string | null;
-
-  agent?: CandidateAgent | null;
-}
+const CANDIDATE_REFERENCE_SELECT = `
+  id,
+  sl,
+  passport_no,
+  name
+`;
 
 
-export interface CandidateInput {
-  passport_no: string;
-  name: string;
+/* =========================================================
+   LIST CANDIDATES
+   ---------------------------------------------------------
+   Main Candidate page query.
+========================================================= */
 
-  received_date:
-    string | null;
-
-  country:
-    Exclude<
-      CandidateCountry,
-      null
-    > | null;
-
-  agent_id:
-    string | null;
-
-  current_stage:
-    string | null;
-}
-
-
-// ======================================================
-// CURRENT USER + TENANT
-// ======================================================
-
-export async function getCurrentUserContext() {
-
-  const {
-    data: {
-      user,
-    },
-    error: userError,
-  } =
-    await supabase.auth.getUser();
-
-
-  if (userError) {
-    throw userError;
-  }
-
-
-  if (!user) {
-    throw new Error(
-      "User is not authenticated.",
-    );
-  }
-
-
-  const {
-    data: profile,
-    error: profileError,
-  } =
-    await supabase
-      .from("profiles")
-      .select(
-        "tenant_id",
-      )
-      .eq(
-        "id",
-        user.id,
-      )
-      .single();
-
-
-  if (profileError) {
-    throw profileError;
-  }
-
-
-  if (!profile?.tenant_id) {
-    throw new Error(
-      "No tenant is assigned to this user.",
-    );
-  }
-
-
-  return {
-    user,
-    tenantId:
-      profile.tenant_id as string,
-  };
-}
-
-
-// ======================================================
-// GET CANDIDATES
-// ======================================================
-
-export async function getCandidates() {
+export async function getCandidates(): Promise<Candidate[]> {
 
   const {
     data,
     error,
-  } =
-    await supabase
-      .from("candidates")
-      .select(`
-        *,
-        agent:agents (
-          id,
-          name,
-          code
-        )
-      `)
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .order(
-        "sl",
-        {
-          ascending: false,
-        },
-      );
+  } = await supabase
+    .from("candidates")
+    .select(CANDIDATE_SELECT)
+    .eq("is_deleted", false)
+    .order("created_at", {
+      ascending: false,
+    });
 
 
-  return {
-    data:
-      data as Candidate[] | null,
+  if (error) {
+    throw error;
+  }
 
-    error,
-  };
+
+  return (data ?? []) as Candidate[];
 }
 
 
-// ======================================================
-// GET SINGLE CANDIDATE
-// ======================================================
+/* =========================================================
+   GET CANDIDATE BY ID
+========================================================= */
 
-export async function getCandidate(
+export async function getCandidateById(
   id: string,
-) {
+): Promise<Candidate | null> {
 
   const {
     data,
     error,
-  } =
-    await supabase
-      .from("candidates")
-      .select(`
-        *,
-        agent:agents (
-          id,
-          name,
-          code
-        )
-      `)
-      .eq(
-        "id",
-        id,
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .single();
+  } = await supabase
+    .from("candidates")
+    .select(CANDIDATE_SELECT)
+    .eq("id", id)
+    .eq("is_deleted", false)
+    .maybeSingle();
 
 
-  return {
-    data:
-      data as Candidate | null,
+  if (error) {
+    throw error;
+  }
 
-    error,
-  };
+
+  return data as Candidate | null;
 }
 
 
-// ======================================================
-// CREATE
-// ======================================================
+/* =========================================================
+   LIGHTWEIGHT CANDIDATE REFERENCES
+   ---------------------------------------------------------
+   Used by:
+   - Medical
+   - MOFA
+   - Finger
+   - Police Clearance
+   - Takamul
+   - Visa
+   - Flight
 
-export async function createCandidate(
-  input: CandidateInput,
-) {
+   এগুলো Candidate source of truth থেকে identity নেয়,
+   কিন্তু Candidate-এর complete row নেয় না।
+========================================================= */
 
-  const {
-    user,
-    tenantId,
-  } =
-    await getCurrentUserContext();
-
+export async function getCandidateReferences(): Promise<
+  CandidateReference[]
+> {
 
   const {
     data,
     error,
-  } =
-    await supabase
-      .from("candidates")
-      .insert({
-
-        tenant_id:
-          tenantId,
-
-        created_by:
-          user.id,
-
-        passport_no:
-          input.passport_no.trim(),
-
-        name:
-          input.name.trim(),
-
-        received_date:
-          input.received_date ||
-          null,
-
-        country:
-          input.country,
-
-        agent_id:
-          input.agent_id ||
-          null,
-
-        current_stage:
-          input.current_stage?.trim() ||
-          "Pending",
-
-      })
-      .select(`
-        *,
-        agent:agents (
-          id,
-          name,
-          code
-        )
-      `)
-      .single();
+  } = await supabase
+    .from("candidates")
+    .select(CANDIDATE_REFERENCE_SELECT)
+    .eq("is_deleted", false)
+    .order("sl", {
+      ascending: true,
+    });
 
 
-  return {
-    data:
-      data as Candidate | null,
+  if (error) {
+    throw error;
+  }
 
-    error,
-  };
+
+  return (data ?? []) as CandidateReference[];
 }
 
 
-// ======================================================
-// UPDATE
-// ======================================================
+/* =========================================================
+   GET CANDIDATE REFERENCE BY ID
+========================================================= */
 
-export async function updateCandidate(
+export async function getCandidateReferenceById(
   id: string,
-  input: CandidateInput,
-) {
+): Promise<CandidateReference | null> {
 
   const {
     data,
     error,
-  } =
-    await supabase
-      .from("candidates")
-      .update({
-
-        passport_no:
-          input.passport_no.trim(),
-
-        name:
-          input.name.trim(),
-
-        received_date:
-          input.received_date ||
-          null,
-
-        country:
-          input.country,
-
-        agent_id:
-          input.agent_id ||
-          null,
-
-        current_stage:
-          input.current_stage?.trim() ||
-          "Pending",
-
-        updated_at:
-          new Date().toISOString(),
-
-      })
-      .eq(
-        "id",
-        id,
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .select(`
-        *,
-        agent:agents (
-          id,
-          name,
-          code
-        )
-      `)
-      .single();
+  } = await supabase
+    .from("candidates")
+    .select(CANDIDATE_REFERENCE_SELECT)
+    .eq("id", id)
+    .eq("is_deleted", false)
+    .maybeSingle();
 
 
-  return {
-    data:
-      data as Candidate | null,
+  if (error) {
+    throw error;
+  }
 
-    error,
-  };
+
+  return data as CandidateReference | null;
 }
 
 
-// ======================================================
-// SOFT DELETE
-// ======================================================
+/* =========================================================
+   RETURN CANDIDATE
+   ---------------------------------------------------------
+   Returned ≠ Cancelled
 
-export async function deleteCandidate(
-  id: string,
-) {
-
-  const {
-    error,
-  } =
-    await supabase
-      .from("candidates")
-      .update({
-
-        is_deleted:
-          true,
-
-        updated_at:
-          new Date().toISOString(),
-
-      })
-      .eq(
-        "id",
-        id,
-      )
-      .eq(
-        "is_deleted",
-        false,
-      );
-
-
-  return {
-    error,
-  };
-}
-// ======================================================
-// MARK CANDIDATE AS RETURNED
-// ======================================================
+   Returned:
+   - passport physically returned
+   - candidate remains in database
+   - later restored করা যাবে
+========================================================= */
 
 export async function returnCandidate(
-  id: string,
-  returnedDate: string,
-) {
+  candidateId: string,
+  reason?: string,
+): Promise<void> {
+
+  const now =
+    new Date().toISOString();
+
+
   const {
-    data,
     error,
   } = await supabase
     .from("candidates")
@@ -407,80 +211,183 @@ export async function returnCandidate(
       is_returned: true,
 
       returned_date:
-        returnedDate,
+        now.slice(0, 10),
+
+      returned_reason:
+        reason?.trim() || null,
 
       updated_at:
-        new Date().toISOString(),
+        now,
     })
     .eq(
       "id",
-      id,
-    )
-    .eq(
-      "is_deleted",
-      false,
-    )
-    .select(`
-      *,
-      agent:agents (
-        id,
-        name,
-        code
-      )
-    `)
-    .single();
+      candidateId,
+    );
 
-  return {
-    data:
-      data as Candidate | null,
 
-    error,
-  };
+  if (error) {
+    throw error;
+  }
 }
 
 
-// ======================================================
-// RESTORE RETURNED CANDIDATE
-// ======================================================
+/* =========================================================
+   RESTORE RETURNED CANDIDATE
+   ---------------------------------------------------------
+   returned → active
+========================================================= */
 
-export async function restoreCandidate(
-  id: string,
-) {
+export async function restoreReturnedCandidate(
+  candidateId: string,
+): Promise<void> {
+
   const {
-    data,
     error,
   } = await supabase
     .from("candidates")
     .update({
       is_returned: false,
-
       returned_date: null,
+      returned_reason: null,
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      candidateId,
+    );
+
+
+  if (error) {
+    throw error;
+  }
+}
+
+
+/* =========================================================
+   CANCEL CANDIDATE
+   ---------------------------------------------------------
+   cancelled:
+   - workflow stops
+   - data remains
+   - can be reactivated later
+
+   NOTE:
+   final_status = cancelled
+========================================================= */
+
+export async function cancelCandidate(
+  candidateId: string,
+  reason: string,
+): Promise<void> {
+
+  const cleanReason =
+    reason.trim();
+
+
+  if (!cleanReason) {
+    throw new Error(
+      "Cancellation reason is required.",
+    );
+  }
+
+
+  const {
+    error,
+  } = await supabase
+    .from("candidates")
+    .update({
+      final_status: "cancelled",
+      final_reason: cleanReason,
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      candidateId,
+    );
+
+
+  if (error) {
+    throw error;
+  }
+}
+
+
+/* =========================================================
+   COMPLETE CANDIDATE
+   ---------------------------------------------------------
+   Complete সাধারণত শেষ module থেকে আসবে।
+
+   Example:
+   Flight completed
+          ↓
+   completeCandidate()
+          ↓
+   candidates.final_status = complete
+========================================================= */
+
+export async function completeCandidate(
+  candidateId: string,
+  reason?: string,
+): Promise<void> {
+
+  const {
+    error,
+  } = await supabase
+    .from("candidates")
+    .update({
+      final_status: "complete",
+
+      final_reason:
+        reason?.trim() || null,
 
       updated_at:
         new Date().toISOString(),
     })
     .eq(
       "id",
-      id,
-    )
-    .eq(
-      "is_deleted",
-      false,
-    )
-    .select(`
-      *,
-      agent:agents (
-        id,
-        name,
-        code
-      )
-    `)
-    .single();
+      candidateId,
+    );
 
-  return {
-    data:
-      data as Candidate | null,
 
+  if (error) {
+    throw error;
+  }
+}
+
+
+/* =========================================================
+   REACTIVATE CANCELLED CANDIDATE
+   ---------------------------------------------------------
+   cancelled → active
+
+   Active:
+   final_status = NULL
+   is_returned = false
+========================================================= */
+
+export async function reactivateCandidate(
+  candidateId: string,
+): Promise<void> {
+
+  const {
     error,
-  };
+  } = await supabase
+    .from("candidates")
+    .update({
+      final_status: null,
+      final_reason: null,
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      candidateId,
+    );
+
+
+  if (error) {
+    throw error;
+  }
 }

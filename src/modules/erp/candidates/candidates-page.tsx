@@ -4,10 +4,14 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import {
   CandidatesGrid,
 } from "./components/candidates-grid";
-import { CandidatePassportDialog } from "./components/candidate-passport-dialog";
+
+import {
+  CandidatePassportDialog,
+} from "./components/candidate-passport-dialog";
 
 import {
   CandidateToolbar,
@@ -33,8 +37,20 @@ import {
 } from "./components/candidate-return-dialog";
 
 import {
+  getCandidateOverallStatus,
+} from "./candidate-selectors";
+
+import {
+  CANDIDATE_DISPLAY_STATUS,
+} from "./candidate-status";
+
+import {
+  CANDIDATE_STAGE_DEFINITIONS,
+} from "./candidate-stage";
+
+import {
   getCandidates,
-  restoreCandidate,
+  restoreReturnedCandidate,
   type Candidate,
 } from "./candidate-service";
 
@@ -60,8 +76,13 @@ export function CandidatesPage() {
     setSearch,
   ] = useState("");
 
-const [passportCandidate, setPassportCandidate] =
-  useState<Candidate | null>(null);
+
+  const [
+    passportCandidate,
+    setPassportCandidate,
+  ] = useState<Candidate | null>(null);
+
+
   // =====================================================
   // FILTER
   // =====================================================
@@ -111,12 +132,11 @@ const [passportCandidate, setPassportCandidate] =
     setLoading,
   ] = useState(true);
 
+
   const [
     error,
     setError,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<string | null>(null);
 
 
   // =====================================================
@@ -128,12 +148,11 @@ const [passportCandidate, setPassportCandidate] =
     setFormOpen,
   ] = useState(false);
 
+
   const [
     editingCandidate,
     setEditingCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
+  ] = useState<Candidate | null>(null);
 
 
   // =====================================================
@@ -145,12 +164,11 @@ const [passportCandidate, setPassportCandidate] =
     setDeleteOpen,
   ] = useState(false);
 
+
   const [
     deletingCandidate,
     setDeletingCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
+  ] = useState<Candidate | null>(null);
 
 
   // =====================================================
@@ -162,12 +180,11 @@ const [passportCandidate, setPassportCandidate] =
     setReturnOpen,
   ] = useState(false);
 
+
   const [
     returningCandidate,
     setReturningCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
+  ] = useState<Candidate | null>(null);
 
 
   // =====================================================
@@ -179,42 +196,19 @@ const [passportCandidate, setPassportCandidate] =
       async () => {
 
         setLoading(true);
-
         setError(null);
-
 
         try {
 
-          const {
-            data,
-            error,
-          } = await getCandidates();
+          const data =
+            await getCandidates();
 
-
-          if (error) {
-
-            console.error(
-              "Failed to load candidates:",
-              error,
-            );
-
-            setCandidates([]);
-
-            setError(
-              "Failed to load candidates. Please try again.",
-            );
-
-            return;
-          }
-
-
-          setCandidates(
-            data ?? [],
-          );
+          setCandidates(data);
 
         } catch (error) {
 
           console.error(
+            "Failed to load candidates:",
             error,
           );
 
@@ -249,29 +243,96 @@ const [passportCandidate, setPassportCandidate] =
 
 
   // =====================================================
-  // ACTIVE / RETURNED COUNTS
+  // DERIVED OVERALL STATUS
+  // -----------------------------------------------------
+  // IMPORTANT:
+  //
+  // overall_status database column নয়।
+  //
+  // Candidate Source of Truth থেকে application layer
+  // এটি derive করে।
   // =====================================================
 
-  const activeCount =
+  const candidateStatusMap =
     useMemo(() => {
 
-      return candidates.filter(
-        (candidate) =>
-          !candidate.is_returned,
-      ).length;
+      const map =
+        new Map<
+          string,
+          ReturnType<
+            typeof getCandidateOverallStatus
+          >
+        >();
+
+      candidates.forEach(
+        (candidate) => {
+
+          map.set(
+            candidate.id,
+            getCandidateOverallStatus(
+              candidate,
+            ),
+          );
+
+        },
+      );
+
+      return map;
 
     }, [
       candidates,
     ]);
 
 
-  const returnedCount =
+  // =====================================================
+  // STATUS COUNTS
+  // =====================================================
+
+  const statusCounts =
     useMemo(() => {
 
-      return candidates.filter(
-        (candidate) =>
-          candidate.is_returned,
-      ).length;
+      let active = 0;
+      let returned = 0;
+      let complete = 0;
+      let cancelled = 0;
+
+      candidates.forEach(
+        (candidate) => {
+
+          const status =
+            getCandidateOverallStatus(
+              candidate,
+            );
+
+          switch (status) {
+
+            case CANDIDATE_DISPLAY_STATUS.RETURNED:
+              returned++;
+              break;
+
+            case CANDIDATE_DISPLAY_STATUS.COMPLETE:
+              complete++;
+              break;
+
+            case CANDIDATE_DISPLAY_STATUS.CANCELLED:
+              cancelled++;
+              break;
+
+            default:
+              active++;
+              break;
+
+          }
+
+        },
+      );
+
+      return {
+        active,
+        returned,
+        complete,
+        cancelled,
+      };
 
     }, [
       candidates,
@@ -294,16 +355,31 @@ const [passportCandidate, setPassportCandidate] =
       candidates.forEach(
         (candidate) => {
 
+          /*
+           * NOTE:
+           * যদি Candidate type-এ agent relation থাকে,
+           * এখানে existing UI behaviour রাখা যাবে।
+           */
+
+          const candidateWithAgent =
+            candidate as Candidate & {
+              agent?: {
+                id?: string;
+                name?: string | null;
+                code?: string | null;
+              };
+            };
+
           if (
-            candidate.agent?.id
+            candidateWithAgent.agent?.id
           ) {
 
             agents.set(
               String(
-                candidate.agent.id,
+                candidateWithAgent.agent.id,
               ),
-              candidate.agent.name ||
-                candidate.agent.code ||
+              candidateWithAgent.agent.name ||
+                candidateWithAgent.agent.code ||
                 "Unknown agent",
             );
 
@@ -338,33 +414,24 @@ const [passportCandidate, setPassportCandidate] =
 
   // =====================================================
   // STAGE OPTIONS
+  // -----------------------------------------------------
+  // IMPORTANT:
+  //
+  // আর candidate data থেকে random stage বানানো হবে না।
+  //
+  // Central stage registry হচ্ছে source.
   // =====================================================
 
   const stageOptions =
     useMemo(() => {
 
-      return Array.from(
-        new Set(
-          candidates
-            .map(
-              (candidate) =>
-                candidate.current_stage,
-            )
-            .filter(
-              (
-                stage,
-              ): stage is string =>
-                Boolean(stage),
-            ),
-        ),
-      ).sort(
-        (a, b) =>
-          a.localeCompare(b),
-      );
+      return CANDIDATE_STAGE_DEFINITIONS
+        .map(
+          (stage) =>
+            stage.value,
+        );
 
-    }, [
-      candidates,
-    ]);
+    }, []);
 
 
   // =====================================================
@@ -383,19 +450,14 @@ const [passportCandidate, setPassportCandidate] =
       candidates.forEach(
         (candidate) => {
 
-          const rawDate =
-            (
-              candidate as Candidate & {
-                created_at?: string;
-              }
-            ).created_at;
-
-          if (!rawDate) {
+          if (!candidate.created_at) {
             return;
           }
 
           const date =
-            new Date(rawDate);
+            new Date(
+              candidate.created_at,
+            );
 
           if (
             Number.isNaN(
@@ -472,23 +534,30 @@ const [passportCandidate, setPassportCandidate] =
           (candidate) => {
 
             // -------------------------------------------
-            // STATUS
+            // OVERALL STATUS
             // -------------------------------------------
 
-            if (
-              candidateFilter.status ===
-              "active" &&
-              candidate.is_returned
-            ) {
-              return false;
-            }
+            const status =
+              candidateStatusMap.get(
+                candidate.id,
+              ) ??
+              getCandidateOverallStatus(
+                candidate,
+              );
+
 
             if (
-              candidateFilter.status ===
-              "returned" &&
-              !candidate.is_returned
+              candidateFilter.status !==
+              "all"
             ) {
-              return false;
+
+              if (
+                status !==
+                candidateFilter.status
+              ) {
+                return false;
+              }
+
             }
 
 
@@ -501,8 +570,16 @@ const [passportCandidate, setPassportCandidate] =
               "all"
             ) {
 
+              const candidateWithAgent =
+                candidate as Candidate & {
+                  agent?: {
+                    id?: string;
+                  };
+                };
+
               const agentId =
-                candidate.agent?.id;
+                candidateWithAgent.agent?.id ??
+                candidate.agent_id;
 
               if (
                 String(agentId) !==
@@ -515,7 +592,7 @@ const [passportCandidate, setPassportCandidate] =
 
 
             // -------------------------------------------
-            // STAGE
+            // GLOBAL STAGE
             // -------------------------------------------
 
             if (
@@ -542,19 +619,10 @@ const [passportCandidate, setPassportCandidate] =
               "all"
             ) {
 
-              const rawDate =
-                (
-                  candidate as Candidate & {
-                    created_at?: string;
-                  }
-                ).created_at;
-
-              if (!rawDate) {
-                return false;
-              }
-
               const date =
-                new Date(rawDate);
+                new Date(
+                  candidate.created_at,
+                );
 
               if (
                 Number.isNaN(
@@ -613,14 +681,10 @@ const [passportCandidate, setPassportCandidate] =
 
               ||
 
-              candidate.agent?.name
-                ?.toLowerCase()
-                .includes(query)
-
-              ||
-
-              candidate.agent?.code
-                ?.toLowerCase()
+              String(
+                candidate.sl ?? "",
+              )
+                .toLowerCase()
                 .includes(query)
             );
 
@@ -653,34 +717,31 @@ const [passportCandidate, setPassportCandidate] =
                     ""
                   ).toLowerCase();
 
+
                 case "passport_no":
                   return (
                     candidate.passport_no ||
                     ""
                   ).toLowerCase();
 
+
                 case "created_at":
                   return new Date(
-                    (
-                      candidate as Candidate & {
-                        created_at?: string;
-                      }
-                    ).created_at ||
-                      0,
+                    candidate.created_at ||
+                    0,
                   ).getTime();
+
 
                 case "updated_at":
                   return new Date(
-                    (
-                      candidate as Candidate & {
-                        updated_at?: string;
-                      }
-                    ).updated_at ||
-                      0,
+                    candidate.updated_at ||
+                    0,
                   ).getTime();
+
 
                 default:
                   return 0;
+
               }
 
             };
@@ -697,10 +758,8 @@ const [passportCandidate, setPassportCandidate] =
 
 
           if (
-            typeof first ===
-              "number" &&
-            typeof second ===
-              "number"
+            typeof first === "number" &&
+            typeof second === "number"
           ) {
 
             comparison =
@@ -732,26 +791,15 @@ const [passportCandidate, setPassportCandidate] =
           }
 
 
-          // Custom default:
-          // newest first
+          // Custom = newest first
 
           return (
             new Date(
-              (
-                b as Candidate & {
-                  created_at?: string;
-                }
-              ).created_at ||
-                0,
+              b.created_at || 0,
             ).getTime()
             -
             new Date(
-              (
-                a as Candidate & {
-                  created_at?: string;
-                }
-              ).created_at ||
-                0,
+              a.created_at || 0,
             ).getTime()
           );
 
@@ -763,6 +811,7 @@ const [passportCandidate, setPassportCandidate] =
 
     }, [
       candidates,
+      candidateStatusMap,
       search,
       candidateFilter,
       candidateSort,
@@ -775,10 +824,7 @@ const [passportCandidate, setPassportCandidate] =
 
   function handleCreate() {
 
-    setEditingCandidate(
-      null,
-    );
-
+    setEditingCandidate(null);
     setFormOpen(true);
 
   }
@@ -836,7 +882,7 @@ const [passportCandidate, setPassportCandidate] =
 
 
   // =====================================================
-  // RESTORE
+  // RESTORE RETURNED
   // =====================================================
 
   async function handleRestore(
@@ -857,62 +903,27 @@ const [passportCandidate, setPassportCandidate] =
     try {
 
       setLoading(true);
-
       setError(null);
 
 
-      const {
-        data,
-        error,
-      } =
-        await restoreCandidate(
-          candidate.id,
-        );
+      await restoreReturnedCandidate(
+        candidate.id,
+      );
 
 
-      if (error) {
-
-        console.error(
-          "Failed to restore candidate:",
-          error,
-        );
-
-        setError(
-          error.message ||
-            "Failed to restore candidate. Please try again.",
-        );
-
-        return;
-      }
-
-
-      if (data) {
-
-        setCandidates(
-          (current) =>
-            current.map(
-              (item) =>
-                item.id ===
-                data.id
-                  ? data
-                  : item,
-            ),
-        );
-
-      } else {
-
-        await loadCandidates();
-
-      }
+      await loadCandidates();
 
     } catch (error) {
 
       console.error(
+        "Failed to restore candidate:",
         error,
       );
 
       setError(
-        "Failed to restore candidate. Please try again.",
+        error instanceof Error
+          ? error.message
+          : "Failed to restore candidate. Please try again.",
       );
 
     } finally {
@@ -930,11 +941,7 @@ const [passportCandidate, setPassportCandidate] =
 
   return (
 
-    <div
-      className="
-        space-y-6
-      "
-    >
+    <div className="space-y-6">
 
       {/* =================================================
           TOOLBAR
@@ -942,11 +949,7 @@ const [passportCandidate, setPassportCandidate] =
 
       <CandidateToolbar
 
-        
-
-        search={
-          search
-        }
+        search={search}
 
         searchPlaceholder="Search name, passport..."
 
@@ -1006,11 +1009,6 @@ const [passportCandidate, setPassportCandidate] =
 
 
       {/* =================================================
-          RESULT SUMMARY
-          ================================================= */}
-
-
-      {/* =================================================
           ERROR
           ================================================= */}
 
@@ -1062,42 +1060,100 @@ const [passportCandidate, setPassportCandidate] =
           CANDIDATE VIEW
           ================================================= */}
 
-      {/*
-        Grid mode is intentionally not rendered yet.
-
-        The toolbar is already ready for List / Grid.
-        Until a CandidatesGrid component is introduced,
-        Grid will continue to use the existing table.
-      */}
-
       {viewMode === "list" ? (
-  <CandidatesTable
-    candidates={filteredCandidates}
-    loading={loading}
-    onPassportAction={setPassportCandidate}
-    onEdit={handleEdit}
-    onDelete={handleDelete}
-    onReturn={handleReturn}
-    onRestore={handleRestore}
-  />
-) : (
-  <CandidatesGrid
-    candidates={filteredCandidates}
-    loading={loading}
-    onEdit={handleEdit}
-    onDelete={handleDelete}
-    onReturn={handleReturn}
-    onRestore={handleRestore}
-  />
-)}
 
-<CandidatePassportDialog
-  candidate={passportCandidate}
-  open={!!passportCandidate}
-  onOpenChange={(open) => {
-    if (!open) setPassportCandidate(null);
-  }}
-/>
+        <CandidatesTable
+
+          candidates={
+            filteredCandidates
+          }
+
+          loading={
+            loading
+          }
+
+          onPassportAction={
+            setPassportCandidate
+          }
+
+          onEdit={
+            handleEdit
+          }
+
+          onDelete={
+            handleDelete
+          }
+
+          onReturn={
+            handleReturn
+          }
+
+          onRestore={
+            handleRestore
+          }
+
+        />
+
+      ) : (
+
+        <CandidatesGrid
+
+          candidates={
+            filteredCandidates
+          }
+
+          loading={
+            loading
+          }
+
+          onEdit={
+            handleEdit
+          }
+
+          onDelete={
+            handleDelete
+          }
+
+          onReturn={
+            handleReturn
+          }
+
+          onRestore={
+            handleRestore
+          }
+
+        />
+
+      )}
+
+
+      {/* =================================================
+          PASSPORT
+          ================================================= */}
+
+      <CandidatePassportDialog
+
+        candidate={
+          passportCandidate
+        }
+
+        open={
+          !!passportCandidate
+        }
+
+        onOpenChange={(
+          open,
+        ) => {
+
+          if (!open) {
+            setPassportCandidate(null);
+          }
+
+        }}
+
+      />
+
+
       {/* =================================================
           CREATE / EDIT
           ================================================= */}
@@ -1116,11 +1172,9 @@ const [passportCandidate, setPassportCandidate] =
           setFormOpen
         }
 
-        onSuccess={() => {
-
-          loadCandidates();
-
-        }}
+        onSuccess={
+          loadCandidates
+        }
 
       />
 
@@ -1185,12 +1239,19 @@ const [passportCandidate, setPassportCandidate] =
         }}
 
       />
-      
+
+
+      {/* =================================================
+          RESULT SUMMARY
+          ================================================= */}
+
       <div
         className="
           flex
+          flex-wrap
           items-center
           justify-between
+          gap-2
         "
       >
 
@@ -1200,8 +1261,7 @@ const [passportCandidate, setPassportCandidate] =
             text-muted-foreground
           "
         >
-          {filteredCandidates.length}{" "}
-          candidates
+          {filteredCandidates.length} candidates
         </p>
 
 
@@ -1211,15 +1271,17 @@ const [passportCandidate, setPassportCandidate] =
             text-muted-foreground
           "
         >
-          Active {activeCount}
+          Active {statusCounts.active}
           {" · "}
-          Returned {returnedCount}
+          Returned {statusCounts.returned}
+          {" · "}
+          Complete {statusCounts.complete}
+          {" · "}
+          Cancelled {statusCounts.cancelled}
         </p>
 
       </div>
 
-
     </div>
-
   );
 }
