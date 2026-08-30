@@ -1,5 +1,6 @@
 import {
   BrowserRouter,
+  Navigate,
   Route,
   Routes,
 } from "react-router-dom";
@@ -63,17 +64,35 @@ import {
 import {
   AgencyPage,
 } from "@/modules/erp/agency/agency-page";
+
 import {
   MofaPage,
 } from "@/modules/erp/mofa/mofa-page";
-import { FingerPage } from "@/modules/erp/finger/finger-page";
+
+import {
+  FingerPage,
+} from "@/modules/erp/finger/finger-page";
+
 import {
   PoliceClearancePage,
 } from "@/modules/erp/police-clearance/police-clearance-page";
-import { TradeTestPage } from "@/modules/erp/takamul/takamul-page";
-import { VisaPage } from "@/modules/erp/visa/visa-page";
-import { FlightPage } from "@/modules/erp/flight/flight-page";
-import { ReportsPage } from "@/modules/erp/reports/reports-page"
+
+import {
+  TradeTestPage,
+} from "@/modules/erp/takamul/takamul-page";
+
+import {
+  VisaPage,
+} from "@/modules/erp/visa/visa-page";
+
+import {
+  FlightPage,
+} from "@/modules/erp/flight/flight-page";
+
+import {
+  ReportsPage,
+} from "@/modules/erp/reports/reports-page";
+
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -87,7 +106,6 @@ function AppRouter() {
           path="/"
           element={<LandingPage />}
         />
-
 
         {/* ==================================================
             AUTH
@@ -113,133 +131,149 @@ function AppRouter() {
           element={<ResetPasswordPage />}
         />
 
-
         {/* ==================================================
             PROTECTED ERP
             ================================================== */}
 
         <Route element={<ProtectedRoute />}>
 
-          {/* ERP ROOT */}
-
           <Route
             path="/app"
             element={<ErpLayout />}
           >
-
-            {/* /app */}
+            {/* /app → /app/dashboard */}
 
             <Route
               index
-              element={<DashboardPage />}
+              element={
+                <Navigate
+                  to="dashboard"
+                  replace
+                />
+              }
             />
 
-
-            {/* /app/dashboard */}
+            {/* ==================================================
+                DASHBOARD
+                ================================================== */}
 
             <Route
               path="dashboard"
               element={<DashboardPage />}
             />
 
-
             {/* ==================================================
                 CANDIDATES
                 ================================================== */}
-
-            {/* /app/candidates */}
 
             <Route
               path="candidates"
               element={<CandidatesPage />}
             />
 
-
-            {/* /app/candidates/:candidateId */}
-
             <Route
               path="candidates/:candidateId"
               element={<CandidateProfilePage />}
             />
 
-
             {/* ==================================================
                 AGENTS
                 ================================================== */}
-
-            {/* /app/agents */}
 
             <Route
               path="agents"
               element={<AgentsPage />}
             />
-{/* ==================================================
-    AGENCY
-    ================================================== */}
 
-<Route
-  path="agencies"
-  element={<AgencyPage />}
-/>
+            {/* ==================================================
+                AGENCY
+                ================================================== */}
+
+            <Route
+              path="agencies"
+              element={<AgencyPage />}
+            />
 
             {/* ==================================================
                 FILES
                 ================================================== */}
-
-            {/* /app/files */}
 
             <Route
               path="files"
               element={<FilesPage />}
             />
 
-
             {/* ==================================================
                 MEDICAL
                 ================================================== */}
-
-            {/* /app/medical */}
 
             <Route
               path="medical"
               element={<MedicalPage />}
             />
 
-
             {/* ==================================================
-                OTHER ERP MODULES
+                MOFA
                 ================================================== */}
 
             <Route
-            path="mofa"
-            element={<MofaPage />}
-              />
+              path="mofa"
+              element={<MofaPage />}
+            />
+
+            {/* ==================================================
+                FINGER
+                ================================================== */}
 
             <Route
               path="fingers"
               element={<FingerPage />}
             />
+
+            {/* ==================================================
+                POLICE CLEARANCE
+                ================================================== */}
+
             <Route
-  path="police-clearance"
-  element={<PoliceClearancePage />}
-/>
+              path="police-clearance"
+              element={<PoliceClearancePage />}
+            />
+
+            {/* ==================================================
+                TAKAMUL
+                ================================================== */}
+
             <Route
               path="takamul"
               element={<TradeTestPage />}
             />
+
+            {/* ==================================================
+                VISA
+                ================================================== */}
+
             <Route
               path="visa"
               element={<VisaPage />}
             />
+
+            {/* ==================================================
+                FLIGHT
+                ================================================== */}
+
             <Route
               path="flight"
               element={<FlightPage />}
             />
+
+            {/* ==================================================
+                REPORTS
+                ================================================== */}
+
             <Route
               path="reports"
               element={<ReportsPage />}
             />
-
 
             {/* ==================================================
                 TRASH
@@ -254,21 +288,23 @@ function AppRouter() {
 
         </Route>
 
-
         {/* ==================================================
             404
             ================================================== */}
 
         <Route
           path="*"
-          element={<div>Not Found you are wring</div>}
+          element={
+            <div>
+              Not Found
+            </div>
+          }
         />
 
       </Routes>
     </BrowserRouter>
   );
 }
-
 
 export {
   AppRouter,

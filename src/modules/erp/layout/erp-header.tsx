@@ -1,10 +1,8 @@
-
 import {
   Bell,
   LogOut,
   Search,
   User,
-  Settings,
   Plus,
   UserPlus,
   Stethoscope,
@@ -53,7 +51,6 @@ import {
 } from "@/lib/supabase/auth";
 
 export function ErpHeader() {
-
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,13 +59,26 @@ export function ErpHeader() {
     profile,
   } = useAuth();
 
+  /* =======================================================
+     CURRENT NAVIGATION
 
-  // =====================================================
-  // PAGE NAME
-  // =====================================================
+     IMPORTANT:
+     Longest matching URL wins.
 
-  const currentNavigation =
-    erpNavigation.find(
+     Example:
+       /app/candidates
+       /app/candidates/123
+
+     must match Candidates,
+     not Dashboard.
+  ======================================================= */
+
+  const currentNavigation = [...erpNavigation]
+    .sort(
+      (a, b) =>
+        b.url.length - a.url.length,
+    )
+    .find(
       (item) =>
         location.pathname === item.url ||
         location.pathname.startsWith(
@@ -81,18 +91,17 @@ export function ErpHeader() {
     "Dashboard";
 
 
-  // =====================================================
-  // LOGOUT
-  // =====================================================
+
+  /* =======================================================
+     LOGOUT
+  ======================================================= */
 
   async function handleLogout() {
-
     const {
       error,
     } = await signOut();
 
     if (error) {
-
       console.error(
         "Logout failed:",
         error,
@@ -110,9 +119,9 @@ export function ErpHeader() {
   }
 
 
-  // =====================================================
-  // USER INFO
-  // =====================================================
+  /* =======================================================
+     USER INFO
+  ======================================================= */
 
   const fullName =
     profile?.full_name ||
@@ -134,12 +143,11 @@ export function ErpHeader() {
       .toUpperCase();
 
 
-  // =====================================================
-  // UI
-  // =====================================================
+  /* =======================================================
+     UI
+  ======================================================= */
 
   return (
-
     <header
       className="
         flex
@@ -155,8 +163,8 @@ export function ErpHeader() {
     >
 
       {/* =================================================
-        LEFT
-        ================================================= */}
+          LEFT
+      ================================================= */}
 
       <div
         className="
@@ -167,10 +175,6 @@ export function ErpHeader() {
         "
       >
 
-        {/* =================================================
-            SIDEBAR TOGGLE
-            ================================================= */}
-
         <SidebarTrigger
           className="
             shrink-0
@@ -178,36 +182,35 @@ export function ErpHeader() {
           "
         />
 
-
         {/* =================================================
-            PAGE NAME
-            ================================================= */}
+            CURRENT SIDEBAR NAVIGATION
+        ================================================= */}
 
         <div
-          className="
-            min-w-0
-          "
-        >
-
-          <h1
-            className="
-              truncate
-              text-sm
-              font-semibold
-              md:text-base
-            "
-          >
-            {pageName}
-          </h1>
-
-        </div>
+  className="
+    flex
+    min-w-0
+    items-center
+  "
+>
+  <h1
+    className="
+      truncate
+      text-lg
+      font-semibold
+      md:text-xl
+    "
+  >
+    {pageName}
+  </h1>
+</div>
 
       </div>
 
 
       {/* =================================================
-        RIGHT
-        ================================================= */}
+          RIGHT
+      ================================================= */}
 
       <div
         className="
@@ -220,7 +223,7 @@ export function ErpHeader() {
 
         {/* =================================================
             GLOBAL SEARCH
-            ================================================= */}
+        ================================================= */}
 
         <Button
           variant="outline"
@@ -235,7 +238,7 @@ export function ErpHeader() {
             lg:flex
           "
           onClick={() => {
-            // Global search action will be added later
+            // Global search action
           }}
         >
 
@@ -247,11 +250,7 @@ export function ErpHeader() {
             "
           />
 
-          <span
-            className="
-              text-sm
-            "
-          >
+          <span className="text-sm">
             Search...
           </span>
 
@@ -277,54 +276,36 @@ export function ErpHeader() {
 
         {/* =================================================
             MOBILE SEARCH
-            ================================================= */}
+        ================================================= */}
 
         <Button
           variant="ghost"
           size="icon"
-          className="
-            lg:hidden
-          "
+          className="lg:hidden"
           aria-label="Search"
           onClick={() => {
-            // Mobile search action will be added later
+            // Mobile search action
           }}
         >
-
-          <Search
-            className="
-              h-4
-              w-4
-            "
-          />
-
+          <Search className="h-4 w-4" />
         </Button>
 
 
         {/* =================================================
             NOTIFICATION
-            ================================================= */}
+        ================================================= */}
 
         <Button
           variant="ghost"
           size="icon"
-          className="
-            relative
-          "
+          className="relative"
           aria-label="Notifications"
           onClick={() => {
-            // Notification module will be connected later
+            // Notification action
           }}
         >
 
-          <Bell
-            className="
-              h-4
-              w-4
-            "
-          />
-
-          {/* Unread notification indicator */}
+          <Bell className="h-4 w-4" />
 
           <span
             className="
@@ -343,13 +324,11 @@ export function ErpHeader() {
 
         {/* =================================================
             PROFILE
-            ================================================= */}
+        ================================================= */}
 
         <DropdownMenu>
 
-          <DropdownMenuTrigger
-            asChild
-          >
+          <DropdownMenuTrigger asChild>
 
             <Button
               variant="ghost"
@@ -362,8 +341,6 @@ export function ErpHeader() {
               "
             >
 
-              {/* Avatar */}
-
               <Avatar
                 className="
                   h-8
@@ -371,15 +348,10 @@ export function ErpHeader() {
                   shrink-0
                 "
               >
-
                 <AvatarFallback>
                   {initials}
                 </AvatarFallback>
-
               </Avatar>
-
-
-              {/* Name / Role */}
 
               <div
                 className="
@@ -408,10 +380,7 @@ export function ErpHeader() {
                     text-muted-foreground
                   "
                 >
-                  {
-                    profile?.role ||
-                    "User"
-                  }
+                  {profile?.role || "User"}
                 </p>
 
               </div>
@@ -421,15 +390,9 @@ export function ErpHeader() {
           </DropdownMenuTrigger>
 
 
-          {/* =================================================
-              PROFILE DROPDOWN
-              ================================================= */}
-
           <DropdownMenuContent
             align="end"
-            className="
-              w-64
-            "
+            className="w-64"
           >
 
             <DropdownMenuLabel>
@@ -442,11 +405,7 @@ export function ErpHeader() {
                 "
               >
 
-                <span
-                  className="
-                    font-medium
-                  "
-                >
+                <span className="font-medium">
                   {fullName}
                 </span>
 
@@ -461,7 +420,6 @@ export function ErpHeader() {
                 </span>
 
                 {profile?.role && (
-
                   <span
                     className="
                       text-xs
@@ -469,16 +427,13 @@ export function ErpHeader() {
                       text-muted-foreground
                     "
                   >
-                    Role:{" "}
-                    {profile.role}
+                    Role: {profile.role}
                   </span>
-
                 )}
 
               </div>
 
             </DropdownMenuLabel>
-
 
             <DropdownMenuSeparator />
 
@@ -492,7 +447,6 @@ export function ErpHeader() {
                 )
               }
             >
-
               <User
                 className="
                   mr-2
@@ -502,7 +456,6 @@ export function ErpHeader() {
               />
 
               Profile
-
             </DropdownMenuItem>
 
 
@@ -515,17 +468,7 @@ export function ErpHeader() {
                 )
               }
             >
-
-              <Settings
-                className="
-                  mr-2
-                  h-4
-                  w-4
-                "
-              />
-
               Settings
-
             </DropdownMenuItem>
 
 
@@ -535,9 +478,7 @@ export function ErpHeader() {
             {/* LOGOUT */}
 
             <DropdownMenuItem
-              onClick={
-                handleLogout
-              }
+              onClick={handleLogout}
               className="
                 text-destructive
                 focus:text-destructive
@@ -563,7 +504,7 @@ export function ErpHeader() {
 
         {/* =================================================
             GLOBAL ADD
-            ================================================= */}
+        ================================================= */}
 
         <DropdownMenu>
 
@@ -578,14 +519,7 @@ export function ErpHeader() {
               "
               aria-label="Global Add"
             >
-
-              <Plus
-                className="
-                  h-4
-                  w-4
-                "
-              />
-
+              <Plus className="h-4 w-4" />
             </Button>
 
           </DropdownMenuTrigger>
@@ -593,9 +527,7 @@ export function ErpHeader() {
 
           <DropdownMenuContent
             align="end"
-            className="
-              w-48
-            "
+            className="w-48"
           >
 
             <DropdownMenuLabel>
@@ -612,7 +544,6 @@ export function ErpHeader() {
                 )
               }
             >
-
               <UserPlus
                 className="
                   mr-2
@@ -622,18 +553,16 @@ export function ErpHeader() {
               />
 
               Candidate
-
             </DropdownMenuItem>
 
 
             <DropdownMenuItem
               onClick={() =>
                 navigate(
-                  "/app/medicals/new",
+                  "/app/medical",
                 )
               }
             >
-
               <Stethoscope
                 className="
                   mr-2
@@ -643,18 +572,16 @@ export function ErpHeader() {
               />
 
               Medical
-
             </DropdownMenuItem>
 
 
             <DropdownMenuItem
               onClick={() =>
                 navigate(
-                  "/app/mofas/new",
+                  "/app/mofa",
                 )
               }
             >
-
               <FileText
                 className="
                   mr-2
@@ -664,18 +591,16 @@ export function ErpHeader() {
               />
 
               MOFA
-
             </DropdownMenuItem>
 
 
             <DropdownMenuItem
               onClick={() =>
                 navigate(
-                  "/app/visas/new",
+                  "/app/visa",
                 )
               }
             >
-
               <CreditCard
                 className="
                   mr-2
@@ -685,18 +610,16 @@ export function ErpHeader() {
               />
 
               Visa
-
             </DropdownMenuItem>
 
 
             <DropdownMenuItem
               onClick={() =>
                 navigate(
-                  "/app/flights/new",
+                  "/app/flight",
                 )
               }
             >
-
               <Plane
                 className="
                   mr-2
@@ -706,7 +629,6 @@ export function ErpHeader() {
               />
 
               Flight
-
             </DropdownMenuItem>
 
           </DropdownMenuContent>
@@ -716,6 +638,5 @@ export function ErpHeader() {
       </div>
 
     </header>
-
   );
 }

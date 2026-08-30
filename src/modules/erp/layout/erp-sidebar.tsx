@@ -1,24 +1,4 @@
-import {
-  LayoutDashboard,
-  Users,
-  UserRoundCog,
-  Building2,
-  Stethoscope,
-  FileCheck,
-  CheckCircle2,
-  Plane,
-  ShieldCheck,
-  Files,
-  Trash2,
-  Settings,
-  BarChart3,
-  WalletCards,
-  ListTodo,
-  Phone,
-  FingerprintPattern,
-  Vault,
-} from "lucide-react";
-
+import { Trash2,Settings,Phone } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,

@@ -19,10 +19,19 @@ import {
   Vault,
 } from "lucide-react";
 
+/* =========================================================
+   ERP NAVIGATION
+   ---------------------------------------------------------
+   Single source of truth for:
+   - Sidebar
+   - Header
+   - Current page detection
+========================================================= */
+
 export const erpNavigation = [
   {
     title: "Dashboard",
-    url: "/app",
+    url: "/app/dashboard",
     icon: LayoutDashboard,
   },
 
@@ -122,6 +131,10 @@ export const erpNavigation = [
     icon: Trash2,
   },
 ];
+
+/* =========================================================
+   SUPPORT
+========================================================= */
 
 export const supportNavigation = [
   {
