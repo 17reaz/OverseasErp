@@ -365,7 +365,7 @@ export function CandidatesPage() {
                 agent?: {
                   id?: string;
                   name?: string | null;
-                  code?: string | null;
+                  
                 } | null;
               }
             ).agent;
@@ -378,7 +378,7 @@ export function CandidatesPage() {
             agents.set(
               String(agent.id),
               agent.name ||
-                agent.code ||
+                
                 "Unknown agent",
             );
 

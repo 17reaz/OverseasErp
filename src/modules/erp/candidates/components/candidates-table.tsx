@@ -287,19 +287,7 @@ export function CandidatesTable({
                 "Unnamed Agent"}
             </span>
 
-            {candidate.agent.code && (
-
-              <span
-                className="
-                  truncate
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                {candidate.agent.code}
-              </span>
-
-            )}
+            
 
           </div>
 
