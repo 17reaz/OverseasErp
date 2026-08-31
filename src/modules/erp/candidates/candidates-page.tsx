@@ -877,7 +877,31 @@ export function CandidatesPage() {
     );
 
   }
+async function handleReactivate(
+  candidate: Candidate,
+) {
+  try {
+    setLoading(true);
+    setError(null);
 
+    await reactivateCandidate(
+      candidate.id,
+    );
+
+    await loadCandidates();
+  } catch (error) {
+    console.error(
+      "Failed to reactivate candidate:",
+      error,
+    );
+
+    setError(
+      "Failed to reactivate candidate. Please try again.",
+    );
+  } finally {
+    setLoading(false);
+  }
+}
 
   /* =======================================================
      EDIT
