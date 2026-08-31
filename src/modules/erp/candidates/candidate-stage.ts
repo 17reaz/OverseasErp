@@ -1,64 +1,47 @@
 
+
 /* =========================================================
    CANDIDATE STAGES
    ---------------------------------------------------------
-   Candidate workflow-এর global stages-এর single source
-   of truth.
+   Candidate বর্তমানে কোন workflow module-এ আছে,
+   তার centralized source of truth.
 
    IMPORTANT:
-
    এখানে শুধুমাত্র GLOBAL STAGE থাকবে।
 
-   Module-এর internal sub-stage এখানে থাকবে না।
+   Module-এর internal sub-stage এখানে থাকবে না.
 
    Example:
 
-   Medical
-     → slip
-     → fit
-     → unfit
-     → expired
-
-   এগুলো Medical module-এর responsibility.
-
-   Candidate stage শুধু বলবে:
-
-     candidate
+   Candidate Stage:
      medical
-     mofa
-     finger
-     police_clearence
-     takamul
-     visa
-     flight
 
-   Future-এ নতুন module যোগ করতে হলে এখানে add করবে।
+   Medical Sub-stage:
+     new / slip / fit / unfit / expired
+
+   এই দুইটা আলাদা responsibility.
 ========================================================= */
 
 export const CANDIDATE_STAGES = {
 
-  candidate: "candidate",
+  CANDIDATE: "candidate",
 
-  medical: "medical",
+  MEDICAL: "medical",
 
-  mofa: "mofa",
+  MOFA: "mofa",
 
-  finger: "finger",
+  FINGER: "finger",
 
-  police_clearence: "police_clearence",
+  POLICE_CLEARANCE: "police_clearance",
 
-  takamul: "takamul",
+  TAKAMUL: "takamul",
 
-  visa: "visa",
+  VISA: "visa",
 
-  flight: "flight",
+  FLIGHT: "flight",
 
 } as const;
 
-
-/* =========================================================
-   CANDIDATE STAGE TYPE
-========================================================= */
 
 export type CandidateStage =
   (typeof CANDIDATE_STAGES)[keyof typeof CANDIDATE_STAGES];
@@ -66,92 +49,112 @@ export type CandidateStage =
 
 /* =========================================================
    STAGE DEFINITION
+   ---------------------------------------------------------
+   Stage-এর metadata.
+
+   value:
+     Database-এ যে value store হবে।
+
+   label:
+     UI-তে যে নাম দেখাবে।
+
+   module:
+     কোন ERP module এই stage control করে।
+
+   order:
+     Workflow-এর normal sequence.
+
+   IMPORTANT:
+   `order` শুধুমাত্র default workflow ordering-এর জন্য।
+   Candidate-এর actual current stage database-এর
+   `current_stage` field থেকে আসবে।
 ========================================================= */
 
 export interface CandidateStageDefinition {
 
-  /* Database / internal value */
-
   value: CandidateStage;
-
-
-  /* UI display name */
 
   label: string;
 
-
-  /* Owning module */
-
   module: string;
+
+  order: number;
 }
 
 
 /* =========================================================
    STAGE REGISTRY
    ---------------------------------------------------------
-   Global stage metadata.
+   সমস্ত candidate stages-এর centralized registry.
 
-   UI, filter, navigation, resolver ইত্যাদি জায়গায়
-   এই registry ব্যবহার করা যাবে।
+   Future-এ নতুন module যোগ করতে হলে এখানে definition
+   যোগ করা হবে।
 
-   এতে আলাদা আলাদা file-এ:
+   Example:
 
-     "medical"
-     "mofa"
-     "visa"
+   INSURANCE: "insurance"
 
-   hard-code করতে হবে না।
+   তারপর definition add করলেই stage system-এর
+   centralized contract update হবে।
 ========================================================= */
 
 export const CANDIDATE_STAGE_DEFINITIONS:
   readonly CandidateStageDefinition[] = [
 
   {
-    value: CANDIDATE_STAGES.candidate,
+    value: CANDIDATE_STAGES.CANDIDATE,
     label: "Candidate",
     module: "candidates",
+    order: 0,
   },
 
   {
-    value: CANDIDATE_STAGES.medical,
+    value: CANDIDATE_STAGES.MEDICAL,
     label: "Medical",
     module: "medical",
+    order: 1,
   },
 
   {
-    value: CANDIDATE_STAGES.mofa,
+    value: CANDIDATE_STAGES.MOFA,
     label: "MOFA",
     module: "mofa",
+    order: 2,
   },
 
   {
-    value: CANDIDATE_STAGES.finger,
+    value: CANDIDATE_STAGES.FINGER,
     label: "Finger",
     module: "finger",
+    order: 3,
   },
 
   {
-    value: CANDIDATE_STAGES.police_clearence,
+    value: CANDIDATE_STAGES.POLICE_CLEARANCE,
     label: "Police Clearance",
-    module: "police_clearence",
+    module: "police_clearance",
+    order: 4,
   },
 
   {
-    value: CANDIDATE_STAGES.takamul,
+    value: CANDIDATE_STAGES.TAKAMUL,
     label: "Takamul",
     module: "takamul",
+    order: 5,
   },
 
   {
-    value: CANDIDATE_STAGES.visa,
+    value: CANDIDATE_STAGES.VISA,
     label: "Visa",
     module: "visa",
+    order: 6,
   },
 
   {
-    value: CANDIDATE_STAGES.flight,
+    value: CANDIDATE_STAGES.FLIGHT,
     label: "Flight",
     module: "flight",
+    order: 7,
   },
 
 ] as const;
@@ -161,9 +164,10 @@ export const CANDIDATE_STAGE_DEFINITIONS:
    STAGE HELPERS
 ========================================================= */
 
-/**
- * Get stage definition by stage value.
- */
+
+/* ---------------------------------------------------------
+   Get stage definition
+--------------------------------------------------------- */
 
 export function getCandidateStageDefinition(
   stage: CandidateStage,
@@ -173,39 +177,76 @@ export function getCandidateStageDefinition(
     (definition) =>
       definition.value === stage,
   );
+
 }
 
 
-/**
- * Get human-readable stage label.
- */
+/* ---------------------------------------------------------
+   Get stage label
+--------------------------------------------------------- */
 
 export function getCandidateStageLabel(
   stage: CandidateStage | null,
 ): string {
 
   if (!stage) {
-    return "Unknown";
+    return "Pending";
   }
 
   return (
-    getCandidateStageDefinition(stage)
-      ?.label ??
+    getCandidateStageDefinition(stage)?.label ??
     stage
   );
+
 }
 
 
-/**
- * Check whether a value is a valid Candidate stage.
- *
- * Useful when reading `current_stage` from Supabase,
- * because database data is runtime data and TypeScript
- * cannot guarantee it.
- */
+/* ---------------------------------------------------------
+   Get module name from stage
+--------------------------------------------------------- */
+
+export function getCandidateStageModule(
+  stage: CandidateStage | null,
+): string | null {
+
+  if (!stage) {
+    return null;
+  }
+
+  return (
+    getCandidateStageDefinition(stage)?.module ??
+    null
+  );
+
+}
+
+
+/* ---------------------------------------------------------
+   Get workflow order
+--------------------------------------------------------- */
+
+export function getCandidateStageOrder(
+  stage: CandidateStage,
+): number {
+
+  return (
+    getCandidateStageDefinition(stage)?.order ??
+    Number.MAX_SAFE_INTEGER
+  );
+
+}
+
+
+/* =========================================================
+   STAGE VALIDATION
+   ---------------------------------------------------------
+   Runtime data validate করার জন্য।
+
+   Useful যখন Supabase থেকে raw string আসে।
+========================================================= */
 
 export function isCandidateStage(
-  value: string | null,
+  value: string | null | undefined,
 ): value is CandidateStage {
 
   if (!value) {
@@ -216,4 +257,5 @@ export function isCandidateStage(
     (definition) =>
       definition.value === value,
   );
+
 }

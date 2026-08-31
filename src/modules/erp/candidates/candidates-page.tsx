@@ -1,3 +1,4 @@
+
 import {
   useCallback,
   useEffect,
@@ -41,25 +42,21 @@ import {
 } from "./candidate-selectors";
 
 import {
-  CANDIDATE_DISPLAY_STATUS,
-} from "./candidate-status";
-
-import {
-  CANDIDATE_STAGE_DEFINITIONS,
-} from "./candidate-stage";
-
-import {
   getCandidates,
   restoreReturnedCandidate,
   type Candidate,
 } from "./candidate-service";
 
 
+/* =========================================================
+   PAGE
+========================================================= */
+
 export function CandidatesPage() {
 
-  // =====================================================
-  // CANDIDATES
-  // =====================================================
+  /* =======================================================
+     CANDIDATES
+  ======================================================= */
 
   const [
     candidates,
@@ -67,15 +64,14 @@ export function CandidatesPage() {
   ] = useState<Candidate[]>([]);
 
 
-  // =====================================================
-  // SEARCH
-  // =====================================================
+  /* =======================================================
+     SEARCH
+  ======================================================= */
 
   const [
     search,
     setSearch,
   ] = useState("");
-
 
   const [
     passportCandidate,
@@ -83,9 +79,9 @@ export function CandidatesPage() {
   ] = useState<Candidate | null>(null);
 
 
-  // =====================================================
-  // FILTER
-  // =====================================================
+  /* =======================================================
+     FILTER
+  ======================================================= */
 
   const [
     candidateFilter,
@@ -99,9 +95,9 @@ export function CandidatesPage() {
     });
 
 
-  // =====================================================
-  // SORT
-  // =====================================================
+  /* =======================================================
+     SORT
+  ======================================================= */
 
   const [
     candidateSort,
@@ -113,9 +109,9 @@ export function CandidatesPage() {
     });
 
 
-  // =====================================================
-  // VIEW
-  // =====================================================
+  /* =======================================================
+     VIEW
+  ======================================================= */
 
   const [
     viewMode,
@@ -123,15 +119,14 @@ export function CandidatesPage() {
   ] = useState<ViewMode>("list");
 
 
-  // =====================================================
-  // LOADING / ERROR
-  // =====================================================
+  /* =======================================================
+     LOADING / ERROR
+  ======================================================= */
 
   const [
     loading,
     setLoading,
   ] = useState(true);
-
 
   const [
     error,
@@ -139,15 +134,14 @@ export function CandidatesPage() {
   ] = useState<string | null>(null);
 
 
-  // =====================================================
-  // CREATE / EDIT
-  // =====================================================
+  /* =======================================================
+     CREATE / EDIT
+  ======================================================= */
 
   const [
     formOpen,
     setFormOpen,
   ] = useState(false);
-
 
   const [
     editingCandidate,
@@ -155,15 +149,14 @@ export function CandidatesPage() {
   ] = useState<Candidate | null>(null);
 
 
-  // =====================================================
-  // DELETE
-  // =====================================================
+  /* =======================================================
+     DELETE
+  ======================================================= */
 
   const [
     deleteOpen,
     setDeleteOpen,
   ] = useState(false);
-
 
   const [
     deletingCandidate,
@@ -171,15 +164,14 @@ export function CandidatesPage() {
   ] = useState<Candidate | null>(null);
 
 
-  // =====================================================
-  // RETURN
-  // =====================================================
+  /* =======================================================
+     RETURN
+  ======================================================= */
 
   const [
     returnOpen,
     setReturnOpen,
   ] = useState(false);
-
 
   const [
     returningCandidate,
@@ -187,23 +179,27 @@ export function CandidatesPage() {
   ] = useState<Candidate | null>(null);
 
 
-  // =====================================================
-  // LOAD CANDIDATES
-  // =====================================================
+  /* =======================================================
+     LOAD CANDIDATES
+  ======================================================= */
 
   const loadCandidates =
     useCallback(
       async () => {
 
         setLoading(true);
+
         setError(null);
+
 
         try {
 
           const data =
             await getCandidates();
 
-          setCandidates(data);
+          setCandidates(
+            data,
+          );
 
         } catch (error) {
 
@@ -229,9 +225,9 @@ export function CandidatesPage() {
     );
 
 
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
+  /* =======================================================
+     INITIAL LOAD
+  ======================================================= */
 
   useEffect(() => {
 
@@ -242,84 +238,76 @@ export function CandidatesPage() {
   ]);
 
 
-  // =====================================================
-  // DERIVED OVERALL STATUS
-  // -----------------------------------------------------
-  // IMPORTANT:
-  //
-  // overall_status database column নয়।
-  //
-  // Candidate Source of Truth থেকে application layer
-  // এটি derive করে।
-  // =====================================================
+  /* =======================================================
+     DERIVED OVERALL STATUS
+     -------------------------------------------------------
+     IMPORTANT:
 
-  const candidateStatusMap =
-    useMemo(() => {
+     Overall status database column নয়।
 
-      const map =
-        new Map<
-          string,
-          ReturnType<
-            typeof getCandidateOverallStatus
-          >
-        >();
+     Candidate state থেকে derive হবে।
 
-      candidates.forEach(
-        (candidate) => {
+     Future module status এখানে inject করা যাবে।
+  ======================================================= */
 
-          map.set(
-            candidate.id,
-            getCandidateOverallStatus(
-              candidate,
-            ),
-          );
+  function getDisplayStatus(
+    candidate: Candidate,
+  ) {
 
-        },
-      );
+    return getCandidateOverallStatus(
+      candidate,
+    );
 
-      return map;
-
-    }, [
-      candidates,
-    ]);
+  }
 
 
-  // =====================================================
-  // STATUS COUNTS
-  // =====================================================
+  /* =======================================================
+     STATUS COUNTS
+  ======================================================= */
 
   const statusCounts =
     useMemo(() => {
 
       let active = 0;
+
+      let hold = 0;
+
       let returned = 0;
+
       let complete = 0;
+
       let cancelled = 0;
+
 
       candidates.forEach(
         (candidate) => {
 
           const status =
-            getCandidateOverallStatus(
+            getDisplayStatus(
               candidate,
             );
 
+
           switch (status) {
 
-            case CANDIDATE_DISPLAY_STATUS.RETURNED:
+            case "active":
+              active++;
+              break;
+
+            case "hold":
+              hold++;
+              break;
+
+            case "returned":
               returned++;
               break;
 
-            case CANDIDATE_DISPLAY_STATUS.COMPLETE:
+            case "complete":
               complete++;
               break;
 
-            case CANDIDATE_DISPLAY_STATUS.CANCELLED:
+            case "cancelled":
               cancelled++;
-              break;
-
-            default:
-              active++;
               break;
 
           }
@@ -327,8 +315,10 @@ export function CandidatesPage() {
         },
       );
 
+
       return {
         active,
+        hold,
         returned,
         complete,
         cancelled,
@@ -339,9 +329,9 @@ export function CandidatesPage() {
     ]);
 
 
-  // =====================================================
-  // AGENT OPTIONS
-  // =====================================================
+  /* =======================================================
+     AGENT OPTIONS
+  ======================================================= */
 
   const agentOptions =
     useMemo(() => {
@@ -352,34 +342,39 @@ export function CandidatesPage() {
           string
         >();
 
+
       candidates.forEach(
         (candidate) => {
 
           /*
            * NOTE:
-           * যদি Candidate type-এ agent relation থাকে,
-           * এখানে existing UI behaviour রাখা যাবে।
+           * Candidate service-এর current select raw
+           * agent_id দেয়।
+           *
+           * যদি joined agent object service থেকে আসে,
+           * তখন এই existing logic ব্যবহার করা যাবে।
            */
 
-          const candidateWithAgent =
-            candidate as Candidate & {
-              agent?: {
-                id?: string;
-                name?: string | null;
-                code?: string | null;
-              };
-            };
+          const agent =
+            (
+              candidate as Candidate & {
+                agent?: {
+                  id?: string;
+                  name?: string | null;
+                  code?: string | null;
+                } | null;
+              }
+            ).agent;
+
 
           if (
-            candidateWithAgent.agent?.id
+            agent?.id
           ) {
 
             agents.set(
-              String(
-                candidateWithAgent.agent.id,
-              ),
-              candidateWithAgent.agent.name ||
-                candidateWithAgent.agent.code ||
+              String(agent.id),
+              agent.name ||
+                agent.code ||
                 "Unknown agent",
             );
 
@@ -387,6 +382,7 @@ export function CandidatesPage() {
 
         },
       );
+
 
       return Array.from(
         agents.entries(),
@@ -412,31 +408,43 @@ export function CandidatesPage() {
     ]);
 
 
-  // =====================================================
-  // STAGE OPTIONS
-  // -----------------------------------------------------
-  // IMPORTANT:
-  //
-  // আর candidate data থেকে random stage বানানো হবে না।
-  //
-  // Central stage registry হচ্ছে source.
-  // =====================================================
+  /* =======================================================
+     STAGE OPTIONS
+     -------------------------------------------------------
+     Stage এখন centralized CandidateStage contract-এর
+     মাধ্যমে Candidate.current_stage থেকে আসবে।
+  ======================================================= */
 
   const stageOptions =
     useMemo(() => {
 
-      return CANDIDATE_STAGE_DEFINITIONS
-        .map(
-          (stage) =>
-            stage.value,
-        );
+      return Array.from(
+        new Set(
+          candidates
+            .map(
+              (candidate) =>
+                candidate.current_stage,
+            )
+            .filter(
+              (
+                stage,
+              ): stage is string =>
+                Boolean(stage),
+            ),
+        ),
+      ).sort(
+        (a, b) =>
+          a.localeCompare(b),
+      );
 
-    }, []);
+    }, [
+      candidates,
+    ]);
 
 
-  // =====================================================
-  // MONTH OPTIONS
-  // =====================================================
+  /* =======================================================
+     MONTH OPTIONS
+  ======================================================= */
 
   const monthOptions =
     useMemo(() => {
@@ -447,17 +455,22 @@ export function CandidatesPage() {
           string
         >();
 
+
       candidates.forEach(
         (candidate) => {
 
-          if (!candidate.created_at) {
+          const rawDate =
+            candidate.created_at;
+
+
+          if (!rawDate) {
             return;
           }
 
+
           const date =
-            new Date(
-              candidate.created_at,
-            );
+            new Date(rawDate);
+
 
           if (
             Number.isNaN(
@@ -467,10 +480,12 @@ export function CandidatesPage() {
             return;
           }
 
+
           const value =
             `${date.getFullYear()}-${String(
               date.getMonth() + 1,
             ).padStart(2, "0")}`;
+
 
           const label =
             date.toLocaleDateString(
@@ -481,6 +496,7 @@ export function CandidatesPage() {
               },
             );
 
+
           months.set(
             value,
             label,
@@ -488,6 +504,7 @@ export function CandidatesPage() {
 
         },
       );
+
 
       return Array.from(
         months.entries(),
@@ -516,9 +533,9 @@ export function CandidatesPage() {
     ]);
 
 
-  // =====================================================
-  // FILTER + SEARCH + SORT
-  // =====================================================
+  /* =======================================================
+     FILTER + SEARCH + SORT
+  ======================================================= */
 
   const filteredCandidates =
     useMemo(() => {
@@ -533,15 +550,12 @@ export function CandidatesPage() {
         candidates.filter(
           (candidate) => {
 
-            // -------------------------------------------
-            // OVERALL STATUS
-            // -------------------------------------------
+            /* ---------------------------------------------
+               STATUS
+            --------------------------------------------- */
 
             const status =
-              candidateStatusMap.get(
-                candidate.id,
-              ) ??
-              getCandidateOverallStatus(
+              getDisplayStatus(
                 candidate,
               );
 
@@ -555,45 +569,48 @@ export function CandidatesPage() {
                 status !==
                 candidateFilter.status
               ) {
+
                 return false;
+
               }
 
             }
 
 
-            // -------------------------------------------
-            // AGENT
-            // -------------------------------------------
+            /* ---------------------------------------------
+               AGENT
+            --------------------------------------------- */
 
             if (
               candidateFilter.agentId !==
               "all"
             ) {
 
-              const candidateWithAgent =
-                candidate as Candidate & {
-                  agent?: {
-                    id?: string;
-                  };
-                };
-
               const agentId =
-                candidateWithAgent.agent?.id ??
-                candidate.agent_id;
+                (
+                  candidate as Candidate & {
+                    agent?: {
+                      id?: string;
+                    } | null;
+                  }
+                ).agent?.id;
+
 
               if (
                 String(agentId) !==
                 candidateFilter.agentId
               ) {
+
                 return false;
+
               }
 
             }
 
 
-            // -------------------------------------------
-            // GLOBAL STAGE
-            // -------------------------------------------
+            /* ---------------------------------------------
+               STAGE
+            --------------------------------------------- */
 
             if (
               candidateFilter.stage !==
@@ -604,52 +621,68 @@ export function CandidatesPage() {
                 candidate.current_stage !==
                 candidateFilter.stage
               ) {
+
                 return false;
+
               }
 
             }
 
 
-            // -------------------------------------------
-            // MONTH
-            // -------------------------------------------
+            /* ---------------------------------------------
+               MONTH
+            --------------------------------------------- */
 
             if (
               candidateFilter.month !==
               "all"
             ) {
 
+              const rawDate =
+                candidate.created_at;
+
+
+              if (!rawDate) {
+                return false;
+              }
+
+
               const date =
-                new Date(
-                  candidate.created_at,
-                );
+                new Date(rawDate);
+
 
               if (
                 Number.isNaN(
                   date.getTime(),
                 )
               ) {
+
                 return false;
+
               }
+
 
               const candidateMonth =
                 `${date.getFullYear()}-${String(
                   date.getMonth() + 1,
                 ).padStart(2, "0")}`;
 
+
               if (
                 candidateMonth !==
                 candidateFilter.month
               ) {
+
                 return false;
+
               }
 
             }
 
 
-            // -------------------------------------------
-            // SEARCH
-            // -------------------------------------------
+            /* ---------------------------------------------
+               SEARCH
+            --------------------------------------------- */
 
             if (!query) {
               return true;
@@ -678,23 +711,15 @@ export function CandidatesPage() {
               candidate.current_stage
                 ?.toLowerCase()
                 .includes(query)
-
-              ||
-
-              String(
-                candidate.sl ?? "",
-              )
-                .toLowerCase()
-                .includes(query)
             );
 
           },
         );
 
 
-      // ===================================================
-      // SORT
-      // ===================================================
+      /* ===================================================
+         SORT
+      =================================================== */
 
       result.sort(
         (
@@ -712,6 +737,7 @@ export function CandidatesPage() {
               ) {
 
                 case "name":
+
                   return (
                     candidate.name ||
                     ""
@@ -719,6 +745,7 @@ export function CandidatesPage() {
 
 
                 case "passport_no":
+
                   return (
                     candidate.passport_no ||
                     ""
@@ -726,20 +753,23 @@ export function CandidatesPage() {
 
 
                 case "created_at":
+
                   return new Date(
                     candidate.created_at ||
-                    0,
+                      0,
                   ).getTime();
 
 
                 case "updated_at":
+
                   return new Date(
                     candidate.updated_at ||
-                    0,
+                      0,
                   ).getTime();
 
 
                 default:
+
                   return 0;
 
               }
@@ -758,8 +788,10 @@ export function CandidatesPage() {
 
 
           if (
-            typeof first === "number" &&
-            typeof second === "number"
+            typeof first ===
+              "number" &&
+            typeof second ===
+              "number"
           ) {
 
             comparison =
@@ -779,7 +811,9 @@ export function CandidatesPage() {
             candidateSort.mode ===
             "descending"
           ) {
+
             return -comparison;
+
           }
 
 
@@ -787,19 +821,28 @@ export function CandidatesPage() {
             candidateSort.mode ===
             "ascending"
           ) {
+
             return comparison;
+
           }
 
 
-          // Custom = newest first
+          /* ---------------------------------------------
+             CUSTOM
+
+             Existing behaviour:
+             newest first.
+          --------------------------------------------- */
 
           return (
             new Date(
-              b.created_at || 0,
+              b.created_at ||
+                0,
             ).getTime()
             -
             new Date(
-              a.created_at || 0,
+              a.created_at ||
+                0,
             ).getTime()
           );
 
@@ -811,28 +854,30 @@ export function CandidatesPage() {
 
     }, [
       candidates,
-      candidateStatusMap,
       search,
       candidateFilter,
       candidateSort,
     ]);
 
 
-  // =====================================================
-  // CREATE
-  // =====================================================
+  /* =======================================================
+     CREATE
+  ======================================================= */
 
   function handleCreate() {
 
-    setEditingCandidate(null);
+    setEditingCandidate(
+      null,
+    );
+
     setFormOpen(true);
 
   }
 
 
-  // =====================================================
-  // EDIT
-  // =====================================================
+  /* =======================================================
+     EDIT
+  ======================================================= */
 
   function handleEdit(
     candidate: Candidate,
@@ -847,9 +892,9 @@ export function CandidatesPage() {
   }
 
 
-  // =====================================================
-  // DELETE
-  // =====================================================
+  /* =======================================================
+     DELETE
+  ======================================================= */
 
   function handleDelete(
     candidate: Candidate,
@@ -864,9 +909,9 @@ export function CandidatesPage() {
   }
 
 
-  // =====================================================
-  // RETURN
-  // =====================================================
+  /* =======================================================
+     RETURN
+  ======================================================= */
 
   function handleReturn(
     candidate: Candidate,
@@ -881,9 +926,9 @@ export function CandidatesPage() {
   }
 
 
-  // =====================================================
-  // RESTORE RETURNED
-  // =====================================================
+  /* =======================================================
+     RESTORE
+  ======================================================= */
 
   async function handleRestore(
     candidate: Candidate,
@@ -903,6 +948,7 @@ export function CandidatesPage() {
     try {
 
       setLoading(true);
+
       setError(null);
 
 
@@ -920,10 +966,9 @@ export function CandidatesPage() {
         error,
       );
 
+
       setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to restore candidate. Please try again.",
+        "Failed to restore candidate. Please try again.",
       );
 
     } finally {
@@ -935,21 +980,27 @@ export function CandidatesPage() {
   }
 
 
-  // =====================================================
-  // RENDER
-  // =====================================================
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
-    <div className="space-y-6">
+    <div
+      className="
+        space-y-6
+      "
+    >
 
       {/* =================================================
           TOOLBAR
-          ================================================= */}
+      ================================================= */}
 
       <CandidateToolbar
 
-        search={search}
+        search={
+          search
+        }
 
         searchPlaceholder="Search name, passport..."
 
@@ -1010,7 +1061,7 @@ export function CandidatesPage() {
 
       {/* =================================================
           ERROR
-          ================================================= */}
+      ================================================= */}
 
       {error && (
 
@@ -1058,7 +1109,7 @@ export function CandidatesPage() {
 
       {/* =================================================
           CANDIDATE VIEW
-          ================================================= */}
+      ================================================= */}
 
       {viewMode === "list" ? (
 
@@ -1129,7 +1180,7 @@ export function CandidatesPage() {
 
       {/* =================================================
           PASSPORT
-          ================================================= */}
+      ================================================= */}
 
       <CandidatePassportDialog
 
@@ -1141,22 +1192,26 @@ export function CandidatesPage() {
           !!passportCandidate
         }
 
-        onOpenChange={(
-          open,
-        ) => {
+        onOpenChange={
+          (open) => {
 
-          if (!open) {
-            setPassportCandidate(null);
+            if (!open) {
+
+              setPassportCandidate(
+                null,
+              );
+
+            }
+
           }
-
-        }}
+        }
 
       />
 
 
       {/* =================================================
           CREATE / EDIT
-          ================================================= */}
+      ================================================= */}
 
       <CandidateFormDialog
 
@@ -1173,7 +1228,11 @@ export function CandidatesPage() {
         }
 
         onSuccess={
-          loadCandidates
+          () => {
+
+            loadCandidates();
+
+          }
         }
 
       />
@@ -1181,7 +1240,7 @@ export function CandidatesPage() {
 
       {/* =================================================
           DELETE
-          ================================================= */}
+      ================================================= */}
 
       <CandidateDeleteDialog
 
@@ -1197,22 +1256,24 @@ export function CandidatesPage() {
           setDeleteOpen
         }
 
-        onSuccess={() => {
+        onSuccess={
+          () => {
 
-          setDeletingCandidate(
-            null,
-          );
+            setDeletingCandidate(
+              null,
+            );
 
-          loadCandidates();
+            loadCandidates();
 
-        }}
+          }
+        }
 
       />
 
 
       {/* =================================================
           RETURN
-          ================================================= */}
+      ================================================= */}
 
       <CandidateReturnDialog
 
@@ -1228,22 +1289,24 @@ export function CandidatesPage() {
           setReturnOpen
         }
 
-        onSuccess={() => {
+        onSuccess={
+          () => {
 
-          setReturningCandidate(
-            null,
-          );
+            setReturningCandidate(
+              null,
+            );
 
-          loadCandidates();
+            loadCandidates();
 
-        }}
+          }
+        }
 
       />
 
 
       {/* =================================================
           RESULT SUMMARY
-          ================================================= */}
+      ================================================= */}
 
       <div
         className="
@@ -1271,17 +1334,31 @@ export function CandidatesPage() {
             text-muted-foreground
           "
         >
+
           Active {statusCounts.active}
+
           {" · "}
+
+          Hold {statusCounts.hold}
+
+          {" · "}
+
           Returned {statusCounts.returned}
+
           {" · "}
+
           Complete {statusCounts.complete}
+
           {" · "}
+
           Cancelled {statusCounts.cancelled}
+
         </p>
 
       </div>
 
     </div>
+
   );
+
 }

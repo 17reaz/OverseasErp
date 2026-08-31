@@ -15,28 +15,20 @@ import type {
    Supabase `candidates` table-এর raw representation.
 
    IMPORTANT:
-   এই interface-টাই Candidate Source of Truth-এর
-   primary frontend data contract.
+   এই interface-টাই Candidate module-এর primary
+   Source of Truth data contract.
 
-   Database column-এর নাম এখানে 그대로 রাখা হয়েছে।
+   এখানে কোনো module-specific sub_stage বা
+   derived overall_status রাখা হবে না.
 ========================================================= */
 
 export interface Candidate {
-
-  /* -------------------------------------------------------
-     IDENTITY
-  ------------------------------------------------------- */
 
   id: string;
 
   tenant_id: string;
 
   sl: number | null;
-
-
-  /* -------------------------------------------------------
-     CANDIDATE BASIC DATA
-  ------------------------------------------------------- */
 
   passport_no: string;
 
@@ -46,47 +38,36 @@ export interface Candidate {
 
   country: string | null;
 
-
-  /* -------------------------------------------------------
-     OWNERSHIP / RELATION
-  ------------------------------------------------------- */
-
   created_by: string | null;
 
   agent_id: string | null;
 
 
   /* -------------------------------------------------------
-     WORKFLOW / STAGE
-     -------------------------------------------------------
+     GLOBAL WORKFLOW STAGE
 
-     current_stage এখন database-এর existing column.
+     Candidate বর্তমানে কোন module/stage-এ আছে।
 
-     Future-এ stage architecture পরিবর্তন হলেও
-     এই field সরাসরি delete করা হবে না।
+     Example:
+     candidate
+     medical
+     mofa
+     visa
+     flight
 
-     Migration-safe approach:
-     current_stage
-          ↓
-     Candidate stage resolver
-          ↓
-     module-specific stage
+     IMPORTANT:
+     এটি module-এর internal sub-stage নয়।
   ------------------------------------------------------- */
 
-  current_stage: CandidateStage | string | null;
+  current_stage: CandidateStage | null;
 
 
   /* -------------------------------------------------------
      RETURN STATE
-     -------------------------------------------------------
 
-     Returned ≠ Cancelled
+     Returned = passport/candidate physically returned.
 
-     is_returned:
-     candidate/passport physically returned.
-
-     returned_reason:
-     কেন returned হয়েছে।
+     এটি Cancelled-এর থেকে আলাদা।
   ------------------------------------------------------- */
 
   is_returned: boolean;
@@ -97,18 +78,14 @@ export interface Candidate {
 
 
   /* -------------------------------------------------------
-     FINAL WORKFLOW STATE
-     -------------------------------------------------------
+     FINAL STATE
 
-     final_status:
+     null       → active workflow
+     complete   → workflow successfully finished
+     cancelled  → workflow stopped
 
-       null       → Active
-       complete   → Completed
-       cancelled  → Cancelled
-
-     Processing / Hold এখানে permanently store হবে না.
-
-     এগুলো future module data থেকে derive হবে।
+     Processing / Hold এখানে রাখা হবে না।
+     এগুলো module data থেকে derive হবে।
   ------------------------------------------------------- */
 
   final_status: CandidateFinalStatus;
@@ -118,13 +95,16 @@ export interface Candidate {
 
   /* -------------------------------------------------------
      SOFT DELETE
+
+     Candidate physically delete না করে hidden করা হবে।
+     Historical/reference integrity বজায় থাকবে।
   ------------------------------------------------------- */
 
   is_deleted: boolean;
 
 
   /* -------------------------------------------------------
-     AUDIT
+     TIMESTAMPS
   ------------------------------------------------------- */
 
   created_at: string;
@@ -136,24 +116,17 @@ export interface Candidate {
 /* =========================================================
    LIGHTWEIGHT CANDIDATE REFERENCE
    ---------------------------------------------------------
-   অন্য module যখন শুধু Candidate identify করতে চায়,
-   তখন পুরো Candidate object fetch করার প্রয়োজন নেই।
+   Medical / MOFA / Visa / Flight ইত্যাদি module-এর জন্য।
 
-   Example:
-
-   Medical
-   MOFA
-   Visa
-   Flight
-
-   এগুলো CandidateReference ব্যবহার করতে পারবে
-   যেখানে full candidate data প্রয়োজন নেই।
+   অন্য module-কে পুরো Candidate object দেওয়ার প্রয়োজন নেই।
 
    Future:
    - TanStack Query
-   - IndexedDB
    - Dexie
-   - local cache
+   - IndexedDB
+   - local reference cache
+
+   এর foundation হিসেবে এই contract ব্যবহার হবে।
 ========================================================= */
 
 export interface CandidateReference {
@@ -169,23 +142,29 @@ export interface CandidateReference {
 
 
 /* =========================================================
-   CANDIDATE LIST / READ MODEL
+   CANDIDATE LIST ITEM
    ---------------------------------------------------------
-   Candidate page-এর frontend-friendly representation.
+   Candidate page/UI-এর জন্য derived read model.
 
-   IMPORTANT:
-   এই fields database-এর source columns নয়।
+   এটি database row নয়।
 
-   এগুলো application/read-model layer থেকে derive হবে।
+   Candidate
+      +
+   module information
+      +
+   derived status
+
+   = CandidateListItem
 ========================================================= */
 
 export interface CandidateListItem
   extends Candidate {
 
   /* -------------------------------------------------------
-     DISPLAY STAGE
+     GLOBAL STAGE
 
-     Database-এর current_stage থেকে normalize করা হতে পারে।
+     Candidate.current_stage থেকেই আসবে।
+     আলাদা database field নয়।
   ------------------------------------------------------- */
 
   stage: CandidateStage | null;
@@ -196,42 +175,30 @@ export interface CandidateListItem
 
      Example:
 
-     Medical:
-       slip
-       fit
-       unfit
+     Medical → fit
+     MOFA    → approved
+     Visa    → issued
 
-     MOFA:
-       submitted
-       approved
-       expired
-
-     Visa:
-       applied
-       issued
-       rejected
-
-     এগুলো Candidate table-এর fixed enum নয়।
-     Module নিজে control করবে।
+     এটি Candidate table-এর field নয়।
+     Respective module থেকে আসবে।
   ------------------------------------------------------- */
 
   sub_stage: string | null;
 
 
   /* -------------------------------------------------------
-     DISPLAY OVERALL STATUS
+     DERIVED OVERALL STATUS
 
-     Database column নয়।
+     Database-এ store করা হবে না।
 
-     Resolver:
+     Resolver এই value তৈরি করবে।
 
-       final_status
-       is_returned
-       module data
-
-       ↓
-
-       overall_status
+     Example:
+     complete
+     cancelled
+     returned
+     active
+     hold
   ------------------------------------------------------- */
 
   overall_status: CandidateDisplayStatus;

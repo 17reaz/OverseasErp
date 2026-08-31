@@ -9,11 +9,26 @@ import type {
 
 
 /* =========================================================
-   CANDIDATE SELECT CONTRACT
+   CANDIDATE SELECT
    ---------------------------------------------------------
-   Candidate module-এর full read model.
+   Candidate module-এর primary read contract.
 
-   অন্য module-এর প্রয়োজন না হলে এটি ব্যবহার করবে না।
+   IMPORTANT:
+   অন্য component/module-এ:
+
+     .from("candidates")
+     .select("*")
+
+   ব্যবহার না করে এই service ব্যবহার করবে।
+
+   এতে future-এ:
+   - query optimization
+   - TanStack Query
+   - Dexie
+   - IndexedDB
+   - server-side pagination
+
+   সহজে add করা যাবে।
 ========================================================= */
 
 const CANDIDATE_SELECT = `
@@ -39,14 +54,12 @@ const CANDIDATE_SELECT = `
 
 
 /* =========================================================
-   CANDIDATE REFERENCE SELECT
+   LIGHTWEIGHT REFERENCE SELECT
    ---------------------------------------------------------
-   Medical / MOFA / Finger / Visa / Flight
-   candidate identify করার জন্য শুধু প্রয়োজনীয় data.
+   Medical / MOFA / Finger / Visa / Flight-এর মতো module
+   যখন শুধু candidate identify করতে চায়।
 
-   IMPORTANT:
-   অন্য module পুরো Candidate row fetch করবে না
-   যদি শুধু identity দরকার হয়।
+   পুরো Candidate row fetch করবে না।
 ========================================================= */
 
 const CANDIDATE_REFERENCE_SELECT = `
@@ -61,6 +74,12 @@ const CANDIDATE_REFERENCE_SELECT = `
    LIST CANDIDATES
    ---------------------------------------------------------
    Main Candidate page query.
+
+   NOTE:
+   এখন client-side filtering রাখা হয়েছে কারণ existing
+   Candidate page সেটাই ব্যবহার করছে।
+
+   Future-এ pagination/search/filter server-side করা যাবে।
 ========================================================= */
 
 export async function getCandidates(): Promise<Candidate[]> {
@@ -83,6 +102,7 @@ export async function getCandidates(): Promise<Candidate[]> {
 
 
   return (data ?? []) as Candidate[];
+
 }
 
 
@@ -111,23 +131,27 @@ export async function getCandidateById(
 
 
   return data as Candidate | null;
+
 }
 
 
 /* =========================================================
-   LIGHTWEIGHT CANDIDATE REFERENCES
+   GET CANDIDATE REFERENCES
    ---------------------------------------------------------
-   Used by:
-   - Medical
-   - MOFA
-   - Finger
-   - Police Clearance
-   - Takamul
-   - Visa
-   - Flight
+   Lightweight query for other modules.
 
-   এগুলো Candidate source of truth থেকে identity নেয়,
-   কিন্তু Candidate-এর complete row নেয় না।
+   Example:
+
+   Medical candidate selector
+   MOFA candidate selector
+   Visa candidate selector
+
+   তারা শুধু এই data পাবে:
+
+     id
+     sl
+     passport_no
+     name
 ========================================================= */
 
 export async function getCandidateReferences(): Promise<
@@ -152,6 +176,7 @@ export async function getCandidateReferences(): Promise<
 
 
   return (data ?? []) as CandidateReference[];
+
 }
 
 
@@ -180,6 +205,7 @@ export async function getCandidateReferenceById(
 
 
   return data as CandidateReference | null;
+
 }
 
 
@@ -188,10 +214,14 @@ export async function getCandidateReferenceById(
    ---------------------------------------------------------
    Returned ≠ Cancelled
 
-   Returned:
-   - passport physically returned
-   - candidate remains in database
-   - later restored করা যাবে
+   Returned means candidate/passport physically returned.
+
+   Data remains in candidates table.
+
+   Later:
+     returned → active
+
+   করা যাবে।
 ========================================================= */
 
 export async function returnCandidate(
@@ -228,6 +258,7 @@ export async function returnCandidate(
   if (error) {
     throw error;
   }
+
 }
 
 
@@ -235,6 +266,14 @@ export async function returnCandidate(
    RESTORE RETURNED CANDIDATE
    ---------------------------------------------------------
    returned → active
+
+   IMPORTANT:
+   returned_reason delete করছি না।
+
+   কারণ reason historical information।
+
+   Future audit/history table এ গেলে এই data আরও
+   properly preserve করা যাবে।
 ========================================================= */
 
 export async function restoreReturnedCandidate(
@@ -247,8 +286,9 @@ export async function restoreReturnedCandidate(
     .from("candidates")
     .update({
       is_returned: false,
+
       returned_date: null,
-      returned_reason: null,
+
       updated_at:
         new Date().toISOString(),
     })
@@ -261,19 +301,19 @@ export async function restoreReturnedCandidate(
   if (error) {
     throw error;
   }
+
 }
 
 
 /* =========================================================
    CANCEL CANDIDATE
    ---------------------------------------------------------
-   cancelled:
-   - workflow stops
-   - data remains
-   - can be reactivated later
+   Cancelled means:
 
-   NOTE:
-   final_status = cancelled
+   - workflow stopped
+   - candidate data remains
+   - future-এ reactivate করা যাবে
+   - cancellation reason preserved
 ========================================================= */
 
 export async function cancelCandidate(
@@ -286,9 +326,11 @@ export async function cancelCandidate(
 
 
   if (!cleanReason) {
+
     throw new Error(
       "Cancellation reason is required.",
     );
+
   }
 
 
@@ -298,7 +340,10 @@ export async function cancelCandidate(
     .from("candidates")
     .update({
       final_status: "cancelled",
-      final_reason: cleanReason,
+
+      final_reason:
+        cleanReason,
+
       updated_at:
         new Date().toISOString(),
     })
@@ -311,20 +356,18 @@ export async function cancelCandidate(
   if (error) {
     throw error;
   }
+
 }
 
 
 /* =========================================================
    COMPLETE CANDIDATE
    ---------------------------------------------------------
-   Complete সাধারণত শেষ module থেকে আসবে।
+   Complete:
 
-   Example:
-   Flight completed
-          ↓
-   completeCandidate()
-          ↓
-   candidates.final_status = complete
+   - workflow successfully finished
+   - final state
+   - candidate remains in database
 ========================================================= */
 
 export async function completeCandidate(
@@ -354,6 +397,7 @@ export async function completeCandidate(
   if (error) {
     throw error;
   }
+
 }
 
 
@@ -362,9 +406,10 @@ export async function completeCandidate(
    ---------------------------------------------------------
    cancelled → active
 
-   Active:
-   final_status = NULL
-   is_returned = false
+   Active database state:
+
+     final_status = NULL
+     is_returned = false
 ========================================================= */
 
 export async function reactivateCandidate(
@@ -377,7 +422,9 @@ export async function reactivateCandidate(
     .from("candidates")
     .update({
       final_status: null,
+
       final_reason: null,
+
       updated_at:
         new Date().toISOString(),
     })
@@ -390,4 +437,84 @@ export async function reactivateCandidate(
   if (error) {
     throw error;
   }
+
+}
+
+
+/* =========================================================
+   UPDATE CURRENT STAGE
+   ---------------------------------------------------------
+   Candidate-এর global stage পরিবর্তনের একমাত্র service
+   entry point।
+
+   Module-specific sub-stage এখানে থাকবে না।
+
+   Example:
+
+     medical module complete
+          ↓
+     current_stage = mofa
+========================================================= */
+
+export async function updateCandidateStage(
+  candidateId: string,
+  stage: Candidate["current_stage"],
+): Promise<void> {
+
+  const {
+    error,
+  } = await supabase
+    .from("candidates")
+    .update({
+      current_stage: stage,
+
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      candidateId,
+    );
+
+
+  if (error) {
+    throw error;
+  }
+
+}
+
+
+/* =========================================================
+   SOFT DELETE
+   ---------------------------------------------------------
+   Candidate physically delete না করে hidden করা হবে।
+
+   এতে related module data এবং historical reference
+   safer থাকবে।
+========================================================= */
+
+export async function softDeleteCandidate(
+  candidateId: string,
+): Promise<void> {
+
+  const {
+    error,
+  } = await supabase
+    .from("candidates")
+    .update({
+      is_deleted: true,
+
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq(
+      "id",
+      candidateId,
+    );
+
+
+  if (error) {
+    throw error;
+  }
+
 }
