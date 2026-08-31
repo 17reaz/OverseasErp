@@ -92,7 +92,7 @@ export function CandidatesPage() {
     setCandidateFilter,
   ] =
     useState<CandidateFilterState>({
-      status: "active",
+      status: "all",
       agentId: "all",
       stage: "all",
       month: "all",
