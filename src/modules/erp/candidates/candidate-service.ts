@@ -4,6 +4,13 @@ import { supabase } from "@/lib/supabase/client";
 
 import type {
   Candidate,
+  CandidateInput,
+  CandidateReference,
+} from "./candidate-types";
+
+export type {
+  Candidate,
+  CandidateInput,
   CandidateReference,
 } from "./candidate-types";
 
@@ -41,6 +48,11 @@ const CANDIDATE_SELECT = `
   country,
   created_by,
   agent_id,
+  agent:agents (
+    id,
+    name,
+    code
+  ),
   current_stage,
   is_returned,
   returned_date,
@@ -101,7 +113,7 @@ export async function getCandidates(): Promise<Candidate[]> {
   }
 
 
-  return (data ?? []) as Candidate[];
+  return (data ?? []) as unknown as Candidate[];
 
 }
 
@@ -226,6 +238,7 @@ export async function getCandidateReferenceById(
 
 export async function returnCandidate(
   candidateId: string,
+  returnedDate: string,
   reason?: string,
 ): Promise<void> {
 
@@ -241,7 +254,7 @@ export async function returnCandidate(
       is_returned: true,
 
       returned_date:
-        now.slice(0, 10),
+        returnedDate,
 
       returned_reason:
         reason?.trim() || null,
@@ -516,5 +529,158 @@ export async function softDeleteCandidate(
   if (error) {
     throw error;
   }
+
+}
+
+
+/* =========================================================
+   COMPATIBILITY LAYER
+   ---------------------------------------------------------
+   নিচের functions গুলো এখনও পুরনো
+   `{ data, error }` contract ব্যবহার করা component-দের
+   জন্য (candidate-form-dialog, candidate-delete-dialog,
+   candidate-profile-page)।
+
+   উপরের সব function throw-based clean contract অনুসরণ
+   করে — এইগুলো সেটাই wrap করে পুরনো contract-এ ফিরিয়ে দেয়,
+   যাতে ওই component-গুলোর existing logic-এ হাত না দিতে হয়।
+========================================================= */
+
+/* ---------------------------------------------------------
+   GET CANDIDATE (compat wrapper for getCandidateById)
+--------------------------------------------------------- */
+
+export async function getCandidate(
+  id: string,
+): Promise<{
+  data: Candidate | null;
+  error: { message?: string; code?: string } | null;
+}> {
+
+  try {
+
+    const data =
+      await getCandidateById(id);
+
+    return { data, error: null };
+
+  } catch (error) {
+
+    return {
+      data: null,
+      error: normalizeError(error),
+    };
+
+  }
+
+}
+
+
+/* ---------------------------------------------------------
+   DELETE CANDIDATE (compat wrapper for softDeleteCandidate)
+--------------------------------------------------------- */
+
+export async function deleteCandidate(
+  candidateId: string,
+): Promise<{
+  error: { message?: string; code?: string } | null;
+}> {
+
+  try {
+
+    await softDeleteCandidate(candidateId);
+
+    return { error: null };
+
+  } catch (error) {
+
+    return {
+      error: normalizeError(error),
+    };
+
+  }
+
+}
+
+
+/* ---------------------------------------------------------
+   NORMALIZE ERROR
+   ---------------------------------------------------------
+   throw করা error (unknown) কে পুরনো `{ message, code }`
+   shape-এ normalize করে, যাতে old-style component-গুলো
+   error.message নিরাপদে পড়তে পারে।
+--------------------------------------------------------- */
+
+function normalizeError(
+  error: unknown,
+): { message?: string; code?: string } {
+
+  if (
+    error &&
+    typeof error === "object"
+  ) {
+
+    return error as {
+      message?: string;
+      code?: string;
+    };
+
+  }
+
+  return {
+    message: String(error),
+  };
+
+}
+
+
+/* ---------------------------------------------------------
+   CREATE CANDIDATE
+--------------------------------------------------------- */
+
+export async function createCandidate(
+  input: CandidateInput,
+) {
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("candidates")
+    .insert(input)
+    .select(CANDIDATE_SELECT)
+    .single();
+
+  return {
+    data: data as Candidate | null,
+    error,
+  };
+
+}
+
+
+/* ---------------------------------------------------------
+   UPDATE CANDIDATE
+--------------------------------------------------------- */
+
+export async function updateCandidate(
+  candidateId: string,
+  input: CandidateInput,
+) {
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("candidates")
+    .update(input)
+    .eq("id", candidateId)
+    .select(CANDIDATE_SELECT)
+    .single();
+
+  return {
+    data: data as Candidate | null,
+    error,
+  };
 
 }

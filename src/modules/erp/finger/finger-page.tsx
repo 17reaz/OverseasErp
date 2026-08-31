@@ -40,20 +40,16 @@ export function FingerPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [fingerRecords, candidateResult] =
+      const [fingerRecords, candidatesData] =
         await Promise.all([
           getFingerRecords(),
           getCandidates(),
         ]);
 
-      if (candidateResult.error) {
-        throw candidateResult.error;
-      }
-
       setRecords(fingerRecords);
 
       setCandidates(
-        (candidateResult.data ?? []).map(
+        candidatesData.map(
           (candidate) => ({
             id: candidate.id,
             name: candidate.name,

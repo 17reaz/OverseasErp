@@ -18,15 +18,13 @@ export function FlightPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [flightList, candidateResult] = await Promise.all([
+      const [flightList, candidatesData] = await Promise.all([
         getFlights(),
         getCandidates(),
       ]);
 
-      if (candidateResult.error) throw candidateResult.error;
-
       setRecords(flightList);
-      setCandidates(candidateResult.data ?? []);
+      setCandidates(candidatesData);
     } catch (error) {
       console.error("Failed to load flight module:", error);
     } finally {

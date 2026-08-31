@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 
 import {
+  getCandidateById,
   returnCandidate,
   type Candidate,
 } from "../candidate-service";
@@ -134,33 +135,19 @@ export function CandidateReturnDialog({
       setError(null);
 
 
-      const {
-        data,
-        error,
-      } =
-        await returnCandidate(
+      await returnCandidate(
+        candidate.id,
+        returnedDate,
+      );
+
+
+      const updated =
+        await getCandidateById(
           candidate.id,
-          returnedDate,
         );
 
-
-      if (error) {
-
-        console.error(
-          error,
-        );
-
-        setError(
-          error.message ||
-            "Failed to mark candidate as returned.",
-        );
-
-        return;
-      }
-
-
-      if (data) {
-        onSuccess(data);
+      if (updated) {
+        onSuccess(updated);
       }
 
 

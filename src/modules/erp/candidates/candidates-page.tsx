@@ -47,6 +47,10 @@ import {
   type Candidate,
 } from "./candidate-service";
 
+import type {
+  CandidateStage,
+} from "./candidate-stage";
+
 
 /* =========================================================
    PAGE
@@ -428,7 +432,7 @@ export function CandidatesPage() {
             .filter(
               (
                 stage,
-              ): stage is string =>
+              ): stage is CandidateStage =>
                 Boolean(stage),
             ),
         ),

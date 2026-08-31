@@ -1,4 +1,3 @@
-
 import type {
   CandidateDisplayStatus,
   CandidateFinalStatus,
@@ -22,6 +21,24 @@ import type {
    derived overall_status রাখা হবে না.
 ========================================================= */
 
+/* -------------------------------------------------------
+   JOINED AGENT
+   ---------------------------------------------------------
+   agent_id দিয়ে join করা lightweight agent info।
+   Candidates table-এর column না — CANDIDATE_SELECT-এ
+   join করা হলেই আসবে।
+------------------------------------------------------- */
+
+export interface CandidateAgent {
+
+  id: string;
+
+  name: string | null;
+
+  code: string | null;
+}
+
+
 export interface Candidate {
 
   id: string;
@@ -41,6 +58,8 @@ export interface Candidate {
   created_by: string | null;
 
   agent_id: string | null;
+
+  agent: CandidateAgent | null;
 
 
   /* -------------------------------------------------------
@@ -202,4 +221,31 @@ export interface CandidateListItem
   ------------------------------------------------------- */
 
   overall_status: CandidateDisplayStatus;
+}
+
+
+/* =========================================================
+   CANDIDATE INPUT
+   ---------------------------------------------------------
+   Create/Update form থেকে আসা writable fields।
+
+   IMPORTANT:
+   current_stage এখানে loose string, কারণ CandidateFormDialog
+   এখনও raw "Pending" মতো default value পাঠায় যেটা
+   CandidateStage union-এর member না।
+========================================================= */
+
+export interface CandidateInput {
+
+  passport_no: string;
+
+  name: string;
+
+  received_date: string | null;
+
+  country: string | null;
+
+  agent_id: string | null;
+
+  current_stage: string;
 }

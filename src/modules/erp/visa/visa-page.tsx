@@ -19,15 +19,13 @@ export function VisaPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [visaList, candidateResult] = await Promise.all([
+      const [visaList, candidatesData] = await Promise.all([
         getVisas(),
         getCandidates(),
       ]);
 
-      if (candidateResult.error) throw candidateResult.error;
-
       setRecords(visaList);
-      setCandidates(candidateResult.data ?? []);
+      setCandidates(candidatesData);
     } catch (error) {
       console.error("Failed to load visa module:", error);
     } finally {

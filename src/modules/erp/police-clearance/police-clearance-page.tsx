@@ -54,20 +54,16 @@ export function PoliceClearancePage() {
     try {
       const [
         policeClearances,
-        candidateResult,
+        candidatesData,
       ] = await Promise.all([
         getPoliceClearances(),
         getCandidates(),
       ]);
 
-      if (candidateResult.error) {
-        throw candidateResult.error;
-      }
-
       setRecords(policeClearances);
 
       setCandidates(
-        (candidateResult.data ?? []).map(
+        candidatesData.map(
           (candidate) => ({
             id: candidate.id,
             name: candidate.name,

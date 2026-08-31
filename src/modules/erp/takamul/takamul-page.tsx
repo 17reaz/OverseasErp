@@ -27,18 +27,14 @@ export function TradeTestPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [tradeTests, candidateResult] = await Promise.all([
+      const [tradeTests, candidatesData] = await Promise.all([
         getTradeTests(),
         getCandidates(),
       ]);
 
-      if (candidateResult.error) {
-        throw candidateResult.error;
-      }
-
       setRecords(tradeTests);
       setCandidates(
-        (candidateResult.data ?? []).map((c) => ({
+        candidatesData.map((c) => ({
           id: c.id,
           name: c.name,
           passport_no: c.passport_no,
