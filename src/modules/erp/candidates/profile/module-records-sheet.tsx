@@ -176,6 +176,7 @@ export function ModuleRecordsSheet({
   open,
   onOpenChange,
   onSuccess,
+  initialMode,
 }: {
   module: ModuleConfig
   candidateId: string
@@ -183,6 +184,12 @@ export function ModuleRecordsSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  /** Force the sheet to open in "form" mode regardless of existing
+   *  records (used when a caller — e.g. an inline records panel —
+   *  already shows the list elsewhere and only needs the sheet for
+   *  adding a new record). Omit to keep the default list/box + Add
+   *  New behavior. */
+  initialMode?: SheetMode
 }) {
   const [mode, setMode] = useState<SheetMode>("list")
   const [records, setRecords] = useState<ModuleRecord[]>([])
@@ -205,7 +212,7 @@ export function ModuleRecordsSheet({
       if (!active) return
 
       setRecords(data)
-      setMode(data.length > 0 ? "list" : "form")
+      setMode(initialMode ?? (data.length > 0 ? "list" : "form"))
       setValues(module.defaultValues())
       setLoadingRecords(false)
     }
@@ -215,7 +222,7 @@ export function ModuleRecordsSheet({
     return () => {
       active = false
     }
-  }, [open, module, candidateId])
+  }, [open, module, candidateId, initialMode])
 
   function setField(key: string, value: string | boolean) {
     setValues((prev) => ({ ...prev, [key]: value }))

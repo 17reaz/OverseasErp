@@ -23,6 +23,7 @@ import { getCandidate, type Candidate } from "../candidate-service"
 import { CandidateInfoCard } from "./info-card"
 import { CandidateQrCard } from "./qr-card"
 import { CandidateTimelineCard } from "./timeline-card"
+import { ModuleRecordsPanel } from "./module-records-panel"
 import { ModuleRecordsSheet } from "./module-records-sheet"
 import { MODULES } from "./module-configs"
 import { ProcessingStepper } from "./processing-stepper"
@@ -49,7 +50,17 @@ export function CandidateProfilePage() {
   const [documentsStatus, setDocumentsStatus] =
     useState<ModuleStatus>("not_started")
 
+  /** Which module's panel is expanded below the stepper. */
   const [activeModuleKey, setActiveModuleKey] = useState<string | null>(null)
+
+  /** Which module's "Add New" sheet is open. */
+  const [addModuleKey, setAddModuleKey] = useState<string | null>(null)
+
+  /** Bumped per-module to force the panel to refetch after a save. */
+  const [panelRefreshTokens, setPanelRefreshTokens] = useState<
+    Record<string, number>
+  >({})
+
   const [editOpen, setEditOpen] = useState(false)
 
 
@@ -119,7 +130,11 @@ export function CandidateProfilePage() {
     void loadCandidate()
   }, [loadCandidate])
 
-  async function handleModuleSuccess(moduleKey: string) {
+  function handleOpenModule(moduleKey: string) {
+    setActiveModuleKey((prev) => (prev === moduleKey ? null : moduleKey))
+  }
+
+  async function handleModuleSaved(moduleKey: string) {
     if (!candidateId) return
 
     const status = await refreshModuleStatus(moduleKey, candidateId)
@@ -127,6 +142,12 @@ export function CandidateProfilePage() {
     if (status) {
       setModuleStatuses((prev) => ({ ...prev, [moduleKey]: status }))
     }
+
+    // Force the panel for this module to refetch and show the new box.
+    setPanelRefreshTokens((prev) => ({
+      ...prev,
+      [moduleKey]: (prev[moduleKey] ?? 0) + 1,
+    }))
   }
 
 
@@ -170,6 +191,7 @@ export function CandidateProfilePage() {
    * ======================================================= */
 
   const activeModule = MODULES.find((m) => m.key === activeModuleKey) ?? null
+  const addModule = MODULES.find((m) => m.key === addModuleKey) ?? null
 
   return (
     <div className="min-h-0 space-y-6 pb-6">
@@ -231,29 +253,42 @@ export function CandidateProfilePage() {
 
         <Separator />
 
-        <CardContent className="pt-6">
+        <CardContent className="space-y-4 pt-6">
           <ProcessingStepper
             moduleStatuses={moduleStatuses}
             documentsStatus={documentsStatus}
             candidateId={candidate.id}
-            onOpenModule={(moduleKey) => setActiveModuleKey(moduleKey)}
+            onOpenModule={handleOpenModule}
           />
+
+          {/* INLINE RECORDS PANEL — box view under the stepper */}
+
+          {activeModule && (
+            <ModuleRecordsPanel
+              key={`${activeModule.key}-${panelRefreshTokens[activeModule.key] ?? 0}`}
+              module={activeModule}
+              candidateId={candidate.id}
+              onClose={() => setActiveModuleKey(null)}
+              onAddNew={() => setAddModuleKey(activeModule.key)}
+            />
+          )}
         </CardContent>
       </Card>
 
-      {/* MODULE RECORDS SHEET (shared across every module) */}
+      {/* ADD NEW RECORD SHEET — opens directly in form mode */}
 
-      {activeModule && (
+      {addModule && (
         <ModuleRecordsSheet
-          module={activeModule}
+          module={addModule}
           candidateId={candidate.id}
           tenantId={profile?.tenant_id ?? null}
-          open={!!activeModuleKey}
+          open={!!addModuleKey}
+          initialMode="form"
           onOpenChange={(open) => {
-            if (!open) setActiveModuleKey(null)
+            if (!open) setAddModuleKey(null)
           }}
           onSuccess={() => {
-            void handleModuleSuccess(activeModule.key)
+            void handleModuleSaved(addModule.key)
           }}
         />
       )}
