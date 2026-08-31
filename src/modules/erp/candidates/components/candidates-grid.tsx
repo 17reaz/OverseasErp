@@ -1,6 +1,8 @@
 import {
+  Ban,
   MoreHorizontal,
   Pencil,
+  PlayCircle,
   RotateCcw,
   Trash2,
   UserRound,
@@ -20,7 +22,17 @@ import { Button } from "@/components/ui/button";
 
 import type { Candidate } from "../candidate-service";
 
+import {
+  getCandidateOverallStatus,
+} from "../candidate-selectors";
+
+
+/* =========================================================
+   PROPS
+========================================================= */
+
 interface CandidatesGridProps {
+
   candidates: Candidate[];
 
   loading?: boolean;
@@ -40,23 +52,50 @@ interface CandidatesGridProps {
   onRestore?: (
     candidate: Candidate,
   ) => void;
+
+  onCancel?: (
+    candidate: Candidate,
+  ) => void;
+
+  onReactivate?: (
+    candidate: Candidate,
+  ) => void;
 }
 
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export function CandidatesGrid({
+
   candidates,
+
   loading = false,
+
   onEdit,
+
   onDelete,
+
   onReturn,
+
   onRestore,
+
+  onCancel,
+
+  onReactivate,
+
 }: CandidatesGridProps) {
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
   if (loading) {
+
     return (
+
       <div
         className="
           grid
@@ -66,9 +105,11 @@ export function CandidatesGrid({
           xl:grid-cols-3
         "
       >
+
         {Array.from({
           length: 6,
         }).map((_, index) => (
+
           <div
             key={index}
             className="
@@ -79,18 +120,24 @@ export function CandidatesGrid({
               bg-muted/40
             "
           />
+
         ))}
+
       </div>
+
     );
+
   }
 
 
-  // =====================================================
-  // EMPTY
-  // =====================================================
+  /* =======================================================
+     EMPTY
+  ======================================================= */
 
   if (candidates.length === 0) {
+
     return (
+
       <div
         className="
           flex
@@ -103,6 +150,7 @@ export function CandidatesGrid({
           bg-muted/10
         "
       >
+
         <div
           className="
             text-center
@@ -140,16 +188,20 @@ export function CandidatesGrid({
           </p>
 
         </div>
+
       </div>
+
     );
+
   }
 
 
-  // =====================================================
-  // CARD
-  // =====================================================
+  /* =======================================================
+     CARD
+  ======================================================= */
 
   return (
+
     <div
       className="
         grid
@@ -163,27 +215,25 @@ export function CandidatesGrid({
       {candidates.map(
         (candidate) => {
 
+          /* -----------------------------------------------
+             BASIC DATA
+          ----------------------------------------------- */
+
           const fullName =
             candidate.name ||
             "Unknown candidate";
+
 
           const initials =
             fullName
               .split(" ")
               .map(
                 (part) =>
-                  part
-                    .charAt(0),
+                  part.charAt(0),
               )
               .join("")
               .slice(0, 2)
               .toUpperCase();
-
-
-          const isReturned =
-            Boolean(
-              candidate.is_returned,
-            );
 
 
           const agentName =
@@ -202,7 +252,32 @@ export function CandidatesGrid({
             "Country not set";
 
 
+          /* -----------------------------------------------
+             OVERALL STATUS
+
+             Same status contract as CandidatesTable.
+          ----------------------------------------------- */
+
+          const status =
+            getCandidateOverallStatus(
+              candidate,
+            );
+
+
+          const isReturned =
+            status === "returned";
+
+
+          const isCancelled =
+            status === "cancelled";
+
+
+          const isComplete =
+            status === "complete";
+
+
           return (
+
             <div
               key={
                 candidate.id
@@ -225,7 +300,7 @@ export function CandidatesGrid({
 
               {/* =========================================
                   CARD HEADER
-                  ========================================= */}
+              ========================================= */}
 
               <div
                 className="
@@ -301,7 +376,7 @@ export function CandidatesGrid({
 
                 {/* =========================================
                     ACTION MENU
-                    ========================================= */}
+                ========================================= */}
 
                 <DropdownMenu>
 
@@ -338,36 +413,80 @@ export function CandidatesGrid({
                   <DropdownMenuContent
                     align="end"
                     className="
-                      w-44
+                      w-48
                     "
                   >
 
-                    {/* EDIT */}
+                    {/* =====================================
+                        EDIT
 
-                    <DropdownMenuItem
-                      onClick={() =>
-                        onEdit?.(
-                          candidate,
-                        )
-                      }
-                    >
+                        Same rule as table:
+                        Complete candidate cannot be edited.
+                    ===================================== */}
 
-                      <Pencil
-                        className="
-                          mr-2
-                          h-4
-                          w-4
-                        "
-                      />
+                    {!isComplete && (
 
-                      Edit
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onEdit?.(
+                            candidate,
+                          )
+                        }
+                      >
 
-                    </DropdownMenuItem>
+                        <Pencil
+                          className="
+                            mr-2
+                            h-4
+                            w-4
+                          "
+                        />
+
+                        Edit
+
+                      </DropdownMenuItem>
+
+                    )}
 
 
-                    {/* RETURN / RESTORE */}
+                    {/* =====================================
+                        RETURN
 
-                    {isReturned ? (
+                        Only active candidates.
+                    ===================================== */}
+
+                    {!isReturned &&
+                      !isCancelled &&
+                      !isComplete && (
+
+                        <DropdownMenuItem
+                          onClick={() =>
+                            onReturn?.(
+                              candidate,
+                            )
+                          }
+                        >
+
+                          <RotateCcw
+                            className="
+                              mr-2
+                              h-4
+                              w-4
+                            "
+                          />
+
+                          Return
+
+                        </DropdownMenuItem>
+
+                      )}
+
+
+                    {/* =====================================
+                        RESTORE RETURNED
+                    ===================================== */}
+
+                    {isReturned && (
 
                       <DropdownMenuItem
                         onClick={() =>
@@ -385,21 +504,61 @@ export function CandidatesGrid({
                           "
                         />
 
-                        Restore
+                        Restore Candidate
 
                       </DropdownMenuItem>
 
-                    ) : (
+                    )}
+
+
+                    {/* =====================================
+                        CANCEL
+
+                        Only active candidates.
+                    ===================================== */}
+
+                    {!isReturned &&
+                      !isCancelled &&
+                      !isComplete && (
+
+                        <DropdownMenuItem
+                          onClick={() =>
+                            onCancel?.(
+                              candidate,
+                            )
+                          }
+                        >
+
+                          <Ban
+                            className="
+                              mr-2
+                              h-4
+                              w-4
+                            "
+                          />
+
+                          Cancel Candidate
+
+                        </DropdownMenuItem>
+
+                      )}
+
+
+                    {/* =====================================
+                        REACTIVATE CANCELLED
+                    ===================================== */}
+
+                    {isCancelled && (
 
                       <DropdownMenuItem
                         onClick={() =>
-                          onReturn?.(
+                          onReactivate?.(
                             candidate,
                           )
                         }
                       >
 
-                        <RotateCcw
+                        <PlayCircle
                           className="
                             mr-2
                             h-4
@@ -407,17 +566,19 @@ export function CandidatesGrid({
                           "
                         />
 
-                        Return
+                        Reactivate Candidate
 
                       </DropdownMenuItem>
 
                     )}
 
 
+                    {/* =====================================
+                        DELETE
+                    ===================================== */}
+
                     <DropdownMenuSeparator />
 
-
-                    {/* DELETE */}
 
                     <DropdownMenuItem
                       onClick={() =>
@@ -452,7 +613,7 @@ export function CandidatesGrid({
 
               {/* =========================================
                   CARD BODY
-                  ========================================= */}
+              ========================================= */}
 
               <div
                 className="
@@ -547,17 +708,28 @@ export function CandidatesGrid({
                       py-1
                       text-xs
                       font-medium
+
                       ${
                         isReturned
                           ? `
                             bg-destructive/10
                             text-destructive
                           `
-                          : `
-                            bg-emerald-500/10
-                            text-emerald-600
-                            dark:text-emerald-400
-                          `
+                          : isCancelled
+                            ? `
+                              bg-muted
+                              text-muted-foreground
+                            `
+                            : isComplete
+                              ? `
+                                bg-primary/10
+                                text-primary
+                              `
+                              : `
+                                bg-emerald-500/10
+                                text-emerald-600
+                                dark:text-emerald-400
+                              `
                       }
                     `}
                   >
@@ -567,17 +739,26 @@ export function CandidatesGrid({
                         h-1.5
                         w-1.5
                         rounded-full
+
                         ${
                           isReturned
                             ? "bg-destructive"
-                            : "bg-emerald-500"
+                            : isCancelled
+                              ? "bg-muted-foreground"
+                              : isComplete
+                                ? "bg-primary"
+                                : "bg-emerald-500"
                         }
                       `}
                     />
 
                     {isReturned
                       ? "Returned"
-                      : "Active"}
+                      : isCancelled
+                        ? "Cancelled"
+                        : isComplete
+                          ? "Complete"
+                          : "Active"}
 
                   </span>
 
@@ -617,7 +798,7 @@ export function CandidatesGrid({
 
               {/* =========================================
                   CARD FOOTER
-                  ========================================= */}
+              ========================================= */}
 
               <div
                 className="
@@ -653,6 +834,7 @@ export function CandidatesGrid({
                       candidate,
                     )
                   }
+                  disabled={isComplete}
                 >
                   View / Edit
                 </Button>
@@ -660,10 +842,14 @@ export function CandidatesGrid({
               </div>
 
             </div>
+
           );
+
         },
       )}
 
     </div>
+
   );
+
 }

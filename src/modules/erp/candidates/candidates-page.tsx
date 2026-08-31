@@ -1,4 +1,3 @@
-
 import {
   useCallback,
   useEffect,
@@ -9,6 +8,10 @@ import {
 import {
   CandidatesGrid,
 } from "./components/candidates-grid";
+
+import {
+  CandidateCancelDialog,
+} from "./components/candidate-cancel-dialog";
 
 import {
   CandidatePassportDialog,
@@ -44,6 +47,9 @@ import {
 import {
   getCandidates,
   restoreReturnedCandidate,
+  cancelCandidate,
+  reactivateCandidate,
+  getCandidateById,
   type Candidate,
 } from "./candidate-service";
 
@@ -154,6 +160,21 @@ export function CandidatesPage() {
 
 
   /* =======================================================
+     CANCEL
+  ======================================================= */
+
+  const [
+    cancelOpen,
+    setCancelOpen,
+  ] = useState(false);
+
+  const [
+    cancellingCandidate,
+    setCancellingCandidate,
+  ] = useState<Candidate | null>(null);
+
+
+  /* =======================================================
      DELETE
   ======================================================= */
 
@@ -244,14 +265,6 @@ export function CandidatesPage() {
 
   /* =======================================================
      DERIVED OVERALL STATUS
-     -------------------------------------------------------
-     IMPORTANT:
-
-     Overall status database column নয়।
-
-     Candidate state থেকে derive হবে।
-
-     Future module status এখানে inject করা যাবে।
   ======================================================= */
 
   function getDisplayStatus(
@@ -350,22 +363,12 @@ export function CandidatesPage() {
       candidates.forEach(
         (candidate) => {
 
-          /*
-           * NOTE:
-           * Candidate service-এর current select raw
-           * agent_id দেয়।
-           *
-           * যদি joined agent object service থেকে আসে,
-           * তখন এই existing logic ব্যবহার করা যাবে।
-           */
-
           const agent =
             (
               candidate as Candidate & {
                 agent?: {
                   id?: string;
                   name?: string | null;
-                  
                 } | null;
               }
             ).agent;
@@ -378,7 +381,6 @@ export function CandidatesPage() {
             agents.set(
               String(agent.id),
               agent.name ||
-                
                 "Unknown agent",
             );
 
@@ -414,9 +416,6 @@ export function CandidatesPage() {
 
   /* =======================================================
      STAGE OPTIONS
-     -------------------------------------------------------
-     Stage এখন centralized CandidateStage contract-এর
-     মাধ্যমে Candidate.current_stage থেকে আসবে।
   ======================================================= */
 
   const stageOptions =
@@ -874,7 +873,9 @@ export function CandidatesPage() {
       null,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
@@ -891,7 +892,9 @@ export function CandidatesPage() {
       candidate,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
@@ -908,7 +911,9 @@ export function CandidatesPage() {
       candidate,
     );
 
-    setDeleteOpen(true);
+    setDeleteOpen(
+      true,
+    );
 
   }
 
@@ -925,13 +930,34 @@ export function CandidatesPage() {
       candidate,
     );
 
-    setReturnOpen(true);
+    setReturnOpen(
+      true,
+    );
 
   }
 
 
   /* =======================================================
-     RESTORE
+     CANCEL
+  ======================================================= */
+
+  function handleCancel(
+    candidate: Candidate,
+  ) {
+
+    setCancellingCandidate(
+      candidate,
+    );
+
+    setCancelOpen(
+      true,
+    );
+
+  }
+
+
+  /* =======================================================
+     RESTORE RETURNED
   ======================================================= */
 
   async function handleRestore(
@@ -951,9 +977,13 @@ export function CandidatesPage() {
 
     try {
 
-      setLoading(true);
+      setLoading(
+        true,
+      );
 
-      setError(null);
+      setError(
+        null,
+      );
 
 
       await restoreReturnedCandidate(
@@ -977,7 +1007,136 @@ export function CandidatesPage() {
 
     } finally {
 
-      setLoading(false);
+      setLoading(
+        false,
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     REACTIVATE CANCELLED
+  ======================================================= */
+
+  async function handleReactivate(
+    candidate: Candidate,
+  ) {
+
+    const confirmed =
+      window.confirm(
+        `Reactivate ${candidate.name}?`,
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    try {
+
+      setLoading(
+        true,
+      );
+
+      setError(
+        null,
+      );
+
+
+      await reactivateCandidate(
+        candidate.id,
+      );
+
+
+      await loadCandidates();
+
+    } catch (error) {
+
+      console.error(
+        "Failed to reactivate candidate:",
+        error,
+      );
+
+
+      setError(
+        "Failed to reactivate candidate. Please try again.",
+      );
+
+    } finally {
+
+      setLoading(
+        false,
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     CANCEL SUCCESS
+  ======================================================= */
+
+  async function handleCancelSuccess(
+    updatedCandidate: Candidate,
+  ) {
+
+    setCandidates(
+      (current) =>
+        current.map(
+          (candidate) =>
+            candidate.id ===
+            updatedCandidate.id
+              ? updatedCandidate
+              : candidate,
+        ),
+    );
+
+
+    setCancellingCandidate(
+      null,
+    );
+
+
+    /*
+     * Safety refresh:
+     *
+     * Ensures the UI receives the complete
+     * database-side candidate state.
+     */
+
+    try {
+
+      const freshCandidate =
+        await getCandidateById(
+          updatedCandidate.id,
+        );
+
+
+      if (freshCandidate) {
+
+        setCandidates(
+          (current) =>
+            current.map(
+              (candidate) =>
+                candidate.id ===
+                freshCandidate.id
+                  ? freshCandidate
+                  : candidate,
+            ),
+        );
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Failed to refresh cancelled candidate:",
+        error,
+      );
 
     }
 
@@ -1143,8 +1302,16 @@ export function CandidatesPage() {
             handleReturn
           }
 
+          onCancel={
+            handleCancel
+          }
+
           onRestore={
             handleRestore
+          }
+
+          onReactivate={
+            handleReactivate
           }
 
         />
@@ -1175,6 +1342,14 @@ export function CandidatesPage() {
 
           onRestore={
             handleRestore
+          }
+
+          onCancel={
+            handleCancel
+          }
+
+          onReactivate={
+            handleReactivate
           }
 
         />
@@ -1303,6 +1478,45 @@ export function CandidatesPage() {
             loadCandidates();
 
           }
+        }
+
+      />
+
+
+      {/* =================================================
+          CANCEL
+      ================================================= */}
+
+      <CandidateCancelDialog
+
+        open={
+          cancelOpen
+        }
+
+        candidate={
+          cancellingCandidate
+        }
+
+        onOpenChange={
+          (open) => {
+
+            setCancelOpen(
+              open,
+            );
+
+            if (!open) {
+
+              setCancellingCandidate(
+                null,
+              );
+
+            }
+
+          }
+        }
+
+        onSuccess={
+          handleCancelSuccess
         }
 
       />
