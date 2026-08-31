@@ -1,0 +1,20 @@
+# GitHub Copilot App configuration for OverseasErp
+
+# Copilot can work on issues, PRs, and discussions
+# Configure which events trigger Copilot assistance
+copilot:
+  # Automatically add Copilot to issues labeled for assistance
+  on:
+    issues:
+      labels: ["help-wanted", "good-first-issue"]
+    pull_requests:
+      labels: ["needs-review", "help-wanted"]
+
+# Repository settings for branch protection and automation
+repository:
+  # Enable required status checks before merging
+  branch_protection:
+    pattern: "main"
+    require_status_checks: true
+    require_branches_to_be_up_to_date: true
+    dismiss_stale_reviews: true
