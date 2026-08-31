@@ -47,7 +47,6 @@ import {
 import {
   getCandidates,
   restoreReturnedCandidate,
-  cancelCandidate,
   reactivateCandidate,
   getCandidateById,
   type Candidate,
