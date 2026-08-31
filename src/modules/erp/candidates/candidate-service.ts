@@ -546,6 +546,7 @@ export async function softDeleteCandidate(
    যাতে ওই component-গুলোর existing logic-এ হাত না দিতে হয়।
 ========================================================= */
 
+
 /* ---------------------------------------------------------
    GET CANDIDATE (compat wrapper for getCandidateById)
 --------------------------------------------------------- */
@@ -562,7 +563,10 @@ export async function getCandidate(
     const data =
       await getCandidateById(id);
 
-    return { data, error: null };
+    return {
+      data,
+      error: null,
+    };
 
   } catch (error) {
 
@@ -588,9 +592,13 @@ export async function deleteCandidate(
 
   try {
 
-    await softDeleteCandidate(candidateId);
+    await softDeleteCandidate(
+      candidateId,
+    );
 
-    return { error: null };
+    return {
+      error: null,
+    };
 
   } catch (error) {
 
@@ -613,7 +621,10 @@ export async function deleteCandidate(
 
 function normalizeError(
   error: unknown,
-): { message?: string; code?: string } {
+): {
+  message?: string;
+  code?: string;
+} {
 
   if (
     error &&
@@ -627,6 +638,7 @@ function normalizeError(
 
   }
 
+
   return {
     message: String(error),
   };
@@ -636,23 +648,153 @@ function normalizeError(
 
 /* ---------------------------------------------------------
    CREATE CANDIDATE
+   ---------------------------------------------------------
+   IMPORTANT:
+
+   tenant_id frontend থেকে নেওয়া হচ্ছে না।
+
+   Current authenticated user-এর tenant
+   Supabase `get_my_tenant_id()` RPC function-এর
+   মাধ্যমে automatically resolve করা হচ্ছে।
+
+   Flow:
+
+     auth user
+        ↓
+     get_my_tenant_id()
+        ↓
+     profiles.tenant_id
+        ↓
+     tenant_id
+        ↓
+     candidates INSERT
+
+   ফলে CandidateInput-এ tenant_id রাখার দরকার নেই।
+
+   RLS আবার নিশ্চিত করবে:
+
+     tenant_id = get_my_tenant_id()
 --------------------------------------------------------- */
 
 export async function createCandidate(
   input: CandidateInput,
 ) {
 
+  /* -------------------------------------------------------
+     CURRENT AUTH USER
+     ------------------------------------------------------- */
+
+  const {
+    data: {
+      user,
+    },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+
+  if (userError) {
+
+    return {
+      data: null,
+      error: userError,
+    };
+
+  }
+
+
+  if (!user) {
+
+    return {
+      data: null,
+      error: {
+        message:
+          "User is not authenticated.",
+        code:
+          "AUTH_REQUIRED",
+      },
+    };
+
+  }
+
+
+  /* -------------------------------------------------------
+     GET CURRENT USER'S TENANT
+     ------------------------------------------------------- */
+
+  const {
+    data: tenantId,
+    error: tenantError,
+  } = await supabase.rpc(
+    "get_my_tenant_id",
+  );
+
+
+  if (tenantError) {
+
+    return {
+      data: null,
+      error: tenantError,
+    };
+
+  }
+
+
+  if (!tenantId) {
+
+    return {
+      data: null,
+      error: {
+        message:
+          "Unable to determine current tenant.",
+        code:
+          "TENANT_NOT_FOUND",
+      },
+    };
+
+  }
+
+
+  /* -------------------------------------------------------
+     INSERT CANDIDATE
+     -------------------------------------------------------
+     tenant_id service নিজেই inject করছে।
+
+     created_by-ও authenticated user থেকে নেওয়া হচ্ছে।
+
+     `sl` এখানে দেওয়া হচ্ছে না।
+     Existing database trigger:
+
+       candidates_set_sl
+            ↓
+       set_candidate_sl()
+            ↓
+       generate_candidate_sl()
+
+     automatically SL generate করবে।
+  ------------------------------------------------------- */
+
   const {
     data,
     error,
   } = await supabase
     .from("candidates")
-    .insert(input)
+    .insert({
+      ...input,
+
+      tenant_id:
+        tenantId,
+
+      created_by:
+        user.id,
+    })
     .select(CANDIDATE_SELECT)
     .single();
 
+
   return {
-    data: data as Candidate | null,
+    data:
+      data as Candidate | null,
+
     error,
   };
 
@@ -678,8 +820,11 @@ export async function updateCandidate(
     .select(CANDIDATE_SELECT)
     .single();
 
+
   return {
-    data: data as Candidate | null,
+    data:
+      data as Candidate | null,
+
     error,
   };
 
