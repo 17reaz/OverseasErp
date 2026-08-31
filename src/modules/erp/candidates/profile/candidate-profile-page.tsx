@@ -23,7 +23,7 @@ import { getCandidate, type Candidate } from "../candidate-service"
 import { CandidateInfoCard } from "./info-card"
 import { CandidateQrCard } from "./qr-card"
 import { CandidateTimelineCard } from "./timeline-card"
-import { ModuleRecordsSheet } from "./module-records-sheet"
+import { ModuleRecordsPanel } from "./module-records-panel"
 import { MODULES } from "./module-configs"
 import { ProcessingStepper } from "./processing-stepper"
 import {
@@ -129,6 +129,10 @@ export function CandidateProfilePage() {
     }
   }
 
+  function handleOpenModule(moduleKey: string) {
+    setActiveModuleKey((prev) => (prev === moduleKey ? null : moduleKey))
+  }
+
 
   /* =======================================================
    * LOADING
@@ -231,32 +235,31 @@ export function CandidateProfilePage() {
 
         <Separator />
 
-        <CardContent className="pt-6">
+        <CardContent className="space-y-4 pt-6">
           <ProcessingStepper
             moduleStatuses={moduleStatuses}
             documentsStatus={documentsStatus}
             candidateId={candidate.id}
-            onOpenModule={(moduleKey) => setActiveModuleKey(moduleKey)}
+            activeModuleKey={activeModuleKey}
+            onOpenModule={handleOpenModule}
           />
+
+          {/* INLINE RECORDS PANEL — opens right below the stepper */}
+
+          {activeModule && (
+            <ModuleRecordsPanel
+              key={activeModule.key}
+              module={activeModule}
+              candidateId={candidate.id}
+              tenantId={profile?.tenant_id ?? null}
+              onClose={() => setActiveModuleKey(null)}
+              onSuccess={() => {
+                void handleModuleSuccess(activeModule.key)
+              }}
+            />
+          )}
         </CardContent>
       </Card>
-
-      {/* MODULE RECORDS SHEET (shared across every module) */}
-
-      {activeModule && (
-        <ModuleRecordsSheet
-          module={activeModule}
-          candidateId={candidate.id}
-          tenantId={profile?.tenant_id ?? null}
-          open={!!activeModuleKey}
-          onOpenChange={(open) => {
-            if (!open) setActiveModuleKey(null)
-          }}
-          onSuccess={() => {
-            void handleModuleSuccess(activeModule.key)
-          }}
-        />
-      )}
 
       {/* EDIT CANDIDATE */}
 

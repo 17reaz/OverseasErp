@@ -19,22 +19,24 @@ import type { ModuleConfig, ModuleStatus } from "./types"
  * PROCESSING STEPPER (horizontal, clickable)
  *
  * Each node is the status dot + icon; clicking a node opens
- * the module's records sheet (existing data, or Add New if
- * there isn't any yet). The connecting line between nodes
- * tints with the earlier step's status so progress reads
- * left → right at a glance.
+ * an inline panel (rendered by the parent, right below the
+ * stepper) with existing records as boxes + an Add New box.
+ * The connecting line between nodes tints with the earlier
+ * step's status so progress reads left → right at a glance.
  * ========================================================= */
 
 function StepperNode({
   module,
   status,
   href,
+  isActive,
   onOpen,
   isLast,
 }: {
   module: ModuleConfig
   status: ModuleStatus
   href: string
+  isActive: boolean
   onOpen: () => void
   isLast: boolean
 }) {
@@ -53,6 +55,7 @@ function StepperNode({
                 className={cn(
                   "group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-transform hover:scale-105",
                   config.dot,
+                  isActive && "ring-2 ring-primary ring-offset-2 ring-offset-background",
                 )}
               >
                 {module.icon}
@@ -157,11 +160,13 @@ export function ProcessingStepper({
   moduleStatuses,
   documentsStatus,
   candidateId,
+  activeModuleKey,
   onOpenModule,
 }: {
   moduleStatuses: Record<string, ModuleStatus>
   documentsStatus: ModuleStatus
   candidateId: string
+  activeModuleKey: string | null
   onOpenModule: (moduleKey: string) => void
 }) {
   return (
@@ -173,6 +178,7 @@ export function ProcessingStepper({
             module={module}
             href={module.href(candidateId)}
             status={moduleStatuses[module.key] ?? "not_started"}
+            isActive={activeModuleKey === module.key}
             onOpen={() => onOpenModule(module.key)}
             isLast={false}
           />
