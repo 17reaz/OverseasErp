@@ -26,6 +26,8 @@ import {
 import {
   restoreDeletedCandidate,
   getDeletedCandidates,
+  getCandidateChildData,
+  permanentlyDeleteCandidate,
 } from "./trash-service";
 
 import type {
@@ -67,7 +69,10 @@ export function TrashPage() {
   ] = useState<string | null>(
     null,
   );
-
+const [
+  deletingId,
+  setDeletingId,
+] = useState<string | null>(null);
 
   const [
     error,
@@ -270,7 +275,111 @@ export function TrashPage() {
 
         return;
       }
+      async function handlePermanentDelete(
+  candidate: Candidate,
+) {
+  try {
+    setDeletingId(candidate.id);
+    setError(null);
 
+    // Check related child data first
+    const childData =
+      await getCandidateChildData(
+        candidate.id,
+      );
+
+    if (childData.total > 0) {
+      const details = [
+        childData.medicals > 0
+          ? `Medical: ${childData.medicals}`
+          : null,
+
+        childData.mofas > 0
+          ? `MOFA: ${childData.mofas}`
+          : null,
+
+        childData.visas > 0
+          ? `Visa: ${childData.visas}`
+          : null,
+
+        childData.flights > 0
+          ? `Flight: ${childData.flights}`
+          : null,
+
+        childData.fingers > 0
+          ? `Finger: ${childData.fingers}`
+          : null,
+
+        childData.police_clearances > 0
+          ? `Police Clearance: ${childData.police_clearances}`
+          : null,
+
+        childData.trade_tests > 0
+          ? `Trade Test: ${childData.trade_tests}`
+          : null,
+
+        childData.files > 0
+          ? `Files: ${childData.files}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const confirmed =
+        window.confirm(
+          `⚠️ This candidate has related data.\n\n${details}\n\nTotal related records: ${childData.total}\n\nPermanent delete will remove the candidate AND all related data.\n\nThis action cannot be undone.\n\nContinue?`,
+        );
+
+      if (!confirmed) {
+        return;
+      }
+    } else {
+      const confirmed =
+        window.confirm(
+          `Permanently delete "${candidate.name}"?\n\nThis action cannot be undone.`,
+        );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const result =
+      await permanentlyDeleteCandidate(
+        candidate.id,
+        true,
+      );
+
+    if (!result.success) {
+      setError(
+        result.message ||
+          "Failed to permanently delete candidate.",
+      );
+
+      return;
+    }
+
+    // Remove immediately from Trash
+    setCandidates(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !== candidate.id,
+        ),
+    );
+  } catch (error) {
+    console.error(
+      "Failed to permanently delete candidate:",
+      error,
+    );
+
+    setError(
+      "Failed to permanently delete candidate.",
+    );
+  } finally {
+    setDeletingId(null);
+  }
+}
 
       // Remove from Trash immediately
 
@@ -857,28 +966,47 @@ export function TrashPage() {
                         "
                       >
 
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={
-                            restoringId ===
-                            candidate.id
-                          }
-                          onClick={() =>
-                            handleRestore(
-                              candidate,
-                            )
-                          }
-                        >
+                        <div className="flex items-center justify-end gap-2">
 
-                          <RotateCcw />
+  <Button
+    size="sm"
+    variant="outline"
+    disabled={
+      restoringId === candidate.id ||
+      deletingId === candidate.id
+    }
+    onClick={() =>
+      handleRestore(candidate)
+    }
+  >
+    <RotateCcw />
 
-                          {restoringId ===
-                          candidate.id
-                            ? "Restoring..."
-                            : "Restore"}
+    {restoringId === candidate.id
+      ? "Restoring..."
+      : "Restore"}
+  </Button>
 
-                        </Button>
+  <Button
+    size="sm"
+    variant="destructive"
+    disabled={
+      restoringId === candidate.id ||
+      deletingId === candidate.id
+    }
+    onClick={() =>
+      handlePermanentDelete(
+        candidate,
+      )
+    }
+  >
+    <Trash2 />
+
+    {deletingId === candidate.id
+      ? "Deleting..."
+      : "Delete Forever"}
+  </Button>
+
+</div>
 
                       </td>
 
