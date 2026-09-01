@@ -929,7 +929,7 @@ const [
             )}
 
           </div>
-            // candidate popover-এর ঠিক পরে, FormSection বন্ধ হওয়ার আগে — নতুন checkbox
+            
 {!medical && (
 
   <label className="mt-3 flex items-start gap-2 text-sm">
