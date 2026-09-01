@@ -4,7 +4,10 @@ import {
   useState,
   type FormEvent,
 } from "react";
-
+// import যোগ হলো
+import {
+  Checkbox,
+} from "@/components/ui/checkbox";
 import {
   Check,
   ChevronsUpDown,
@@ -138,7 +141,11 @@ export function MedicalForm({
     loading,
     setLoading,
   ] = useState(false);
-
+  // নতুন state (loading state-এর ঠিক পরে)
+const [
+  advanceStage,
+  setAdvanceStage,
+] = useState(true);
   const [
     error,
     setError,
@@ -480,6 +487,10 @@ export function MedicalForm({
             : null,
 
         status,
+        advance_stage:
+    medical
+      ? undefined
+      : advanceStage,
 
       };
 
@@ -918,7 +929,30 @@ export function MedicalForm({
             )}
 
           </div>
+            // candidate popover-এর ঠিক পরে, FormSection বন্ধ হওয়ার আগে — নতুন checkbox
+{!medical && (
 
+  <label className="mt-3 flex items-start gap-2 text-sm">
+
+    <Checkbox
+      checked={advanceStage}
+      onCheckedChange={(checked) =>
+        setAdvanceStage(checked === true)
+      }
+    />
+
+    <span>
+      Update candidate stage to Medical
+      <span className="block text-xs text-muted-foreground">
+        Backfill/historical entry হলে uncheck করো — candidate-এর
+        current stage যেখানে আছে সেখানেই থাকবে, শুধু এই record
+        টা যোগ হবে।
+      </span>
+    </span>
+
+  </label>
+
+)}
         </FormSection>
 
 

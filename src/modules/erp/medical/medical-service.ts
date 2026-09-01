@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
-
+import { updateCandidateStage } from "../candidates/candidate-service";
 
 export type MedicalStatus =
   | "new"
@@ -81,6 +81,8 @@ export interface MedicalInput {
 
   status:
     MedicalStatus;
+    advance_stage?: boolean;
+
 }
 
 
@@ -229,6 +231,26 @@ export async function createMedical(
       )
     `)
     .single();
+    // createMedical() এর ভিতরে — auto-advance ব্লকের condition বদলেছে
+if (!error && data && input.advance_stage !== false) {
+
+  try {
+
+    await updateCandidateStage(
+      input.candidate_id,
+      "medical",
+    );
+
+  } catch (stageError) {
+
+    console.error(
+      "Failed to auto-advance candidate stage to medical:",
+      stageError,
+    );
+
+  }
+
+}
 
 
   return {
