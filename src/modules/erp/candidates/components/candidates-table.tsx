@@ -39,8 +39,8 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/ui/data-table";
-import type { Candidate } from "../candidate-types";
-import { getCandidateOverallStatus } from "../candidate-selectors";
+// import type { Candidate } from "../candidate-types";
+// import { getCandidateOverallStatus } from "../candidate-selectors";
 import { getCandidateStageLabel } from "../candidate-stage";
 import { CandidateNextStageButton } from "./candidate-next-stage-button";
 
