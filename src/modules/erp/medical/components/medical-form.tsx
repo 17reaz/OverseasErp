@@ -944,9 +944,6 @@ const [
     <span>
       Update candidate stage to Medical
       <span className="block text-xs text-muted-foreground">
-        Backfill/historical entry হলে uncheck করো — candidate-এর
-        current stage যেখানে আছে সেখানেই থাকবে, শুধু এই record
-        টা যোগ হবে।
       </span>
     </span>
 
