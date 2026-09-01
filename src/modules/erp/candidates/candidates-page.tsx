@@ -8,6 +8,7 @@ import {
 import {
   CandidatesGrid,
 } from "./components/candidates-grid";
+import { CandidateStageSheet } from "./components/candidate-stage";
 
 import {
   CandidateCancelDialog,
@@ -141,6 +142,8 @@ export function CandidatesPage() {
     error,
     setError,
   ] = useState<string | null>(null);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [managingServicesCandidate, setManagingServicesCandidate] = useState<Candidate | null>(null);
 
 
   /* =======================================================
@@ -276,7 +279,10 @@ export function CandidatesPage() {
 
   }
 
-
+function handleManageServices(candidate: Candidate) {
+  setManagingServicesCandidate(candidate);
+  setServicesOpen(true);
+}
   /* =======================================================
      STATUS COUNTS
   ======================================================= */
@@ -1314,7 +1320,7 @@ export function CandidatesPage() {
           onRestore={
             handleRestore
           }
-
+          onManageServices={handleManageServices}
           onReactivate={
             handleReactivate
           }
@@ -1454,7 +1460,16 @@ export function CandidatesPage() {
 
       />
 
-
+        <CandidateStageSheet
+  open={servicesOpen}
+  candidateId={managingServicesCandidate?.id ?? ""}
+  candidateName={managingServicesCandidate?.name}
+  onOpenChange={setServicesOpen}
+  onSuccess={() => {
+    setManagingServicesCandidate(null);
+    loadCandidates();
+  }}
+/>
       {/* =================================================
           RETURN
       ================================================= */}

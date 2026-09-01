@@ -7,6 +7,7 @@ import {
   Trash2,
   Ban,
   PlayCircle,
+  ListChecks,
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
@@ -65,6 +66,7 @@ interface CandidatesTableProps {
   onPassportAction?: (
     candidate: Candidate,
   ) => void;
+  onManageServices?: (candidate: Candidate) => void;
 
   onEdit?: (
     candidate: Candidate,
@@ -108,6 +110,7 @@ export function CandidatesTable({
   onPageChange,
 
   onPassportAction,
+  onManageServices,
   onEdit,
   onDelete,
   onReturn,
@@ -559,7 +562,12 @@ export function CandidatesTable({
                 </DropdownMenuItem>
 
               )}
-
+              {!isComplete && (
+             <DropdownMenuItem onClick={() => onManageServices?.(candidate)}>
+                  <ListChecks />
+                  Manage Services
+                </DropdownMenuItem>
+              )}
 
               {/* =========================================
                   RETURN
