@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-
-import { PageHeader } from "../shared/page-header";
-
 import {
   getDashboardData,
   type DashboardData,
