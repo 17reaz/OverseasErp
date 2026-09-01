@@ -6,6 +6,155 @@ import type {
 
 
 /* =========================================================
+   TRASH CANDIDATE SELECT
+========================================================= */
+
+const TRASH_CANDIDATE_SELECT = `
+  id,
+  tenant_id,
+  sl,
+  passport_no,
+  name,
+  received_date,
+  country,
+  created_by,
+  agent_id,
+  agent:agents (
+    id,
+    name,
+    code
+  ),
+  current_stage,
+  is_returned,
+  returned_date,
+  returned_reason,
+  final_status,
+  final_reason,
+  is_deleted,
+  created_at,
+  updated_at
+`;
+
+
+/* =========================================================
+   GET DELETED CANDIDATES
+========================================================= */
+
+export async function getDeletedCandidates(): Promise<{
+  data: Candidate[] | null;
+  error: {
+    message?: string;
+    code?: string;
+  } | null;
+}> {
+  try {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("candidates")
+      .select(TRASH_CANDIDATE_SELECT)
+      .eq("is_deleted", true)
+      .order("updated_at", {
+        ascending: false,
+      });
+
+    if (error) {
+      return {
+        data: null,
+        error: {
+          message: error.message,
+          code: error.code,
+        },
+      };
+    }
+
+    return {
+      data: (data ?? []) as unknown as Candidate[],
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to load deleted candidates.",
+      },
+    };
+  }
+}
+
+
+/* =========================================================
+   RESTORE DELETED CANDIDATE
+   ---------------------------------------------------------
+   Trash:
+     is_deleted = true
+
+   Restore:
+     is_deleted = false
+========================================================= */
+
+export async function restoreDeletedCandidate(
+  candidateId: string,
+): Promise<{
+  error: {
+    message?: string;
+    code?: string;
+  } | null;
+}> {
+  try {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("candidates")
+      .update({
+        is_deleted: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", candidateId)
+      .eq("is_deleted", true)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      return {
+        error: {
+          message: error.message,
+          code: error.code,
+        },
+      };
+    }
+
+    if (!data) {
+      return {
+        error: {
+          message:
+            "Candidate was not found in Trash or has already been restored.",
+        },
+      };
+    }
+
+    return {
+      error: null,
+    };
+  } catch (error) {
+    return {
+      error: {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to restore candidate.",
+      },
+    };
+  }
+}
+
+
+/* =========================================================
    CHILD DATA SUMMARY
 ========================================================= */
 
@@ -36,9 +185,6 @@ export interface PermanentDeleteResult {
 
 /* =========================================================
    GET CHILD DATA
-   ---------------------------------------------------------
-   Checks whether the deleted candidate has related
-   business records.
 ========================================================= */
 
 export async function getCandidateChildData(
@@ -62,10 +208,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("fingers")
@@ -73,10 +216,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("flights")
@@ -84,10 +224,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("medicals")
@@ -95,10 +232,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("mofas")
@@ -106,10 +240,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("police_clearances")
@@ -117,10 +248,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("trade_tests")
@@ -128,10 +256,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
     supabase
       .from("visas")
@@ -139,10 +264,7 @@ export async function getCandidateChildData(
         count: "exact",
         head: true,
       })
-      .eq(
-        "candidate_id",
-        candidateId,
-      ),
+      .eq("candidate_id", candidateId),
 
   ]);
 
@@ -162,9 +284,7 @@ export async function getCandidateChildData(
     visas.error;
 
   if (queryError) {
-    throw new Error(
-      queryError.message,
-    );
+    throw new Error(queryError.message);
   }
 
 
@@ -224,10 +344,11 @@ export async function getCandidateChildData(
    PERMANENTLY DELETE TRASH CANDIDATE
    ---------------------------------------------------------
    IMPORTANT:
-   - Candidate must already be soft deleted.
-   - Only is_deleted = true candidates can be deleted.
-   - Child records are removed by database FK cascade.
-   - This function NEVER deletes an active candidate.
+
+   Only:
+     is_deleted = true
+
+   candidate can be permanently deleted.
 ========================================================= */
 
 export async function permanentlyDeleteCandidate(
@@ -249,9 +370,6 @@ export async function permanentlyDeleteCandidate(
 
     /* =====================================================
        WARNING
-       -----------------------------------------------------
-       If child data exists and user has not confirmed,
-       do NOT delete anything.
     ===================================================== */
 
     if (
@@ -272,8 +390,6 @@ export async function permanentlyDeleteCandidate(
 
     /* =====================================================
        PERMANENT DELETE
-       -----------------------------------------------------
-       Only deleted candidates can be permanently removed.
     ===================================================== */
 
     const {
@@ -282,14 +398,8 @@ export async function permanentlyDeleteCandidate(
     } = await supabase
       .from("candidates")
       .delete()
-      .eq(
-        "id",
-        id,
-      )
-      .eq(
-        "is_deleted",
-        true,
-      )
+      .eq("id", id)
+      .eq("is_deleted", true)
       .select("id")
       .maybeSingle();
 
@@ -311,10 +421,7 @@ export async function permanentlyDeleteCandidate(
 
 
     /* =====================================================
-       CANDIDATE NOT FOUND
-       -----------------------------------------------------
-       Prevents reporting success if the candidate was
-       not actually deleted.
+       NOT FOUND
     ===================================================== */
 
     if (!data) {
