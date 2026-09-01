@@ -24,10 +24,10 @@ import {
 } from "@/components/ui/badge";
 
 import {
-  restoreDeletedCandidate,
-  getDeletedCandidates,
   getCandidateChildData,
+  getDeletedCandidates,
   permanentlyDeleteCandidate,
+  restoreDeletedCandidate,
 } from "./trash-service";
 
 import type {
@@ -50,36 +50,30 @@ export function TrashPage() {
     setCandidates,
   ] = useState<Candidate[]>([]);
 
-
   const [
     search,
     setSearch,
   ] = useState("");
-
 
   const [
     loading,
     setLoading,
   ] = useState(true);
 
-
   const [
     restoringId,
     setRestoringId,
-  ] = useState<string | null>(
-    null,
-  );
-const [
-  deletingId,
-  setDeletingId,
-] = useState<string | null>(null);
+  ] = useState<string | null>(null);
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(null);
 
   const [
     error,
     setError,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<string | null>(null);
 
 
   // ===================================================
@@ -91,9 +85,7 @@ const [
       async () => {
 
         setLoading(true);
-
         setError(null);
-
 
         try {
 
@@ -102,7 +94,6 @@ const [
             error,
           } =
             await getDeletedCandidates();
-
 
           if (error) {
 
@@ -119,7 +110,6 @@ const [
 
             return;
           }
-
 
           setCandidates(
             data ?? [],
@@ -173,11 +163,9 @@ const [
           .trim()
           .toLowerCase();
 
-
       if (!query) {
         return candidates;
       }
-
 
       return candidates.filter(
         (
@@ -238,11 +226,9 @@ const [
         `Restore "${candidate.name}"?`,
       );
 
-
     if (!confirmed) {
       return;
     }
-
 
     try {
 
@@ -252,14 +238,12 @@ const [
 
       setError(null);
 
-
       const {
         error,
       } =
         await restoreDeletedCandidate(
           candidate.id,
         );
-
 
       if (error) {
 
@@ -275,20 +259,74 @@ const [
 
         return;
       }
-      async function handlePermanentDelete(
-  candidate: Candidate,
-) {
-  try {
-    setDeletingId(candidate.id);
-    setError(null);
 
-    // Check related child data first
-    const childData =
-      await getCandidateChildData(
+      // Remove from Trash immediately
+
+      setCandidates(
+        (
+          current,
+        ) =>
+          current.filter(
+            (
+              item,
+            ) =>
+              item.id !==
+              candidate.id,
+          ),
+      );
+
+    } catch (error) {
+
+      console.error(
+        error,
+      );
+
+      setError(
+        "Failed to restore candidate.",
+      );
+
+    } finally {
+
+      setRestoringId(
+        null,
+      );
+
+    }
+
+  }
+
+
+  // ===================================================
+  // PERMANENT DELETE
+  // ===================================================
+
+  async function handlePermanentDelete(
+    candidate: Candidate,
+  ) {
+
+    try {
+
+      setDeletingId(
         candidate.id,
       );
 
-    if (childData.total > 0) {
+      setError(null);
+
+
+      // -------------------------------------------------
+      // CHECK CHILD DATA
+      // -------------------------------------------------
+
+      const childData =
+        await getCandidateChildData(
+          candidate.id,
+        );
+
+
+      // -------------------------------------------------
+      // BUILD CHILD DATA WARNING
+      // -------------------------------------------------
+
       const details = [
         childData.medicals > 0
           ? `Medical: ${childData.medicals}`
@@ -325,63 +363,82 @@ const [
         .filter(Boolean)
         .join("\n");
 
-      const confirmed =
-        window.confirm(
-          `⚠️ This candidate has related data.\n\n${details}\n\nTotal related records: ${childData.total}\n\nPermanent delete will remove the candidate AND all related data.\n\nThis action cannot be undone.\n\nContinue?`,
-        );
+
+      // -------------------------------------------------
+      // CONFIRM DELETE
+      // -------------------------------------------------
+
+      let confirmed = false;
+
+
+      if (childData.total > 0) {
+
+        confirmed =
+          window.confirm(
+            `⚠️ WARNING\n\n` +
+
+            `"${candidate.name}" has related data.\n\n` +
+
+            `${details}\n\n` +
+
+            `Total related records: ${childData.total}\n\n` +
+
+            `Permanent deletion will remove the candidate and all related data.\n\n` +
+
+            `This action cannot be undone.\n\n` +
+
+            `Continue?`,
+          );
+
+      } else {
+
+        confirmed =
+          window.confirm(
+            `Permanently delete "${candidate.name}"?\n\n` +
+
+            `No related records were found.\n\n` +
+
+            `This action cannot be undone.`,
+          );
+
+      }
+
 
       if (!confirmed) {
         return;
       }
-    } else {
-      const confirmed =
-        window.confirm(
-          `Permanently delete "${candidate.name}"?\n\nThis action cannot be undone.`,
+
+
+      // -------------------------------------------------
+      // PERFORM PERMANENT DELETE
+      // -------------------------------------------------
+
+      const result =
+        await permanentlyDeleteCandidate(
+          candidate.id,
+          true,
         );
 
-      if (!confirmed) {
+
+      if (!result.success) {
+
+        console.error(
+          "Failed to permanently delete candidate:",
+          result.message,
+        );
+
+        setError(
+          result.message ||
+            "Failed to permanently delete candidate.",
+        );
+
         return;
       }
-    }
 
-    const result =
-      await permanentlyDeleteCandidate(
-        candidate.id,
-        true,
-      );
 
-    if (!result.success) {
-      setError(
-        result.message ||
-          "Failed to permanently delete candidate.",
-      );
-
-      return;
-    }
-
-    // Remove immediately from Trash
-    setCandidates(
-      (current) =>
-        current.filter(
-          (item) =>
-            item.id !== candidate.id,
-        ),
-    );
-  } catch (error) {
-    console.error(
-      "Failed to permanently delete candidate:",
-      error,
-    );
-
-    setError(
-      "Failed to permanently delete candidate.",
-    );
-  } finally {
-    setDeletingId(null);
-  }
-}
-
-      // Remove from Trash immediately
+      // -------------------------------------------------
+      // REMOVE FROM TRASH IMMEDIATELY
+      // -------------------------------------------------
 
       setCandidates(
         (
@@ -399,16 +456,17 @@ const [
     } catch (error) {
 
       console.error(
+        "Failed to permanently delete candidate:",
         error,
       );
 
       setError(
-        "Failed to restore candidate.",
+        "Failed to permanently delete candidate.",
       );
 
     } finally {
 
-      setRestoringId(
+      setDeletingId(
         null,
       );
 
@@ -478,7 +536,7 @@ const [
             "
           >
             Deleted candidates can be restored
-            from here.
+            or permanently deleted from here.
           </p>
 
         </div>
@@ -656,7 +714,7 @@ const [
             <table
               className="
                 w-full
-                min-w-[900px]
+                min-w-[1050px]
               "
             >
 
@@ -762,7 +820,7 @@ const [
 
                   <th
                     className="
-                      w-[120px]
+                      w-[240px]
                       px-4
                       py-3
                       text-right
@@ -962,51 +1020,74 @@ const [
                         className="
                           px-4
                           py-3
-                          text-right
                         "
                       >
 
-                        <div className="flex items-center justify-end gap-2">
+                        <div
+                          className="
+                            flex
+                            items-center
+                            justify-end
+                            gap-2
+                          "
+                        >
 
-  <Button
-    size="sm"
-    variant="outline"
-    disabled={
-      restoringId === candidate.id ||
-      deletingId === candidate.id
-    }
-    onClick={() =>
-      handleRestore(candidate)
-    }
-  >
-    <RotateCcw />
+                          {/* RESTORE */}
 
-    {restoringId === candidate.id
-      ? "Restoring..."
-      : "Restore"}
-  </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              restoringId ===
+                                candidate.id ||
+                              deletingId ===
+                                candidate.id
+                            }
+                            onClick={() =>
+                              handleRestore(
+                                candidate,
+                              )
+                            }
+                          >
 
-  <Button
-    size="sm"
-    variant="destructive"
-    disabled={
-      restoringId === candidate.id ||
-      deletingId === candidate.id
-    }
-    onClick={() =>
-      handlePermanentDelete(
-        candidate,
-      )
-    }
-  >
-    <Trash2 />
+                            <RotateCcw />
 
-    {deletingId === candidate.id
-      ? "Deleting..."
-      : "Delete Forever"}
-  </Button>
+                            {restoringId ===
+                            candidate.id
+                              ? "Restoring..."
+                              : "Restore"}
 
-</div>
+                          </Button>
+
+
+                          {/* PERMANENT DELETE */}
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={
+                              restoringId ===
+                                candidate.id ||
+                              deletingId ===
+                                candidate.id
+                            }
+                            onClick={() =>
+                              handlePermanentDelete(
+                                candidate,
+                              )
+                            }
+                          >
+
+                            <Trash2 />
+
+                            {deletingId ===
+                            candidate.id
+                              ? "Deleting..."
+                              : "Delete Forever"}
+
+                          </Button>
+
+                        </div>
 
                       </td>
 

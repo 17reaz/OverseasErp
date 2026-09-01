@@ -4,6 +4,7 @@ import type {
   Candidate,
 } from "../candidates/candidate-service";
 
+
 /* =========================================================
    CHILD DATA SUMMARY
 ========================================================= */
@@ -20,6 +21,7 @@ export interface CandidateChildData {
   total: number;
 }
 
+
 /* =========================================================
    PERMANENT DELETE RESULT
 ========================================================= */
@@ -31,16 +33,18 @@ export interface PermanentDeleteResult {
   message: string;
 }
 
+
 /* =========================================================
    GET CHILD DATA
    ---------------------------------------------------------
-   Checks whether the deleted candidate still has related
+   Checks whether the deleted candidate has related
    business records.
 ========================================================= */
 
 export async function getCandidateChildData(
   candidateId: string,
 ): Promise<CandidateChildData> {
+
   const [
     files,
     fingers,
@@ -51,58 +55,155 @@ export async function getCandidateChildData(
     tradeTests,
     visas,
   ] = await Promise.all([
+
     supabase
       .from("files")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("fingers")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("flights")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("medicals")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("mofas")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("police_clearances")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("trade_tests")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
 
     supabase
       .from("visas")
-      .select("id", { count: "exact", head: true })
-      .eq("candidate_id", candidateId),
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "candidate_id",
+        candidateId,
+      ),
+
   ]);
 
+
+  /* =======================================================
+     CHECK QUERY ERRORS
+  ======================================================= */
+
+  const queryError =
+    files.error ??
+    fingers.error ??
+    flights.error ??
+    medicals.error ??
+    mofas.error ??
+    policeClearances.error ??
+    tradeTests.error ??
+    visas.error;
+
+  if (queryError) {
+    throw new Error(
+      queryError.message,
+    );
+  }
+
+
+  /* =======================================================
+     BUILD CHILD DATA
+  ======================================================= */
+
   const childData: CandidateChildData = {
-    files: files.count ?? 0,
-    fingers: fingers.count ?? 0,
-    flights: flights.count ?? 0,
-    medicals: medicals.count ?? 0,
-    mofas: mofas.count ?? 0,
-    police_clearances: policeClearances.count ?? 0,
-    trade_tests: tradeTests.count ?? 0,
-    visas: visas.count ?? 0,
+    files:
+      files.count ?? 0,
+
+    fingers:
+      fingers.count ?? 0,
+
+    flights:
+      flights.count ?? 0,
+
+    medicals:
+      medicals.count ?? 0,
+
+    mofas:
+      mofas.count ?? 0,
+
+    police_clearances:
+      policeClearances.count ?? 0,
+
+    trade_tests:
+      tradeTests.count ?? 0,
+
+    visas:
+      visas.count ?? 0,
+
     total: 0,
   };
+
+
+  /* =======================================================
+     TOTAL
+  ======================================================= */
 
   childData.total =
     childData.files +
@@ -114,65 +215,160 @@ export async function getCandidateChildData(
     childData.trade_tests +
     childData.visas;
 
+
   return childData;
 }
+
 
 /* =========================================================
    PERMANENTLY DELETE TRASH CANDIDATE
    ---------------------------------------------------------
    IMPORTANT:
    - Candidate must already be soft deleted.
-   - Child records are deleted automatically because the
-     database FK uses ON DELETE CASCADE.
-   - Call with confirmed = false first to get the warning.
-   - Call with confirmed = true after user confirmation.
+   - Only is_deleted = true candidates can be deleted.
+   - Child records are removed by database FK cascade.
+   - This function NEVER deletes an active candidate.
 ========================================================= */
 
 export async function permanentlyDeleteCandidate(
   id: string,
   confirmed = false,
 ): Promise<PermanentDeleteResult> {
-  const childData = await getCandidateChildData(id);
 
-  /* -------------------------------------------------------
-     FIRST CALL:
-     Return warning if child data exists.
-  ------------------------------------------------------- */
+  try {
 
-  if (!confirmed && childData.total > 0) {
+    /* =====================================================
+       CHECK CHILD DATA
+    ===================================================== */
+
+    const childData =
+      await getCandidateChildData(
+        id,
+      );
+
+
+    /* =====================================================
+       WARNING
+       -----------------------------------------------------
+       If child data exists and user has not confirmed,
+       do NOT delete anything.
+    ===================================================== */
+
+    if (
+      childData.total > 0 &&
+      !confirmed
+    ) {
+
+      return {
+        success: false,
+        warning: true,
+        childData,
+        message:
+          "This candidate has related records. Permanent deletion will also remove all related data.",
+      };
+
+    }
+
+
+    /* =====================================================
+       PERMANENT DELETE
+       -----------------------------------------------------
+       Only deleted candidates can be permanently removed.
+    ===================================================== */
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("candidates")
+      .delete()
+      .eq(
+        "id",
+        id,
+      )
+      .eq(
+        "is_deleted",
+        true,
+      )
+      .select("id")
+      .maybeSingle();
+
+
+    /* =====================================================
+       DELETE ERROR
+    ===================================================== */
+
+    if (error) {
+
+      return {
+        success: false,
+        warning: false,
+        childData,
+        message: error.message,
+      };
+
+    }
+
+
+    /* =====================================================
+       CANDIDATE NOT FOUND
+       -----------------------------------------------------
+       Prevents reporting success if the candidate was
+       not actually deleted.
+    ===================================================== */
+
+    if (!data) {
+
+      return {
+        success: false,
+        warning: false,
+        childData,
+        message:
+          "Candidate was not found in Trash or has already been deleted.",
+      };
+
+    }
+
+
+    /* =====================================================
+       SUCCESS
+    ===================================================== */
+
     return {
-      success: false,
-      warning: true,
+      success: true,
+      warning: false,
       childData,
       message:
-        "This candidate has related records. Permanent deletion will also remove all related data.",
+        "Candidate and all related data were permanently deleted.",
     };
-  }
 
-  /* -------------------------------------------------------
-     PERMANENT DELETE
-     ------------------------------------------------------- */
+  } catch (error) {
 
-  const { error } = await supabase
-    .from("candidates")
-    .delete()
-    .eq("id", id)
-    .eq("is_deleted", true);
+    console.error(
+      "Permanent candidate delete failed:",
+      error,
+    );
 
-  if (error) {
+
     return {
       success: false,
       warning: false,
-      childData,
-      message: error.message,
+      childData: {
+        files: 0,
+        fingers: 0,
+        flights: 0,
+        medicals: 0,
+        mofas: 0,
+        police_clearances: 0,
+        trade_tests: 0,
+        visas: 0,
+        total: 0,
+      },
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to permanently delete candidate.",
     };
-  }
 
-  return {
-    success: true,
-    warning: false,
-    childData,
-    message:
-      "Candidate and all related data were permanently deleted.",
-  };
+  }
 }
