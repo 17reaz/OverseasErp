@@ -53,11 +53,6 @@ export function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your overseas recruitment operations."
-        />
-
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({
             length: 7,
@@ -85,11 +80,7 @@ export function DashboardPage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your overseas recruitment operations."
-        />
-
+       
         <div className="rounded-lg border border-destructive/30 p-6">
           <p className="font-medium">
             Failed to load dashboard
@@ -120,11 +111,7 @@ export function DashboardPage() {
   if (!data) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your overseas recruitment operations."
-        />
-
+       
         <div className="rounded-lg border p-6 text-sm text-muted-foreground">
           No dashboard data available.
         </div>
@@ -138,11 +125,6 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="Overview of your overseas recruitment operations."
-      />
-
       {/* ===================================================
           KPI STATS
       =================================================== */}

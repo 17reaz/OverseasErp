@@ -1,9 +1,7 @@
 import {
   Activity,
-  ArrowDownLeft,
-  ClipboardCheck,
-  FileCheck2,
-  Plane,
+  CheckCircle2,
+  RotateCcw,
   Users,
 } from "lucide-react";
 
@@ -27,57 +25,36 @@ export function DashboardStats({
 }: DashboardStatsProps) {
   const items = [
     {
-      title: "Total Candidates",
+      title: "Total",
       value: stats.totalCandidates,
       icon: Users,
-      description: "All candidate records",
+      description: "All candidates",
     },
 
     {
-      title: "Active Candidates",
+      title: "Active",
       value: stats.activeCandidates,
       icon: Activity,
       description: "Currently processing",
     },
 
     {
-      title: "Medical Pending",
-      value: stats.medicalPending,
-      icon: ClipboardCheck,
-      description: `${stats.medicalFit} fit`,
+      title: "Complete",
+      value: stats.completeCandidates,
+      icon: CheckCircle2,
+      description: "Completed candidates",
     },
 
     {
-      title: "MOFA Pending",
-      value: stats.mofaPending,
-      icon: FileCheck2,
-      description: `${stats.mofaApproved} approved`,
-    },
-
-    {
-      title: "Visa Pending",
-      value: stats.visaPending,
-      icon: FileCheck2,
-      description: `${stats.visaIssued} issued`,
-    },
-
-    {
-      title: "Flights Scheduled",
-      value: stats.flightScheduled,
-      icon: Plane,
-      description: `${stats.flightDeparted} departed`,
-    },
-
-    {
-      title: "Returned",
+      title: "Returned / Cancelled",
       value: stats.returnedCandidates,
-      icon: ArrowDownLeft,
-      description: "Returned candidates",
+      icon: RotateCcw,
+      description: "Returned or cancelled",
     },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((item) => {
         const Icon = item.icon;
 
