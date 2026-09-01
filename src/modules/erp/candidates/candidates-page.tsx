@@ -1074,7 +1074,13 @@ export function CandidatesPage() {
 
   }
 
-
+  function handleCandidateUpdated(updatedCandidate: Candidate) {
+  setCandidates((current) =>
+    current.map((candidate) =>
+      candidate.id === updatedCandidate.id ? updatedCandidate : candidate,
+    ),
+  );
+}
   /* =======================================================
      CANCEL SUCCESS
   ======================================================= */
@@ -1312,7 +1318,7 @@ export function CandidatesPage() {
           onReactivate={
             handleReactivate
           }
-
+          onCandidateUpdated={handleCandidateUpdated}
         />
 
       ) : (

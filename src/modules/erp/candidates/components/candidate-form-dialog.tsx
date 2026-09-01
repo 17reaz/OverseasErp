@@ -2,6 +2,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { CANDIDATE_STAGE_DEFINITIONS } from "../candidate-stage";
 
 import {
   Check,
@@ -239,10 +240,8 @@ export function CandidateFormDialog({
     );
 
 
-    setCurrentStage(
-      candidate?.current_stage ??
-        "Pending",
-    );
+    setCurrentStage(candidate?.current_stage ?? "candidate"); // আগে ছিল "Pending"
+
 
 
     setSelectedAgentId(
@@ -333,9 +332,7 @@ export function CandidateFormDialog({
         agent_id:
           selectedAgentId,
 
-        current_stage:
-          currentStage.trim() ||
-          "Pending",
+       current_stage: currentStage,  
       };
 
 
@@ -774,28 +771,27 @@ export function CandidateFormDialog({
               ================================================= */}
 
           <div className="space-y-2">
+  <Label htmlFor="current_stage">Current Stage</Label>
 
-            <Label
-              htmlFor="current_stage"
-            >
-              Current Stage
-            </Label>
+  <select
+    id="current_stage"
+    value={currentStage}
+    onChange={(event) => setCurrentStage(event.target.value)}
+    disabled={loading}
+    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none"
+  >
+    {CANDIDATE_STAGE_DEFINITIONS.map((definition) => (
+      <option key={definition.value} value={definition.value}>
+        {definition.label}
+      </option>
+    ))}
+  </select>
 
-            <Input
-              id="current_stage"
-              value={
-                currentStage
-              }
-              onChange={(event) =>
-                setCurrentStage(
-                  event.target.value,
-                )
-              }
-              placeholder="Pending"
-              disabled={loading}
-            />
-
-          </div>
+  <p className="text-xs text-muted-foreground">
+    সাধারণত এটা Next বাটন দিয়েই এগোয় — এখানে সরাসরি বদলালে candidate
+    কোনো stage skip করে চলে যেতে পারবে (পুরনো data পরে add করা যাবে)।
+  </p>
+</div>
 
 
           {/* =================================================

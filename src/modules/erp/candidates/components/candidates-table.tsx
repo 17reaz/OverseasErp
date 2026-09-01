@@ -39,6 +39,10 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/ui/data-table";
+import type { Candidate } from "../candidate-types";
+import { getCandidateOverallStatus } from "../candidate-selectors";
+import { getCandidateStageLabel } from "../candidate-stage";
+import { CandidateNextStageButton } from "./candidate-next-stage-button";
 
 
 /* =========================================================
@@ -85,6 +89,7 @@ interface CandidatesTableProps {
   onReactivate?: (
     candidate: Candidate,
   ) => void;
+  onCandidateUpdated?: (candidate: Candidate) => void;
 }
 
 
@@ -110,6 +115,7 @@ export function CandidatesTable({
 
   onCancel,
   onReactivate,
+  onCandidateUpdated, 
 }: CandidatesTableProps) {
 
 
@@ -217,35 +223,30 @@ export function CandidatesTable({
          Visa
          Flight
 
-       Sub-stage এখানে দেখানো হচ্ছে না।
     ----------------------------------------------------- */
 
-    {
+   {
       key: "stage",
-
       header: "Stage",
-
       cell: (candidate) => (
-
-        <span
-          className="
-            inline-flex
-            max-w-full
-            rounded-full
-            border
-            px-2.5
-            py-1
-            text-xs
-            font-medium
-          "
-        >
-          {candidate.current_stage ??
-            "Pending"}
+        <span className="inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-medium">
+          {getCandidateStageLabel(candidate.current_stage)}
+          {/* আগে ছিল: candidate.current_stage ?? "Pending" (raw/broken value দেখাতো) */}
         </span>
-
       ),
     },
 
+    // === নতুন কলাম ===
+    {
+      key: "next_stage",
+      header: "Next",
+      cell: (candidate) => (
+        <CandidateNextStageButton
+          candidate={candidate}
+          onSuccess={(updated) => onCandidateUpdated?.(updated)}
+        />
+      ),
+    },
 
     /* -----------------------------------------------------
        RECEIVED
