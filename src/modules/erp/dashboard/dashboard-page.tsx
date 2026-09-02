@@ -8,7 +8,7 @@ import { DashboardStats } from "./components/dashboard-stats";
 import { DashboardTable } from "./components/dashboard-table";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
 import { DashboardShortcuts } from "./components/dashboard-shortcuts";
-
+import { DashboardPipeline } from "./components/dashboard-pipeline";
 export function DashboardPage() {
   const [data, setData] =
     useState<DashboardData | null>(null);
@@ -128,6 +128,9 @@ export function DashboardPage() {
 
       <DashboardStats
         stats={data.stats}
+      />
+      <DashboardPipeline
+        data={data.pipeline}
       />
 
       {/* ===================================================

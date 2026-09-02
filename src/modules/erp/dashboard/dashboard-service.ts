@@ -34,10 +34,18 @@ export interface DashboardData {
     flightDeparted: number;
   };
 
-  pipeline: {
-    label: string;
-    value: number;
-  }[];
+ pipeline: {
+  key:
+    | "active"
+    | "medical"
+    | "mofa"
+    | "visa"
+    | "flight"
+    | "iqama";
+
+  label: string;
+  value: number;
+}[];
 
   trend: {
     month: string;
@@ -680,36 +688,42 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   const pipeline = [
-    {
-      label: "Active",
-      value: activeCandidates,
-    },
+  {
+    key: "active" as const,
+    label: "Active",
+    value: activeCandidates,
+  },
 
-    {
-      label: "Medical",
-      value: pipelineCounts.medical,
-    },
+  {
+    key: "medical" as const,
+    label: "Medical",
+    value: pipelineCounts.medical,
+  },
 
-    {
-      label: "MOFA",
-      value: pipelineCounts.mofa,
-    },
+  {
+    key: "mofa" as const,
+    label: "MOFA",
+    value: pipelineCounts.mofa,
+  },
 
-    {
-      label: "Visa",
-      value: pipelineCounts.visa,
-    },
+  {
+    key: "visa" as const,
+    label: "Visa",
+    value: pipelineCounts.visa,
+  },
 
-    {
-      label: "Flight",
-      value: pipelineCounts.flight,
-    },
+  {
+    key: "flight" as const,
+    label: "Flight",
+    value: pipelineCounts.flight,
+  },
 
-    {
-      label: "Iqama",
-      value: pipelineCounts.iqama,
-    },
-  ];
+  {
+    key: "iqama" as const,
+    label: "Iqama",
+    value: pipelineCounts.iqama,
+  },
+];
 
   /* =======================================================
      SIX MONTH TREND
