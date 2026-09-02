@@ -34,18 +34,18 @@ export interface DashboardData {
     flightDeparted: number;
   };
 
- pipeline: {
-  key:
-    | "active"
-    | "medical"
-    | "mofa"
-    | "visa"
-    | "flight"
-    | "iqama";
+  pipeline: {
+    key:
+      | "active"
+      | "medical"
+      | "mofa"
+      | "visa"
+      | "flight"
+      | "iqama";
 
-  label: string;
-  value: number;
-}[];
+    label: string;
+    value: number;
+  }[];
 
   trend: {
     month: string;
@@ -137,6 +137,12 @@ export async function getDashboardData(): Promise<DashboardData> {
   /* =======================================================
      ACTIVE CANDIDATES
 
+     Active means:
+     - not deleted
+     - not returned
+     - not complete
+     - not cancelled
+
      We fetch current_stage here because the dashboard
      pipeline is based on active candidate progression.
   ======================================================= */
@@ -148,7 +154,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         "id, current_stage",
       )
       .eq("is_deleted", false)
-      .eq("is_returned", false);
+      .eq("is_returned", false)
+      .is("final_status", null);
 
   /* =======================================================
      ACTIVE CANDIDATE IDS
@@ -163,7 +170,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       .from("candidates")
       .select("id")
       .eq("is_deleted", false)
-      .eq("is_returned", false);
+      .eq("is_returned", false)
+      .is("final_status", null);
 
   /* =======================================================
      ALL QUERIES RUN IN PARALLEL
@@ -214,6 +222,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     /* =====================================================
        ACTIVE CANDIDATES
+
+       IMPORTANT:
+       Complete / Cancelled candidates are excluded.
     ===================================================== */
 
     supabase
@@ -223,7 +234,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         head: true,
       })
       .eq("is_deleted", false)
-      .eq("is_returned", false),
+      .eq("is_returned", false)
+      .is("final_status", null),
 
     /* =====================================================
        RETURNED / CANCELLED
@@ -243,7 +255,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     /* =====================================================
        COMPLETE CANDIDATES
 
-       Complete candidates are not active.
+       IMPORTANT:
+       Complete status is stored in final_status.
+
+       current_stage is NOT "complete".
     ===================================================== */
 
     supabase
@@ -253,7 +268,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         head: true,
       })
       .eq("is_deleted", false)
-      .eq("current_stage", "complete"),
+      .eq("final_status", "complete"),
 
     /* =====================================================
        RECENT CANDIDATES
@@ -409,6 +424,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     /* =====================================================
        AGING
+
        Active candidates only
     ===================================================== */
 
@@ -585,7 +601,6 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   /* =======================================================
      ACTIVE CANDIDATE PIPELINE
-  =======================================================
 
      Important:
 
@@ -688,42 +703,42 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   const pipeline = [
-  {
-    key: "active" as const,
-    label: "Active",
-    value: activeCandidates,
-  },
+    {
+      key: "active" as const,
+      label: "Active",
+      value: activeCandidates,
+    },
 
-  {
-    key: "medical" as const,
-    label: "Medical",
-    value: pipelineCounts.medical,
-  },
+    {
+      key: "medical" as const,
+      label: "Medical",
+      value: pipelineCounts.medical,
+    },
 
-  {
-    key: "mofa" as const,
-    label: "MOFA",
-    value: pipelineCounts.mofa,
-  },
+    {
+      key: "mofa" as const,
+      label: "MOFA",
+      value: pipelineCounts.mofa,
+    },
 
-  {
-    key: "visa" as const,
-    label: "Visa",
-    value: pipelineCounts.visa,
-  },
+    {
+      key: "visa" as const,
+      label: "Visa",
+      value: pipelineCounts.visa,
+    },
 
-  {
-    key: "flight" as const,
-    label: "Flight",
-    value: pipelineCounts.flight,
-  },
+    {
+      key: "flight" as const,
+      label: "Flight",
+      value: pipelineCounts.flight,
+    },
 
-  {
-    key: "iqama" as const,
-    label: "Iqama",
-    value: pipelineCounts.iqama,
-  },
-];
+    {
+      key: "iqama" as const,
+      label: "Iqama",
+      value: pipelineCounts.iqama,
+    },
+  ];
 
   /* =======================================================
      SIX MONTH TREND
