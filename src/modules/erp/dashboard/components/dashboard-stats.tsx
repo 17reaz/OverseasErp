@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   RotateCcw,
   Users,
+  XCircle,
 } from "lucide-react";
 
 import {
@@ -46,15 +47,22 @@ export function DashboardStats({
     },
 
     {
-      title: "Returned / Cancelled",
+      title: "Returned",
       value: stats.returnedCandidates,
       icon: RotateCcw,
-      description: "Returned or cancelled",
+      description: "Returned candidates",
+    },
+
+    {
+      title: "Cancelled",
+      value: stats.cancelledCandidates,
+      icon: XCircle,
+      description: "Cancelled candidates",
     },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       {items.map((item) => {
         const Icon = item.icon;
 

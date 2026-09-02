@@ -19,6 +19,7 @@ export interface DashboardData {
     activeCandidates: number;
     completeCandidates: number;
     returnedCandidates: number;
+    cancelledCandidates: number;
 
     medicalPending: number;
     medicalFit: number;
@@ -182,7 +183,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     activeCandidatesResult,
     returnedCandidatesResult,
     completeCandidatesResult,
-
+    cancelledCandidatesResult,
     recentCandidatesResult,
 
     medicalFitResult,
@@ -242,15 +243,25 @@ export async function getDashboardData(): Promise<DashboardData> {
 
        Current database logic uses is_returned.
     ===================================================== */
-
+      supabase
+  .from("candidates")
+  .select("id", {
+    count: "exact",
+    head: true,
+  })
+  // RETURNED — highest layer
+.eq("is_deleted", false)
+.eq("is_returned", true),
     supabase
       .from("candidates")
       .select("id", {
         count: "exact",
         head: true,
       })
-      .eq("is_deleted", false)
-      .eq("is_returned", true),
+      // CANCELLED
+.eq("is_deleted", false)
+.eq("is_returned", false)
+.eq("final_status", "cancelled"),
 
     /* =====================================================
        COMPLETE CANDIDATES
@@ -267,8 +278,10 @@ export async function getDashboardData(): Promise<DashboardData> {
         count: "exact",
         head: true,
       })
-      .eq("is_deleted", false)
-      .eq("final_status", "complete"),
+      // COMPLETE
+.eq("is_deleted", false)
+.eq("is_returned", false)
+.eq("final_status", "complete"),
 
     /* =====================================================
        RECENT CANDIDATES
@@ -475,7 +488,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     activeCandidatesResult,
     returnedCandidatesResult,
     completeCandidatesResult,
-
+    cancelledCandidatesResult,
     recentCandidatesResult,
 
     medicalFitResult,
@@ -523,7 +536,8 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const completeCandidates =
     completeCandidatesResult.count ?? 0;
-
+  const cancelledCandidates =
+  cancelledCandidatesResult.count ?? 0;
   /* =======================================================
      ACTIVE CANDIDATE IDS
   ======================================================= */
@@ -931,6 +945,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       activeCandidates,
 
       completeCandidates,
+
+      cancelledCandidates,
 
       returnedCandidates,
 
