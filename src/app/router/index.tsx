@@ -97,6 +97,9 @@ import {
 import {
   ReportsPage,
 } from "@/modules/erp/reports/reports-page";
+import {
+  SettingsPage,
+} from "@/modules/erp/settings/settings-page";
 import {SaaSPage} from "@/modules/erp/todo/todo-page"
 function AppRouter() {
   return (
@@ -316,6 +319,14 @@ function AppRouter() {
               path="todo"
               element={< SaaSPage />}
             />
+            {/* ==================================================
+    SETTINGS
+    ================================================== */}
+
+<Route
+  path="settings"
+  element={<SettingsPage />}
+/>
 
             {/* ==================================================
                 TRASH
