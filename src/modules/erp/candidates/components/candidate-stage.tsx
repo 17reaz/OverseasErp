@@ -3,18 +3,11 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+
+import { UniversalSheet } from "@/modules/erp/shared/forms/universal-sheet";
 
 import { toast } from "@/components/shared/toast/toast";
 
@@ -30,15 +23,12 @@ import {
 /* =========================================================
  * CANDIDATE REQUESTED SERVICES SHEET
  * ---------------------------------------------------------
- * "Universal sheet" pattern (ModuleRecordsSheet-এর মতো
- * Sheet + Header/Footer layout) follow করে বানানো — কিন্তু
- * এটা independent, নিজের candidate-stage.tsx-এই self
- * contained। কোনো existing engine touch করা হয়নি।
+ * Uses the module-wide UniversalSheet component.
  *
- * NOTE (temporary):
- * নাম "candidate-stage" হলেও এটা global workflow stage না —
- * শুধু candidate.requested_services (jsonb) toggle করে। এখন
- * এই নামেই রাখা হচ্ছে, future cleanup-এ rename হবে।
+ * IMPORTANT:
+ * - Does NOT modify global candidate stage engine.
+ * - Only manages candidate.requested_services.
+ * - Existing stage-service logic remains unchanged.
  * ========================================================= */
 
 interface CandidateStageSheetProps {
@@ -59,9 +49,16 @@ export function CandidateStageSheet({
   const [services, setServices] = useState<RequestedServices>(
     getDefaultRequestedServices(),
   );
+
+  const [initialServices, setInitialServices] =
+    useState<RequestedServices>(getDefaultRequestedServices());
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  /* =========================================================
+   * LOAD REQUESTED SERVICES
+   * ========================================================= */
   useEffect(() => {
     if (!open) return;
 
@@ -72,7 +69,11 @@ export function CandidateStageSheet({
 
       try {
         const data = await fetchRequestedServices(candidateId);
-        if (active) setServices(data);
+
+        if (active) {
+          setServices(data);
+          setInitialServices(data);
+        }
       } catch (error) {
         console.error(error);
 
@@ -83,7 +84,9 @@ export function CandidateStageSheet({
           );
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
@@ -94,16 +97,35 @@ export function CandidateStageSheet({
     };
   }, [open, candidateId]);
 
-  function toggleService(key: RequestedServiceKey, checked: boolean) {
-    setServices((prev) => ({ ...prev, [key]: checked }));
+  /* =========================================================
+   * TOGGLE SERVICE
+   * ========================================================= */
+  function toggleService(
+    key: RequestedServiceKey,
+    checked: boolean,
+  ) {
+    setServices((prev) => ({
+      ...prev,
+      [key]: checked,
+    }));
   }
 
-  function handleClose() {
-    if (saving) return;
-    onOpenChange(false);
-  }
+  /* =========================================================
+   * CHECK UNSAVED CHANGES
+   * ========================================================= */
+  const hasChanges =
+    JSON.stringify(services) !== JSON.stringify(initialServices);
 
-  async function handleSave() {
+  /* =========================================================
+   * SAVE
+   * ========================================================= */
+  async function handleSave(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (loading || saving) return;
+
     setSaving(true);
 
     try {
@@ -113,6 +135,8 @@ export function CandidateStageSheet({
         "Requested services updated.",
         "Changes have been saved for this candidate.",
       );
+
+      setInitialServices(services);
 
       onSuccess?.();
       onOpenChange(false);
@@ -128,31 +152,37 @@ export function CandidateStageSheet({
     }
   }
 
+  /* =========================================================
+   * RENDER
+   * ========================================================= */
   return (
-    <Sheet
+    <UniversalSheet
       open={open}
-      onOpenChange={(value) => {
-        if (!value) handleClose();
-      }}
+      onOpenChange={onOpenChange}
+      title="Requested Services"
+      description={
+        candidateName
+          ? `Select which services apply to ${candidateName}.`
+          : "Select which services apply to this candidate."
+      }
+      onSubmit={handleSave}
+      submitLabel="Save Changes"
+      cancelLabel="Cancel"
+      loading={saving}
+      disabled={loading}
+      hasChanges={hasChanges}
     >
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>Requested Services</SheetTitle>
-
-          <SheetDescription>
-            {candidateName
-              ? `Select which services apply to ${candidateName}.`
-              : "Select which services apply to this candidate."}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="flex-1 space-y-1 overflow-y-auto px-6 py-6">
-          {loading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
+      <div className="space-y-1">
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">
               Loading services...
-            </p>
-          ) : (
-            REQUESTED_SERVICE_DEFINITIONS.map((definition, index) => (
+            </span>
+          </div>
+        ) : (
+          REQUESTED_SERVICE_DEFINITIONS.map(
+            (definition, index) => (
               <div key={definition.key}>
                 <div className="flex items-center justify-between gap-4 py-3">
                   <Label
@@ -166,36 +196,24 @@ export function CandidateStageSheet({
                     id={`requested-service-${definition.key}`}
                     checked={services[definition.key]}
                     onCheckedChange={(checked) =>
-                      toggleService(definition.key, checked)
+                      toggleService(
+                        definition.key,
+                        checked,
+                      )
                     }
                     disabled={saving}
                   />
                 </div>
 
-                {index < REQUESTED_SERVICE_DEFINITIONS.length - 1 && (
+                {index <
+                  REQUESTED_SERVICE_DEFINITIONS.length - 1 && (
                   <Separator />
                 )}
               </div>
-            ))
-          )}
-        </div>
-
-        <SheetFooter className="border-t px-6 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={saving}
-          >
-            Cancel
-          </Button>
-
-          <Button type="button" onClick={handleSave} disabled={loading || saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+            ),
+          )
+        )}
+      </div>
+    </UniversalSheet>
   );
 }
