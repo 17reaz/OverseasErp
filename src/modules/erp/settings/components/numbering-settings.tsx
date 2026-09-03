@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
+  CheckCircle2,
   Hash,
   Loader2,
   Save,
@@ -18,25 +19,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
-import { getCurrentNumbering } from "../settings-service";
+import {
+  getCurrentNumbering,
+  updateNumberingStart,
+} from "../settings-service";
+
+type NumberingEntity =
+  | "candidate"
+  | "agent"
+  | "agency";
 
 interface NumberingCardProps {
   title: string;
   description: string;
-  entity: "candidate" | "agent" | "agency";
+  entity: NumberingEntity;
+  enabled?: boolean;
 }
 
 function NumberingCard({
   title,
   description,
   entity,
+  enabled = true,
 }: NumberingCardProps) {
   const [currentHighest, setCurrentHighest] = useState(0);
   const [nextNumber, setNextNumber] = useState(1);
-  const [newStartingNumber, setNewStartingNumber] = useState("");
+  const [newStartingNumber, setNewStartingNumber] =
+    useState("");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [error, setError] = useState<string | null>(
+    null,
+  );
+
+  const [success, setSuccess] = useState<string | null>(
+    null,
+  );
 
   async function load() {
     try {
@@ -49,7 +69,10 @@ function NumberingCard({
       setNextNumber(result.nextNumber);
     } catch (err) {
       console.error(err);
-      setError("Failed to load numbering information.");
+
+      setError(
+        "Failed to load numbering information.",
+      );
     } finally {
       setLoading(false);
     }
@@ -59,39 +82,61 @@ function NumberingCard({
     void load();
   }, [entity]);
 
-  function handleSave() {
+  async function handleSave() {
     const value = Number(newStartingNumber);
 
+    setError(null);
+    setSuccess(null);
+
     if (!Number.isInteger(value) || value < 1) {
-      setError("Starting SL must be a valid positive number.");
+      setError(
+        "Starting SL must be a valid positive number.",
+      );
       return;
     }
 
     if (value <= currentHighest) {
       setError(
-        `Starting SL cannot be ${value}. Current highest SL is ${currentHighest}.`,
+        `Starting SL must be greater than current highest SL (${currentHighest}).`,
       );
       return;
     }
 
-    setSaving(true);
-    setError(null);
+    try {
+      setSaving(true);
 
-    /**
-     * DB configuration will be connected in Part 2B.
-     *
-     * We intentionally do not modify the existing
-     * numbering engine from this UI foundation.
-     */
+      const result = await updateNumberingStart(
+        entity,
+        value,
+      );
 
-    window.setTimeout(() => {
-      setSaving(false);
+      setNextNumber(result.nextNumber);
       setNewStartingNumber("");
-    }, 400);
+
+      setSuccess(
+        `Next ${title.replace(" SL", "")} SL will start from ${result.nextNumber}.`,
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save numbering setting.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Card>
+    <Card
+      className={
+        !enabled
+          ? "opacity-60"
+          : undefined
+      }
+    >
       <CardHeader>
         <div className="flex items-start gap-3">
           <div className="flex size-9 items-center justify-center rounded-md border bg-muted">
@@ -142,56 +187,82 @@ function NumberingCard({
 
             <Separator />
 
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor={`${entity}-starting-number`}>
-                  Change starting SL
-                </Label>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Use this when importing historical records and
-                  continuing an existing numbering sequence.
-                </p>
+            {!enabled ? (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Manual numbering control for this module
+                will be enabled after its numbering engine
+                is migrated to the settings system.
               </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <Label
+                      htmlFor={`${entity}-starting-number`}
+                    >
+                      Change starting SL
+                    </Label>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id={`${entity}-starting-number`}
-                  type="number"
-                  min={currentHighest + 1}
-                  placeholder={`e.g. ${currentHighest + 1}`}
-                  value={newStartingNumber}
-                  onChange={(event) =>
-                    setNewStartingNumber(event.target.value)
-                  }
-                  className="sm:max-w-xs"
-                />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Use this when importing historical
+                      records or continuing an existing
+                      numbering sequence.
+                    </p>
+                  </div>
 
-                <Button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={
-                    saving ||
-                    !newStartingNumber.trim()
-                  }
-                >
-                  {saving ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 size-4" />
-                  )}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id={`${entity}-starting-number`}
+                      type="number"
+                      min={currentHighest + 1}
+                      placeholder={`e.g. ${
+                        currentHighest + 1
+                      }`}
+                      value={newStartingNumber}
+                      onChange={(event) =>
+                        setNewStartingNumber(
+                          event.target.value,
+                        )
+                      }
+                      className="sm:max-w-xs"
+                      disabled={saving}
+                    />
 
-                  Save
-                </Button>
-              </div>
-            </div>
+                    <Button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={
+                        saving ||
+                        !newStartingNumber.trim()
+                      }
+                    >
+                      {saving ? (
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 size-4" />
+                      )}
 
-            {error && (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                      Save
+                    </Button>
+                  </div>
+                </div>
 
-                <span>{error}</span>
-              </div>
+                {error && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+
+                    <span>{success}</span>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -207,18 +278,21 @@ export function NumberingSettings() {
         title="Candidate SL"
         description="Control the serial number sequence used for candidates."
         entity="candidate"
+        enabled
       />
 
       <NumberingCard
         title="Agent SL"
-        description="View and manage the serial number sequence used for agents."
+        description="View the serial number sequence used for agents."
         entity="agent"
+        enabled={false}
       />
 
       <NumberingCard
         title="Agency SL"
-        description="View and manage the serial number sequence used for agencies."
+        description="View the serial number sequence used for agencies."
         entity="agency"
+        enabled={false}
       />
     </div>
   );
