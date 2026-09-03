@@ -829,3 +829,34 @@ export async function updateCandidate(
   };
 
 }
+export async function checkPassportDuplicate(
+  passportNo: string,
+  tenantId: string,
+  excludeCandidateId?: string
+): Promise<boolean> {
+  const normalizedPassport = passportNo.trim().toUpperCase();
+
+  if (!normalizedPassport) {
+    return false;
+  }
+
+  let query = supabase
+    .from("candidates")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("passport_no", normalizedPassport)
+    .eq("is_deleted", false)
+    .limit(1);
+
+  if (excludeCandidateId) {
+    query = query.neq("id", excludeCandidateId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return !!data;
+}

@@ -2,6 +2,7 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import { CANDIDATE_STAGE_DEFINITIONS } from "../candidate-stage";
 
 import {
@@ -41,6 +42,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 
 import {
+  checkPassportDuplicate,
   createCandidate,
   updateCandidate,
   type Candidate,
@@ -107,7 +109,7 @@ export function CandidateFormDialog({
     useState("");
 
   const [currentStage, setCurrentStage] =
-    useState("Pending");
+    useState("candidate");
 
 
   // =====================================================
@@ -136,6 +138,39 @@ export function CandidateFormDialog({
 
   const [error, setError] =
     useState<string | null>(null);
+
+
+  // =====================================================
+  // PASSPORT DUPLICATE STATE
+  // =====================================================
+
+  const [passportChecking, setPassportChecking] =
+    useState(false);
+
+  const [passportDuplicate, setPassportDuplicate] =
+    useState(false);
+
+
+  // =====================================================
+  // TENANT ID
+  // =====================================================
+
+  /*
+   * Edit mode:
+   * candidate.tenant_id will be used.
+   *
+   * Create mode:
+   * If your candidate-service internally resolves tenant_id,
+   * the duplicate checker should also resolve the current
+   * tenant inside candidate-service.
+   *
+   * For now we use candidate?.tenant_id when available.
+   */
+
+  const tenantId =
+    (candidate as Candidate & {
+      tenant_id?: string;
+    } | null)?.tenant_id;
 
 
   // =====================================================
@@ -240,8 +275,10 @@ export function CandidateFormDialog({
     );
 
 
-    setCurrentStage(candidate?.current_stage ?? "candidate"); // আগে ছিল "Pending"
-
+    setCurrentStage(
+      candidate?.current_stage ??
+        "candidate",
+    );
 
 
     setSelectedAgentId(
@@ -252,9 +289,123 @@ export function CandidateFormDialog({
 
     setError(null);
 
+    setPassportDuplicate(false);
+
+    setPassportChecking(false);
+
   }, [
     open,
     candidate,
+  ]);
+
+
+  // =====================================================
+  // PASSPORT DUPLICATE CHECK
+  // =====================================================
+
+  useEffect(() => {
+
+    const normalizedPassport =
+      passportNo
+        .trim()
+        .toUpperCase();
+
+
+    // Empty passport
+    if (!normalizedPassport) {
+
+      setPassportChecking(false);
+
+      setPassportDuplicate(false);
+
+      return;
+    }
+
+
+    /*
+     * Create mode without tenant ID:
+     *
+     * We cannot safely query another tenant.
+     * The database unique constraint will still protect
+     * the final insert.
+     */
+    if (!tenantId) {
+
+      setPassportChecking(false);
+
+      setPassportDuplicate(false);
+
+      return;
+    }
+
+
+    setPassportChecking(true);
+
+    setPassportDuplicate(false);
+
+
+    const timer =
+      window.setTimeout(
+        async () => {
+
+          try {
+
+            const isDuplicate =
+              await checkPassportDuplicate(
+                normalizedPassport,
+                tenantId,
+                candidate?.id,
+              );
+
+
+            setPassportDuplicate(
+              isDuplicate,
+            );
+
+          } catch (error) {
+
+            console.error(
+              "Passport duplicate check failed:",
+              error,
+            );
+
+            /*
+             * Don't show duplicate when the
+             * verification itself failed.
+             *
+             * Database unique constraint remains
+             * the final protection.
+             */
+
+            setPassportDuplicate(
+              false,
+            );
+
+          } finally {
+
+            setPassportChecking(
+              false,
+            );
+
+          }
+
+        },
+        400,
+      );
+
+
+    return () => {
+
+      window.clearTimeout(
+        timer,
+      );
+
+    };
+
+  }, [
+    passportNo,
+    tenantId,
+    candidate?.id,
   ]);
 
 
@@ -281,6 +432,10 @@ export function CandidateFormDialog({
     event.preventDefault();
 
 
+    // -----------------------------------------------------
+    // PASSPORT REQUIRED
+    // -----------------------------------------------------
+
     if (!passportNo.trim()) {
 
       setError(
@@ -290,6 +445,24 @@ export function CandidateFormDialog({
       return;
     }
 
+
+    // -----------------------------------------------------
+    // DUPLICATE PASSPORT
+    // -----------------------------------------------------
+
+    if (passportDuplicate) {
+
+      setError(
+        "This passport number already exists.",
+      );
+
+      return;
+    }
+
+
+    // -----------------------------------------------------
+    // NAME REQUIRED
+    // -----------------------------------------------------
 
     if (!name.trim()) {
 
@@ -311,7 +484,9 @@ export function CandidateFormDialog({
       const input: CandidateInput = {
 
         passport_no:
-          passportNo.trim(),
+          passportNo
+            .trim()
+            .toUpperCase(),
 
         name:
           name.trim(),
@@ -332,7 +507,8 @@ export function CandidateFormDialog({
         agent_id:
           selectedAgentId,
 
-       current_stage: currentStage,  
+        current_stage:
+          currentStage,
       };
 
 
@@ -347,6 +523,10 @@ export function CandidateFormDialog({
             );
 
 
+      // -----------------------------------------------------
+      // DATABASE ERROR
+      // -----------------------------------------------------
+
       if (result.error) {
 
         console.error(
@@ -354,10 +534,23 @@ export function CandidateFormDialog({
         );
 
 
+        /*
+         * PostgreSQL unique_violation
+         *
+         * This remains important even though we already
+         * checked the passport before submit.
+         *
+         * It protects against race conditions.
+         */
+
         if (
           result.error.code ===
           "23505"
         ) {
+
+          setPassportDuplicate(
+            true,
+          );
 
           setError(
             "This passport number already exists.",
@@ -375,6 +568,10 @@ export function CandidateFormDialog({
         return;
       }
 
+
+      // -----------------------------------------------------
+      // SUCCESS
+      // -----------------------------------------------------
 
       if (result.data) {
 
@@ -467,17 +664,77 @@ export function CandidateFormDialog({
               Passport Number
             </Label>
 
+
             <Input
               id="passport_no"
               value={passportNo}
-              onChange={(event) =>
+              onChange={(event) => {
+
                 setPassportNo(
-                  event.target.value,
-                )
-              }
+                  event.target.value.toUpperCase(),
+                );
+
+                setPassportDuplicate(
+                  false,
+                );
+
+                setError(
+                  null,
+                );
+
+              }}
               placeholder="A12345678"
               disabled={loading}
+              className={
+                passportDuplicate
+                  ? "border-destructive focus-visible:ring-destructive"
+                  : ""
+              }
             />
+
+
+            {/* Checking */}
+
+            {passportChecking && (
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+
+                <Loader2
+                  className="h-3 w-3 animate-spin"
+                />
+
+                Checking passport...
+
+              </div>
+
+            )}
+
+
+            {/* Duplicate */}
+
+            {!passportChecking &&
+              passportDuplicate && (
+
+                <p className="text-xs text-destructive">
+
+                  This passport number already exists.
+
+                </p>
+
+              )}
+
+
+            {/* Available */}
+
+            {!passportChecking &&
+              !passportDuplicate &&
+              passportNo.trim() && (
+                <p className="text-xs text-green-600">
+
+                  Passport number is available.
+
+                </p>
+              )}
 
           </div>
 
@@ -493,6 +750,7 @@ export function CandidateFormDialog({
             >
               Candidate Name
             </Label>
+
 
             <Input
               id="candidate_name"
@@ -701,6 +959,7 @@ export function CandidateFormDialog({
               Received Date
             </Label>
 
+
             <Input
               id="received_date"
               type="date"
@@ -771,27 +1030,60 @@ export function CandidateFormDialog({
               ================================================= */}
 
           <div className="space-y-2">
-  <Label htmlFor="current_stage">Current Stage</Label>
 
-  <select
-    id="current_stage"
-    value={currentStage}
-    onChange={(event) => setCurrentStage(event.target.value)}
-    disabled={loading}
-    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none"
-  >
-    {CANDIDATE_STAGE_DEFINITIONS.map((definition) => (
-      <option key={definition.value} value={definition.value}>
-        {definition.label}
-      </option>
-    ))}
-  </select>
+            <Label
+              htmlFor="current_stage"
+            >
+              Current Stage
+            </Label>
 
-  <p className="text-xs text-muted-foreground">
-    সাধারণত এটা Next বাটন দিয়েই এগোয় — এখানে সরাসরি বদলালে candidate
-    কোনো stage skip করে চলে যেতে পারবে (পুরনো data পরে add করা যাবে)।
-  </p>
-</div>
+
+            <select
+              id="current_stage"
+              value={currentStage}
+              onChange={(event) =>
+                setCurrentStage(
+                  event.target.value,
+                )
+              }
+              disabled={loading}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none"
+            >
+
+              {CANDIDATE_STAGE_DEFINITIONS.map(
+                (definition) => (
+
+                  <option
+                    key={
+                      definition.value
+                    }
+                    value={
+                      definition.value
+                    }
+                  >
+
+                    {
+                      definition.label
+                    }
+
+                  </option>
+
+                ),
+              )}
+
+            </select>
+
+
+            <p className="text-xs text-muted-foreground">
+
+              সাধারণত এটা Next বাটন দিয়েই এগোয় —
+              এখানে সরাসরি বদলালে candidate কোনো
+              stage skip করে চলে যেতে পারবে
+              (পুরনো data পরে add করা যাবে)।
+
+            </p>
+
+          </div>
 
 
           {/* =================================================
@@ -831,7 +1123,11 @@ export function CandidateFormDialog({
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                passportChecking ||
+                passportDuplicate
+              }
             >
 
               {loading && (
