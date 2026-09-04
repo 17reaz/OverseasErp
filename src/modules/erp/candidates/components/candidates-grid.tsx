@@ -32,7 +32,6 @@ import {
 ========================================================= */
 
 interface CandidatesGridProps {
-
   candidates: Candidate[];
 
   loading?: boolean;
@@ -68,65 +67,47 @@ interface CandidatesGridProps {
 ========================================================= */
 
 export function CandidatesGrid({
-
   candidates,
-
   loading = false,
-
   onEdit,
-
   onDelete,
-
   onReturn,
-
   onRestore,
-
   onCancel,
-
+  onCancel: _onCancel,
   onReactivate,
-
 }: CandidatesGridProps) {
-
-
   /* =======================================================
      LOADING
   ======================================================= */
 
   if (loading) {
-
     return (
-
       <div
         className="
           grid
           grid-cols-1
-          gap-4
+          gap-3
           md:grid-cols-2
           xl:grid-cols-3
         "
       >
-
         {Array.from({
           length: 6,
         }).map((_, index) => (
-
           <div
             key={index}
             className="
-              h-56
+              h-[210px]
               animate-pulse
-              rounded-xl
+              rounded-lg
               border
-              bg-muted/40
+              bg-muted/30
             "
           />
-
         ))}
-
       </div>
-
     );
-
   }
 
 
@@ -135,34 +116,26 @@ export function CandidatesGrid({
   ======================================================= */
 
   if (candidates.length === 0) {
-
     return (
-
       <div
         className="
           flex
-          min-h-[300px]
+          min-h-[280px]
           items-center
           justify-center
-          rounded-xl
+          rounded-lg
           border
           border-dashed
-          bg-muted/10
+          bg-muted/[0.03]
         "
       >
-
-        <div
-          className="
-            text-center
-          "
-        >
-
+        <div className="text-center">
           <UserRound
             className="
               mx-auto
-              h-10
-              w-10
-              text-muted-foreground
+              h-9
+              w-9
+              text-muted-foreground/60
             "
           />
 
@@ -183,319 +156,273 @@ export function CandidatesGrid({
               text-muted-foreground
             "
           >
-            Try changing your search
-            or filter.
+            Try changing your search or filter.
           </p>
-
         </div>
-
       </div>
-
     );
-
   }
 
 
   /* =======================================================
-     CARD
+     GRID
   ======================================================= */
 
   return (
-
     <div
       className="
         grid
         grid-cols-1
-        gap-4
+        gap-3
         md:grid-cols-2
         xl:grid-cols-3
       "
     >
+      {candidates.map((candidate) => {
+        /* ---------------------------------------------------
+           BASIC DATA
+        --------------------------------------------------- */
 
-      {candidates.map(
-        (candidate) => {
+        const fullName =
+          candidate.name ||
+          "Unknown candidate";
 
-          /* -----------------------------------------------
-             BASIC DATA
-          ----------------------------------------------- */
+        const initials =
+          fullName
+            .split(" ")
+            .filter(Boolean)
+            .map(
+              (part) =>
+                part.charAt(0),
+            )
+            .join("")
+            .slice(0, 2)
+            .toUpperCase();
 
-          const fullName =
-            candidate.name ||
-            "Unknown candidate";
+        const agentName =
+          candidate.agent?.name ||
+          candidate.agent?.code ||
+          "No agent";
 
+        const stage =
+          candidate.current_stage ||
+          "Not assigned";
 
-          const initials =
-            fullName
-              .split(" ")
-              .map(
-                (part) =>
-                  part.charAt(0),
-              )
-              .join("")
-              .slice(0, 2)
-              .toUpperCase();
-
-
-          const agentName =
-            candidate.agent?.name ||
-            candidate.agent?.code ||
-            "No agent";
-
-
-          const stage =
-            candidate.current_stage ||
-            "Not assigned";
-
-
-          const country =
-            candidate.country ||
-            "Country not set";
+        const country =
+          candidate.country ||
+          "Country not set";
 
 
-          /* -----------------------------------------------
-             OVERALL STATUS
+        /* ---------------------------------------------------
+           STATUS
+        --------------------------------------------------- */
 
-             Same status contract as CandidatesTable.
-          ----------------------------------------------- */
+        const status =
+          getCandidateOverallStatus(
+            candidate,
+          );
 
-          const status =
-            getCandidateOverallStatus(
-              candidate,
-            );
+        const isReturned =
+          status === "returned";
 
+        const isCancelled =
+          status === "cancelled";
 
-          const isReturned =
-            status === "returned";
-
-
-          const isCancelled =
-            status === "cancelled";
-
-
-          const isComplete =
-            status === "complete";
+        const isComplete =
+          status === "complete";
 
 
-          return (
+        /* ---------------------------------------------------
+           STATUS STYLING
+        --------------------------------------------------- */
+
+        const statusLabel =
+          isReturned
+            ? "Returned"
+            : isCancelled
+              ? "Cancelled"
+              : isComplete
+                ? "Complete"
+                : "Active";
+
+        const statusClass =
+          isReturned
+            ? "bg-destructive/10 text-destructive"
+            : isCancelled
+              ? "bg-muted text-muted-foreground"
+              : isComplete
+                ? "bg-primary/10 text-primary"
+                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+
+        const statusDotClass =
+          isReturned
+            ? "bg-destructive"
+            : isCancelled
+              ? "bg-muted-foreground"
+              : isComplete
+                ? "bg-primary"
+                : "bg-emerald-500";
+
+
+        /* ---------------------------------------------------
+           CARD
+        --------------------------------------------------- */
+
+        return (
+          <div
+            key={candidate.id}
+            className="
+              group
+              flex
+              min-h-[210px]
+              flex-col
+              rounded-lg
+              border
+              bg-card
+              p-4
+              shadow-none
+              transition-colors
+              hover:border-border/80
+              hover:bg-muted/[0.02]
+            "
+          >
+            {/* =================================================
+                HEADER
+            ================================================= */}
 
             <div
-              key={
-                candidate.id
-              }
               className="
-                group
                 flex
-                min-h-[235px]
-                flex-col
-                rounded-xl
-                border
-                bg-card
-                p-5
-                shadow-sm
-                transition
-                hover:-translate-y-0.5
-                hover:shadow-md
+                items-center
+                justify-between
+                gap-3
               "
             >
-
-              {/* =========================================
-                  CARD HEADER
-              ========================================= */}
-
               <div
                 className="
                   flex
-                  items-start
-                  justify-between
+                  min-w-0
+                  items-center
                   gap-3
                 "
               >
-
-                <div
+                <Avatar
                   className="
-                    flex
-                    min-w-0
-                    items-center
-                    gap-3
+                    h-9
+                    w-9
+                    shrink-0
                   "
                 >
-
-                  <Avatar
+                  <AvatarFallback
                     className="
-                      h-10
-                      w-10
-                      shrink-0
+                      bg-muted
+                      text-[11px]
+                      font-semibold
+                      text-muted-foreground
                     "
                   >
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
 
-                    <AvatarFallback
-                      className="
-                        text-xs
-                        font-semibold
-                      "
-                    >
-                      {initials}
-                    </AvatarFallback>
-
-                  </Avatar>
-
-
-                  <div
+                <div className="min-w-0">
+                  <h3
                     className="
-                      min-w-0
+                      truncate
+                      text-sm
+                      font-semibold
+                      leading-tight
                     "
                   >
+                    {fullName}
+                  </h3>
 
-                    <h3
-                      className="
-                        truncate
-                        text-sm
-                        font-semibold
-                      "
-                    >
-                      {fullName}
-                    </h3>
-
-                    <p
-                      className="
-                        mt-0.5
-                        truncate
-                        text-xs
-                        text-muted-foreground
-                      "
-                    >
-                      Passport:{" "}
-                      {candidate.passport_no ||
-                        "N/A"}
-                    </p>
-
-                  </div>
-
+                  <p
+                    className="
+                      mt-1
+                      truncate
+                      text-[11px]
+                      text-muted-foreground
+                    "
+                  >
+                    {candidate.passport_no || "No passport"}
+                  </p>
                 </div>
+              </div>
 
 
-                {/* =========================================
-                    ACTION MENU
-                ========================================= */}
+              {/* =================================================
+                  ACTION MENU
+              ================================================= */}
 
-                <DropdownMenu>
-
-                  <DropdownMenuTrigger
-                    asChild
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="
+                      h-8
+                      w-8
+                      shrink-0
+                      text-muted-foreground
+                      opacity-70
+                      transition-opacity
+                      hover:text-foreground
+                      group-hover:opacity-100
+                    "
                   >
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                    <MoreHorizontal
                       className="
-                        h-8
-                        w-8
-                        shrink-0
+                        h-4
+                        w-4
                       "
-                    >
+                    />
 
-                      <MoreHorizontal
+                    <span className="sr-only">
+                      Candidate actions
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent
+                  align="end"
+                  className="w-48"
+                >
+                  {/* EDIT */}
+
+                  {!isComplete && (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onEdit?.(
+                          candidate,
+                        )
+                      }
+                    >
+                      <Pencil
                         className="
+                          mr-2
                           h-4
                           w-4
                         "
                       />
 
-                      <span className="sr-only">
-                        Candidate actions
-                      </span>
-
-                    </Button>
-
-                  </DropdownMenuTrigger>
+                      Edit
+                    </DropdownMenuItem>
+                  )}
 
 
-                  <DropdownMenuContent
-                    align="end"
-                    className="
-                      w-48
-                    "
-                  >
+                  {/* RETURN */}
 
-                    {/* =====================================
-                        EDIT
-
-                        Same rule as table:
-                        Complete candidate cannot be edited.
-                    ===================================== */}
-
-                    {!isComplete && (
-
+                  {!isReturned &&
+                    !isCancelled &&
+                    !isComplete && (
                       <DropdownMenuItem
                         onClick={() =>
-                          onEdit?.(
+                          onReturn?.(
                             candidate,
                           )
                         }
                       >
-
-                        <Pencil
-                          className="
-                            mr-2
-                            h-4
-                            w-4
-                          "
-                        />
-
-                        Edit
-
-                      </DropdownMenuItem>
-
-                    )}
-
-
-                    {/* =====================================
-                        RETURN
-
-                        Only active candidates.
-                    ===================================== */}
-
-                    {!isReturned &&
-                      !isCancelled &&
-                      !isComplete && (
-
-                        <DropdownMenuItem
-                          onClick={() =>
-                            onReturn?.(
-                              candidate,
-                            )
-                          }
-                        >
-
-                          <RotateCcw
-                            className="
-                              mr-2
-                              h-4
-                              w-4
-                            "
-                          />
-
-                          Return
-
-                        </DropdownMenuItem>
-
-                      )}
-
-
-                    {/* =====================================
-                        RESTORE RETURNED
-                    ===================================== */}
-
-                    {isReturned && (
-
-                      <DropdownMenuItem
-                        onClick={() =>
-                          onRestore?.(
-                            candidate,
-                          )
-                        }
-                      >
-
                         <RotateCcw
                           className="
                             mr-2
@@ -504,95 +431,22 @@ export function CandidatesGrid({
                           "
                         />
 
-                        Restore Candidate
-
+                        Return
                       </DropdownMenuItem>
-
                     )}
 
 
-                    {/* =====================================
-                        CANCEL
+                  {/* RESTORE */}
 
-                        Only active candidates.
-                    ===================================== */}
-
-                    {!isReturned &&
-                      !isCancelled &&
-                      !isComplete && (
-
-                        <DropdownMenuItem
-                          onClick={() =>
-                            onCancel?.(
-                              candidate,
-                            )
-                          }
-                        >
-
-                          <Ban
-                            className="
-                              mr-2
-                              h-4
-                              w-4
-                            "
-                          />
-
-                          Cancel Candidate
-
-                        </DropdownMenuItem>
-
-                      )}
-
-
-                    {/* =====================================
-                        REACTIVATE CANCELLED
-                    ===================================== */}
-
-                    {isCancelled && (
-
-                      <DropdownMenuItem
-                        onClick={() =>
-                          onReactivate?.(
-                            candidate,
-                          )
-                        }
-                      >
-
-                        <PlayCircle
-                          className="
-                            mr-2
-                            h-4
-                            w-4
-                          "
-                        />
-
-                        Reactivate Candidate
-
-                      </DropdownMenuItem>
-
-                    )}
-
-
-                    {/* =====================================
-                        DELETE
-                    ===================================== */}
-
-                    <DropdownMenuSeparator />
-
-
+                  {isReturned && (
                     <DropdownMenuItem
                       onClick={() =>
-                        onDelete?.(
+                        onRestore?.(
                           candidate,
                         )
                       }
-                      className="
-                        text-destructive
-                        focus:text-destructive
-                      "
                     >
-
-                      <Trash2
+                      <RotateCcw
                         className="
                           mr-2
                           h-4
@@ -600,60 +454,121 @@ export function CandidatesGrid({
                         "
                       />
 
-                      Delete
-
+                      Restore Candidate
                     </DropdownMenuItem>
-
-                  </DropdownMenuContent>
-
-                </DropdownMenu>
-
-              </div>
+                  )}
 
 
-              {/* =========================================
-                  CARD BODY
-              ========================================= */}
+                  {/* CANCEL */}
+
+                  {!isReturned &&
+                    !isCancelled &&
+                    !isComplete && (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          _onCancel?.(
+                            candidate,
+                          )
+                        }
+                      >
+                        <Ban
+                          className="
+                            mr-2
+                            h-4
+                            w-4
+                          "
+                        />
+
+                        Cancel Candidate
+                      </DropdownMenuItem>
+                    )}
+
+
+                  {/* REACTIVATE */}
+
+                  {isCancelled && (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onReactivate?.(
+                          candidate,
+                        )
+                      }
+                    >
+                      <PlayCircle
+                        className="
+                          mr-2
+                          h-4
+                          w-4
+                        "
+                      />
+
+                      Reactivate Candidate
+                    </DropdownMenuItem>
+                  )}
+
+
+                  {/* DELETE */}
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    onClick={() =>
+                      onDelete?.(
+                        candidate,
+                      )
+                    }
+                    className="
+                      text-destructive
+                      focus:text-destructive
+                    "
+                  >
+                    <Trash2
+                      className="
+                        mr-2
+                        h-4
+                        w-4
+                      "
+                    />
+
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+
+            {/* =================================================
+                DIVIDER
+            ================================================= */}
+
+            <div
+              className="
+                mt-4
+                border-t
+              "
+            />
+
+
+            {/* =================================================
+                WORKFLOW INFO
+            ================================================= */}
+
+            <div
+              className="
+                mt-4
+                space-y-3
+              "
+            >
+              {/* STAGE */}
 
               <div
                 className="
-                  mt-5
-                  space-y-4
+                  rounded-md
+                  bg-muted/40
+                  px-3
+                  py-2.5
                 "
               >
-
-                {/* AGENT */}
-
-                <div>
-
-                  <p
-                    className="
-                      text-[11px]
-                      font-medium
-                      uppercase
-                      tracking-wide
-                      text-muted-foreground
-                    "
-                  >
-                    Agent
-                  </p>
-
-                  <p
-                    className="
-                      mt-1
-                      truncate
-                      text-sm
-                      font-medium
-                    "
-                  >
-                    {agentName}
-                  </p>
-
-                </div>
-
-
-                {/* STAGE + STATUS */}
-
                 <div
                   className="
                     flex
@@ -662,23 +577,17 @@ export function CandidatesGrid({
                     gap-3
                   "
                 >
-
-                  <div
-                    className="
-                      min-w-0
-                    "
-                  >
-
+                  <div className="min-w-0">
                     <p
                       className="
-                        text-[11px]
+                        text-[10px]
                         font-medium
                         uppercase
-                        tracking-wide
+                        tracking-wider
                         text-muted-foreground
                       "
                     >
-                      Stage
+                      Current stage
                     </p>
 
                     <p
@@ -691,11 +600,7 @@ export function CandidatesGrid({
                     >
                       {stage}
                     </p>
-
                   </div>
-
-
-                  {/* STATUS */}
 
                   <span
                     className={`
@@ -704,77 +609,69 @@ export function CandidatesGrid({
                       items-center
                       gap-1.5
                       rounded-full
-                      px-2.5
+                      px-2
                       py-1
-                      text-xs
+                      text-[10px]
                       font-medium
-
-                      ${
-                        isReturned
-                          ? `
-                            bg-destructive/10
-                            text-destructive
-                          `
-                          : isCancelled
-                            ? `
-                              bg-muted
-                              text-muted-foreground
-                            `
-                            : isComplete
-                              ? `
-                                bg-primary/10
-                                text-primary
-                              `
-                              : `
-                                bg-emerald-500/10
-                                text-emerald-600
-                                dark:text-emerald-400
-                              `
-                      }
+                      ${statusClass}
                     `}
                   >
-
                     <span
                       className={`
                         h-1.5
                         w-1.5
                         rounded-full
-
-                        ${
-                          isReturned
-                            ? "bg-destructive"
-                            : isCancelled
-                              ? "bg-muted-foreground"
-                              : isComplete
-                                ? "bg-primary"
-                                : "bg-emerald-500"
-                        }
+                        ${statusDotClass}
                       `}
                     />
 
-                    {isReturned
-                      ? "Returned"
-                      : isCancelled
-                        ? "Cancelled"
-                        : isComplete
-                          ? "Complete"
-                          : "Active"}
-
+                    {statusLabel}
                   </span>
-
                 </div>
+              </div>
 
 
-                {/* COUNTRY */}
+              {/* META */}
 
-                <div>
+              <div
+                className="
+                  grid
+                  grid-cols-2
+                  gap-4
+                "
+              >
+                <div className="min-w-0">
+                  <p
+                    className="
+                      text-[10px]
+                      font-medium
+                      uppercase
+                      tracking-wider
+                      text-muted-foreground
+                    "
+                  >
+                    Agent
+                  </p>
 
                   <p
                     className="
-                      text-[11px]
+                      mt-1
+                      truncate
+                      text-xs
+                      font-medium
+                    "
+                  >
+                    {agentName}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p
+                    className="
+                      text-[10px]
                       font-medium
                       uppercase
-                      tracking-wide
+                      tracking-wider
                       text-muted-foreground
                     "
                   >
@@ -785,71 +682,53 @@ export function CandidatesGrid({
                     className="
                       mt-1
                       truncate
-                      text-sm
+                      text-xs
+                      font-medium
                     "
                   >
                     {country}
                   </p>
-
                 </div>
-
               </div>
-
-
-              {/* =========================================
-                  CARD FOOTER
-              ========================================= */}
-
-              <div
-                className="
-                  mt-auto
-                  flex
-                  items-center
-                  justify-between
-                  border-t
-                  pt-4
-                "
-              >
-
-                <span
-                  className="
-                    text-xs
-                    text-muted-foreground
-                  "
-                >
-                  Candidate
-                </span>
-
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="
-                    h-8
-                    px-2
-                    text-xs
-                  "
-                  onClick={() =>
-                    onEdit?.(
-                      candidate,
-                    )
-                  }
-                  disabled={isComplete}
-                >
-                  View / Edit
-                </Button>
-
-              </div>
-
             </div>
 
-          );
 
-        },
-      )}
+            {/* =================================================
+                FOOTER
+            ================================================= */}
 
+            <div
+              className="
+                mt-auto
+                flex
+                items-center
+                justify-end
+                pt-4
+              "
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className="
+                  h-7
+                  px-2
+                  text-xs
+                  text-muted-foreground
+                  hover:text-foreground
+                "
+                onClick={() =>
+                  onEdit?.(
+                    candidate,
+                  )
+                }
+                disabled={isComplete}
+              >
+                View / Edit
+              </Button>
+            </div>
+          </div>
+        );
+      })}
     </div>
-
   );
-
 }
