@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card";
 
 import { NumberingSettings } from "./components/numbering-settings";
-import { DataManagementSection } from "./components/data-management-section";
 
 export function SettingsPage() {
   return (
@@ -58,8 +57,6 @@ export function SettingsPage() {
           </Card>
 
           <NumberingSettings />
-
-          <DataManagementSection />
         </div>
       </div>
     </div>

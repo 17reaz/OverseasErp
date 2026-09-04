@@ -103,3 +103,24 @@ export interface ExportResult {
   job: ExportJob;
   signedUrl: string;
 }
+
+export const EXPORT_TYPE_LABELS: Record<ExportType, string> = {
+  all: "All",
+  candidates: "Candidates",
+  agents: "Agents",
+  agencies: "Agencies",
+  medical: "Medical",
+  mofa: "MOFA",
+  visa: "Visa",
+  flight: "Flight",
+};
+
+export const IMPORT_TYPE_LABELS: Record<ImportType, string> = {
+  candidates: "Candidates",
+  agents: "Agents",
+  agencies: "Agencies",
+  medical: "Medical",
+  mofa: "MOFA",
+  visa: "Visa",
+  flight: "Flight",
+};

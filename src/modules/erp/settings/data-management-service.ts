@@ -73,6 +73,25 @@ export async function listExportJobs(limit = 20): Promise<ExportJob[]> {
   return (data ?? []) as ExportJob[];
 }
 
+/**
+ * Re-signs a completed export's file for download from History (the
+ * signed URL returned at export time is short-lived). RLS on
+ * storage.objects already scopes this to the caller's own tenant.
+ */
+export async function getExportDownloadUrl(
+  filePath: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from("erp-backups")
+    .createSignedUrl(filePath, 60 * 10);
+
+  if (error || !data) {
+    throw error ?? new Error("Failed to create download link.");
+  }
+
+  return data.signedUrl;
+}
+
 /* =========================================================
    IMPORT
 ========================================================= */
