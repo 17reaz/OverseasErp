@@ -73,7 +73,6 @@ export function CandidatesGrid({
   onDelete,
   onReturn,
   onRestore,
-  onCancel,
   onCancel: _onCancel,
   onReactivate,
 }: CandidatesGridProps) {
