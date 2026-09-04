@@ -762,7 +762,7 @@ export function CandidateToolbar({
           <List className="h-4 w-4" />
 
           <span className="hidden sm:inline">
-            List
+            Record
           </span>
 
         </Button>
@@ -789,7 +789,7 @@ export function CandidateToolbar({
           <Grid2X2 className="h-4 w-4" />
 
           <span className="hidden sm:inline">
-            Grid
+            Workboard
           </span>
 
         </Button>
