@@ -19,7 +19,7 @@ async function getCandidateActions(): Promise<
 
   return candidates
     .filter(
-      (candidate) => {
+      () => {
         /**
          * Put your real candidate
          * attention rules here.

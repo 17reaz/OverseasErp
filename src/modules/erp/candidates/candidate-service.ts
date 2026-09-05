@@ -203,8 +203,7 @@ export async function fetchCandidatesModuleStatuses(
       // seen per candidate_id is that candidate's latest.
       const latestByCandidate = new Map<string, Record<string, unknown>>();
 
-      for (const row of (data ?? []) as Record<string, unknown>[]) {
-        const candidateId = row.candidate_id as string;
+for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {        const candidateId = row.candidate_id as string;
 
         if (!latestByCandidate.has(candidateId)) {
           latestByCandidate.set(candidateId, row);
