@@ -5,7 +5,7 @@ import type {
 
 import type {
   CandidateStage,
-} from "./candidate-stage";
+} from "./stage-service";
 
 
 /* =========================================================

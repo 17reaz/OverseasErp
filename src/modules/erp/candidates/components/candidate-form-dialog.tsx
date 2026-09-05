@@ -3,7 +3,7 @@ import {
   useState,
 } from "react";
 
-import { CANDIDATE_STAGE_DEFINITIONS } from "../candidate-stage";
+import { CANDIDATE_STAGE_DEFINITIONS } from "../stage-service";
 
 import {
   Check,

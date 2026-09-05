@@ -42,20 +42,7 @@ import {
 } from "../../shared/ui/data-table";
 // import type { Candidate } from "../candidate-types";
 // import { getCandidateOverallStatus } from "../candidate-selectors";
-import { getCandidateStageLabel } from "../candidate-stage";
-import { CandidateNextStageButton } from "./candidate-next-stage-button";
-import type { ModuleStatus } from "../profile/types";
-import { MODULES } from "../profile/module-configs";
-
-type CandidateModuleStatusSummary = {
-  status: ModuleStatus;
-  recordExists: boolean;
-};
-
-type CandidateModuleStatusMap = Record<
-  string,
-  Record<string, CandidateModuleStatusSummary>
->;
+import { CandidateStageBadge } from "./candidate-stage-badge";
 
 
 /* =========================================================
@@ -104,9 +91,6 @@ interface CandidatesTableProps {
     candidate: Candidate,
   ) => void;
   onCandidateUpdated?: (candidate: Candidate) => void;
-
-  onStageClick?: (candidate: Candidate) => void;
-  moduleStatuses?: CandidateModuleStatusMap;
 }
 
 
@@ -133,9 +117,7 @@ export function CandidatesTable({
 
   onCancel,
   onReactivate,
-  onCandidateUpdated,
-  onStageClick,
-  moduleStatuses = {},
+  onCandidateUpdated, 
 }: CandidatesTableProps) {
 
 
@@ -245,73 +227,18 @@ export function CandidatesTable({
 
     ----------------------------------------------------- */
 
-    {
+   {
       key: "stage",
       header: "Stage",
-      cell: (candidate) => {
-        const stageModule = candidate.current_stage
-          ? MODULES.find(
-              (module) => module.key === candidate.current_stage,
-            )
-          : null;
-
-        const moduleStatus = stageModule
-          ? moduleStatuses[candidate.id]?.[stageModule.key]
-          : undefined;
-
-        const statusLabel = moduleStatus
-          ? moduleStatus.recordExists
-            ? moduleStatus.status === "not_started"
-              ? "Not started"
-              : moduleStatus.status.charAt(0).toUpperCase() +
-                moduleStatus.status.slice(1)
-            : "No record"
-          : null;
-
-        return (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={!stageModule}
-              className="h-auto min-w-0 max-w-full justify-start px-2 py-1 text-xs font-medium"
-              onClick={(event) => {
-                event.stopPropagation();
-
-                if (stageModule) {
-                  onStageClick?.(candidate);
-                }
-              }}
-            >
-              {getCandidateStageLabel(candidate.current_stage)}
-            </Button>
-
-            {stageModule && statusLabel && (
-              <>
-                <span className="shrink-0 text-muted-foreground">·</span>
-                <Badge
-                  variant="secondary"
-                  className="shrink-0 text-[11px]"
-                >
-                  {statusLabel}
-                </Badge>
-              </>
-            )}
-          </div>
-        );
-      },
-    },
-
-    // === নতুন কলাম ===
-    {
-      key: "next_stage",
-      header: "Next",
       cell: (candidate) => (
-        <CandidateNextStageButton
-          candidate={candidate}
-          onSuccess={(updated) => onCandidateUpdated?.(updated)}
+        <CandidateStageBadge
+          candidateId={candidate.id}
+          currentStage={candidate.current_stage}
+          onClick={() => onManageServices?.(candidate)}
         />
+        /* Click খুলবে Manage Service sheet, hover-এ tooltip
+           current module-এর live status দেখাবে — আলাদা
+           Move-to-Next বাটন/column আর নেই। */
       ),
     },
 
