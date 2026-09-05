@@ -3,7 +3,9 @@ import {
   getDashboardData,
   type DashboardData,
 } from "./dashboard-service";
-
+import {
+  ActionCenter,
+} from "@/modules/erp/action-center";
 import { DashboardStats } from "./components/dashboard-stats";
 import { DashboardTable } from "./components/dashboard-table";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
@@ -132,7 +134,7 @@ export function DashboardPage() {
       <DashboardPipeline
         data={data.pipeline}
       />
-
+      <ActionCenter />
       {/* ===================================================
           DOCUMENT ALERTS
       =================================================== */}
