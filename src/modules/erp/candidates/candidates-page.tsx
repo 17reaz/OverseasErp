@@ -50,14 +50,30 @@ import {
   restoreReturnedCandidate,
   reactivateCandidate,
   getCandidateById,
+  fetchCandidatesModuleStatuses,
   type Candidate,
 } from "./candidate-service";
 
 import type {
   CandidateStage,
 } from "./candidate-stage";
+import type { ModuleStatus } from "./profile/types";
 
+type CandidateModuleStatusSummary = {
+  status: ModuleStatus;
+  recordExists: boolean;
+};
 
+type CandidateModuleStatusMap = Record<
+  string,
+  Record<string, CandidateModuleStatusSummary>
+>;
+import {
+  MODULES,
+} from "./profile/module-configs";
+import {
+  ModuleRecordsSheet,
+} from "./profile/module-records-sheet";
 /* =========================================================
    PAGE
 ========================================================= */
@@ -144,7 +160,25 @@ export function CandidatesPage() {
   ] = useState<string | null>(null);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [managingServicesCandidate, setManagingServicesCandidate] = useState<Candidate | null>(null);
+  const [
+  moduleStatuses,
+  setModuleStatuses,
+] = useState<CandidateModuleStatusMap>({});
 
+const [
+  stageSheetOpen,
+  setStageSheetOpen,
+] = useState(false);
+
+const [
+  stageSheetCandidate,
+  setStageSheetCandidate,
+] = useState<Candidate | null>(null);
+
+const [
+  stageSheetModuleKey,
+  setStageSheetModuleKey,
+] = useState<string | null>(null);
 
   /* =======================================================
      CREATE / EDIT
@@ -228,6 +262,26 @@ export function CandidatesPage() {
             data,
           );
 
+          try {
+            const statuses =
+              await fetchCandidatesModuleStatuses(
+                data.map(
+                  (candidate) => candidate.id,
+                ),
+              );
+
+            setModuleStatuses(
+              statuses as CandidateModuleStatusMap,
+            );
+          } catch (statusError) {
+            console.error(
+              "Failed to load candidate module statuses:",
+              statusError,
+            );
+
+            setModuleStatuses({});
+          }
+
         } catch (error) {
 
           console.error(
@@ -283,6 +337,32 @@ function handleManageServices(candidate: Candidate) {
   setManagingServicesCandidate(candidate);
   setServicesOpen(true);
 }
+
+function handleStageClick(candidate: Candidate) {
+  const module = candidate.current_stage
+    ? MODULES.find(
+        (item) => item.key === candidate.current_stage,
+      )
+    : null;
+
+  if (!module) {
+    return;
+  }
+
+  setStageSheetCandidate(candidate);
+  setStageSheetModuleKey(module.key);
+  setStageSheetOpen(true);
+}
+
+const stageSheetModule = useMemo(
+  () =>
+    stageSheetModuleKey
+      ? MODULES.find(
+          (module) => module.key === stageSheetModuleKey,
+        ) ?? null
+      : null,
+  [stageSheetModuleKey],
+);
   /* =======================================================
      STATUS COUNTS
   ======================================================= */
@@ -1321,6 +1401,8 @@ function handleManageServices(candidate: Candidate) {
             handleRestore
           }
           onManageServices={handleManageServices}
+          onStageClick={handleStageClick}
+          moduleStatuses={moduleStatuses}
           onReactivate={
             handleReactivate
           }
@@ -1470,6 +1552,31 @@ function handleManageServices(candidate: Candidate) {
     loadCandidates();
   }}
 />
+
+      {/* =================================================
+          CURRENT STAGE MODULE
+      ================================================= */}
+
+      {stageSheetCandidate && stageSheetModule && (
+        <ModuleRecordsSheet
+          module={stageSheetModule}
+          candidateId={stageSheetCandidate.id}
+          tenantId={stageSheetCandidate.tenant_id ?? null}
+          open={stageSheetOpen}
+          onOpenChange={(open) => {
+            setStageSheetOpen(open);
+
+            if (!open) {
+              setStageSheetCandidate(null);
+              setStageSheetModuleKey(null);
+            }
+          }}
+          onSuccess={() => {
+            loadCandidates();
+          }}
+        />
+      )}
+
       {/* =================================================
           RETURN
       ================================================= */}
