@@ -1,6 +1,8 @@
 // src/modules/erp/candidates/candidate-service.ts
 
 import { supabase } from "@/lib/supabase/client";
+import { MODULES } from "./profile/module-configs";
+import type { ModuleStatus } from "./profile/types";
 
 import type {
   Candidate,
@@ -146,7 +148,82 @@ export async function getCandidateById(
 
 }
 
+/* =========================================================
+   BULK MODULE STATUSES (for the candidates table's Stage
+   column badge — one query per module table instead of one
+   per candidate per module).
+========================================================= */
 
+export interface CandidateModuleStatusSummary {
+  status: ModuleStatus;
+  recordExists: boolean;
+}
+export type CandidateModuleStatusMap = Record<
+  string,
+  Record<string, CandidateModuleStatusSummary>
+>;
+
+export async function fetchCandidatesModuleStatuses(
+  candidateIds: string[],
+): Promise<CandidateModuleStatusMap> {
+
+  const result: CandidateModuleStatusMap = {};
+
+  for (const id of candidateIds) {
+    result[id] = {};
+  }
+
+  if (candidateIds.length === 0) {
+    return result;
+  }
+
+  await Promise.all(
+    MODULES.map(async (module) => {
+
+      const { data, error } = await supabase
+        .from(module.table)
+        .select(`candidate_id, ${module.statusSelect}`)
+        .in("candidate_id", candidateIds)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(`Failed to load ${module.table} statuses`, error);
+
+        for (const id of candidateIds) {
+          result[id][module.key] = {
+            status: "not_started",
+            recordExists: false,
+          };
+        }
+
+        return;
+      }
+
+      // Rows newest-first across all candidates, so the first row
+      // seen per candidate_id is that candidate's latest.
+      const latestByCandidate = new Map<string, Record<string, unknown>>();
+
+      for (const row of (data ?? []) as Record<string, unknown>[]) {
+        const candidateId = row.candidate_id as string;
+
+        if (!latestByCandidate.has(candidateId)) {
+          latestByCandidate.set(candidateId, row);
+        }
+      }
+
+      for (const id of candidateIds) {
+        const row = latestByCandidate.get(id) ?? null;
+
+        result[id][module.key] = {
+          status: module.mapStatus(row),
+          recordExists: row !== null,
+        };
+      }
+    }),
+  );
+
+  return result;
+}
 /* =========================================================
    GET CANDIDATE REFERENCES
    ---------------------------------------------------------
