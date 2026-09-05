@@ -1,4 +1,6 @@
 
+import { lazy, Suspense } from "react";
+
 import {
   BrowserRouter,
   Navigate,
@@ -14,94 +16,125 @@ import {
   PublicRoute,
 } from "@/modules/auth/components/public-route";
 
-import {
-  LandingPage,
-} from "@/modules/landing/landing-page";
+const LandingPage = lazy(() =>
+  import("@/modules/landing/landing-page").then((module) => ({
+    default: module.LandingPage,
+  })),
+);
+const LoginPage = lazy(() =>
+  import("@/modules/auth/login/login-page").then((module) => ({
+    default: module.LoginPage,
+  })),
+);
+const SignupPage = lazy(() =>
+  import("@/modules/auth/signup/signup-page").then((module) => ({
+    default: module.SignupPage,
+  })),
+);
+const ForgotPasswordPage = lazy(() =>
+  import("@/modules/auth/forgot-password/forgot-password-page").then(
+    (module) => ({ default: module.ForgotPasswordPage }),
+  ),
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/modules/auth/reset-password/reset-password-page").then(
+    (module) => ({ default: module.ResetPasswordPage }),
+  ),
+);
+const ErpLayout = lazy(() =>
+  import("@/modules/erp/layout/erp-layout").then((module) => ({
+    default: module.ErpLayout,
+  })),
+);
+const DashboardPage = lazy(() =>
+  import("@/modules/erp/dashboard/dashboard-page").then((module) => ({
+    default: module.DashboardPage,
+  })),
+);
+const CandidatesPage = lazy(() =>
+  import("@/modules/erp/candidates/candidates-page").then((module) => ({
+    default: module.CandidatesPage,
+  })),
+);
+const CandidateProfilePage = lazy(() =>
+  import("@/modules/erp/candidates/profile/candidate-profile-page").then(
+    (module) => ({ default: module.CandidateProfilePage }),
+  ),
+);
+const TrashPage = lazy(() =>
+  import("@/modules/erp/trash/trash-page").then((module) => ({
+    default: module.TrashPage,
+  })),
+);
+const AgentsPage = lazy(() =>
+  import("@/modules/erp/agents/agents-page").then((module) => ({
+    default: module.AgentsPage,
+  })),
+);
+const FilesPage = lazy(() =>
+  import("@/modules/erp/files/files-page").then((module) => ({
+    default: module.FilesPage,
+  })),
+);
+const MedicalPage = lazy(() =>
+  import("@/modules/erp/medical/medical-page").then((module) => ({
+    default: module.MedicalPage,
+  })),
+);
+const AgencyPage = lazy(() =>
+  import("@/modules/erp/agency/agency-page").then((module) => ({
+    default: module.AgencyPage,
+  })),
+);
+const MofaPage = lazy(() =>
+  import("@/modules/erp/mofa/mofa-page").then((module) => ({
+    default: module.MofaPage,
+  })),
+);
+const FingerPage = lazy(() =>
+  import("@/modules/erp/finger/finger-page").then((module) => ({
+    default: module.FingerPage,
+  })),
+);
+const PoliceClearancePage = lazy(() =>
+  import("@/modules/erp/police-clearance/police-clearance-page").then(
+    (module) => ({ default: module.PoliceClearancePage }),
+  ),
+);
+const TradeTestPage = lazy(() =>
+  import("@/modules/erp/takamul/takamul-page").then((module) => ({
+    default: module.TradeTestPage,
+  })),
+);
+const VisaPage = lazy(() =>
+  import("@/modules/erp/visa/visa-page").then((module) => ({
+    default: module.VisaPage,
+  })),
+);
+const FlightPage = lazy(() =>
+  import("@/modules/erp/flight/flight-page").then((module) => ({
+    default: module.FlightPage,
+  })),
+);
+const ReportsPage = lazy(() =>
+  import("@/modules/erp/reports/reports-page").then((module) => ({
+    default: module.ReportsPage,
+  })),
+);
 
-import {
-  LoginPage,
-} from "@/modules/auth/login/login-page";
-
-import {
-  SignupPage,
-} from "@/modules/auth/signup/signup-page";
-
-import {
-  ForgotPasswordPage,
-} from "@/modules/auth/forgot-password/forgot-password-page";
-
-import {
-  ResetPasswordPage,
-} from "@/modules/auth/reset-password/reset-password-page";
-
-import {
-  ErpLayout,
-} from "@/modules/erp/layout/erp-layout";
-
-import {
-  DashboardPage,
-} from "@/modules/erp/dashboard/dashboard-page";
-
-import {
-  CandidatesPage,
-} from "@/modules/erp/candidates/candidates-page";
-
-import {
-  CandidateProfilePage,
-} from "@/modules/erp/candidates/profile/candidate-profile-page";
-
-import {
-  TrashPage,
-} from "@/modules/erp/trash/trash-page";
-
-import {
-  AgentsPage,
-} from "@/modules/erp/agents/agents-page";
-
-import {
-  FilesPage,
-} from "@/modules/erp/files/files-page";
-
-import {
-  MedicalPage,
-} from "@/modules/erp/medical/medical-page";
-
-import {
-  AgencyPage,
-} from "@/modules/erp/agency/agency-page";
-
-import {
-  MofaPage,
-} from "@/modules/erp/mofa/mofa-page";
-
-import {
-  FingerPage,
-} from "@/modules/erp/finger/finger-page";
-
-import {
-  PoliceClearancePage,
-} from "@/modules/erp/police-clearance/police-clearance-page";
-
-import {
-  TradeTestPage,
-} from "@/modules/erp/takamul/takamul-page";
-
-import {
-  VisaPage,
-} from "@/modules/erp/visa/visa-page";
-
-import {
-  FlightPage,
-} from "@/modules/erp/flight/flight-page";
-
-import {
-  ReportsPage,
-} from "@/modules/erp/reports/reports-page";
+function RouteLoading() {
+  return (
+    <div className="flex min-h-[400px] items-center justify-center">
+      <p className="text-sm text-muted-foreground">Loading page...</p>
+    </div>
+  );
+}
 
 function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
+      <Suspense fallback={<RouteLoading />}>
+        <Routes>
 
         {/* ==================================================
             PUBLIC
@@ -343,7 +376,8 @@ function AppRouter() {
           }
         />
 
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
