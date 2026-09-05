@@ -8,7 +8,6 @@ import {
   Plane,
   Stethoscope,
   UserRound,
-  XCircle,
 } from "lucide-react";
 
 import {
