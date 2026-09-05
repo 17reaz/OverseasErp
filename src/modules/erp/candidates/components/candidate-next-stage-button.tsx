@@ -1,10 +1,16 @@
 // src/modules/erp/candidates/components/candidate-next-stage-button.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import {
   AlertDialog,
@@ -43,6 +49,14 @@ import {
 
 import type { Candidate } from "../candidate-types";
 
+import { refreshModuleStatus } from "../profile/status-service";
+import type { ModuleStatus } from "../profile/types";
+
+function formatModuleStatusLabel(status: ModuleStatus): string {
+  if (status === "not_started") return "Not started";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 interface CandidateNextStageButtonProps {
   candidate: Pick<Candidate, "id" | "current_stage" | "final_status">;
   onSuccess: (candidate: Candidate) => void;
@@ -64,6 +78,16 @@ export function CandidateNextStageButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [statusLabel, setStatusLabel] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  // Current stage changed (e.g. after this button just advanced it) —
+  // the cached tooltip status no longer applies, so drop it and let
+  // the next hover fetch fresh.
+  useEffect(() => {
+    setStatusLabel(null);
+  }, [candidate.current_stage]);
+
   if (candidate.final_status !== null) {
     return null;
   }
@@ -82,6 +106,30 @@ export function CandidateNextStageButton({
   const refreshAndNotify = async () => {
     const updated = await getCandidateById(candidate.id);
     if (updated) onSuccess(updated);
+  };
+
+  // Only hit the DB when the tooltip actually opens — not on every
+  // table render — and only once per current_stage (cached in state).
+  const handleTooltipOpenChange = (open: boolean) => {
+    if (!open || statusLabel !== null || statusLoading) return;
+
+    if (!candidate.current_stage) {
+      setStatusLabel("Not started yet");
+      return;
+    }
+
+    setStatusLoading(true);
+
+    refreshModuleStatus(candidate.current_stage, candidate.id)
+      .then((status) => {
+        setStatusLabel(status ? formatModuleStatusLabel(status) : "No record");
+      })
+      .catch(() => {
+        setStatusLabel("Unable to load status");
+      })
+      .finally(() => {
+        setStatusLoading(false);
+      });
   };
 
   const handleConfirm = async () => {
@@ -126,65 +174,80 @@ export function CandidateNextStageButton({
 
   return (
     <>
-      <div className="flex items-center">
-        <Button
-          variant="outline"
-          size={size}
-          className="rounded-r-none"
-          onClick={() =>
-            setPendingChange(
-              isAutoComplete
-                ? { type: "complete" }
-                : { type: "stage", stage: nextStage as CandidateStage },
-            )
-          }
-        >
-          {isAutoComplete ? "Complete" : `Move to ${getCandidateStageLabel(nextStage)}`}
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+      <Tooltip onOpenChange={handleTooltipOpenChange}>
+        <TooltipTrigger asChild>
+          <div className="flex items-center">
             <Button
               variant="outline"
               size={size}
-              className="rounded-l-none border-l-0 px-2"
+              className="rounded-r-none"
+              onClick={() =>
+                setPendingChange(
+                  isAutoComplete
+                    ? { type: "complete" }
+                    : { type: "stage", stage: nextStage as CandidateStage },
+                )
+              }
             >
-              <ChevronDown className="h-4 w-4" />
+              {isAutoComplete ? "Complete" : `Move to ${getCandidateStageLabel(nextStage)}`}
             </Button>
-          </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end">
-            {!isAutoComplete && (
-              <DropdownMenuItem
-                onClick={() => setPendingChange({ type: "complete" })}
-              >
-                Mark Complete
-              </DropdownMenuItem>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size={size}
+                  className="rounded-l-none border-l-0 px-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Change Stage</DropdownMenuSubTrigger>
-
-              <DropdownMenuSubContent>
-                {CANDIDATE_STAGE_DEFINITIONS.map((definition) => (
+              <DropdownMenuContent align="end">
+                {!isAutoComplete && (
                   <DropdownMenuItem
-                    key={definition.value}
-                    disabled={definition.value === candidate.current_stage}
-                    onClick={() =>
-                      setPendingChange({
-                        type: "stage",
-                        stage: definition.value,
-                      })
-                    }
+                    onClick={() => setPendingChange({ type: "complete" })}
                   >
-                    {definition.label}
+                    Mark Complete
                   </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                )}
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Change Stage</DropdownMenuSubTrigger>
+
+                  <DropdownMenuSubContent>
+                    {CANDIDATE_STAGE_DEFINITIONS.map((definition) => (
+                      <DropdownMenuItem
+                        key={definition.value}
+                        disabled={definition.value === candidate.current_stage}
+                        onClick={() =>
+                          setPendingChange({
+                            type: "stage",
+                            stage: definition.value,
+                          })
+                        }
+                      >
+                        {definition.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </TooltipTrigger>
+
+        <TooltipContent>
+          {candidate.current_stage ? (
+            <p>
+              {getCandidateStageLabel(candidate.current_stage)} status:{" "}
+              {statusLoading ? "Loading..." : (statusLabel ?? "—")}
+            </p>
+          ) : (
+            <p>Not started yet.</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
 
       <AlertDialog open={pendingChange !== null} onOpenChange={closeDialog}>
         <AlertDialogContent>
