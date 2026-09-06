@@ -252,17 +252,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // RETURNED — highest layer
 .eq("is_deleted", false)
 .eq("is_returned", true),
-    supabase
-      .from("candidates")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      // CANCELLED
-.eq("is_deleted", false)
-.eq("is_returned", false)
-.eq("final_status", "cancelled"),
-
+    
     /* =====================================================
        COMPLETE CANDIDATES
 
@@ -282,6 +272,16 @@ export async function getDashboardData(): Promise<DashboardData> {
 .eq("is_deleted", false)
 .eq("is_returned", false)
 .eq("final_status", "complete"),
+supabase
+      .from("candidates")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      // CANCELLED
+.eq("is_deleted", false)
+.eq("is_returned", false)
+.eq("final_status", "cancelled"),
 
     /* =====================================================
        RECENT CANDIDATES
