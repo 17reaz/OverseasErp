@@ -290,7 +290,7 @@ function AppRouter() {
                 ================================================== */}
 
             <Route
-              path="visa"
+              path="bmet"
               element={<BmetPage />}
             />
 
