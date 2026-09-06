@@ -232,13 +232,14 @@ export function CandidatesTable({
       header: "Stage",
       cell: (candidate) => (
         <CandidateStageBadge
-          candidateId={candidate.id}
-          currentStage={candidate.current_stage}
-          onClick={() => onManageServices?.(candidate)}
+          candidate={candidate}
+          onOpenManageService={() => onManageServices?.(candidate)}
+          onCandidateUpdated={(updated) => onCandidateUpdated?.(updated)}
         />
-        /* Click খুলবে Manage Service sheet, hover-এ tooltip
-           current module-এর live status দেখাবে — আলাদা
-           Move-to-Next বাটন/column আর নেই। */
+        /* Current stage-এ click করলে সরাসরি সেই module-এর sheet
+           খোলে (Manage Service-এর ভেতর দিয়ে না) — nothing-started
+           বা frozen candidate হলে Manage Service-এ fallback করে।
+           Hover-এ tooltip current module-এর live status দেখায়। */
       ),
     },
 

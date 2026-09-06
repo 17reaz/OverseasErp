@@ -17,13 +17,20 @@
 //   everything here becomes read-only.
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Lock } from "lucide-react";
+import { CheckCircle2, Loader2, Lock, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -47,10 +54,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/components/shared/toast/toast";
 
 import type { Candidate } from "../candidate-types";
+import { updateCandidateStage } from "../candidate-service";
 import {
+  CANDIDATE_STAGE_DEFINITIONS,
   fetchCandidateStageState,
   setServiceRequested,
   markCandidateComplete,
+  type CandidateStage,
   type CandidateStageState,
   type RequestedServiceKey,
 } from "../stage-service";
@@ -84,6 +94,8 @@ export function CandidateStageSheet({
   const [completeReason, setCompleteReason] = useState("");
   const [completing, setCompleting] = useState(false);
 
+  const [overriding, setOverriding] = useState(false);
+
   useEffect(() => {
     if (!open || !candidate) return;
 
@@ -111,6 +123,31 @@ export function CandidateStageSheet({
   async function refresh() {
     if (!candidate) return;
     setState(await fetchCandidateStageState(candidate));
+  }
+
+  // ---------------------------------------------------------
+  // TEMPORARY MANUAL OVERRIDE
+  // ---------------------------------------------------------
+  // syncCurrentStage() isn't wired into every module's save flow
+  // yet — until it is, this lets staff force-correct current_stage
+  // by hand. Remove this block once automation covers every module.
+  async function handleManualStageChange(stage: CandidateStage) {
+    if (!candidate) return;
+    setOverriding(true);
+
+    try {
+      await updateCandidateStage(candidate.id, stage);
+      await refresh();
+      onSuccess?.();
+      toast.success(`Stage manually set to ${stage}.`);
+    } catch (err) {
+      toast.error(
+        "Failed to change stage.",
+        err instanceof Error ? err.message : "Please try again.",
+      );
+    } finally {
+      setOverriding(false);
+    }
   }
 
   async function handleToggle(key: RequestedServiceKey, value: boolean) {
@@ -196,6 +233,39 @@ export function CandidateStageSheet({
                   <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400">
                     <CheckCircle2 className="size-4 shrink-0" />
                     All requested stages are complete — Service Complete.
+                  </div>
+                )}
+
+                {!state.frozen && (
+                  <div className="mb-4 space-y-2 rounded-lg border border-dashed p-3">
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <Wrench className="size-3.5 shrink-0" />
+                      Manual override (temporary — remove once every
+                      module auto-syncs the stage)
+                    </div>
+
+                    <Select
+                      value={state.currentStage}
+                      disabled={overriding}
+                      onValueChange={(value) =>
+                        handleManualStageChange(value as CandidateStage)
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {CANDIDATE_STAGE_DEFINITIONS.map((definition) => (
+                          <SelectItem
+                            key={definition.value}
+                            value={definition.value}
+                          >
+                            {definition.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
@@ -297,6 +367,7 @@ export function CandidateStageSheet({
         <ModuleRecordsSheet
           module={currentModule}
           candidateId={candidate.id}
+          tenantId={candidate.tenant_id}
           open={moduleSheetOpen}
           onOpenChange={(value) => {
             setModuleSheetOpen(value);
@@ -306,6 +377,10 @@ export function CandidateStageSheet({
               void refresh();
               onSuccess?.();
             }
+          }}
+          onSuccess={() => {
+            void refresh();
+            onSuccess?.();
           }}
         />
       )}
