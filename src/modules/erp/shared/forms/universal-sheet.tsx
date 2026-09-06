@@ -1,5 +1,3 @@
-// src/modules/erp/shared/forms/universal-sheet.tsx
-
 import { useState } from "react";
 import type {
   FormEvent,
@@ -38,7 +36,13 @@ interface UniversalSheetProps {
 
   children: ReactNode;
 
-  onSubmit: (
+  /**
+   * Optional form submit handler.
+   *
+   * Existing forms can continue using this.
+   * Non-form sheets can leave it undefined.
+   */
+  onSubmit?: (
     event: FormEvent<HTMLFormElement>,
   ) => void;
 
@@ -48,6 +52,14 @@ interface UniversalSheetProps {
   loading?: boolean;
   disabled?: boolean;
   hasChanges?: boolean;
+
+  /**
+   * Custom footer for special sheets.
+   *
+   * When provided, the default Save/Cancel footer
+   * will be replaced by this footer.
+   */
+  footer?: ReactNode;
 }
 
 export function UniversalSheet({
@@ -62,6 +74,7 @@ export function UniversalSheet({
   loading = false,
   disabled = false,
   hasChanges = false,
+  footer,
 }: UniversalSheetProps) {
   const [discardOpen, setDiscardOpen] =
     useState(false);
@@ -81,6 +94,12 @@ export function UniversalSheet({
     setDiscardOpen(false);
     onOpenChange(false);
   }
+
+  const content = (
+    <div className="flex-1 overflow-y-auto px-6 py-6">
+      {children}
+    </div>
+  );
 
   return (
     <>
@@ -109,36 +128,52 @@ export function UniversalSheet({
             )}
           </SheetHeader>
 
-          <form
-            onSubmit={onSubmit}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-              {children}
-            </div>
+          {onSubmit ? (
+            <form
+              onSubmit={onSubmit}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {content}
 
-            <SheetFooter className="border-t px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCloseRequest}
-                disabled={loading}
-              >
-                {cancelLabel}
-              </Button>
+              {footer ? (
+                <SheetFooter className="border-t px-6 py-4">
+                  {footer}
+                </SheetFooter>
+              ) : (
+                <SheetFooter className="border-t px-6 py-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseRequest}
+                    disabled={loading}
+                  >
+                    {cancelLabel}
+                  </Button>
 
-              <Button
-                type="submit"
-                disabled={loading || disabled}
-              >
-                {loading && (
-                  <Loader2 className="animate-spin" />
-                )}
+                  <Button
+                    type="submit"
+                    disabled={loading || disabled}
+                  >
+                    {loading && (
+                      <Loader2 className="animate-spin" />
+                    )}
 
-                {submitLabel}
-              </Button>
-            </SheetFooter>
-          </form>
+                    {submitLabel}
+                  </Button>
+                </SheetFooter>
+              )}
+            </form>
+          ) : (
+            <>
+              {content}
+
+              {footer && (
+                <SheetFooter className="border-t px-6 py-4">
+                  {footer}
+                </SheetFooter>
+              )}
+            </>
+          )}
         </SheetContent>
       </Sheet>
 

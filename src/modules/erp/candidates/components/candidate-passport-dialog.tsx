@@ -1,25 +1,26 @@
-// src/modules/erp/candidates/components/candidate-passport-dialog.tsx
-
-import { useEffect, useState } from "react";
-import { Download, FileText, Loader2, Upload } from "lucide-react";
-
+import { useEffect, useMemo, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Check,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  Upload,
+  X,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+import { UniversalSheet } from "../../shared/forms/universal-sheet";
 
 import {
   getActiveFile,
   getFileUrl,
+  getFileVersions,
   uploadFile,
 } from "../../files/files-service";
+
 import type { FileRecord } from "../../files/types";
 
 import type { Candidate } from "../candidate-service";
@@ -30,58 +31,240 @@ interface CandidatePassportDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function getFileName(fileLocation: string) {
+  const rawName =
+    fileLocation.split("/").pop() ?? "passport";
+
+  try {
+    return decodeURIComponent(rawName);
+  } catch {
+    return rawName;
+  }
+}
+
+function isPdf(fileLocation: string) {
+  return /\.pdf$/i.test(fileLocation);
+}
+
+function isImage(fileLocation: string) {
+  return /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(
+    fileLocation,
+  );
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    },
+  );
+}
+
 export function CandidatePassportDialog({
   candidate,
   open,
   onOpenChange,
 }: CandidatePassportDialogProps) {
   const [checking, setChecking] = useState(true);
-  const [activeFile, setActiveFile] = useState<FileRecord | null>(null);
 
-  const [replacing, setReplacing] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [activeFile, setActiveFile] =
+    useState<FileRecord | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [versions, setVersions] = useState<
+    FileRecord[]
+  >([]);
+
+  const [selectedPreview, setSelectedPreview] =
+    useState<FileRecord | null>(null);
+
+  const [previewUrl, setPreviewUrl] =
+    useState<string | null>(null);
+
+  const [loadingPreview, setLoadingPreview] =
+    useState(false);
+
+  const [uploading, setUploading] =
+    useState(false);
+
+  const [file, setFile] =
+    useState<File | null>(null);
+
+  const [showUpload, setShowUpload] =
+    useState(false);
+
   const [error, setError] = useState("");
 
-  // Look up the candidate's current active passport whenever the
-  // dialog opens for a candidate.
+  const currentFile =
+    selectedPreview ?? activeFile;
+
+  const previewIsPdf = useMemo(
+    () =>
+      currentFile
+        ? isPdf(currentFile.file_location)
+        : false,
+    [currentFile],
+  );
+
+  const previewIsImage = useMemo(
+    () =>
+      currentFile
+        ? isImage(currentFile.file_location)
+        : false,
+    [currentFile],
+  );
+
+  async function loadPassportFiles() {
+    if (!candidate) return;
+
+    setChecking(true);
+    setError("");
+
+    try {
+      const [active, history] =
+        await Promise.all([
+          getActiveFile(
+            candidate.id,
+            "passport",
+          ),
+          getFileVersions(
+            candidate.id,
+            "passport",
+          ),
+        ]);
+
+      setActiveFile(active);
+      setVersions(history);
+
+      setSelectedPreview(active);
+    } catch (err) {
+      console.error(
+        "Failed to load passport files:",
+        err,
+      );
+
+      setError(
+        "Could not load passport files.",
+      );
+    } finally {
+      setChecking(false);
+    }
+  }
+
   useEffect(() => {
     if (!open || !candidate) {
       return;
     }
 
-    setChecking(true);
-    setError("");
-    setReplacing(false);
     setFile(null);
+    setShowUpload(false);
+    setPreviewUrl(null);
+    setSelectedPreview(null);
 
-    getActiveFile(candidate.id, "passport")
-      .then((result) => setActiveFile(result))
-      .catch((err) => {
-        console.error("Failed to check passport file:", err);
-        setError("Could not check for an existing passport file.");
-      })
-      .finally(() => setChecking(false));
+    void loadPassportFiles();
   }, [open, candidate]);
 
-  async function handleDownload() {
-    if (!activeFile) return;
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      setLoading(true);
-      setError("");
+    async function loadPreviewUrl() {
+      if (!selectedPreview) {
+        setPreviewUrl(null);
+        return;
+      }
 
-      const url = await getFileUrl(activeFile.file_location);
+      setLoadingPreview(true);
 
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      console.error("Failed to get passport URL:", err);
-      setError("Failed to generate a download link.");
-    } finally {
-      setLoading(false);
+      try {
+        const url = await getFileUrl(
+          selectedPreview.file_location,
+        );
+
+        if (!cancelled) {
+          setPreviewUrl(url);
+        }
+      } catch (err) {
+        console.error(
+          "Failed to generate preview URL:",
+          err,
+        );
+
+        if (!cancelled) {
+          setPreviewUrl(null);
+          setError(
+            "Could not generate preview.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPreview(false);
+        }
+      }
     }
+
+    void loadPreviewUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPreview]);
+
+  function handleSelectVersion(
+    version: FileRecord,
+  ) {
+    setError("");
+    setSelectedPreview(version);
   }
+async function handleDownload(
+  target: FileRecord | null,
+) {
+  if (!target) return;
+
+  try {
+    setError("");
+
+    const url = await getFileUrl(
+      target.file_location,
+    );
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(
+        "Failed to download file.",
+      );
+    }
+
+    const blob = await response.blob();
+
+    const blobUrl =
+      window.URL.createObjectURL(blob);
+
+    const anchor =
+      document.createElement("a");
+
+    anchor.href = blobUrl;
+    anchor.download =
+      getFileName(target.file_location);
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error(
+      "Failed to download passport:",
+      err,
+    );
+
+    setError(
+      "Failed to download passport.",
+    );
+  }
+}
 
   async function handleUpload() {
     if (!candidate) return;
@@ -97,7 +280,7 @@ export function CandidatePassportDialog({
     }
 
     try {
-      setLoading(true);
+      setUploading(true);
       setError("");
 
       await uploadFile({
@@ -110,145 +293,402 @@ export function CandidatePassportDialog({
         file,
       });
 
-      // Refresh so the dialog flips back to "download" mode.
-      const updated = await getActiveFile(candidate.id, "passport");
-
-      setActiveFile(updated);
-      setReplacing(false);
       setFile(null);
+      setShowUpload(false);
+
+      await loadPassportFiles();
     } catch (err) {
-      console.error("Failed to upload passport:", err);
+      console.error(
+        "Failed to upload passport:",
+        err,
+      );
+
       setError(
-        err instanceof Error ? err.message : "Failed to upload passport.",
+        err instanceof Error
+          ? err.message
+          : "Failed to upload passport.",
       );
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   }
 
-  const showUploadForm = !checking && (!activeFile || replacing);
+  function renderPreview() {
+    if (checking) {
+      return (
+        <div className="flex min-h-[280px] items-center justify-center rounded-lg border bg-muted/20">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+
+    if (!currentFile) {
+      return (
+        <div className="flex min-h-[280px] flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 px-6 text-center">
+          <FileText className="mb-3 h-8 w-8 text-muted-foreground" />
+
+          <p className="text-sm font-medium">
+            No passport uploaded
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Upload a passport to see the
+            preview here.
+          </p>
+        </div>
+      );
+    }
+
+    if (loadingPreview) {
+      return (
+        <div className="flex min-h-[280px] items-center justify-center rounded-lg border bg-muted/20">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+
+    if (!previewUrl) {
+      return (
+        <div className="flex min-h-[280px] flex-col items-center justify-center rounded-lg border bg-muted/20 px-6 text-center">
+          <FileText className="mb-3 h-8 w-8 text-muted-foreground" />
+
+          <p className="text-sm font-medium">
+            Preview unavailable
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            You can still download this file.
+          </p>
+        </div>
+      );
+    }
+
+    if (previewIsPdf) {
+      return (
+        <div className="overflow-hidden rounded-lg border bg-muted/20">
+          <iframe
+            src={previewUrl}
+            title="Passport preview"
+            className="h-[360px] w-full"
+          />
+        </div>
+      );
+    }
+
+    if (previewIsImage) {
+      return (
+        <div className="flex min-h-[280px] items-center justify-center overflow-hidden rounded-lg border bg-muted/20 p-3">
+          <img
+            src={previewUrl}
+            alt="Passport preview"
+            className="max-h-[360px] max-w-full rounded-md object-contain"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-h-[280px] flex-col items-center justify-center rounded-lg border bg-muted/20 px-6 text-center">
+        <FileText className="mb-3 h-8 w-8 text-muted-foreground" />
+
+        <p className="text-sm font-medium">
+          Preview not supported
+        </p>
+
+        <p className="mt-1 text-xs text-muted-foreground">
+          Download the file to view it.
+        </p>
+      </div>
+    );
+  }
+
+  const footer = (
+    <div className="flex w-full items-center justify-between gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setError("");
+          setShowUpload((value) => !value);
+        }}
+        disabled={uploading}
+      >
+        {showUpload ? (
+          <>
+            <X />
+            Cancel
+          </>
+        ) : (
+          <>
+            <Upload />
+            Upload New Version
+          </>
+        )}
+      </Button>
+
+      <Button
+        type="button"
+        onClick={() =>
+          void handleDownload(
+            activeFile,
+          )
+        }
+        disabled={
+          uploading || !activeFile
+        }
+      >
+        <Download />
+        Download
+      </Button>
+    </div>
+  );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Passport</DialogTitle>
-
-          <DialogDescription>
-            {candidate?.name} · {candidate?.passport_no}
-          </DialogDescription>
-        </DialogHeader>
-
+    <UniversalSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Passport"
+      description={
+        candidate
+          ? `${candidate.name} · ${candidate.passport_no}`
+          : undefined
+      }
+      loading={uploading}
+      footer={footer}
+    >
+      <div className="space-y-6">
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </div>
         )}
 
-        {checking ? (
-          <div className="flex min-h-[120px] items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        {/* Preview */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium">
+                Passport Preview
+              </h3>
+
+              {currentFile && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Version {currentFile.version}
+                </p>
+              )}
+            </div>
+
+            {currentFile?.is_active && (
+              <span className="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-1 text-xs font-medium">
+                <Check className="h-3 w-3" />
+                Current
+              </span>
+            )}
           </div>
-        ) : showUploadForm ? (
-          /* ===============================================
-             NO PASSPORT ON FILE (or replacing) — UPLOAD
-             =============================================== */
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="passport-file">Passport File</Label>
 
-              <Input
-                id="passport-file"
-                type="file"
-                accept="image/*,.pdf"
-                disabled={loading}
-                onChange={(event) => {
-                  setFile(event.target.files?.[0] ?? null);
-                  setError("");
-                }}
-              />
+          {renderPreview()}
 
-              <p className="text-xs text-muted-foreground">
-                JPG, PNG or PDF
+          {currentFile && (
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-foreground">
+                  {getFileName(
+                    currentFile.file_location,
+                  )}
+                </p>
+
+                <p>
+                  Uploaded{" "}
+                  {formatDate(
+                    currentFile.created_at,
+                  )}
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  void handleDownload(
+                    currentFile,
+                  )
+                }
+              >
+                <Download />
+                Download
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* Upload */}
+        {showUpload && (
+          <section className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <div>
+              <h3 className="text-sm font-medium">
+                Upload New Version
+              </h3>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                The existing passport will remain
+                in history.
               </p>
             </div>
 
+            <Input
+              type="file"
+              accept="image/*,.pdf"
+              disabled={uploading}
+              onChange={(event) => {
+                setFile(
+                  event.target.files?.[0] ??
+                    null,
+                );
+                setError("");
+              }}
+            />
+
             {file && (
-              <div className="rounded-md border px-3 py-2 text-sm">
-                Selected: <span className="font-medium">{file.name}</span>
+              <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  {file.type ===
+                  "application/pdf" ? (
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+
+                  <span className="truncate text-sm">
+                    {file.name}
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() =>
+                    void handleUpload()
+                  }
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Upload />
+                  )}
+
+                  {uploading
+                    ? "Uploading..."
+                    : "Upload"}
+                </Button>
               </div>
             )}
-          </div>
-        ) : (
-          /* ===============================================
-             PASSPORT ALREADY UPLOADED — DOWNLOAD
-             =============================================== */
-          <div className="rounded-md border bg-muted/40 p-4">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">
-                  Passport · v{activeFile?.version}
-                </p>
-
-                <p className="text-xs text-muted-foreground">
-                  Uploaded{" "}
-                  {activeFile
-                    ? new Date(activeFile.created_at).toLocaleDateString(
-                        "en-GB",
-                        { day: "2-digit", month: "short", year: "numeric" },
-                      )
-                    : "—"}
-                </p>
-              </div>
-            </div>
-          </div>
+          </section>
         )}
 
-        <DialogFooter className="gap-2 sm:justify-between">
-          {!checking && activeFile && !replacing ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setReplacing(true)}
-              disabled={loading}
-            >
-              Upload new version
-            </Button>
-          ) : (
-            <span />
-          )}
+        {/* Version History */}
+        {!checking &&
+          versions.length > 0 && (
+            <section className="space-y-3">
+              <div>
+                <h3 className="text-sm font-medium">
+                  Previous Versions
+                </h3>
 
-          {showUploadForm ? (
-            <Button
-              type="button"
-              onClick={handleUpload}
-              disabled={loading || !file}
-            >
-              {loading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Upload />
-              )}
-              {loading ? "Uploading..." : "Upload"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleDownload}
-              disabled={loading || checking || !activeFile}
-            >
-              {loading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Download />
-              )}
-              {loading ? "Preparing..." : "Download"}
-            </Button>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  All uploaded passport versions.
+                </p>
+              </div>
+
+              <div className="divide-y rounded-lg border">
+                {versions.map((version) => {
+                  const selected =
+                    selectedPreview?.id ===
+                    version.id;
+
+                  return (
+                    <div
+                      key={version.id}
+                      className="flex items-center justify-between gap-3 px-3 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                          {isPdf(
+                            version.file_location,
+                          ) ? (
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">
+                              v{version.version}
+                            </p>
+
+                            {version.is_active && (
+                              <span className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
+                                Current
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="truncate text-xs text-muted-foreground">
+                            {getFileName(
+                              version.file_location,
+                            )}
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(
+                              version.created_at,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant={
+                            selected
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          size="sm"
+                          onClick={() =>
+                            handleSelectVersion(
+                              version,
+                            )
+                          }
+                        >
+                          Preview
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            void handleDownload(
+                              version,
+                            )
+                          }
+                          aria-label={`Download passport version ${version.version}`}
+                        >
+                          <Download />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </UniversalSheet>
   );
 }
