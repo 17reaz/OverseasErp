@@ -14,6 +14,7 @@ import {
   ListTodo,
   Phone,
   FingerprintPattern,
+  BadgeCheck,
   Vault,
 } from "lucide-react";
 
@@ -86,7 +87,11 @@ export const erpNavigation = [
     url: "/app/visa",
     icon: ShieldCheck,
   },
-
+  {
+  title: "BMET",
+  url: "/app/bmet",
+  icon: BadgeCheck,
+},
   {
     title: "Flight",
     url: "/app/flight",

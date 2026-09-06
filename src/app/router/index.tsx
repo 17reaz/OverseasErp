@@ -89,7 +89,7 @@ import {
 import {
   VisaPage,
 } from "@/modules/erp/visa/visa-page";
-
+import { BmetPage } from "@/modules/erp/bmet/bmet-page";
 import {
   FlightPage,
 } from "@/modules/erp/flight/flight-page";
@@ -284,6 +284,14 @@ function AppRouter() {
             <Route
               path="visa"
               element={<VisaPage />}
+            />
+            {/* ==================================================
+                BMET
+                ================================================== */}
+
+            <Route
+              path="visa"
+              element={<BmetPage />}
             />
 
             {/* ==================================================
