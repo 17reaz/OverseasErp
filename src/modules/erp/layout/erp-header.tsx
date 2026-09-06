@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 
 import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -50,46 +55,106 @@ import {
   signOut,
 } from "@/lib/supabase/auth";
 
+import {
+  GlobalSearchDialog,
+} from "../global-search/global-search-dialog";
+
+
 export function ErpHeader() {
-  const navigate = useNavigate();
-  const location = useLocation();
+
+  const navigate =
+    useNavigate();
+
+  const location =
+    useLocation();
 
   const {
     user,
     profile,
   } = useAuth();
 
+
   /* =======================================================
-     CURRENT NAVIGATION
-
-     IMPORTANT:
-     Longest matching URL wins.
-
-     Example:
-       /app/candidates
-       /app/candidates/123
-
-     must match Candidates,
-     not Dashboard.
+     GLOBAL SEARCH STATE
   ======================================================= */
 
-  const currentNavigation = [...erpNavigation]
-    .sort(
-      (a, b) =>
-        b.url.length - a.url.length,
-    )
-    .find(
-      (item) =>
-        location.pathname === item.url ||
-        location.pathname.startsWith(
-          `${item.url}/`,
-        ),
+  const [
+    globalSearchOpen,
+    setGlobalSearchOpen,
+  ] = useState(false);
+
+
+  /* =======================================================
+     GLOBAL SEARCH KEYBOARD SHORTCUT
+     -------------------------------------------------------
+     Ctrl + K
+     Cmd + K
+  ======================================================= */
+
+  useEffect(() => {
+
+    function handleGlobalSearchShortcut(
+      event: KeyboardEvent,
+    ) {
+
+      const isShortcut =
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "k";
+
+      if (!isShortcut) {
+        return;
+      }
+
+      event.preventDefault();
+
+      setGlobalSearchOpen(true);
+    }
+
+
+    window.addEventListener(
+      "keydown",
+      handleGlobalSearchShortcut,
     );
+
+
+    return () => {
+
+      window.removeEventListener(
+        "keydown",
+        handleGlobalSearchShortcut,
+      );
+
+    };
+
+  }, []);
+
+
+  /* =======================================================
+     CURRENT NAVIGATION
+     -------------------------------------------------------
+     Longest matching URL wins.
+  ======================================================= */
+
+  const currentNavigation =
+    [...erpNavigation]
+      .sort(
+        (a, b) =>
+          b.url.length -
+          a.url.length,
+      )
+      .find(
+        (item) =>
+          location.pathname ===
+            item.url ||
+          location.pathname.startsWith(
+            `${item.url}/`,
+          ),
+      );
+
 
   const pageName =
     currentNavigation?.title ??
     "Dashboard";
-
 
 
   /* =======================================================
@@ -97,11 +162,14 @@ export function ErpHeader() {
   ======================================================= */
 
   async function handleLogout() {
+
     const {
       error,
     } = await signOut();
 
+
     if (error) {
+
       console.error(
         "Logout failed:",
         error,
@@ -109,6 +177,7 @@ export function ErpHeader() {
 
       return;
     }
+
 
     navigate(
       "/login",
@@ -128,8 +197,10 @@ export function ErpHeader() {
     user?.email?.split("@")[0] ||
     "User";
 
+
   const email =
     user?.email || "";
+
 
   const initials =
     fullName
@@ -144,282 +215,283 @@ export function ErpHeader() {
 
 
   /* =======================================================
+     OPEN SEARCH
+  ======================================================= */
+
+  function openGlobalSearch() {
+    setGlobalSearchOpen(true);
+  }
+
+
+  /* =======================================================
      UI
   ======================================================= */
 
   return (
-    <header
-      className="
-        flex
-        h-16
-        w-full
-        items-center
-        justify-between
-        border-b
-        bg-background
-        px-4
-        md:px-6
-      "
-    >
-
-      {/* =================================================
-          LEFT
-      ================================================= */}
-
-      <div
+    <>
+      <header
         className="
           flex
-          min-w-0
+          h-16
+          w-full
           items-center
-          gap-3
+          justify-between
+          border-b
+          bg-background
+          px-4
+          md:px-6
         "
       >
 
-        <SidebarTrigger
-          className="
-            shrink-0
-            -ml-2
-          "
-        />
-
         {/* =================================================
-            CURRENT SIDEBAR NAVIGATION
+            LEFT
         ================================================= */}
 
         <div
-  className="
-    flex
-    min-w-0
-    items-center
-  "
->
-  <h1
-    className="
-      truncate
-      text-lg
-      font-semibold
-      md:text-xl
-    "
-  >
-    {pageName}
-  </h1>
-</div>
-
-      </div>
-
-
-      {/* =================================================
-          RIGHT
-      ================================================= */}
-
-      <div
-        className="
-          flex
-          items-center
-          gap-1
-          md:gap-2
-        "
-      >
-
-        {/* =================================================
-            GLOBAL SEARCH
-        ================================================= */}
-
-        <Button
-          variant="outline"
           className="
-            hidden
-            h-9
-            w-[220px]
-            justify-start
-            gap-2
-            px-3
-            text-muted-foreground
-            lg:flex
+            flex
+            min-w-0
+            items-center
+            gap-3
           "
-          onClick={() => {
-            // Global search action
-          }}
         >
 
-          <Search
+          <SidebarTrigger
             className="
-              h-4
-              w-4
               shrink-0
+              -ml-2
             "
           />
 
-          <span className="text-sm">
-            Search...
-          </span>
 
-          <kbd
+          <div
             className="
-              ml-auto
-              hidden
-              rounded
-              border
-              bg-muted
-              px-1.5
-              py-0.5
-              text-[10px]
-              font-medium
-              text-muted-foreground
+              flex
+              min-w-0
+              items-center
             "
           >
-            Ctrl K
-          </kbd>
 
-        </Button>
-
-
-        {/* =================================================
-            MOBILE SEARCH
-        ================================================= */}
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden"
-          aria-label="Search"
-          onClick={() => {
-            // Mobile search action
-          }}
-        >
-          <Search className="h-4 w-4" />
-        </Button>
-
-
-        {/* =================================================
-            NOTIFICATION
-        ================================================= */}
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          aria-label="Notifications"
-          onClick={() => {
-            // Notification action
-          }}
-        >
-
-          <Bell className="h-4 w-4" />
-
-          <span
-            className="
-              absolute
-              right-2
-              top-2
-              h-1.5
-              w-1.5
-              rounded-full
-              bg-red-500
-            "
-          />
-
-        </Button>
-
-
-        {/* =================================================
-            PROFILE
-        ================================================= */}
-
-        <DropdownMenu>
-
-          <DropdownMenuTrigger asChild>
-
-            <Button
-              variant="ghost"
+            <h1
               className="
-                flex
-                h-10
-                items-center
-                gap-2
-                px-2
+                truncate
+                text-lg
+                font-semibold
+                md:text-xl
               "
             >
+              {pageName}
+            </h1>
 
-              <Avatar
-                className="
-                  h-8
-                  w-8
-                  shrink-0
-                "
-              >
-                <AvatarFallback>
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+          </div>
 
-              <div
-                className="
-                  hidden
-                  text-left
-                  md:block
-                "
-              >
-
-                <p
-                  className="
-                    max-w-[120px]
-                    truncate
-                    text-sm
-                    font-medium
-                    leading-none
-                  "
-                >
-                  {fullName}
-                </p>
-
-                <p
-                  className="
-                    mt-1
-                    text-xs
-                    text-muted-foreground
-                  "
-                >
-                  {profile?.role || "User"}
-                </p>
-
-              </div>
-
-            </Button>
-
-          </DropdownMenuTrigger>
+        </div>
 
 
-          <DropdownMenuContent
-            align="end"
-            className="w-64"
+        {/* =================================================
+            RIGHT
+        ================================================= */}
+
+        <div
+          className="
+            flex
+            items-center
+            gap-1
+            md:gap-2
+          "
+        >
+
+          {/* =================================================
+              GLOBAL SEARCH - DESKTOP
+          ================================================= */}
+
+          <Button
+            type="button"
+            variant="outline"
+            className="
+              hidden
+              h-9
+              w-[220px]
+              justify-start
+              gap-2
+              px-3
+              text-muted-foreground
+              lg:flex
+            "
+            onClick={openGlobalSearch}
+            aria-label="Open global search"
           >
 
-            <DropdownMenuLabel>
+            <Search
+              className="
+                h-4
+                w-4
+                shrink-0
+              "
+            />
 
-              <div
+            <span className="text-sm">
+              Search...
+            </span>
+
+            <kbd
+              className="
+                ml-auto
+                rounded
+                border
+                bg-muted
+                px-1.5
+                py-0.5
+                text-[10px]
+                font-medium
+                text-muted-foreground
+              "
+            >
+              Ctrl K
+            </kbd>
+
+          </Button>
+
+
+          {/* =================================================
+              GLOBAL SEARCH - MOBILE
+          ================================================= */}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            aria-label="Search"
+            onClick={openGlobalSearch}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+
+
+          {/* =================================================
+              NOTIFICATION
+          ================================================= */}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label="Notifications"
+            onClick={() => {
+              // Notification action
+            }}
+          >
+
+            <Bell className="h-4 w-4" />
+
+            <span
+              className="
+                absolute
+                right-2
+                top-2
+                h-1.5
+                w-1.5
+                rounded-full
+                bg-red-500
+              "
+            />
+
+          </Button>
+
+
+          {/* =================================================
+              PROFILE
+          ================================================= */}
+
+          <DropdownMenu>
+
+            <DropdownMenuTrigger asChild>
+
+              <Button
+                type="button"
+                variant="ghost"
                 className="
                   flex
-                  flex-col
-                  gap-1
+                  h-10
+                  items-center
+                  gap-2
+                  px-2
                 "
               >
 
-                <span className="font-medium">
-                  {fullName}
-                </span>
-
-                <span
+                <Avatar
                   className="
-                    text-xs
-                    font-normal
-                    text-muted-foreground
+                    h-8
+                    w-8
+                    shrink-0
                   "
                 >
-                  {email}
-                </span>
 
-                {profile?.role && (
+                  <AvatarFallback>
+                    {initials}
+                  </AvatarFallback>
+
+                </Avatar>
+
+
+                <div
+                  className="
+                    hidden
+                    text-left
+                    md:block
+                  "
+                >
+
+                  <p
+                    className="
+                      max-w-[120px]
+                      truncate
+                      text-sm
+                      font-medium
+                      leading-none
+                    "
+                  >
+                    {fullName}
+                  </p>
+
+                  <p
+                    className="
+                      mt-1
+                      text-xs
+                      text-muted-foreground
+                    "
+                  >
+                    {profile?.role || "User"}
+                  </p>
+
+                </div>
+
+              </Button>
+
+            </DropdownMenuTrigger>
+
+
+            <DropdownMenuContent
+              align="end"
+              className="w-64"
+            >
+
+              <DropdownMenuLabel>
+
+                <div
+                  className="
+                    flex
+                    flex-col
+                    gap-1
+                  "
+                >
+
+                  <span className="font-medium">
+                    {fullName}
+                  </span>
+
                   <span
                     className="
                       text-xs
@@ -427,201 +499,252 @@ export function ErpHeader() {
                       text-muted-foreground
                     "
                   >
-                    Role: {profile.role}
+                    {email}
                   </span>
-                )}
 
-              </div>
+                  {profile?.role && (
+                    <span
+                      className="
+                        text-xs
+                        font-normal
+                        text-muted-foreground
+                      "
+                    >
+                      Role: {profile.role}
+                    </span>
+                  )}
 
-            </DropdownMenuLabel>
+                </div>
 
-            <DropdownMenuSeparator />
+              </DropdownMenuLabel>
 
 
-            {/* PROFILE */}
+              <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/profile",
-                )
-              }
-            >
-              <User
+
+              {/* PROFILE */}
+
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate(
+                    "/app/profile",
+                  )
+                }
+              >
+
+                <User
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
+
+                Profile
+
+              </DropdownMenuItem>
+
+
+              <DropdownMenuSeparator />
+
+
+              {/* LOGOUT */}
+
+              <DropdownMenuItem
+                onClick={handleLogout}
                 className="
-                  mr-2
-                  h-4
-                  w-4
+                  text-destructive
+                  focus:text-destructive
                 "
-              />
+              >
 
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+                <LogOut
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
+
+                Logout
+
+              </DropdownMenuItem>
+
+            </DropdownMenuContent>
+
+          </DropdownMenu>
 
 
-            {/* LOGOUT */}
+          {/* =================================================
+              GLOBAL ADD
+          ================================================= */}
 
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="
-                text-destructive
-                focus:text-destructive
-              "
-            >
+          <DropdownMenu>
 
-              <LogOut
+            <DropdownMenuTrigger asChild>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
                 className="
-                  mr-2
-                  h-4
-                  w-4
+                  h-9
+                  w-9
                 "
-              />
+                aria-label="Global Add"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
 
-              Logout
-
-            </DropdownMenuItem>
-
-          </DropdownMenuContent>
-
-        </DropdownMenu>
+            </DropdownMenuTrigger>
 
 
-        {/* =================================================
-            GLOBAL ADD
-        ================================================= */}
-
-        <DropdownMenu>
-
-          <DropdownMenuTrigger asChild>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="
-                h-9
-                w-9
-              "
-              aria-label="Global Add"
+            <DropdownMenuContent
+              align="end"
+              className="w-48"
             >
-              <Plus className="h-4 w-4" />
-            </Button>
 
-          </DropdownMenuTrigger>
+              <DropdownMenuLabel>
+                Quick Add
+              </DropdownMenuLabel>
 
-
-          <DropdownMenuContent
-            align="end"
-            className="w-48"
-          >
-
-            <DropdownMenuLabel>
-              Quick Add
-            </DropdownMenuLabel>
-
-            <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
 
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/candidates/new",
-                )
-              }
-            >
-              <UserPlus
-                className="
-                  mr-2
-                  h-4
-                  w-4
-                "
-              />
+              {/* CANDIDATE */}
 
-              Candidate
-            </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate(
+                    "/app/candidates/new",
+                  )
+                }
+              >
 
+                <UserPlus
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
 
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/medical",
-                )
-              }
-            >
-              <Stethoscope
-                className="
-                  mr-2
-                  h-4
-                  w-4
-                "
-              />
+                Candidate
 
-              Medical
-            </DropdownMenuItem>
+              </DropdownMenuItem>
 
 
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/mofa",
-                )
-              }
-            >
-              <FileText
-                className="
-                  mr-2
-                  h-4
-                  w-4
-                "
-              />
+              {/* MEDICAL */}
 
-              MOFA
-            </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate(
+                    "/app/medical",
+                  )
+                }
+              >
 
+                <Stethoscope
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
 
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/visa",
-                )
-              }
-            >
-              <CreditCard
-                className="
-                  mr-2
-                  h-4
-                  w-4
-                "
-              />
+                Medical
 
-              Visa
-            </DropdownMenuItem>
+              </DropdownMenuItem>
 
 
-            <DropdownMenuItem
-              onClick={() =>
-                navigate(
-                  "/app/flight",
-                )
-              }
-            >
-              <Plane
-                className="
-                  mr-2
-                  h-4
-                  w-4
-                "
-              />
+              {/* MOFA */}
 
-              Flight
-            </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate(
+                    "/app/mofa",
+                  )
+                }
+              >
 
-          </DropdownMenuContent>
+                <FileText
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
 
-        </DropdownMenu>
+                MOFA
 
-      </div>
+              </DropdownMenuItem>
 
-    </header>
+
+              {/* VISA */}
+
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate(
+                    "/app/visa",
+                  )
+                }
+              >
+
+                <CreditCard
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
+
+                Visa
+
+              </DropdownMenuItem>
+
+
+              {/* FLIGHT */}
+
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate(
+                    "/app/flight",
+                  )
+                }
+              >
+
+                <Plane
+                  className="
+                    mr-2
+                    h-4
+                    w-4
+                  "
+                />
+
+                Flight
+
+              </DropdownMenuItem>
+
+            </DropdownMenuContent>
+
+          </DropdownMenu>
+
+        </div>
+
+      </header>
+
+
+      {/* =====================================================
+          GLOBAL SEARCH DIALOG
+      ===================================================== */}
+
+      <GlobalSearchDialog
+        open={globalSearchOpen}
+        onOpenChange={
+          setGlobalSearchOpen
+        }
+      />
+
+    </>
   );
 }
