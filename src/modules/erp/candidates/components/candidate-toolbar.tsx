@@ -740,6 +740,31 @@ export function CandidateToolbar({
           p-0.5
         "
       >
+                <Button
+          type="button"
+          variant={
+            viewMode === "grid"
+              ? "secondary"
+              : "ghost"
+          }
+          size="sm"
+          className="
+            h-8
+            gap-1.5
+            px-2.5
+          "
+          onClick={() =>
+            onViewModeChange?.("grid")
+          }
+        >
+
+          <Grid2X2 className="h-4 w-4" />
+
+          <span className="hidden sm:inline">
+            Workboard
+          </span>
+
+        </Button>
 
         <Button
           type="button"
@@ -768,31 +793,6 @@ export function CandidateToolbar({
         </Button>
 
 
-        <Button
-          type="button"
-          variant={
-            viewMode === "grid"
-              ? "secondary"
-              : "ghost"
-          }
-          size="sm"
-          className="
-            h-8
-            gap-1.5
-            px-2.5
-          "
-          onClick={() =>
-            onViewModeChange?.("grid")
-          }
-        >
-
-          <Grid2X2 className="h-4 w-4" />
-
-          <span className="hidden sm:inline">
-            Workboard
-          </span>
-
-        </Button>
 
       </div>
 
