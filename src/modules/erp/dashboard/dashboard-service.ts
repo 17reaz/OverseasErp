@@ -4,6 +4,19 @@ import { supabase } from "@/lib/supabase/client";
    TYPES
 ========================================================= */
 
+export type DashboardWorkflowState =
+  | "processing"
+  | "hold";
+
+export type DashboardHoldReason =
+  | "medical_expired"
+  | "mofa_expired"
+  | "visa_expired"
+  | "iqama_overdue"
+  | "manual_hold"
+  | string
+  | null;
+
 export interface DashboardCandidate {
   id: string;
   name: string;
@@ -11,25 +24,72 @@ export interface DashboardCandidate {
   created_at: string;
   current_stage: string | null;
   is_returned: boolean;
+
+  /*
+   * Workflow state is separate from the main candidate status.
+   *
+   * active
+   *   ├── processing
+   *   └── hold
+   */
+  workflow_state: DashboardWorkflowState;
+
+  hold_reason: DashboardHoldReason;
 }
 
 export interface DashboardData {
   stats: {
+    /* -----------------------------------------------------
+       MAIN CANDIDATE STATUS
+    ----------------------------------------------------- */
+
     totalCandidates: number;
     activeCandidates: number;
     completeCandidates: number;
     returnedCandidates: number;
     cancelledCandidates: number;
 
+    /* -----------------------------------------------------
+       ACTIVE BREAKDOWN
+
+       activeCandidates =
+         processingCandidates + holdCandidates
+    ----------------------------------------------------- */
+
+    processingCandidates: number;
+    holdCandidates: number;
+
+    holdReasons: {
+      reason: string;
+      label: string;
+      count: number;
+    }[];
+
+    /* -----------------------------------------------------
+       MEDICAL
+    ----------------------------------------------------- */
+
     medicalPending: number;
     medicalFit: number;
     medicalUnfit: number;
 
+    /* -----------------------------------------------------
+       MOFA
+    ----------------------------------------------------- */
+
     mofaPending: number;
     mofaApproved: number;
 
+    /* -----------------------------------------------------
+       VISA
+    ----------------------------------------------------- */
+
     visaPending: number;
     visaIssued: number;
+
+    /* -----------------------------------------------------
+       FLIGHT
+    ----------------------------------------------------- */
 
     flightScheduled: number;
     flightDeparted: number;
@@ -120,6 +180,51 @@ function normalizeStage(
 }
 
 /* =========================================================
+   HOLD REASON LABEL
+========================================================= */
+
+function getHoldReasonLabel(
+  reason: string,
+): string {
+  switch (reason) {
+    case "medical_expired":
+      return "Medical Expired";
+
+    case "mofa_expired":
+      return "MOFA Expired";
+
+    case "visa_expired":
+      return "Visa Expired";
+
+    case "iqama_overdue":
+      return "Iqama Overdue";
+
+    case "manual_hold":
+      return "Manual Hold";
+
+    default:
+      return reason
+        .replace(/[_-]/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/\b\w/g, (char) =>
+          char.toUpperCase(),
+        );
+  }
+}
+
+/* =========================================================
+   SAFE WORKFLOW STATE
+========================================================= */
+
+function normalizeWorkflowState(
+  value: unknown,
+): DashboardWorkflowState {
+  return value === "hold"
+    ? "hold"
+    : "processing";
+}
+
+/* =========================================================
    DASHBOARD SERVICE
 ========================================================= */
 
@@ -148,17 +253,27 @@ export async function getDashboardData(): Promise<DashboardData> {
      - not complete
      - not cancelled
 
-     We fetch current_stage + requested_services here because
-     the dashboard pipeline is based on active candidate
-     progression (current_stage), plus the Iqama toggle which
-     is a requested-service flag rather than a stage.
+     IMPORTANT:
+     workflow_state is NOT used here.
+
+     Therefore:
+
+       Active = Processing + Hold
+
+     This preserves the existing meaning of Active.
   ======================================================= */
 
   const activeCandidatesPromise =
     supabase
       .from("candidates")
       .select(
-        "id, current_stage, requested_services",
+        `
+        id,
+        current_stage,
+        requested_services,
+        workflow_state,
+        hold_reason
+        `,
       )
       .eq("is_deleted", false)
       .eq("is_returned", false)
@@ -232,8 +347,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     /* =====================================================
        ACTIVE CANDIDATES
 
-       IMPORTANT:
-       Complete / Cancelled candidates are excluded.
+       Complete / Cancelled / Returned excluded.
     ===================================================== */
 
     supabase
@@ -247,27 +361,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .is("final_status", null),
 
     /* =====================================================
-       RETURNED / CANCELLED
-
-       Current database logic uses is_returned.
-    ===================================================== */
-      supabase
-  .from("candidates")
-  .select("id", {
-    count: "exact",
-    head: true,
-  })
-  // RETURNED — highest layer
-.eq("is_deleted", false)
-.eq("is_returned", true),
-    
-    /* =====================================================
-       COMPLETE CANDIDATES
-
-       IMPORTANT:
-       Complete status is stored in final_status.
-
-       current_stage is NOT "complete".
+       RETURNED CANDIDATES
     ===================================================== */
 
     supabase
@@ -276,24 +370,41 @@ export async function getDashboardData(): Promise<DashboardData> {
         count: "exact",
         head: true,
       })
-      // COMPLETE
-.eq("is_deleted", false)
-.eq("is_returned", false)
-.eq("final_status", "complete"),
-supabase
+      .eq("is_deleted", false)
+      .eq("is_returned", true),
+
+    /* =====================================================
+       COMPLETE CANDIDATES
+    ===================================================== */
+
+    supabase
       .from("candidates")
       .select("id", {
         count: "exact",
         head: true,
       })
-      // CANCELLED
-.eq("is_deleted", false)
-.eq("is_returned", false)
-.eq("final_status", "cancelled"),
+      .eq("is_deleted", false)
+      .eq("is_returned", false)
+      .eq("final_status", "complete"),
+
+    /* =====================================================
+       CANCELLED CANDIDATES
+    ===================================================== */
+
+    supabase
+      .from("candidates")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("is_deleted", false)
+      .eq("is_returned", false)
+      .eq("final_status", "cancelled"),
 
     /* =====================================================
        RECENT CANDIDATES
-       Only 5 rows
+
+       Only 5 rows.
     ===================================================== */
 
     supabase
@@ -304,7 +415,9 @@ supabase
         passport_no,
         created_at,
         current_stage,
-        is_returned
+        is_returned,
+        workflow_state,
+        hold_reason
       `)
       .eq("is_deleted", false)
       .order("created_at", {
@@ -431,7 +544,8 @@ supabase
 
     /* =====================================================
        CANDIDATE TREND
-       Last 6 months only
+
+       Last 6 months only.
     ===================================================== */
 
     supabase
@@ -446,7 +560,7 @@ supabase
     /* =====================================================
        AGING
 
-       Active candidates only
+       Active candidates only.
     ===================================================== */
 
     supabase
@@ -454,6 +568,7 @@ supabase
       .select("received_date")
       .eq("is_deleted", false)
       .eq("is_returned", false)
+      .is("final_status", null)
       .not(
         "received_date",
         "is",
@@ -463,7 +578,7 @@ supabase
     /* =====================================================
        PASSPORT DOCUMENTS
 
-       Only active passport files
+       Only active passport files.
     ===================================================== */
 
     supabase
@@ -479,9 +594,15 @@ supabase
     activeCandidateIdsPromise,
 
     /* =====================================================
-       ACTIVE CANDIDATES + CURRENT STAGE
+       ACTIVE CANDIDATES + CURRENT STAGE + WORKFLOW
 
-       Used for pipeline calculation.
+       IMPORTANT:
+
+       Pipeline candidates are filtered below to:
+
+         workflow_state = processing
+
+       Hold candidates are excluded.
     ===================================================== */
 
     activeCandidatesPromise,
@@ -489,10 +610,7 @@ supabase
     /* =====================================================
        BMET CANDIDATE IDS
 
-       Used to determine which active candidates already
-       have a BMET record. BMET has no candidate stage of
-       its own yet, so this is checked by table existence,
-       the same way medical-pending is derived.
+       BMET is not a candidate stage yet.
     ===================================================== */
 
     supabase
@@ -559,14 +677,104 @@ supabase
 
   const completeCandidates =
     completeCandidatesResult.count ?? 0;
+
   const cancelledCandidates =
-  cancelledCandidatesResult.count ?? 0;
+    cancelledCandidatesResult.count ?? 0;
+
   /* =======================================================
      ACTIVE CANDIDATE IDS
   ======================================================= */
 
   const activeCandidateIds =
     activeCandidateIdsResult.data ?? [];
+
+  /* =======================================================
+     ACTIVE WORKFLOW DATA
+  ======================================================= */
+
+  const activeStageCandidates =
+    activeCandidatesStageResult.data ?? [];
+
+  /* =======================================================
+     PROCESSING / HOLD BREAKDOWN
+
+     Active is divided into:
+
+       processing
+       hold
+
+     IMPORTANT:
+     We do NOT change the main Active count.
+
+       activeCandidates =
+         processingCandidates + holdCandidates
+  ======================================================= */
+
+  const processingCandidates =
+    activeStageCandidates.filter(
+      (candidate) =>
+        normalizeWorkflowState(
+          candidate.workflow_state,
+        ) === "processing",
+    );
+
+  const holdCandidates =
+    activeStageCandidates.filter(
+      (candidate) =>
+        normalizeWorkflowState(
+          candidate.workflow_state,
+        ) === "hold",
+    );
+
+  const processingCandidatesCount =
+    processingCandidates.length;
+
+  const holdCandidatesCount =
+    holdCandidates.length;
+
+  /* =======================================================
+     HOLD REASON BREAKDOWN
+  ======================================================= */
+
+  const holdReasonMap =
+    new Map<string, number>();
+
+  for (const candidate of holdCandidates) {
+    const reason =
+      typeof candidate.hold_reason ===
+      "string"
+        ? candidate.hold_reason.trim()
+        : "";
+
+    const normalizedReason =
+      reason || "manual_hold";
+
+    holdReasonMap.set(
+      normalizedReason,
+      (holdReasonMap.get(
+        normalizedReason,
+      ) ?? 0) + 1,
+    );
+  }
+
+  const holdReasons =
+    Array.from(
+      holdReasonMap.entries(),
+    )
+      .sort(
+        ([, countA], [, countB]) =>
+          countB - countA,
+      )
+      .map(
+        ([reason, count]) => ({
+          reason,
+          label:
+            getHoldReasonLabel(
+              reason,
+            ),
+          count,
+        }),
+      );
 
   /* =======================================================
      MEDICAL
@@ -594,8 +802,12 @@ supabase
   /* =======================================================
      MEDICAL PENDING
 
-     Active candidates that don't have
+     Active candidates without
      any medical record.
+
+     HOLD candidates are still Active,
+     therefore they remain part of this
+     existing KPI.
   ======================================================= */
 
   const medicalPending =
@@ -637,47 +849,49 @@ supabase
     flightDepartedResult.count ?? 0;
 
   /* =======================================================
-     ACTIVE CANDIDATE PIPELINE
-
-     Important:
-
-     Pipeline is cumulative and follows the real stage
-     order from CANDIDATE_STAGE_DEFINITIONS
-     (candidates/stage-service.ts):
-
-       medical → mofa → finger → police_clearance
-       → takamul → visa → flight
-
-     Example: a candidate currently at "visa"
-       → counted in Medical
-       → counted in MOFA
-       → counted in Finger
-       → counted in Police Clearance
-       → counted in Takamul
-       → counted in Visa
-
-     NOTE: Previously this only recognised
-     medical/mofa/visa/flight/iqama as valid stages, so any
-     candidate sitting at finger / police_clearance / takamul
-     was silently dropped from every bucket (including the
-     earlier ones they'd already passed). That's fixed below.
-
-     BMET and Iqama are NOT candidate stages (see
-     stage-service.ts) — they're checked independently:
-       - BMET: active candidate has a row in `bmet`
-       - Iqama: active candidate's requested_services.iqama
-         toggle is on
+     BMET CANDIDATE IDS
   ======================================================= */
-
-  const activeStageCandidates =
-    activeCandidatesStageResult.data ?? [];
 
   const bmetCandidateIds =
     new Set(
-      (bmetCandidateIdsResult.data ?? [])
-        .map((item) => item.candidate_id)
+      (
+        bmetCandidateIdsResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
         .filter(Boolean),
     );
+
+  /* =======================================================
+     PROCESSING PIPELINE
+
+     VERY IMPORTANT:
+
+     Only processing candidates enter the pipeline.
+
+     Hold candidates are completely excluded.
+
+     Existing stage order is preserved:
+
+       medical
+       ↓
+       mofa
+       ↓
+       finger
+       ↓
+       police clearance
+       ↓
+       takamul
+       ↓
+       visa
+       ↓
+       flight
+
+     BMET and Iqama remain independent service checks.
+  ======================================================= */
 
   const pipelineCounts = {
     medical: 0,
@@ -691,14 +905,23 @@ supabase
     iqama: 0,
   };
 
-  for (const candidate of activeStageCandidates) {
+  /* =======================================================
+     ONLY PROCESSING CANDIDATES
+  ======================================================= */
+
+  for (
+    const candidate of
+    processingCandidates
+  ) {
     const stage =
       normalizeStage(
         candidate.current_stage,
       );
 
-    const stagesFrom = (from: string[]) =>
-      from.includes(stage);
+    const stagesFrom = (
+      stages: string[],
+    ) =>
+      stages.includes(stage);
 
     /* -----------------------------------------------------
        Medical or beyond
@@ -797,20 +1020,37 @@ supabase
        Flight
     ----------------------------------------------------- */
 
-    if (stagesFrom(["flight"])) {
+    if (
+      stagesFrom([
+        "flight",
+      ])
+    ) {
       pipelineCounts.flight += 1;
     }
 
     /* -----------------------------------------------------
-       BMET — table existence, not a stage
+       BMET
+
+       BMET is not a current_stage.
+
+       Only PROCESSING candidates are considered.
     ----------------------------------------------------- */
 
-    if (bmetCandidateIds.has(candidate.id)) {
+    if (
+      bmetCandidateIds.has(
+        candidate.id,
+      )
+    ) {
       pipelineCounts.bmet += 1;
     }
 
     /* -----------------------------------------------------
-       Iqama — requested_services toggle, not a stage
+       Iqama
+
+       Iqama is still controlled by
+       requested_services.
+
+       Only PROCESSING candidates are considered.
     ----------------------------------------------------- */
 
     const requestedServices =
@@ -819,16 +1059,37 @@ supabase
         | null
         | undefined;
 
-    if (requestedServices?.iqama === true) {
+    if (
+      requestedServices?.iqama === true
+    ) {
       pipelineCounts.iqama += 1;
     }
   }
+
+  /* =======================================================
+     PIPELINE
+
+     Compatibility note:
+
+     The existing dashboard-pipeline.tsx expects an
+     "Active" item and uses it as the denominator for
+     percentages.
+
+     We KEEP the key "active", but its value now represents
+     PROCESSING candidates only.
+
+     Therefore:
+
+       Pipeline Active = Processing
+
+     HOLD NEVER ENTERS PIPELINE.
+  ======================================================= */
 
   const pipeline = [
     {
       key: "active" as const,
       label: "Active",
-      value: activeCandidates,
+      value: processingCandidatesCount,
     },
 
     {
@@ -852,7 +1113,8 @@ supabase
     {
       key: "police_clearance" as const,
       label: "Police Clearance",
-      value: pipelineCounts.police_clearance,
+      value:
+        pipelineCounts.police_clearance,
     },
 
     {
@@ -1060,7 +1322,29 @@ supabase
     (
       recentCandidatesResult.data ??
       []
-    ) as DashboardCandidate[];
+    ).map(
+      (candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        passport_no:
+          candidate.passport_no,
+        created_at:
+          candidate.created_at,
+        current_stage:
+          candidate.current_stage,
+        is_returned:
+          candidate.is_returned,
+
+        workflow_state:
+          normalizeWorkflowState(
+            candidate.workflow_state,
+          ),
+
+        hold_reason:
+          candidate.hold_reason ??
+          null,
+      }),
+    );
 
   /* =======================================================
      FINAL DASHBOARD DATA
@@ -1072,6 +1356,8 @@ supabase
     ----------------------------------------------------- */
 
     stats: {
+      /* Main status */
+
       totalCandidates,
 
       activeCandidates,
@@ -1082,19 +1368,37 @@ supabase
 
       returnedCandidates,
 
+      /* Active breakdown */
+
+      processingCandidates:
+        processingCandidatesCount,
+
+      holdCandidates:
+        holdCandidatesCount,
+
+      holdReasons,
+
+      /* Medical */
+
       medicalPending,
 
       medicalFit,
 
       medicalUnfit,
 
+      /* MOFA */
+
       mofaPending,
 
       mofaApproved,
 
+      /* Visa */
+
       visaPending,
 
       visaIssued,
+
+      /* Flight */
 
       flightScheduled,
 
@@ -1170,6 +1474,20 @@ supabase
 
         level:
           "warning",
+      },
+
+      {
+        title:
+          "Candidates on hold",
+
+        description:
+          "Active candidates whose workflow requires attention or rework.",
+
+        count:
+          holdCandidatesCount,
+
+        level:
+          "critical",
       },
     ],
   };
