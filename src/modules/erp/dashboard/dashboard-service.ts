@@ -40,7 +40,11 @@ export interface DashboardData {
       | "active"
       | "medical"
       | "mofa"
+      | "finger"
+      | "police_clearance"
+      | "takamul"
       | "visa"
+      | "bmet"
       | "flight"
       | "iqama";
 
@@ -144,15 +148,17 @@ export async function getDashboardData(): Promise<DashboardData> {
      - not complete
      - not cancelled
 
-     We fetch current_stage here because the dashboard
-     pipeline is based on active candidate progression.
+     We fetch current_stage + requested_services here because
+     the dashboard pipeline is based on active candidate
+     progression (current_stage), plus the Iqama toggle which
+     is a requested-service flag rather than a stage.
   ======================================================= */
 
   const activeCandidatesPromise =
     supabase
       .from("candidates")
       .select(
-        "id, current_stage",
+        "id, current_stage, requested_services",
       )
       .eq("is_deleted", false)
       .eq("is_returned", false)
@@ -208,6 +214,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     activeCandidateIdsResult,
 
     activeCandidatesStageResult,
+
+    bmetCandidateIdsResult,
   ] = await Promise.all([
     /* =====================================================
        TOTAL CANDIDATES
@@ -477,6 +485,19 @@ supabase
     ===================================================== */
 
     activeCandidatesPromise,
+
+    /* =====================================================
+       BMET CANDIDATE IDS
+
+       Used to determine which active candidates already
+       have a BMET record. BMET has no candidate stage of
+       its own yet, so this is checked by table existence,
+       the same way medical-pending is derived.
+    ===================================================== */
+
+    supabase
+      .from("bmet")
+      .select("candidate_id"),
   ]);
 
   /* =======================================================
@@ -513,6 +534,8 @@ supabase
     activeCandidateIdsResult,
 
     activeCandidatesStageResult,
+
+    bmetCandidateIdsResult,
   ];
 
   for (const result of results) {
@@ -618,28 +641,53 @@ supabase
 
      Important:
 
-     Pipeline is cumulative.
+     Pipeline is cumulative and follows the real stage
+     order from CANDIDATE_STAGE_DEFINITIONS
+     (candidates/stage-service.ts):
 
-     Example:
+       medical → mofa → finger → police_clearance
+       → takamul → visa → flight
 
-       Iqama candidate
+     Example: a candidate currently at "visa"
        → counted in Medical
        → counted in MOFA
+       → counted in Finger
+       → counted in Police Clearance
+       → counted in Takamul
        → counted in Visa
-       → counted in Flight
-       → counted in Iqama
 
-     This gives a real recruitment pipeline view.
+     NOTE: Previously this only recognised
+     medical/mofa/visa/flight/iqama as valid stages, so any
+     candidate sitting at finger / police_clearance / takamul
+     was silently dropped from every bucket (including the
+     earlier ones they'd already passed). That's fixed below.
+
+     BMET and Iqama are NOT candidate stages (see
+     stage-service.ts) — they're checked independently:
+       - BMET: active candidate has a row in `bmet`
+       - Iqama: active candidate's requested_services.iqama
+         toggle is on
   ======================================================= */
 
   const activeStageCandidates =
     activeCandidatesStageResult.data ?? [];
 
+  const bmetCandidateIds =
+    new Set(
+      (bmetCandidateIdsResult.data ?? [])
+        .map((item) => item.candidate_id)
+        .filter(Boolean),
+    );
+
   const pipelineCounts = {
     medical: 0,
     mofa: 0,
+    finger: 0,
+    police_clearance: 0,
+    takamul: 0,
     visa: 0,
     flight: 0,
+    bmet: 0,
     iqama: 0,
   };
 
@@ -649,18 +697,23 @@ supabase
         candidate.current_stage,
       );
 
+    const stagesFrom = (from: string[]) =>
+      from.includes(stage);
+
     /* -----------------------------------------------------
        Medical or beyond
     ----------------------------------------------------- */
 
     if (
-      [
+      stagesFrom([
         "medical",
         "mofa",
+        "finger",
+        "police clearance",
+        "takamul",
         "visa",
         "flight",
-        "iqama",
-      ].includes(stage)
+      ])
     ) {
       pipelineCounts.medical += 1;
     }
@@ -670,14 +723,61 @@ supabase
     ----------------------------------------------------- */
 
     if (
-      [
+      stagesFrom([
         "mofa",
+        "finger",
+        "police clearance",
+        "takamul",
         "visa",
         "flight",
-        "iqama",
-      ].includes(stage)
+      ])
     ) {
       pipelineCounts.mofa += 1;
+    }
+
+    /* -----------------------------------------------------
+       Finger or beyond
+    ----------------------------------------------------- */
+
+    if (
+      stagesFrom([
+        "finger",
+        "police clearance",
+        "takamul",
+        "visa",
+        "flight",
+      ])
+    ) {
+      pipelineCounts.finger += 1;
+    }
+
+    /* -----------------------------------------------------
+       Police Clearance or beyond
+    ----------------------------------------------------- */
+
+    if (
+      stagesFrom([
+        "police clearance",
+        "takamul",
+        "visa",
+        "flight",
+      ])
+    ) {
+      pipelineCounts.police_clearance += 1;
+    }
+
+    /* -----------------------------------------------------
+       Takamul or beyond
+    ----------------------------------------------------- */
+
+    if (
+      stagesFrom([
+        "takamul",
+        "visa",
+        "flight",
+      ])
+    ) {
+      pipelineCounts.takamul += 1;
     }
 
     /* -----------------------------------------------------
@@ -685,33 +785,41 @@ supabase
     ----------------------------------------------------- */
 
     if (
-      [
+      stagesFrom([
         "visa",
         "flight",
-        "iqama",
-      ].includes(stage)
+      ])
     ) {
       pipelineCounts.visa += 1;
     }
 
     /* -----------------------------------------------------
-       Flight or beyond
+       Flight
     ----------------------------------------------------- */
 
-    if (
-      [
-        "flight",
-        "iqama",
-      ].includes(stage)
-    ) {
+    if (stagesFrom(["flight"])) {
       pipelineCounts.flight += 1;
     }
 
     /* -----------------------------------------------------
-       Iqama
+       BMET — table existence, not a stage
     ----------------------------------------------------- */
 
-    if (stage === "iqama") {
+    if (bmetCandidateIds.has(candidate.id)) {
+      pipelineCounts.bmet += 1;
+    }
+
+    /* -----------------------------------------------------
+       Iqama — requested_services toggle, not a stage
+    ----------------------------------------------------- */
+
+    const requestedServices =
+      candidate.requested_services as
+        | Record<string, unknown>
+        | null
+        | undefined;
+
+    if (requestedServices?.iqama === true) {
       pipelineCounts.iqama += 1;
     }
   }
@@ -736,9 +844,33 @@ supabase
     },
 
     {
+      key: "finger" as const,
+      label: "Finger",
+      value: pipelineCounts.finger,
+    },
+
+    {
+      key: "police_clearance" as const,
+      label: "Police Clearance",
+      value: pipelineCounts.police_clearance,
+    },
+
+    {
+      key: "takamul" as const,
+      label: "Takamul",
+      value: pipelineCounts.takamul,
+    },
+
+    {
       key: "visa" as const,
       label: "Visa",
       value: pipelineCounts.visa,
+    },
+
+    {
+      key: "bmet" as const,
+      label: "BMET",
+      value: pipelineCounts.bmet,
     },
 
     {
