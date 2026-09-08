@@ -861,38 +861,23 @@ export async function createCandidate(
   .from("candidates")
   .insert({
     ...input,
+    tenant_id: tenantId,
+    created_by: user.id,
 
-    tenant_id:
-      tenantId,
-
-    created_by:
-      user.id,
-
-    // -----------------------------------------------------
-    // WORKFLOW INITIAL STATE
-    // -----------------------------------------------------
-    // নতুন candidate এখনো Medical শুরু করেনি।
-    // তাই সে Active-এর ভিতরে Hold → Received থাকবে।
-    // -----------------------------------------------------
-    workflow_state:
-      "hold",
-
-    hold_reason:
-      "received",
-
+    // New candidate starts as:
+    // ACTIVE + HOLD + RECEIVED
+    workflow_state: "hold",
+    hold_reason: "received",
     workflow_updated_at:
       new Date().toISOString(),
   })
   .select(CANDIDATE_SELECT)
   .single();
 
-
-  return {
-    data:
-      data as Candidate | null,
-
-    error,
-  };
+return {
+  data: data as Candidate | null,
+  error,
+};
 
 }
 
