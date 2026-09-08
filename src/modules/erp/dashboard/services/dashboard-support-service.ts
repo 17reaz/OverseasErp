@@ -330,11 +330,10 @@ export async function getDashboardSupportData(
         is_returned:
           candidate.is_returned,
 
-        workflow_state:
-          candidate.workflow_state ===
-          "hold"
-            ? "hold"
-            : "processing",
+       workflow_state:
+  candidate.workflow_state === "hold"
+    ? ("hold" as const)
+    : ("processing" as const),
 
         hold_reason:
           candidate.hold_reason ??

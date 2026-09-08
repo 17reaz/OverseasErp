@@ -2,9 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 
 import type {
   CandidateWorkflowState,
-  HoldReason,
   MainCandidateStatus,
-  WorkflowState,
 } from "./workflow-types";
 
 /* =========================================================
