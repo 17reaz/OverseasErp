@@ -8,7 +8,6 @@ import type {
 /* =========================================================
    VALIDITY RULES
 
-   Business rules supplied for OverseasErp:
    Medical = 60 days
    MOFA    = 30 days
    Visa    = 90 days
@@ -52,14 +51,7 @@ function isExpired(
 }
 
 /* =========================================================
-   MAIN STATUS
-   ---------------------------------------------------------
-   Keep existing database model.
-
-   is_returned = return
-   final_status = complete
-   final_status = cancelled
-   otherwise = active
+   MAIN CANDIDATE STATUS
 ========================================================= */
 
 export function getMainCandidateStatus(
@@ -88,7 +80,7 @@ export function getMainCandidateStatus(
 }
 
 /* =========================================================
-   WORKFLOW RESULT
+   WORKFLOW INPUT
 ========================================================= */
 
 interface WorkflowInput {
@@ -114,12 +106,21 @@ interface WorkflowInput {
 }
 
 /* =========================================================
-   CALCULATE WORKFLOW
+   CALCULATE WORKFLOW STATE
 
-   IMPORTANT:
-   This function does NOT change current_stage.
+   BUSINESS RULE:
 
-   HOLD is a state, NOT a stage.
+   New candidate
+      ↓
+   ACTIVE + HOLD
+      ↓
+   RECEIVED
+      ↓
+   Medical completed
+      ↓
+   PROCESSING
+
+   Then validity controls HOLD automatically.
 ========================================================= */
 
 export function calculateWorkflowState(
@@ -129,7 +130,7 @@ export function calculateWorkflowState(
     getMainCandidateStatus(input);
 
   /* -------------------------------------------------------
-     Frozen candidates
+     COMPLETE / RETURN / CANCEL
   ------------------------------------------------------- */
 
   if (mainStatus !== "active") {
@@ -143,7 +144,76 @@ export function calculateWorkflowState(
   }
 
   /* -------------------------------------------------------
-     MEDICAL
+     MEDICAL NOT STARTED
+     
+     No medical record/status means:
+     
+       ACTIVE
+       + HOLD
+       + RECEIVED
+     
+     This is the default state for a new candidate.
+  ------------------------------------------------------- */
+
+  if (
+    !input.medicalStatus
+  ) {
+    return {
+      mainStatus: "active",
+      workflowState: "hold",
+      currentStage:
+        input.current_stage ?? null,
+      holdReason: "received",
+    };
+  }
+
+  /* -------------------------------------------------------
+     MEDICAL PENDING
+
+     If medical record exists but is still "new",
+     candidate remains Received/Hold.
+  ------------------------------------------------------- */
+
+  if (
+    input.medicalStatus === "new"
+  ) {
+    return {
+      mainStatus: "active",
+      workflowState: "hold",
+      currentStage:
+        input.current_stage ?? "medical",
+      holdReason: "received",
+    };
+  }
+
+  /* -------------------------------------------------------
+     MEDICAL UNFIT
+
+     This is a failed medical result.
+     It should NOT be treated as Received.
+
+     Keep it out of Processing.
+     We use hold until a dedicated failure state exists.
+  ------------------------------------------------------- */
+
+  if (
+    input.medicalStatus === "unfit"
+  ) {
+    return {
+      mainStatus: "active",
+      workflowState: "hold",
+      currentStage:
+        input.current_stage ?? "medical",
+      holdReason: "manual_hold",
+    };
+  }
+
+  /* -------------------------------------------------------
+     MEDICAL FIT
+
+     Medical is completed.
+
+     Now validity starts.
   ------------------------------------------------------- */
 
   if (
@@ -168,6 +238,8 @@ export function calculateWorkflowState(
 
   /* -------------------------------------------------------
      MOFA
+
+     If MOFA is approved, its 30-day validity applies.
   ------------------------------------------------------- */
 
   if (
@@ -192,18 +264,21 @@ export function calculateWorkflowState(
 
   /* -------------------------------------------------------
      VISA
+
+     Issued/approved visa:
+       expiry_date is authoritative.
+
+     If expiry_date is unavailable:
+       visa_date + 90 days.
   ------------------------------------------------------- */
 
   if (
     input.visaStatus &&
-    ["issued", "approved"].includes(
-      input.visaStatus,
-    )
+    [
+      "issued",
+      "approved",
+    ].includes(input.visaStatus)
   ) {
-    /*
-     * If database already has expiry_date,
-     * use that as authoritative.
-     */
     if (input.visaExpiryDate) {
       if (
         new Date(
@@ -218,13 +293,7 @@ export function calculateWorkflowState(
           holdReason: "visa_expired",
         };
       }
-    }
-
-    /*
-     * Fallback:
-     * visa_date + 90 days
-     */
-    else if (input.visaDate) {
+    } else if (input.visaDate) {
       if (
         isExpired(
           input.visaDate,
@@ -244,6 +313,14 @@ export function calculateWorkflowState(
 
   /* -------------------------------------------------------
      IQAMA
+
+     Flight departed
+        +
+     Iqama not completed
+        +
+     90 days passed
+        =
+     IQAMA OVERDUE
   ------------------------------------------------------- */
 
   if (
@@ -268,7 +345,10 @@ export function calculateWorkflowState(
   }
 
   /* -------------------------------------------------------
-     DEFAULT
+     DEFAULT ACTIVE WORKING STATE
+
+     If Medical is completed and no validity
+     has expired, candidate is Processing.
   ------------------------------------------------------- */
 
   return {
@@ -281,7 +361,7 @@ export function calculateWorkflowState(
 }
 
 /* =========================================================
-   PERSIST WORKFLOW STATE
+   SAVE WORKFLOW STATE
 ========================================================= */
 
 export async function saveWorkflowState(
@@ -312,8 +392,6 @@ export async function saveWorkflowState(
 
 /* =========================================================
    GET ONE CANDIDATE WORKFLOW
-
-   Uses existing module tables.
 ========================================================= */
 
 export async function getCandidateWorkflow(
@@ -431,46 +509,49 @@ export async function getCandidateWorkflow(
   const flight =
     flightResult.data;
 
-  const state =
-    calculateWorkflowState({
-      is_returned:
-        candidate.is_returned,
+  return calculateWorkflowState({
+    is_returned:
+      candidate.is_returned,
 
-      final_status:
-        candidate.final_status,
+    final_status:
+      candidate.final_status,
 
-      current_stage:
-        candidate.current_stage,
+    current_stage:
+      candidate.current_stage,
 
-      medicalDate:
-        medical?.fit_date ??
-        medical?.medical_date ??
-        null,
+    medicalDate:
+      medical?.fit_date ??
+      medical?.medical_date ??
+      null,
 
-      medicalStatus:
-        medical?.status ?? null,
+    medicalStatus:
+      medical?.status ?? null,
 
-      mofaDate:
-        mofa?.application_date ?? null,
+    mofaDate:
+      mofa?.application_date ?? null,
 
-      mofaStage:
-        mofa?.stage ?? null,
+    mofaStage:
+      mofa?.stage ?? null,
 
-      visaDate:
-        visa?.visa_date ?? null,
+    visaDate:
+      visa?.visa_date ?? null,
 
-      visaExpiryDate:
-        visa?.expiry_date ?? null,
+    visaExpiryDate:
+      visa?.expiry_date ?? null,
 
-      visaStatus:
-        visa?.status ?? null,
+    visaStatus:
+      visa?.status ?? null,
 
-      flightDate:
-        flight?.flight_date ?? null,
+    flightDate:
+      flight?.flight_date ?? null,
 
-      flightStatus:
-        flight?.status ?? null,
-    });
+    flightStatus:
+      flight?.status ?? null,
 
-  return state;
+    /*
+     * Iqama is not yet fetched from a dedicated table
+     * in the current implementation.
+     */
+    iqamaCompleted: false,
+  });
 }

@@ -9,6 +9,7 @@ export type WorkflowState =
   | "hold";
 
 export type HoldReason =
+  | "received"
   | "medical_expired"
   | "mofa_expired"
   | "visa_expired"

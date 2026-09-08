@@ -9,6 +9,7 @@ export type DashboardWorkflowState =
   | "hold";
 
 export type DashboardHoldReason =
+  | "received"
   | "medical_expired"
   | "mofa_expired"
   | "visa_expired"
@@ -80,12 +81,25 @@ export interface DashboardWorkflowCandidate {
    NORMALIZE WORKFLOW STATE
 ========================================================= */
 
+/**
+ * Workflow rule:
+ *
+ * processing = actual work has started
+ * hold       = not currently processing
+ *
+ * IMPORTANT:
+ * null / undefined is treated as HOLD.
+ *
+ * This is intentional because a newly created
+ * candidate should not automatically appear
+ * inside the processing pipeline.
+ */
 export function normalizeWorkflowState(
   value: unknown,
 ): DashboardWorkflowState {
-  return value === "hold"
-    ? "hold"
-    : "processing";
+  return value === "processing"
+    ? "processing"
+    : "hold";
 }
 
 /* =========================================================
@@ -96,6 +110,9 @@ function getHoldReasonLabel(
   reason: string,
 ): string {
   switch (reason) {
+    case "received":
+      return "Received";
+
     case "medical_expired":
       return "Medical Expired";
 
@@ -168,17 +185,27 @@ export async function getDashboardStats(): Promise<{
 }> {
   /* =======================================================
      ACTIVE CANDIDATES
-
+     
      Active means:
-
+     
        is_deleted = false
        is_returned = false
        final_status IS NULL
-
+     
      This intentionally includes BOTH:
-
+     
        processing
        hold
+     
+     Example:
+     
+       New candidate
+          ↓
+       active + hold
+     
+       Medical completed
+          ↓
+       active + processing
   ======================================================= */
 
   const activeCandidatesPromise =
@@ -252,9 +279,9 @@ export async function getDashboardStats(): Promise<{
 
     bmetCandidateIdsResult,
   ] = await Promise.all([
-    /* -----------------------------------------------------
+    /* =====================================================
        TOTAL
-    ----------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -270,12 +297,12 @@ export async function getDashboardStats(): Promise<{
         false,
       ),
 
-    /* -----------------------------------------------------
+    /* =====================================================
        ACTIVE
 
-       Active includes:
-       processing + hold
-    ----------------------------------------------------- */
+       Active =
+         processing + hold
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -299,9 +326,9 @@ export async function getDashboardStats(): Promise<{
         null,
       ),
 
-    /* -----------------------------------------------------
+    /* =====================================================
        RETURNED
-    ----------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -321,9 +348,9 @@ export async function getDashboardStats(): Promise<{
         true,
       ),
 
-    /* -----------------------------------------------------
+    /* =====================================================
        COMPLETE
-    ----------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -347,9 +374,9 @@ export async function getDashboardStats(): Promise<{
         "complete",
       ),
 
-    /* -----------------------------------------------------
+    /* =====================================================
        CANCELLED
-    ----------------------------------------------------- */
+    ===================================================== */
 
     supabase
       .from("candidates")
@@ -374,7 +401,7 @@ export async function getDashboardStats(): Promise<{
       ),
 
     /* =====================================================
-       MEDICAL
+       MEDICAL - FIT
     ===================================================== */
 
     supabase
@@ -387,6 +414,10 @@ export async function getDashboardStats(): Promise<{
         "fit",
       ),
 
+    /* =====================================================
+       MEDICAL - UNFIT
+    ===================================================== */
+
     supabase
       .from("medicals")
       .select(
@@ -397,6 +428,10 @@ export async function getDashboardStats(): Promise<{
         "unfit",
       ),
 
+    /* =====================================================
+       MEDICAL - ALL RECORDS
+    ===================================================== */
+
     supabase
       .from("medicals")
       .select(
@@ -404,7 +439,7 @@ export async function getDashboardStats(): Promise<{
       ),
 
     /* =====================================================
-       MOFA
+       MOFA - PENDING
     ===================================================== */
 
     supabase
@@ -420,6 +455,10 @@ export async function getDashboardStats(): Promise<{
         ],
       ),
 
+    /* =====================================================
+       MOFA - APPROVED
+    ===================================================== */
+
     supabase
       .from("mofas")
       .select(
@@ -431,7 +470,7 @@ export async function getDashboardStats(): Promise<{
       ),
 
     /* =====================================================
-       VISA
+       VISA - PENDING
     ===================================================== */
 
     supabase
@@ -444,6 +483,10 @@ export async function getDashboardStats(): Promise<{
         "in",
         "(issued,approved,cancelled,expired)",
       ),
+
+    /* =====================================================
+       VISA - ISSUED
+    ===================================================== */
 
     supabase
       .from("visas")
@@ -459,7 +502,7 @@ export async function getDashboardStats(): Promise<{
       ),
 
     /* =====================================================
-       FLIGHT
+       FLIGHT - SCHEDULED
     ===================================================== */
 
     supabase
@@ -471,6 +514,10 @@ export async function getDashboardStats(): Promise<{
         "status",
         "scheduled",
       ),
+
+    /* =====================================================
+       FLIGHT - DEPARTED
+    ===================================================== */
 
     supabase
       .from("flights")
@@ -550,21 +597,33 @@ export async function getDashboardStats(): Promise<{
     [];
 
   const activeStageCandidates =
-    (activeCandidatesStageResult.data ??
-      []) as DashboardWorkflowCandidate[];
+    (
+      activeCandidatesStageResult.data ??
+      []
+    ) as DashboardWorkflowCandidate[];
 
   /* =======================================================
      WORKFLOW SPLIT
-     
-     Active
-        │
-        ├── processing
-        │
-        └── hold
+
+     ACTIVE
+       │
+       ├── HOLD
+       │    ├── Received
+       │    ├── Medical Expired
+       │    ├── MOFA Expired
+       │    ├── Visa Expired
+       │    ├── Iqama Overdue
+       │    └── Manual Hold
+       │
+       └── PROCESSING
+            └── Pipeline stages
 
      IMPORTANT:
-     Hold is NOT removed from active.
-     It is only removed from pipeline later.
+
+     Hold candidates remain ACTIVE.
+
+     But they are NOT included in
+     processing/pipeline counts.
   ======================================================= */
 
   const processingCandidates =
@@ -597,6 +656,12 @@ export async function getDashboardStats(): Promise<{
         ? candidate.hold_reason.trim()
         : "";
 
+    /*
+     * If workflow_state is hold but
+     * hold_reason is missing, keep it
+     * under manual_hold instead of
+     * breaking dashboard counting.
+     */
     const normalizedReason =
       reason || "manual_hold";
 
@@ -621,10 +686,12 @@ export async function getDashboardStats(): Promise<{
       .map(
         ([reason, count]) => ({
           reason,
+
           label:
             getHoldReasonLabel(
               reason,
             ),
+
           count,
         }),
       );
@@ -632,18 +699,10 @@ export async function getDashboardStats(): Promise<{
   /* =======================================================
      MEDICAL CANDIDATE SET
      
-     Set is important because one candidate
-     may have multiple medical records.
-
-     Therefore:
-
-       1 candidate
-       1 count
-
-     NOT:
-
-       2 medical records
-       2 candidates
+     A candidate can have multiple
+     medical records.
+     
+     Therefore use Set.
   ======================================================= */
 
   const medicalCandidateIds =
@@ -691,13 +750,11 @@ export async function getDashboardStats(): Promise<{
   /* =======================================================
      MEDICAL PENDING
      
-     For now pending means:
+     Active candidate
+     +
+     no medical record
      
-       active candidate
-       +
-       no medical record
-
-     Existing medical workflow remains untouched.
+     = pending medical
   ======================================================= */
 
   const medicalPending =
@@ -709,9 +766,9 @@ export async function getDashboardStats(): Promise<{
     ).length;
 
   /* =======================================================
-     DISTINCT MEDICAL FIT / UNFIT
+     MEDICAL FIT
      
-     We count candidate IDs, not medical rows.
+     DISTINCT candidate IDs
   ======================================================= */
 
   const medicalFitCandidateIds =
@@ -733,6 +790,12 @@ export async function getDashboardStats(): Promise<{
         ),
     );
 
+  /* =======================================================
+     MEDICAL UNFIT
+     
+     DISTINCT candidate IDs
+  ======================================================= */
+
   const medicalUnfitCandidateIds =
     new Set<string>(
       (
@@ -753,7 +816,9 @@ export async function getDashboardStats(): Promise<{
     );
 
   /* =======================================================
-     DISTINCT MOFA
+     MOFA PENDING
+     
+     DISTINCT candidate IDs
   ======================================================= */
 
   const mofaPendingCandidateIds =
@@ -775,6 +840,12 @@ export async function getDashboardStats(): Promise<{
         ),
     );
 
+  /* =======================================================
+     MOFA APPROVED
+     
+     DISTINCT candidate IDs
+  ======================================================= */
+
   const mofaApprovedCandidateIds =
     new Set<string>(
       (
@@ -795,7 +866,9 @@ export async function getDashboardStats(): Promise<{
     );
 
   /* =======================================================
-     DISTINCT VISA
+     VISA PENDING
+     
+     DISTINCT candidate IDs
   ======================================================= */
 
   const visaPendingCandidateIds =
@@ -817,6 +890,12 @@ export async function getDashboardStats(): Promise<{
         ),
     );
 
+  /* =======================================================
+     VISA ISSUED
+     
+     DISTINCT candidate IDs
+  ======================================================= */
+
   const visaIssuedCandidateIds =
     new Set<string>(
       (
@@ -837,7 +916,9 @@ export async function getDashboardStats(): Promise<{
     );
 
   /* =======================================================
-     DISTINCT FLIGHT
+     FLIGHT SCHEDULED
+     
+     DISTINCT candidate IDs
   ======================================================= */
 
   const flightScheduledCandidateIds =
@@ -858,6 +939,12 @@ export async function getDashboardStats(): Promise<{
             id.length > 0,
         ),
     );
+
+  /* =======================================================
+     FLIGHT DEPARTED
+     
+     DISTINCT candidate IDs
+  ======================================================= */
 
   const flightDepartedCandidateIds =
     new Set<string>(
@@ -884,9 +971,9 @@ export async function getDashboardStats(): Promise<{
 
   return {
     stats: {
-      /* ---------------------------------------------------
+      /* ===================================================
          MAIN KPI
-      --------------------------------------------------- */
+      =================================================== */
 
       totalCandidates:
         totalCandidatesResult.count ??
@@ -908,12 +995,15 @@ export async function getDashboardStats(): Promise<{
         cancelledCandidatesResult.count ??
         0,
 
-      /* ---------------------------------------------------
+      /* ===================================================
          WORKFLOW
          
          active =
            processing + hold
-      --------------------------------------------------- */
+         
+         pipeline =
+           processing only
+      =================================================== */
 
       processingCandidates:
         processingCandidates.length,
@@ -923,9 +1013,9 @@ export async function getDashboardStats(): Promise<{
 
       holdReasons,
 
-      /* ---------------------------------------------------
+      /* ===================================================
          MEDICAL
-      --------------------------------------------------- */
+      =================================================== */
 
       medicalPending,
 
@@ -935,9 +1025,9 @@ export async function getDashboardStats(): Promise<{
       medicalUnfit:
         medicalUnfitCandidateIds.size,
 
-      /* ---------------------------------------------------
+      /* ===================================================
          MOFA
-      --------------------------------------------------- */
+      =================================================== */
 
       mofaPending:
         mofaPendingCandidateIds.size,
@@ -945,9 +1035,9 @@ export async function getDashboardStats(): Promise<{
       mofaApproved:
         mofaApprovedCandidateIds.size,
 
-      /* ---------------------------------------------------
+      /* ===================================================
          VISA
-      --------------------------------------------------- */
+      =================================================== */
 
       visaPending:
         visaPendingCandidateIds.size,
@@ -955,9 +1045,9 @@ export async function getDashboardStats(): Promise<{
       visaIssued:
         visaIssuedCandidateIds.size,
 
-      /* ---------------------------------------------------
+      /* ===================================================
          FLIGHT
-      --------------------------------------------------- */
+      =================================================== */
 
       flightScheduled:
         flightScheduledCandidateIds.size,
