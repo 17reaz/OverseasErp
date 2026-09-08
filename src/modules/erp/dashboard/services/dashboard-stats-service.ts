@@ -101,7 +101,6 @@ export function normalizeWorkflowState(
     ? "processing"
     : "hold";
 }
-
 /* =========================================================
    HOLD REASON LABEL
 ========================================================= */

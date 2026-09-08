@@ -56,6 +56,11 @@ const CANDIDATE_SELECT = `
     code
   ),
   current_stage,
+
+  workflow_state,
+  hold_reason,
+  workflow_updated_at,
+
   is_returned,
   returned_date,
   returned_reason,
@@ -850,21 +855,36 @@ export async function createCandidate(
   ------------------------------------------------------- */
 
   const {
-    data,
-    error,
-  } = await supabase
-    .from("candidates")
-    .insert({
-      ...input,
+  data,
+  error,
+} = await supabase
+  .from("candidates")
+  .insert({
+    ...input,
 
-      tenant_id:
-        tenantId,
+    tenant_id:
+      tenantId,
 
-      created_by:
-        user.id,
-    })
-    .select(CANDIDATE_SELECT)
-    .single();
+    created_by:
+      user.id,
+
+    // -----------------------------------------------------
+    // WORKFLOW INITIAL STATE
+    // -----------------------------------------------------
+    // নতুন candidate এখনো Medical শুরু করেনি।
+    // তাই সে Active-এর ভিতরে Hold → Received থাকবে।
+    // -----------------------------------------------------
+    workflow_state:
+      "hold",
+
+    hold_reason:
+      "received",
+
+    workflow_updated_at:
+      new Date().toISOString(),
+  })
+  .select(CANDIDATE_SELECT)
+  .single();
 
 
   return {
