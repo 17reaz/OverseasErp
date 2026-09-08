@@ -15,11 +15,13 @@ export type {
   DashboardWorkflowState,
   DashboardHoldReason,
   DashboardStats,
+  DashboardWorkflowCandidate,
 } from "./services/dashboard-stats-service";
 
 import type {
   DashboardWorkflowState,
   DashboardHoldReason,
+  DashboardWorkflowCandidate,
 } from "./services/dashboard-stats-service";
 
 export interface DashboardCandidate {
@@ -29,10 +31,8 @@ export interface DashboardCandidate {
   created_at: string;
   current_stage: string | null;
   is_returned: boolean;
-  workflow_state:
-    DashboardWorkflowState;
-  hold_reason:
-    DashboardHoldReason;
+  workflow_state: DashboardWorkflowState;
+  hold_reason: DashboardHoldReason;
 }
 
 export interface DashboardData {
@@ -93,8 +93,7 @@ export interface DashboardData {
     count: number;
   }[];
 
-  recentCandidates:
-    DashboardCandidate[];
+  recentCandidates: DashboardCandidate[];
 
   documentAlerts: {
     title: string;
@@ -108,25 +107,32 @@ export interface DashboardData {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  /* =====================================================
-     1. STATS
-     
-     Existing candidate/status/KPI logic stays here
-     through dashboard-stats-service.
-  ===================================================== */
+  /*
+   * =====================================================
+   * 1. DASHBOARD STATS
+   * =====================================================
+   */
 
   const {
     stats,
     context,
   } = await getDashboardStats();
 
-  /* =====================================================
-     2. PROCESSING CANDIDATES
-     
-     Hold candidates NEVER enter pipeline.
-  ===================================================== */
+  /*
+   * =====================================================
+   * 2. PROCESSING CANDIDATES ONLY
+   *
+   * Hold candidates NEVER enter the pipeline.
+   *
+   * processing:
+   *   current_stage decides the ONE stage.
+   *
+   * hold:
+   *   completely excluded from pipeline.
+   * =====================================================
+   */
 
-  const processingCandidates =
+  const processingCandidates: DashboardWorkflowCandidate[] =
     context.activeStageCandidates.filter(
       (candidate) =>
         normalizeWorkflowState(
@@ -134,23 +140,39 @@ export async function getDashboardData(): Promise<DashboardData> {
         ) === "processing",
     );
 
-  /* =====================================================
-     3. PIPELINE
-     
-     Existing cumulative pipeline logic is preserved.
-  ===================================================== */
+  /*
+   * =====================================================
+   * 3. EXCLUSIVE PIPELINE
+   *
+   * One candidate = one stage.
+   *
+   * Example:
+   *
+   * candidate A -> medical
+   * candidate B -> mofa
+   * candidate C -> visa
+   *
+   * Counts:
+   *
+   * Medical = 1
+   * MOFA    = 1
+   * Visa    = 1
+   *
+   * Candidate C is NOT counted in:
+   * Medical/MOFA/Finger/etc.
+   * =====================================================
+   */
 
   const pipeline =
     getDashboardPipeline(
       processingCandidates,
-      context.bmetCandidateIds,
     );
 
-  /* =====================================================
-     4. SUPPORT DATA
-     
-     Trend / Aging / Recent / Alerts.
-  ===================================================== */
+  /*
+   * =====================================================
+   * 4. SUPPORT DATA
+   * =====================================================
+   */
 
   const support =
     await getDashboardSupportData(
@@ -160,9 +182,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       stats.holdCandidates,
     );
 
-  /* =====================================================
-     5. FINAL RESULT
-  ===================================================== */
+  /*
+   * =====================================================
+   * 5. FINAL DASHBOARD DATA
+   * =====================================================
+   */
 
   return {
     stats,

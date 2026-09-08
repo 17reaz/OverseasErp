@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabase/client";
 
+/* =========================================================
+   WORKFLOW
+========================================================= */
+
 export type DashboardWorkflowState =
   | "processing"
   | "hold";
@@ -12,6 +16,10 @@ export type DashboardHoldReason =
   | "manual_hold"
   | string
   | null;
+
+/* =========================================================
+   DASHBOARD STATS
+========================================================= */
 
 export interface DashboardStats {
   totalCandidates: number;
@@ -43,16 +51,34 @@ export interface DashboardStats {
   flightDeparted: number;
 }
 
+/* =========================================================
+   ACTIVE CANDIDATE
+========================================================= */
+
 export interface DashboardWorkflowCandidate {
   id: string;
-  current_stage: string | null;
+
+  current_stage:
+    | string
+    | null;
+
   requested_services:
     | Record<string, unknown>
     | null
     | undefined;
-  workflow_state: DashboardWorkflowState;
-  hold_reason: DashboardHoldReason;
+
+  workflow_state:
+    | DashboardWorkflowState
+    | null
+    | undefined;
+
+  hold_reason:
+    | DashboardHoldReason;
 }
+
+/* =========================================================
+   NORMALIZE WORKFLOW STATE
+========================================================= */
 
 export function normalizeWorkflowState(
   value: unknown,
@@ -61,6 +87,10 @@ export function normalizeWorkflowState(
     ? "hold"
     : "processing";
 }
+
+/* =========================================================
+   HOLD REASON LABEL
+========================================================= */
 
 function getHoldReasonLabel(
   reason: string,
@@ -85,28 +115,72 @@ function getHoldReasonLabel(
       return reason
         .replace(/[_-]/g, " ")
         .replace(/\s+/g, " ")
-        .replace(/\b\w/g, (char) =>
-          char.toUpperCase(),
+        .replace(
+          /\b\w/g,
+          (char) => char.toUpperCase(),
         );
   }
 }
 
+/* =========================================================
+   DASHBOARD CONTEXT
+========================================================= */
+
 export interface DashboardStatsContext {
+  /*
+   * All active candidates.
+   *
+   * active =
+   *   processing + hold
+   */
   activeCandidateIds: {
     id: string;
   }[];
 
-  activeStageCandidates: DashboardWorkflowCandidate[];
+  /*
+   * Active candidates with workflow information.
+   */
+  activeStageCandidates:
+    DashboardWorkflowCandidate[];
 
-  medicalCandidateIds: Set<string>;
+  /*
+   * Candidates that have at least one
+   * medical record.
+   */
+  medicalCandidateIds:
+    Set<string>;
 
-  bmetCandidateIds: Set<string>;
+  /*
+   * Candidates that have at least one
+   * BMET record.
+   */
+  bmetCandidateIds:
+    Set<string>;
 }
+
+/* =========================================================
+   MAIN
+========================================================= */
 
 export async function getDashboardStats(): Promise<{
   stats: DashboardStats;
   context: DashboardStatsContext;
 }> {
+  /* =======================================================
+     ACTIVE CANDIDATES
+
+     Active means:
+
+       is_deleted = false
+       is_returned = false
+       final_status IS NULL
+
+     This intentionally includes BOTH:
+
+       processing
+       hold
+  ======================================================= */
+
   const activeCandidatesPromise =
     supabase
       .from("candidates")
@@ -119,17 +193,39 @@ export async function getDashboardStats(): Promise<{
         hold_reason
         `,
       )
-      .eq("is_deleted", false)
-      .eq("is_returned", false)
-      .is("final_status", null);
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "is_returned",
+        false,
+      )
+      .is(
+        "final_status",
+        null,
+      );
 
   const activeCandidateIdsPromise =
     supabase
       .from("candidates")
       .select("id")
-      .eq("is_deleted", false)
-      .eq("is_returned", false)
-      .is("final_status", null);
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "is_returned",
+        false,
+      )
+      .is(
+        "final_status",
+        null,
+      );
+
+  /* =======================================================
+     ALL DASHBOARD QUERIES
+  ======================================================= */
 
   const [
     totalCandidatesResult,
@@ -156,98 +252,193 @@ export async function getDashboardStats(): Promise<{
 
     bmetCandidateIdsResult,
   ] = await Promise.all([
-    supabase
-      .from("candidates")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("is_deleted", false),
+    /* -----------------------------------------------------
+       TOTAL
+    ----------------------------------------------------- */
 
     supabase
       .from("candidates")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("is_deleted", false)
-      .eq("is_returned", false)
-      .is("final_status", null),
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .eq(
+        "is_deleted",
+        false,
+      ),
+
+    /* -----------------------------------------------------
+       ACTIVE
+
+       Active includes:
+       processing + hold
+    ----------------------------------------------------- */
 
     supabase
       .from("candidates")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("is_deleted", false)
-      .eq("is_returned", true),
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "is_returned",
+        false,
+      )
+      .is(
+        "final_status",
+        null,
+      ),
+
+    /* -----------------------------------------------------
+       RETURNED
+    ----------------------------------------------------- */
 
     supabase
       .from("candidates")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("is_deleted", false)
-      .eq("is_returned", false)
-      .eq("final_status", "complete"),
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "is_returned",
+        true,
+      ),
+
+    /* -----------------------------------------------------
+       COMPLETE
+    ----------------------------------------------------- */
 
     supabase
       .from("candidates")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("is_deleted", false)
-      .eq("is_returned", false)
-      .eq("final_status", "cancelled"),
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "is_returned",
+        false,
+      )
+      .eq(
+        "final_status",
+        "complete",
+      ),
+
+    /* -----------------------------------------------------
+       CANCELLED
+    ----------------------------------------------------- */
+
+    supabase
+      .from("candidates")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "is_returned",
+        false,
+      )
+      .eq(
+        "final_status",
+        "cancelled",
+      ),
+
+    /* =====================================================
+       MEDICAL
+    ===================================================== */
 
     supabase
       .from("medicals")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "fit"),
+      .select(
+        "candidate_id",
+      )
+      .eq(
+        "status",
+        "fit",
+      ),
 
     supabase
       .from("medicals")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "unfit"),
+      .select(
+        "candidate_id",
+      )
+      .eq(
+        "status",
+        "unfit",
+      ),
 
     supabase
       .from("medicals")
-      .select("candidate_id"),
+      .select(
+        "candidate_id",
+      ),
+
+    /* =====================================================
+       MOFA
+    ===================================================== */
 
     supabase
       .from("mofas")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .in("stage", [
-        "new",
-        "medupdated",
-      ]),
+      .select(
+        "candidate_id",
+      )
+      .in(
+        "stage",
+        [
+          "new",
+          "medupdated",
+        ],
+      ),
 
     supabase
       .from("mofas")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("stage", "approved"),
+      .select(
+        "candidate_id",
+      )
+      .eq(
+        "stage",
+        "approved",
+      ),
+
+    /* =====================================================
+       VISA
+    ===================================================== */
 
     supabase
       .from("visas")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
+      .select(
+        "candidate_id",
+      )
       .not(
         "status",
         "in",
@@ -256,39 +447,67 @@ export async function getDashboardStats(): Promise<{
 
     supabase
       .from("visas")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .in("status", [
-        "issued",
-        "approved",
-      ]),
+      .select(
+        "candidate_id",
+      )
+      .in(
+        "status",
+        [
+          "issued",
+          "approved",
+        ],
+      ),
+
+    /* =====================================================
+       FLIGHT
+    ===================================================== */
 
     supabase
       .from("flights")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "scheduled"),
+      .select(
+        "candidate_id",
+      )
+      .eq(
+        "status",
+        "scheduled",
+      ),
 
     supabase
       .from("flights")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("status", "departed"),
+      .select(
+        "candidate_id",
+      )
+      .eq(
+        "status",
+        "departed",
+      ),
+
+    /* =====================================================
+       ACTIVE IDS
+    ===================================================== */
 
     activeCandidateIdsPromise,
 
+    /* =====================================================
+       ACTIVE STAGE CANDIDATES
+    ===================================================== */
+
     activeCandidatesPromise,
+
+    /* =====================================================
+       BMET
+    ===================================================== */
 
     supabase
       .from("bmet")
-      .select("candidate_id"),
+      .select(
+        "candidate_id",
+      ),
   ]);
+
+  /* =======================================================
+     ERROR HANDLING
+  ======================================================= */
 
   const results = [
     totalCandidatesResult,
@@ -322,12 +541,31 @@ export async function getDashboardStats(): Promise<{
     }
   }
 
+  /* =======================================================
+     ACTIVE CANDIDATES
+  ======================================================= */
+
   const activeCandidateIds =
-    activeCandidateIdsResult.data ?? [];
+    activeCandidateIdsResult.data ??
+    [];
 
   const activeStageCandidates =
     (activeCandidatesStageResult.data ??
       []) as DashboardWorkflowCandidate[];
+
+  /* =======================================================
+     WORKFLOW SPLIT
+     
+     Active
+        │
+        ├── processing
+        │
+        └── hold
+
+     IMPORTANT:
+     Hold is NOT removed from active.
+     It is only removed from pipeline later.
+  ======================================================= */
 
   const processingCandidates =
     activeStageCandidates.filter(
@@ -345,6 +583,10 @@ export async function getDashboardStats(): Promise<{
         ) === "hold",
     );
 
+  /* =======================================================
+     HOLD REASONS
+  ======================================================= */
+
   const holdReasonMap =
     new Map<string, number>();
 
@@ -360,9 +602,11 @@ export async function getDashboardStats(): Promise<{
 
     holdReasonMap.set(
       normalizedReason,
-      (holdReasonMap.get(
-        normalizedReason,
-      ) ?? 0) + 1,
+      (
+        holdReasonMap.get(
+          normalizedReason,
+        ) ?? 0
+      ) + 1,
     );
   }
 
@@ -378,13 +622,32 @@ export async function getDashboardStats(): Promise<{
         ([reason, count]) => ({
           reason,
           label:
-            getHoldReasonLabel(reason),
+            getHoldReasonLabel(
+              reason,
+            ),
           count,
         }),
       );
 
+  /* =======================================================
+     MEDICAL CANDIDATE SET
+     
+     Set is important because one candidate
+     may have multiple medical records.
+
+     Therefore:
+
+       1 candidate
+       1 count
+
+     NOT:
+
+       2 medical records
+       2 candidates
+  ======================================================= */
+
   const medicalCandidateIds =
-    new Set(
+    new Set<string>(
       (
         medicalCandidateIdsResult.data ??
         []
@@ -393,11 +656,21 @@ export async function getDashboardStats(): Promise<{
           (item) =>
             item.candidate_id,
         )
-        .filter(Boolean),
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
     );
 
+  /* =======================================================
+     BMET CANDIDATE SET
+  ======================================================= */
+
   const bmetCandidateIds =
-    new Set(
+    new Set<string>(
       (
         bmetCandidateIdsResult.data ??
         []
@@ -406,8 +679,26 @@ export async function getDashboardStats(): Promise<{
           (item) =>
             item.candidate_id,
         )
-        .filter(Boolean),
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
     );
+
+  /* =======================================================
+     MEDICAL PENDING
+     
+     For now pending means:
+     
+       active candidate
+       +
+       no medical record
+
+     Existing medical workflow remains untouched.
+  ======================================================= */
 
   const medicalPending =
     activeCandidateIds.filter(
@@ -417,22 +708,212 @@ export async function getDashboardStats(): Promise<{
         ),
     ).length;
 
+  /* =======================================================
+     DISTINCT MEDICAL FIT / UNFIT
+     
+     We count candidate IDs, not medical rows.
+  ======================================================= */
+
+  const medicalFitCandidateIds =
+    new Set<string>(
+      (
+        medicalFitResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  const medicalUnfitCandidateIds =
+    new Set<string>(
+      (
+        medicalUnfitResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  /* =======================================================
+     DISTINCT MOFA
+  ======================================================= */
+
+  const mofaPendingCandidateIds =
+    new Set<string>(
+      (
+        mofaPendingResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  const mofaApprovedCandidateIds =
+    new Set<string>(
+      (
+        mofaApprovedResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  /* =======================================================
+     DISTINCT VISA
+  ======================================================= */
+
+  const visaPendingCandidateIds =
+    new Set<string>(
+      (
+        visaPendingResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  const visaIssuedCandidateIds =
+    new Set<string>(
+      (
+        visaIssuedResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  /* =======================================================
+     DISTINCT FLIGHT
+  ======================================================= */
+
+  const flightScheduledCandidateIds =
+    new Set<string>(
+      (
+        flightScheduledResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  const flightDepartedCandidateIds =
+    new Set<string>(
+      (
+        flightDepartedResult.data ??
+        []
+      )
+        .map(
+          (item) =>
+            item.candidate_id,
+        )
+        .filter(
+          (
+            id,
+          ): id is string =>
+            typeof id === "string" &&
+            id.length > 0,
+        ),
+    );
+
+  /* =======================================================
+     RETURN
+  ======================================================= */
+
   return {
     stats: {
+      /* ---------------------------------------------------
+         MAIN KPI
+      --------------------------------------------------- */
+
       totalCandidates:
-        totalCandidatesResult.count ?? 0,
+        totalCandidatesResult.count ??
+        0,
 
       activeCandidates:
-        activeCandidatesResult.count ?? 0,
+        activeCandidatesResult.count ??
+        0,
 
       completeCandidates:
-        completeCandidatesResult.count ?? 0,
+        completeCandidatesResult.count ??
+        0,
 
       returnedCandidates:
-        returnedCandidatesResult.count ?? 0,
+        returnedCandidatesResult.count ??
+        0,
 
       cancelledCandidates:
-        cancelledCandidatesResult.count ?? 0,
+        cancelledCandidatesResult.count ??
+        0,
+
+      /* ---------------------------------------------------
+         WORKFLOW
+         
+         active =
+           processing + hold
+      --------------------------------------------------- */
 
       processingCandidates:
         processingCandidates.length,
@@ -442,37 +923,56 @@ export async function getDashboardStats(): Promise<{
 
       holdReasons,
 
+      /* ---------------------------------------------------
+         MEDICAL
+      --------------------------------------------------- */
+
       medicalPending,
 
       medicalFit:
-        medicalFitResult.count ?? 0,
+        medicalFitCandidateIds.size,
 
       medicalUnfit:
-        medicalUnfitResult.count ?? 0,
+        medicalUnfitCandidateIds.size,
+
+      /* ---------------------------------------------------
+         MOFA
+      --------------------------------------------------- */
 
       mofaPending:
-        mofaPendingResult.count ?? 0,
+        mofaPendingCandidateIds.size,
 
       mofaApproved:
-        mofaApprovedResult.count ?? 0,
+        mofaApprovedCandidateIds.size,
+
+      /* ---------------------------------------------------
+         VISA
+      --------------------------------------------------- */
 
       visaPending:
-        visaPendingResult.count ?? 0,
+        visaPendingCandidateIds.size,
 
       visaIssued:
-        visaIssuedResult.count ?? 0,
+        visaIssuedCandidateIds.size,
+
+      /* ---------------------------------------------------
+         FLIGHT
+      --------------------------------------------------- */
 
       flightScheduled:
-        flightScheduledResult.count ?? 0,
+        flightScheduledCandidateIds.size,
 
       flightDeparted:
-        flightDepartedResult.count ?? 0,
+        flightDepartedCandidateIds.size,
     },
 
     context: {
       activeCandidateIds,
+
       activeStageCandidates,
+
       medicalCandidateIds,
+
       bmetCandidateIds,
     },
   };

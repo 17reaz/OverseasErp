@@ -1,6 +1,26 @@
-import type { DashboardCandidate } from "../dashboard-service";
+import type { DashboardWorkflowCandidate } from "./dashboard-stats-service";
 
-function normalizeStage(stage: string | null): string {
+type PipelineKey =
+  | "active"
+  | "medical"
+  | "mofa"
+  | "finger"
+  | "police_clearance"
+  | "takamul"
+  | "visa"
+  | "bmet"
+  | "flight"
+  | "iqama";
+
+export interface DashboardPipelineItem {
+  key: PipelineKey;
+  label: string;
+  value: number;
+}
+
+function normalizeStage(
+  stage: string | null | undefined,
+): string {
   return (
     stage
       ?.toLowerCase()
@@ -10,11 +30,70 @@ function normalizeStage(stage: string | null): string {
   );
 }
 
+function getStageKey(
+  stage: string | null | undefined,
+): Exclude<PipelineKey, "active"> | null {
+  switch (normalizeStage(stage)) {
+    case "medical":
+      return "medical";
+
+    case "mofa":
+      return "mofa";
+
+    case "finger":
+      return "finger";
+
+    case "police clearance":
+      return "police_clearance";
+
+    case "takamul":
+      return "takamul";
+
+    case "visa":
+      return "visa";
+
+    case "bmet":
+      return "bmet";
+
+    case "flight":
+      return "flight";
+
+    case "iqama":
+      return "iqama";
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Dashboard pipeline is intentionally EXCLUSIVE.
+ *
+ * One processing candidate can belong to ONE stage only.
+ *
+ * Example:
+ *
+ * current_stage = "visa"
+ *
+ * Result:
+ *   Visa +1
+ *
+ * It will NOT increase:
+ *   Medical
+ *   MOFA
+ *   Finger
+ *   Police Clearance
+ *   Takamul
+ *
+ * Hold candidates are removed before this function is called.
+ */
 export function getDashboardPipeline(
-  processingCandidates: DashboardCandidate[],
-  bmetCandidateIds: Set<string>,
-) {
-  const pipelineCounts = {
+  processingCandidates: DashboardWorkflowCandidate[],
+): DashboardPipelineItem[] {
+  const counts: Record<
+    Exclude<PipelineKey, "active">,
+    number
+  > = {
     medical: 0,
     mofa: 0,
     finger: 0,
@@ -27,124 +106,76 @@ export function getDashboardPipeline(
   };
 
   for (const candidate of processingCandidates) {
-    const stage = normalizeStage(candidate.current_stage);
+    const stageKey = getStageKey(
+      candidate.current_stage,
+    );
 
-    // One candidate belongs to ONE pipeline stage only.
-    // Never count the same candidate in multiple stages.
-    switch (stage) {
-      case "medical":
-        pipelineCounts.medical += 1;
-        break;
-
-      case "mofa":
-        pipelineCounts.mofa += 1;
-        break;
-
-      case "finger":
-        pipelineCounts.finger += 1;
-        break;
-
-      case "police clearance":
-        pipelineCounts.police_clearance += 1;
-        break;
-
-      case "takamul":
-        pipelineCounts.takamul += 1;
-        break;
-
-      case "visa":
-        pipelineCounts.visa += 1;
-        break;
-
-      case "bmet":
-        pipelineCounts.bmet += 1;
-        break;
-
-      case "flight":
-        pipelineCounts.flight += 1;
-        break;
-
-      case "iqama":
-        pipelineCounts.iqama += 1;
-        break;
-
-      default: {
-        // BMET can exist outside current_stage.
-        // Only use this fallback when current_stage does not
-        // already identify another pipeline stage.
-        if (bmetCandidateIds.has(candidate.id)) {
-          pipelineCounts.bmet += 1;
-          break;
-        }
-
-        // Iqama can also be represented through requested_services.
-        // It is only checked as a fallback, so the candidate is
-        // still counted in one stage only.
-        const requestedServices =
-          candidate.requested_services as
-            | Record<string, unknown>
-            | null
-            | undefined;
-
-        if (requestedServices?.iqama === true) {
-          pipelineCounts.iqama += 1;
-        }
-
-        break;
-      }
+    /**
+     * Unknown / null stage:
+     * do not guess the stage from BMET/requested_services.
+     *
+     * current_stage is the single source of truth.
+     */
+    if (!stageKey) {
+      continue;
     }
+
+    /**
+     * EXACTLY ONE increment.
+     */
+    counts[stageKey] += 1;
   }
 
   return [
     {
-      key: "active" as const,
+      key: "active",
       label: "Active",
       value: processingCandidates.length,
     },
     {
-      key: "medical" as const,
+      key: "medical",
       label: "Medical",
-      value: pipelineCounts.medical,
+      value: counts.medical,
     },
     {
-      key: "mofa" as const,
+      key: "mofa",
       label: "MOFA",
-      value: pipelineCounts.mofa,
+      value: counts.mofa,
     },
     {
-      key: "finger" as const,
+      key: "finger",
       label: "Finger",
-      value: pipelineCounts.finger,
+      value: counts.finger,
     },
     {
-      key: "police_clearance" as const,
+      key: "police_clearance",
       label: "Police Clearance",
-      value: pipelineCounts.police_clearance,
+      value: counts.police_clearance,
     },
     {
-      key: "takamul" as const,
+      key: "takamul",
       label: "Takamul",
-      value: pipelineCounts.takamul,
+      value: counts.takamul,
     },
     {
-      key: "visa" as const,
+      key: "visa",
       label: "Visa",
-      value: pipelineCounts.visa,
+      value: counts.visa,
     },
     {
-      key: "bmet" as const,
+      key: "bmet",
       label: "BMET",
-      value: pipelineCounts.bmet,
+      value: counts.bmet,
     },
     {
-      key: "flight" as const,
+      key: "flight",
       label: "Flight",
-      value: pipelineCounts.flight,
+      value: counts.flight,
     },
     {
-      key: "iqama" as const,
+      key: "iqama",
       label: "Iqama",
-      value: pipelineCounts.iqama,
+      value: counts.iqama,
     },
   ];
 }
