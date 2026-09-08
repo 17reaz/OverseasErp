@@ -555,3 +555,256 @@ export async function getCandidateWorkflow(
     iqamaCompleted: false,
   });
 }
+
+/* =========================================================
+   SYNC ONE CANDIDATE'S WORKFLOW STATE
+   ---------------------------------------------------------
+   Recalculates workflow_state/hold_reason from the
+   candidate's current medical/mofa/visa/flight data and
+   persists it.
+
+   IMPORTANT:
+   This is the missing "trigger point". calculateWorkflowState()
+   and saveWorkflowState() already existed but nothing ever
+   called them together. Call this after any save that can
+   change a candidate's processing/hold state (medical, mofa,
+   visa, flight create/update, and candidate reactivation).
+
+   Callers should wrap this in try/catch and NOT let a sync
+   failure block the actual save — same pattern already used
+   for updateCandidateStage() in medical-service.ts.
+========================================================= */
+
+export async function syncCandidateWorkflowState(
+  candidateId: string,
+): Promise<void> {
+  const state =
+    await getCandidateWorkflow(candidateId);
+
+  await saveWorkflowState(
+    candidateId,
+    state,
+  );
+}
+
+/* =========================================================
+   LIVE WORKFLOW STATES (BATCH, NON-PERSISTING)
+   ---------------------------------------------------------
+   Dashboard/candidate-list load হওয়ার সময় ব্যবহারের জন্য।
+
+   getCandidateWorkflow() একটা candidate-এর জন্য ৫টা query
+   করে — অনেকগুলো candidate-এর জন্য একসাথে সেটা করলে N+1
+   হয়ে যাবে।
+
+   এই ফাংশন medical/mofa/visa/flight-এর "candidate_id IN (...)"
+   একটাই batch query করে, প্রতিটা candidate-এর latest record
+   বের করে, তারপর calculateWorkflowState() দিয়ে হিসাব করে।
+
+   IMPORTANT:
+   এটা কিছুই DB-তে write করে না। শুধু display-এর জন্য
+   real-time recalculation — যাতে কেউ কোনো record edit না
+   করলেও (শুধু সময় পার হয়ে validity expire হয়ে গেলেও)
+   dashboard/list-এ সঠিক Processing/Hold দেখা যায়।
+========================================================= */
+
+export interface WorkflowCandidateInput {
+  id: string;
+  current_stage: string | null;
+  is_returned?: boolean | null;
+  final_status?: string | null;
+}
+
+function latestRowsByCandidate<
+  T extends { candidate_id: string },
+>(
+  rows: T[] | null | undefined,
+): Map<string, T> {
+
+  const map = new Map<string, T>();
+
+  // rows আসে created_at descending order-এ,
+  // তাই প্রতি candidate_id-র প্রথম row-টাই latest।
+  for (const row of rows ?? []) {
+
+    if (!map.has(row.candidate_id)) {
+      map.set(row.candidate_id, row);
+    }
+
+  }
+
+  return map;
+
+}
+
+export async function getLiveWorkflowStates(
+  candidates: WorkflowCandidateInput[],
+): Promise<Map<string, CandidateWorkflowState>> {
+
+  const result =
+    new Map<string, CandidateWorkflowState>();
+
+  if (candidates.length === 0) {
+    return result;
+  }
+
+  const candidateIds =
+    candidates.map((c) => c.id);
+
+  const [
+    medicalsResult,
+    mofasResult,
+    visasResult,
+    flightsResult,
+  ] = await Promise.all([
+    supabase
+      .from("medicals")
+      .select(
+        "candidate_id, medical_date, fit_date, status, created_at",
+      )
+      .in("candidate_id", candidateIds)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("mofas")
+      .select(
+        "candidate_id, application_date, stage, created_at",
+      )
+      .in("candidate_id", candidateIds)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("visas")
+      .select(
+        "candidate_id, visa_date, expiry_date, status, created_at",
+      )
+      .in("candidate_id", candidateIds)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("flights")
+      .select(
+        "candidate_id, flight_date, status, created_at",
+      )
+      .in("candidate_id", candidateIds)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (medicalsResult.error) throw medicalsResult.error;
+  if (mofasResult.error) throw mofasResult.error;
+  if (visasResult.error) throw visasResult.error;
+  if (flightsResult.error) throw flightsResult.error;
+
+  const latestMedical =
+    latestRowsByCandidate(
+      medicalsResult.data as
+        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | null,
+    );
+
+  const latestMofa =
+    latestRowsByCandidate(
+      mofasResult.data as
+        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | null,
+    );
+
+  const latestVisa =
+    latestRowsByCandidate(
+      visasResult.data as
+        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | null,
+    );
+
+  const latestFlight =
+    latestRowsByCandidate(
+      flightsResult.data as
+        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | null,
+    );
+
+  for (const candidate of candidates) {
+
+    const medical =
+      latestMedical.get(candidate.id) as
+        | {
+            medical_date: string | null;
+            fit_date: string | null;
+            status: string | null;
+          }
+        | undefined;
+
+    const mofa =
+      latestMofa.get(candidate.id) as
+        | {
+            application_date: string | null;
+            stage: string | null;
+          }
+        | undefined;
+
+    const visa =
+      latestVisa.get(candidate.id) as
+        | {
+            visa_date: string | null;
+            expiry_date: string | null;
+            status: string | null;
+          }
+        | undefined;
+
+    const flight =
+      latestFlight.get(candidate.id) as
+        | {
+            flight_date: string | null;
+            status: string | null;
+          }
+        | undefined;
+
+    const state =
+      calculateWorkflowState({
+        is_returned:
+          candidate.is_returned ?? false,
+
+        final_status:
+          candidate.final_status ?? null,
+
+        current_stage:
+          candidate.current_stage,
+
+        medicalDate:
+          medical?.fit_date ??
+          medical?.medical_date ??
+          null,
+
+        medicalStatus:
+          medical?.status ?? null,
+
+        mofaDate:
+          mofa?.application_date ?? null,
+
+        mofaStage:
+          mofa?.stage ?? null,
+
+        visaDate:
+          visa?.visa_date ?? null,
+
+        visaExpiryDate:
+          visa?.expiry_date ?? null,
+
+        visaStatus:
+          visa?.status ?? null,
+
+        flightDate:
+          flight?.flight_date ?? null,
+
+        flightStatus:
+          flight?.status ?? null,
+
+        iqamaCompleted: false,
+      });
+
+    result.set(candidate.id, state);
+
+  }
+
+  return result;
+
+}

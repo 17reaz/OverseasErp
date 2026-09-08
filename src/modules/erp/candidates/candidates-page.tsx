@@ -53,6 +53,10 @@ import {
   type Candidate,
 } from "./candidate-service";
 
+import {
+  getLiveWorkflowStates,
+} from "../workflow/workflow-service";
+
 import type {
   CandidateStage,
 } from "./stage-service";
@@ -224,8 +228,68 @@ export function CandidatesPage() {
           const data =
             await getCandidates();
 
+          /* -------------------------------------------------
+             LIVE WORKFLOW RECALCULATION
+
+             DB-এর workflow_state stale হতে পারে (কেউ কোনো
+             record edit না করলেও validity সময়ের সাথে expire
+             হয়ে যায়)। তাই list load হওয়ার সময় active
+             candidate-দের জন্য live হিসাব করে overwrite করা
+             হচ্ছে — DB-তে কিছু persist হচ্ছে না, শুধু display।
+          ------------------------------------------------- */
+
+          const liveTargets =
+            data.filter(
+              (candidate) =>
+                candidate.final_status === null &&
+                !candidate.is_returned,
+            );
+
+          let mergedData = data;
+
+          try {
+
+            const liveStates =
+              await getLiveWorkflowStates(
+                liveTargets.map(
+                  (candidate) => ({
+                    id: candidate.id,
+                    current_stage: candidate.current_stage,
+                    is_returned: candidate.is_returned,
+                    final_status: candidate.final_status,
+                  }),
+                ),
+              );
+
+            mergedData =
+              data.map((candidate) => {
+
+                const live =
+                  liveStates.get(candidate.id);
+
+                if (!live) {
+                  return candidate;
+                }
+
+                return {
+                  ...candidate,
+                  workflow_state: live.workflowState,
+                  hold_reason: live.holdReason,
+                };
+
+              });
+
+          } catch (liveError) {
+
+            console.error(
+              "Failed to compute live workflow states:",
+              liveError,
+            );
+
+          }
+
           setCandidates(
-            data,
+            mergedData,
           );
 
         } catch (error) {
@@ -275,6 +339,10 @@ export function CandidatesPage() {
 
     return getCandidateOverallStatus(
       candidate,
+      {
+        moduleStatus:
+          candidate.workflow_state ?? null,
+      },
     );
 
   }

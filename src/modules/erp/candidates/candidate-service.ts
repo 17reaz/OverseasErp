@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { MODULES } from "./profile/module-configs";
 import type { ModuleStatus } from "./profile/types";
+import { syncCandidateWorkflowState } from "../workflow/workflow-service";
 
 import type {
   Candidate,
@@ -530,6 +531,21 @@ export async function reactivateCandidate(
 
   if (error) {
     throw error;
+  }
+
+  try {
+
+    await syncCandidateWorkflowState(
+      candidateId,
+    );
+
+  } catch (workflowError) {
+
+    console.error(
+      "Failed to sync candidate workflow state after reactivation:",
+      workflowError,
+    );
+
   }
 
 }

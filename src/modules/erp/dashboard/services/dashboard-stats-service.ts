@@ -1,5 +1,13 @@
 import { supabase } from "@/lib/supabase/client";
 
+import {
+  getLiveWorkflowStates,
+} from "../../workflow/workflow-service";
+
+import type {
+  CandidateWorkflowState,
+} from "../../workflow/workflow-types";
+
 /* =========================================================
    WORKFLOW
 ========================================================= */
@@ -602,6 +610,74 @@ export async function getDashboardStats(): Promise<{
     ) as DashboardWorkflowCandidate[];
 
   /* =======================================================
+     LIVE WORKFLOW RECALCULATION
+
+     workflow_state/hold_reason column stale হতে পারে —
+     persist না করেই এখানে medical/mofa/visa/flight data
+     দিয়ে live recompute করা হচ্ছে, যাতে শুধু সময় পার হয়ে
+     validity expire হলেও (কোনো record edit ছাড়াই) dashboard
+     ঠিক Processing/Hold count দেখায়।
+  ======================================================= */
+
+  let liveWorkflowStates =
+    new Map<string, CandidateWorkflowState>();
+
+  try {
+
+    liveWorkflowStates =
+      await getLiveWorkflowStates(
+        activeStageCandidates.map(
+          (candidate) => ({
+            id: candidate.id,
+            current_stage: candidate.current_stage,
+            is_returned: false,
+            final_status: null,
+          }),
+        ),
+      );
+
+  } catch (liveError) {
+
+    console.error(
+      "Failed to compute live workflow states for dashboard:",
+      liveError,
+    );
+
+  }
+
+  function resolveWorkflowState(
+    candidate: DashboardWorkflowCandidate,
+  ): DashboardWorkflowState {
+
+    const live =
+      liveWorkflowStates.get(candidate.id);
+
+    if (live) {
+      return live.workflowState;
+    }
+
+    return normalizeWorkflowState(
+      candidate.workflow_state,
+    );
+
+  }
+
+  function resolveHoldReason(
+    candidate: DashboardWorkflowCandidate,
+  ): DashboardHoldReason {
+
+    const live =
+      liveWorkflowStates.get(candidate.id);
+
+    if (live) {
+      return live.holdReason;
+    }
+
+    return candidate.hold_reason;
+
+  }
+
+  /* =======================================================
      WORKFLOW SPLIT
 
      ACTIVE
@@ -628,17 +704,15 @@ export async function getDashboardStats(): Promise<{
   const processingCandidates =
     activeStageCandidates.filter(
       (candidate) =>
-        normalizeWorkflowState(
-          candidate.workflow_state,
-        ) === "processing",
+        resolveWorkflowState(candidate) ===
+        "processing",
     );
 
   const holdCandidates =
     activeStageCandidates.filter(
       (candidate) =>
-        normalizeWorkflowState(
-          candidate.workflow_state,
-        ) === "hold",
+        resolveWorkflowState(candidate) ===
+        "hold",
     );
 
   /* =======================================================
@@ -649,10 +723,13 @@ export async function getDashboardStats(): Promise<{
     new Map<string, number>();
 
   for (const candidate of holdCandidates) {
+    const candidateHoldReason =
+      resolveHoldReason(candidate);
+
     const reason =
-      typeof candidate.hold_reason ===
+      typeof candidateHoldReason ===
       "string"
-        ? candidate.hold_reason.trim()
+        ? candidateHoldReason.trim()
         : "";
 
     /*

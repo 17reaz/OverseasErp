@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { syncCandidateWorkflowState } from "../workflow/workflow-service";
 
 /*
  * =========================================================
@@ -622,6 +623,25 @@ export async function createMofa(
       .select(mofaSelect)
       .single();
 
+    if (!error && data) {
+
+      try {
+
+        await syncCandidateWorkflowState(
+          values.candidate_id,
+        );
+
+      } catch (workflowError) {
+
+        console.error(
+          "Failed to sync candidate workflow state after MOFA create:",
+          workflowError,
+        );
+
+      }
+
+    }
+
     return {
       data: data as Mofa | null,
       error,
@@ -699,6 +719,25 @@ export async function updateMofa(
       )
       .select(mofaSelect)
       .single();
+
+    if (!error && data) {
+
+      try {
+
+        await syncCandidateWorkflowState(
+          values.candidate_id,
+        );
+
+      } catch (workflowError) {
+
+        console.error(
+          "Failed to sync candidate workflow state after MOFA update:",
+          workflowError,
+        );
+
+      }
+
+    }
 
     return {
       data: data as Mofa | null,

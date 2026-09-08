@@ -219,6 +219,10 @@ export function CandidatesGrid({
         const status =
           getCandidateOverallStatus(
             candidate,
+            {
+              moduleStatus:
+                candidate.workflow_state ?? null,
+            },
           );
 
         const isReturned =

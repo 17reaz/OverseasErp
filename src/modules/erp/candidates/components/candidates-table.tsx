@@ -313,6 +313,10 @@ export function CandidatesTable({
         const status =
           getCandidateOverallStatus(
             candidate,
+            {
+              moduleStatus:
+                candidate.workflow_state ?? null,
+            },
           );
 
 
@@ -476,6 +480,10 @@ export function CandidatesTable({
         const status =
           getCandidateOverallStatus(
             candidate,
+            {
+              moduleStatus:
+                candidate.workflow_state ?? null,
+            },
           );
 
 

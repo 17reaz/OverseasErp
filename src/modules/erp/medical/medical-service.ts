@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 import { updateCandidateStage } from "../candidates/candidate-service";
+import { syncCandidateWorkflowState } from "../workflow/workflow-service";
 
 export type MedicalStatus =
   | "new"
@@ -252,6 +253,25 @@ if (!error && data && input.advance_stage !== false) {
 
 }
 
+if (!error && data) {
+
+  try {
+
+    await syncCandidateWorkflowState(
+      input.candidate_id,
+    );
+
+  } catch (workflowError) {
+
+    console.error(
+      "Failed to sync candidate workflow state after medical create:",
+      workflowError,
+    );
+
+  }
+
+}
+
 
   return {
     data:
@@ -320,6 +340,25 @@ export async function updateMedical(
       )
     `)
     .single();
+
+  if (!error && data) {
+
+    try {
+
+      await syncCandidateWorkflowState(
+        input.candidate_id,
+      );
+
+    } catch (workflowError) {
+
+      console.error(
+        "Failed to sync candidate workflow state after medical update:",
+        workflowError,
+      );
+
+    }
+
+  }
 
 
   return {

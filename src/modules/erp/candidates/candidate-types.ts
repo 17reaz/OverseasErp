@@ -7,6 +7,11 @@ import type {
   CandidateStage,
 } from "./stage-service";
 
+import type {
+  HoldReason,
+  WorkflowState,
+} from "../workflow/workflow-types";
+
 
 /* =========================================================
    DATABASE CANDIDATE
@@ -79,6 +84,23 @@ export interface Candidate {
   ------------------------------------------------------- */
 
   current_stage: CandidateStage | null;
+
+
+  /* -------------------------------------------------------
+     WORKFLOW STATE
+
+     processing / hold — derived and kept in sync by
+     syncCandidateWorkflowState() (see workflow-service.ts)
+     whenever medical/mofa/visa/flight data changes.
+
+     Already fetched by CANDIDATE_SELECT in
+     candidate-service.ts — this was previously missing
+     from the type, so callers couldn't read it.
+  ------------------------------------------------------- */
+
+  workflow_state: WorkflowState | null;
+
+  hold_reason: HoldReason;
 
 
   /* -------------------------------------------------------

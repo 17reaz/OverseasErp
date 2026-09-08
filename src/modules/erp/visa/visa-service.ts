@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { syncCandidateWorkflowState } from "../workflow/workflow-service";
 
 export interface Visa {
   id: string;
@@ -53,6 +54,15 @@ export async function createVisa(input: VisaInput): Promise<Visa> {
     throw new Error(error.message);
   }
 
+  try {
+    await syncCandidateWorkflowState(data.candidate_id);
+  } catch (workflowError) {
+    console.error(
+      "Failed to sync candidate workflow state after visa create:",
+      workflowError,
+    );
+  }
+
   return data;
 }
 
@@ -69,6 +79,15 @@ export async function updateVisa(
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  try {
+    await syncCandidateWorkflowState(data.candidate_id);
+  } catch (workflowError) {
+    console.error(
+      "Failed to sync candidate workflow state after visa update:",
+      workflowError,
+    );
   }
 
   return data;

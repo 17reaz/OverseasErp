@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { syncCandidateWorkflowState } from "../workflow/workflow-service";
 
 export interface Flight {
   id: string;
@@ -53,6 +54,15 @@ export async function createFlight(input: FlightInput): Promise<Flight> {
     throw new Error(error.message);
   }
 
+  try {
+    await syncCandidateWorkflowState(data.candidate_id);
+  } catch (workflowError) {
+    console.error(
+      "Failed to sync candidate workflow state after flight create:",
+      workflowError,
+    );
+  }
+
   return data;
 }
 
@@ -69,6 +79,15 @@ export async function updateFlight(
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  try {
+    await syncCandidateWorkflowState(data.candidate_id);
+  } catch (workflowError) {
+    console.error(
+      "Failed to sync candidate workflow state after flight update:",
+      workflowError,
+    );
   }
 
   return data;
