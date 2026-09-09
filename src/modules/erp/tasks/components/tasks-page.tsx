@@ -314,71 +314,75 @@ export function TasksPage() {
           KPI
       ================================================= */}
 
-      <div className="grid gap-3 px-6 py-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Pending
-              </p>
+      {/* =================================================
+    KPI
+================================================= */}
 
-              <p className="mt-1 text-xl font-semibold">
-                {counts.pending}
-              </p>
-            </div>
+<div className="grid gap-3 px-6 py-3 sm:grid-cols-2 lg:grid-cols-4">
+  <Card>
+    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+      <div>
+        <p className="text-[11px] text-muted-foreground">
+          Pending
+        </p>
 
-            <Clock3 className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                In Progress
-              </p>
-
-              <p className="mt-1 text-xl font-semibold">
-                {counts.inProgress}
-              </p>
-            </div>
-
-            <ListTodo className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Overdue
-              </p>
-
-              <p className="mt-1 text-xl font-semibold">
-                {counts.overdue}
-              </p>
-            </div>
-
-            <CircleAlert className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Completed
-              </p>
-
-              <p className="mt-1 text-xl font-semibold">
-                {counts.completed}
-              </p>
-            </div>
-
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
+        <p className="text-lg font-semibold leading-tight">
+          {counts.pending}
+        </p>
       </div>
+
+      <Clock3 className="h-4 w-4 text-muted-foreground" />
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+      <div>
+        <p className="text-[11px] text-muted-foreground">
+          In Progress
+        </p>
+
+        <p className="text-lg font-semibold leading-tight">
+          {counts.inProgress}
+        </p>
+      </div>
+
+      <ListTodo className="h-4 w-4 text-muted-foreground" />
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+      <div>
+        <p className="text-[11px] text-muted-foreground">
+          Overdue
+        </p>
+
+        <p className="text-lg font-semibold leading-tight">
+          {counts.overdue}
+        </p>
+      </div>
+
+      <CircleAlert className="h-4 w-4 text-muted-foreground" />
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+      <div>
+        <p className="text-[11px] text-muted-foreground">
+          Completed
+        </p>
+
+        <p className="text-lg font-semibold leading-tight">
+          {counts.completed}
+        </p>
+      </div>
+
+      <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+    </CardContent>
+  </Card>
+</div>
 
       {/* =================================================
           TOOLBAR
