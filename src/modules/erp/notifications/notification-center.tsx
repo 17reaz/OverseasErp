@@ -169,6 +169,10 @@ const handleReadAll = async () => {
   await loadNotifications();
 };
 
+const unreadCount = notifications.filter(
+  (notification) => !notification.read,
+).length;
+
   return (
     <Sheet
       open={open}
