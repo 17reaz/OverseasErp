@@ -20,7 +20,7 @@ export function FinancePage() {
   return (
     <div className="space-y-6 p-4">
       <Tabs defaultValue="overview">
-        <TabsList className="flex-wrap">
+        <TabsList className="sticky top-0 z-10 flex-wrap bg-background">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
