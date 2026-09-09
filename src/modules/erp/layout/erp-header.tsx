@@ -30,7 +30,6 @@ import { signOut } from "@/lib/supabase/auth";
 import { GlobalSearchDialog } from "../global-search/global-search-dialog";
 import {
   getUnreadSystemNotificationCount,
-  subscribeToSystemNotifications,
 } from "@/modules/erp/notifications/notification-service";
 export function ErpHeader() {
   const navigate = useNavigate();
@@ -83,26 +82,7 @@ const [unreadCount,setUnreadCount] = useState(0);
   };
 }, [user?.id]);
 
-useEffect(() => {
-  if (!user?.id) {
-    return;
-  }
 
-  const unsubscribe =
-    subscribeToSystemNotifications(
-      user.id,
-      async () => {
-        const unread =
-          await getUnreadSystemNotificationCount(
-            user.id,
-          );
-
-        setUnreadCount(unread);
-      },
-    );
-
-  return unsubscribe;
-}, [user?.id]);
 
 
 
