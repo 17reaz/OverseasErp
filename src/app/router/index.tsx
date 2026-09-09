@@ -97,6 +97,7 @@ import {
 import {
   ReportsPage,
 } from "@/modules/erp/reports/reports-page";
+import { FinancePage } from "@/modules/erp/finance/components/finance-page";
 import {
   TasksPage,
 } from "@/modules/erp/tasks/components/tasks-page";
@@ -319,7 +320,7 @@ function AppRouter() {
 
             <Route
               path="finance"
-              element={<>finance</>}
+              element={<FinancePage/>}
             />
             {/* ==================================================
                 REPORTS
