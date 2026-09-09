@@ -1,3 +1,9 @@
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import { Trash2,Settings,Phone } from "lucide-react";
 import {
   Sidebar,
@@ -27,12 +33,75 @@ import {
 import {
   erpNavigation,
 } from "./erp-navigation";
+import {
+  getActionBadgeCount,
+  getActionBadgeCounts,
+} from "@/modules/erp/action-center/badge-service";
+import type {
+  ActionBadgeCounts,
+} from "@/modules/erp/action-center/badge-service";
 
 // =====================================================
 // ERP SIDEBAR
 // =====================================================
 
 export function ErpSidebar() {
+   const [
+    badgeCounts,
+    setBadgeCounts,
+  ] = useState<ActionBadgeCounts>({});
+
+  const loadBadges = useCallback(
+    async () => {
+      const counts =
+        await getActionBadgeCounts();
+
+      setBadgeCounts(counts);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      const counts =
+        await getActionBadgeCounts();
+
+      if (mounted) {
+        setBadgeCounts(counts);
+      }
+    };
+
+    void load();
+
+    const handleUpdate = () => {
+      void loadBadges();
+    };
+
+    window.addEventListener(
+      "overseas-erp:actions-updated",
+      handleUpdate,
+    );
+
+    const interval = window.setInterval(
+      () => {
+        void loadBadges();
+      },
+      30_000,
+    );
+
+    return () => {
+      mounted = false;
+
+      window.removeEventListener(
+        "overseas-erp:actions-updated",
+        handleUpdate,
+      );
+
+      window.clearInterval(interval);
+    };
+  }, [loadBadges]);
 
   return (
 
@@ -134,87 +203,75 @@ export function ErpSidebar() {
               <SidebarMenu>
 
                 {erpNavigation.map(
-                  (
-                    item,
-                  ) => (
+  (
+    item,
+  ) => {
+    const badge = getActionBadgeCount(
+      badgeCounts,
+      item.url,
+    );
 
-                    <SidebarMenuItem
-                      key={
-                        item.url
-                      }
-                    >
+    return (
+      <SidebarMenuItem
+        key={item.url}
+      >
+        <SidebarMenuButton
+          asChild
+          tooltip={item.title}
+        >
+          <NavLink
+            to={item.url}
+            end={item.url === "/app"}
+          >
+            {({ isActive }) => (
+              <>
+                <item.icon />
 
-                      <SidebarMenuButton
-                        asChild
-                        tooltip={
-                          item.title
-                        }
-                      >
+                <span
+                  className={
+                    isActive
+                      ? "font-medium"
+                      : ""
+                  }
+                >
+                  {item.title}
+                </span>
 
-                        <NavLink
-                          to={
-                            item.url
-                          }
-                          end={
-                            item.url ===
-                            "/app"
-                          }
-                        >
-
-                          {({
-                            isActive,
-                          }) => (
-
-                            <>
-
-                              <item.icon />
-
-                              <span
-                                className={
-                                  isActive
-                                    ? "font-medium"
-                                    : ""
-                                }
-                              >
-                                {
-                                  item.title
-                                }
-                              </span>
-                              <span
-                                className="
-                                  ml-auto
-                                  flex 
-                                  h-5
-                                  min-w-5
-                                  shrink-0
-                                  items-center
-                                  justify-center
-                                  rounded-full
-                                  bg-foreground
-                                  px-1.5
-                                  text-[10px]
-                                  font-semibold
-                                  leading-none
-                                  text-background
-                                  group-data-[collapsible=icon]:absolute
-                                  group-data-[collapsible=icon]:right-1
-                                  group-data-[collapsible=icon]:top-1/2
-                                  group-data-[collapsible=icon]:-translate-y-1/2
-                                "
-                              >9</span>
-
-                            </>
-
-                          )}
-
-                        </NavLink>
-
-                      </SidebarMenuButton>
-
-                    </SidebarMenuItem>
-
-                  ),
+                {badge > 0 && (
+                  <span
+                    className="
+                      ml-auto
+                      flex
+                      h-5
+                      min-w-5
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-foreground
+                      px-1.5
+                      text-[10px]
+                      font-semibold
+                      leading-none
+                      text-background
+                      group-data-[collapsible=icon]:absolute
+                      group-data-[collapsible=icon]:right-1
+                      group-data-[collapsible=icon]:top-1/2
+                      group-data-[collapsible=icon]:-translate-y-1/2
+                    "
+                    aria-label={`${badge} pending actions`}
+                  >
+                    {badge > 99 ? "99+" : badge}
+                  </span>
                 )}
+              </>
+            )}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  },
+)}
 
               </SidebarMenu>
 
