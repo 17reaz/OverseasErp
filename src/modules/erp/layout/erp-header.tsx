@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationCenter } from "@/modules/erp/notifications/notification-center";
 import {
   DropdownMenu,
   DropdownMenuContent,

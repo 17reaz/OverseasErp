@@ -115,43 +115,59 @@ export function NotificationCenter({
     [],
   );
 
-  const loadNotifications = () => {
-    setNotifications(
-      getSystemNotifications(userId),
-    );
+  const loadNotifications = async () => {
+  const data = await getSystemNotifications(userId);
+  setNotifications(data);
+};
+
+useEffect(() => {
+  if (!userId) {
+    setNotifications([]);
+    return;
+  }
+
+  let mounted = true;
+
+  const load = async () => {
+    const data = await getSystemNotifications(userId);
+
+    if (mounted) {
+      setNotifications(data);
+    }
   };
 
-  useEffect(() => {
-    loadNotifications();
+  void load();
 
-    return subscribeToSystemNotifications(
-      loadNotifications,
-    );
-  }, [userId]);
-
-  const unreadCount =
-    notifications.filter(
-      (item) => !item.read,
-    ).length;
-
-  const handleRead = (
-    id: string,
-  ) => {
-    markSystemNotificationRead(
-      id,
+  const unsubscribe =
+    subscribeToSystemNotifications(
       userId,
+      () => {
+        void load();
+      },
     );
 
-    loadNotifications();
+  return () => {
+    mounted = false;
+    unsubscribe();
   };
+}, [userId]);
 
-  const handleReadAll = () => {
-    markAllSystemNotificationsRead(
-      userId,
-    );
+const handleRead = async (id: string) => {
+  await markSystemNotificationRead(
+    id,
+    userId,
+  );
 
-    loadNotifications();
-  };
+  await loadNotifications();
+};
+
+const handleReadAll = async () => {
+  await markAllSystemNotificationsRead(
+    userId,
+  );
+
+  await loadNotifications();
+};
 
   return (
     <Sheet
