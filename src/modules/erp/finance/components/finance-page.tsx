@@ -20,10 +20,7 @@ import { FinanceReports } from "./finance-reports";
 export function FinancePage() {
   return (
     <div className="space-y-6 p-4">
-      <PageHeader
-        title="Finance"
-        description="Accounts, transactions, invoices and cashflow — currently running on sample data."
-      />
+      
 
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap">
