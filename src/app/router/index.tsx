@@ -1,118 +1,45 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-} from "react-router-dom";
+// Auth
+import { ProtectedRoute } from "@/modules/auth/components/protected-route";
+import { PublicRoute } from "@/modules/auth/components/public-route";
+import { LoginPage } from "@/modules/auth/login/login-page";
+import { SignupPage } from "@/modules/auth/signup/signup-page";
+import { ForgotPasswordPage } from "@/modules/auth/forgot-password/forgot-password-page";
+import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-page";
 
-import {
-  ProtectedRoute,
-} from "@/modules/auth/components/protected-route";
+// Landing
+import { LandingPage } from "@/modules/landing/landing-page";
 
-import {
-  PublicRoute,
-} from "@/modules/auth/components/public-route";
+// ERP Layout
+import { ErpLayout } from "@/modules/erp/layout/erp-layout";
 
-import {
-  LandingPage,
-} from "@/modules/landing/landing-page";
-
-import {
-  LoginPage,
-} from "@/modules/auth/login/login-page";
-
-import {
-  SignupPage,
-} from "@/modules/auth/signup/signup-page";
-
-import {
-  ForgotPasswordPage,
-} from "@/modules/auth/forgot-password/forgot-password-page";
-
-import {
-  ResetPasswordPage,
-} from "@/modules/auth/reset-password/reset-password-page";
-
-import {
-  ErpLayout,
-} from "@/modules/erp/layout/erp-layout";
-
-import {
-  DashboardPage,
-} from "@/modules/erp/dashboard/dashboard-page";
-
-import {
-  CandidatesPage,
-} from "@/modules/erp/candidates/candidates-page";
-
-import {
-  CandidateProfilePage,
-} from "@/modules/erp/candidates/profile/candidate-profile-page";
-
-import {
-  TrashPage,
-} from "@/modules/erp/trash/trash-page";
-
-import {
-  AgentsPage,
-} from "@/modules/erp/agents/agents-page";
-
-import {
-  FilesPage,
-} from "@/modules/erp/files/files-page";
-
-import {
-  MedicalPage,
-} from "@/modules/erp/medical/medical-page";
-
-import {
-  AgencyPage,
-} from "@/modules/erp/agency/agency-page";
-
-import {
-  MofaPage,
-} from "@/modules/erp/mofa/mofa-page";
-
-import {
-  FingerPage,
-} from "@/modules/erp/finger/finger-page";
-
-import {
-  PoliceClearancePage,
-} from "@/modules/erp/police-clearance/police-clearance-page";
-
-import {
-  TradeTestPage,
-} from "@/modules/erp/takamul/takamul-page";
-
-import {
-  VisaPage,
-} from "@/modules/erp/visa/visa-page";
+// ERP Pages
+import { DashboardPage } from "@/modules/erp/dashboard/dashboard-page";
+import { CandidatesPage } from "@/modules/erp/candidates/candidates-page";
+import { CandidateProfilePage } from "@/modules/erp/candidates/profile/candidate-profile-page";
+import { TrashPage } from "@/modules/erp/trash/trash-page";
+import { AgentsPage } from "@/modules/erp/agents/agents-page";
+import { FilesPage } from "@/modules/erp/files/files-page";
+import { MedicalPage } from "@/modules/erp/medical/medical-page";
+import { AgencyPage } from "@/modules/erp/agency/agency-page";
+import { MofaPage } from "@/modules/erp/mofa/mofa-page";
+import { FingerPage } from "@/modules/erp/finger/finger-page";
+import { PoliceClearancePage } from "@/modules/erp/police-clearance/police-clearance-page";
+import { TradeTestPage } from "@/modules/erp/takamul/takamul-page";
+import { VisaPage } from "@/modules/erp/visa/visa-page";
 import { BmetPage } from "@/modules/erp/bmet/bmet-page";
-import {
-  FlightPage,
-} from "@/modules/erp/flight/flight-page";
-
-import {
-  ReportsPage,
-} from "@/modules/erp/reports/reports-page";
+import { FlightPage } from "@/modules/erp/flight/flight-page";
+import { ReportsPage } from "@/modules/erp/reports/reports-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
-import {
-  TasksPage,
-} from "@/modules/erp/tasks/components/tasks-page";
-import {
-  SettingsPage,
-} from "@/modules/erp/settings/settings-page";
+import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
+import { SettingsPage } from "@/modules/erp/settings/settings-page";
+
 function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* ==================================================
-            PUBLIC
-            ================================================== */}
-
+        {/* ============================== PUBLIC ============================== */}
         <Route
           path="/"
           element={
@@ -122,10 +49,7 @@ function AppRouter() {
           }
         />
 
-        {/* ==================================================
-            AUTH
-            ================================================== */}
-
+        {/* ============================== AUTH ============================== */}
         <Route
           path="/login"
           element={
@@ -134,7 +58,6 @@ function AppRouter() {
             </PublicRoute>
           }
         />
-
         <Route
           path="/signup"
           element={
@@ -143,7 +66,6 @@ function AppRouter() {
             </PublicRoute>
           }
         />
-
         <Route
           path="/forgot-password"
           element={
@@ -152,7 +74,6 @@ function AppRouter() {
             </PublicRoute>
           }
         />
-
         <Route
           path="/reset-password"
           element={
@@ -162,214 +83,74 @@ function AppRouter() {
           }
         />
 
-        {/* ==================================================
-            PROTECTED ERP
-            ================================================== */}
-
+        {/* ============================== PROTECTED ERP ============================== */}
         <Route element={<ProtectedRoute />}>
-
-          <Route
-            path="/app"
-            element={<ErpLayout />}
-          >
-
+          <Route path="/app" element={<ErpLayout />}>
             {/* /app → /app/dashboard */}
+            <Route index element={<Navigate to="dashboard" replace />} />
 
-            <Route
-              index
-              element={
-                <Navigate
-                  to="dashboard"
-                  replace
-                />
-              }
-            />
+            {/* Dashboard */}
+            <Route path="dashboard" element={<DashboardPage />} />
 
-            {/* ==================================================
-                DASHBOARD
-                ================================================== */}
+            {/* Candidates */}
+            <Route path="candidates" element={<CandidatesPage />} />
+            <Route path="candidates/:candidateId" element={<CandidateProfilePage />} />
 
-            <Route
-              path="dashboard"
-              element={<DashboardPage />}
-            />
+            {/* Agents */}
+            <Route path="agents" element={<AgentsPage />} />
 
-            {/* ==================================================
-                CANDIDATES
-                ================================================== */}
+            {/* Agencies */}
+            <Route path="agencies" element={<AgencyPage />} />
 
-            <Route
-              path="candidates"
-              element={<CandidatesPage />}
-            />
+            {/* Files */}
+            <Route path="files" element={<FilesPage />} />
 
-            <Route
-              path="candidates/:candidateId"
-              element={<CandidateProfilePage />}
-            />
+            {/* Medical */}
+            <Route path="medical" element={<MedicalPage />} />
 
-            {/* ==================================================
-                AGENTS
-                ================================================== */}
+            {/* Mofa */}
+            <Route path="mofa" element={<MofaPage />} />
 
-            <Route
-              path="agents"
-              element={<AgentsPage />}
-            />
+            {/* Fingerprint */}
+            <Route path="fingers" element={<FingerPage />} />
 
-            {/* ==================================================
-                AGENCY
-                ================================================== */}
+            {/* Police Clearance */}
+            <Route path="police-clearance" element={<PoliceClearancePage />} />
 
-            <Route
-              path="agencies"
-              element={<AgencyPage />}
-            />
+            {/* Takamul */}
+            <Route path="takamul" element={<TradeTestPage />} />
 
-            {/* ==================================================
-                FILES
-                ================================================== */}
+            {/* Visa */}
+            <Route path="visa" element={<VisaPage />} />
 
-            <Route
-              path="files"
-              element={<FilesPage />}
-            />
+            {/* BMET */}
+            <Route path="bmet" element={<BmetPage />} />
 
-            {/* ==================================================
-                MEDICAL
-                ================================================== */}
+            {/* Flight */}
+            <Route path="flight" element={<FlightPage />} />
 
-            <Route
-              path="medical"
-              element={<MedicalPage />}
-            />
+            {/* Reports */}
+            <Route path="reports" element={<ReportsPage />} />
 
-            {/* ==================================================
-                MOFA
-                ================================================== */}
+            {/* Finance */}
+            <Route path="finance" element={<FinancePage />} />
 
-            <Route
-              path="mofa"
-              element={<MofaPage />}
-            />
+            {/* Tasks / Todo */}
+            <Route path="todo" element={<TasksPage />} />
 
-            {/* ==================================================
-                FINGER
-                ================================================== */}
+            {/* Settings */}
+            <Route path="settings" element={<SettingsPage />} />
 
-            <Route
-              path="fingers"
-              element={<FingerPage />}
-            />
-
-            {/* ==================================================
-                POLICE CLEARANCE
-                ================================================== */}
-
-            <Route
-              path="police-clearance"
-              element={<PoliceClearancePage />}
-            />
-
-            {/* ==================================================
-                TAKAMUL
-                ================================================== */}
-
-            <Route
-              path="takamul"
-              element={<TradeTestPage />}
-            />
-
-            {/* ==================================================
-                VISA
-                ================================================== */}
-
-            <Route
-              path="visa"
-              element={<VisaPage />}
-            />
-            {/* ==================================================
-                BMET
-                ================================================== */}
-
-            <Route
-              path="bmet"
-              element={<BmetPage />}
-            />
-
-            {/* ==================================================
-                FLIGHT
-                ================================================== */}
-
-            <Route
-              path="flight"
-              element={<FlightPage />}
-            />
-
-            {/* ==================================================
-                finance
-                ================================================== */}
-
-            <Route
-              path="reports"
-              element={<ReportsPage />}
-            />
-            {/* ==================================================
-                REPORTS
-                ================================================== */}
-
-            <Route
-              path="finance"
-              element={<FinancePage/>}
-            />
-            {/* ==================================================
-                REPORTS
-                ================================================== */}
-
-            <Route
-              path="todo"
-              element={< TasksPage />}
-            />
-            {/* ==================================================
-    SETTINGS
-    ================================================== */}
-
-<Route
-  path="settings"
-  element={<SettingsPage />}
-/>
-
-            {/* ==================================================
-                TRASH
-                ================================================== */}
-
-            <Route
-              path="trash"
-              element={<TrashPage />}
-            />
-
+            {/* Trash */}
+            <Route path="trash" element={<TrashPage />} />
           </Route>
-
         </Route>
 
-        {/* ==================================================
-            404
-            ================================================== */}
-
-        <Route
-          path="*"
-          element={
-            <div>
-              Not Found
-            </div>
-          }
-        />
-
+        {/* ============================== 404 ============================== */}
+        <Route path="*" element={<div>Not Found</div>} />
       </Routes>
     </BrowserRouter>
   );
 }
 
-export {
-  AppRouter,
-};
+export { AppRouter };
