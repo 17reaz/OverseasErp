@@ -27,13 +27,17 @@ import { useAuth } from "@/modules/auth/components/auth-provider";
 import { erpNavigation } from "./erp-navigation";
 import { signOut } from "@/lib/supabase/auth";
 import { GlobalSearchDialog } from "../global-search/global-search-dialog";
+import {NotificationCenter} from "@/modules/erp/notifications/notification-center";
+
+import {getUnreadSystemNotificationCount,subscribeToSystemNotifications,} from "@/modules/erp/notifications/notification-service";
 
 export function ErpHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile } = useAuth();
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-
+  const [notificationOpen,setNotificationOpen] = useState(false);
+  const [unreadCount,setUnreadCount] = useState(0);
   useEffect(() => {
     function handleGlobalSearchShortcut(event: KeyboardEvent) {
       const isShortcut =
@@ -48,7 +52,19 @@ export function ErpHeader() {
     window.addEventListener("keydown", handleGlobalSearchShortcut);
     return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
   }, []);
+    const loadUnread = () => {
+    setUnreadCount(
+      getUnreadSystemNotificationCount(),
+    );
+  };
 
+  useEffect(() => {
+    loadUnread();
+
+    return subscribeToSystemNotifications(
+      loadUnread,
+    );
+  }, []);
   const currentNavigation = [...erpNavigation]
     .sort((a, b) => b.url.length - a.url.length)
     .find(
@@ -112,9 +128,30 @@ export function ErpHeader() {
             <Search className="h-4 w-4" />
           </Button>
 
-          <Button type="button" variant="ghost" size="icon" className="relative" aria-label="Notifications">
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="icon" 
+            className="relative" 
+            aria-label="Notifications"
+            onClick={()=>setNotificationOpen(true)}
+            >
             <Bell className="h-4 w-4" />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500" />
+             {unreadCount > 0 && (
+              <>
+                <span
+                  className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive"
+                  aria-hidden="true"
+                />
+
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold text-background">
+                  {unreadCount > 99
+                    ? "99+"
+                    : unreadCount}
+                </span>
+              </>
+            )}
+            {/* <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500" /> */}
           </Button>
 
           <DropdownMenu>
@@ -189,6 +226,12 @@ export function ErpHeader() {
       </header>
 
       <GlobalSearchDialog open={globalSearchOpen} onOpenChange={setGlobalSearchOpen} />
+       <NotificationCenter
+        open={notificationOpen}
+        onOpenChange={
+          setNotificationOpen
+        }
+      />
     </>
   );
 }
