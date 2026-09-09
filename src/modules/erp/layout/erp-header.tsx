@@ -27,17 +27,17 @@ import { useAuth } from "@/modules/auth/components/auth-provider";
 import { erpNavigation } from "./erp-navigation";
 import { signOut } from "@/lib/supabase/auth";
 import { GlobalSearchDialog } from "../global-search/global-search-dialog";
-import {NotificationCenter} from "@/modules/erp/notifications/notification-center";
-
-import {getUnreadSystemNotificationCount,subscribeToSystemNotifications,} from "@/modules/erp/notifications/notification-service";
-
+import {
+  getUnreadSystemNotificationCount,
+  subscribeToSystemNotifications,
+} from "@/modules/erp/notifications/notification-service";
 export function ErpHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile } = useAuth();
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const [notificationOpen,setNotificationOpen] = useState(false);
-  const [unreadCount,setUnreadCount] = useState(0);
+ const [notificationOpen,setNotificationOpen] = useState(false);
+const [unreadCount,setUnreadCount] = useState(0);
   useEffect(() => {
     function handleGlobalSearchShortcut(event: KeyboardEvent) {
       const isShortcut =
@@ -52,19 +52,59 @@ export function ErpHeader() {
     window.addEventListener("keydown", handleGlobalSearchShortcut);
     return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
   }, []);
-    const loadUnread = () => {
-    setUnreadCount(
-      getUnreadSystemNotificationCount(),
-    );
+    
+
+ useEffect(() => {
+  let mounted = true;
+
+  const loadNotifications = async () => {
+    if (!user?.id) {
+      if (mounted) {
+        setUnreadCount(0);
+      }
+      return;
+    }
+
+    const unread =
+      await getUnreadSystemNotificationCount(
+        user.id,
+      );
+
+    if (!mounted) return;
+
+    setUnreadCount(unread);
   };
 
-  useEffect(() => {
-    loadUnread();
+  void loadNotifications();
 
-    return subscribeToSystemNotifications(
-      loadUnread,
+  return () => {
+    mounted = false;
+  };
+}, [user?.id]);
+
+useEffect(() => {
+  if (!user?.id) {
+    return;
+  }
+
+  const unsubscribe =
+    subscribeToSystemNotifications(
+      user.id,
+      async () => {
+        const unread =
+          await getUnreadSystemNotificationCount(
+            user.id,
+          );
+
+        setUnreadCount(unread);
+      },
     );
-  }, []);
+
+  return unsubscribe;
+}, [user?.id]);
+
+
+
   const currentNavigation = [...erpNavigation]
     .sort((a, b) => b.url.length - a.url.length)
     .find(
@@ -231,6 +271,7 @@ export function ErpHeader() {
         onOpenChange={
           setNotificationOpen
         }
+        userId={user?.id}
       />
     </>
   );

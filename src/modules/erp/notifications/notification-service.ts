@@ -1,182 +1,311 @@
+import { supabase } from "@/lib/supabase/client";
+
 import type {
   SystemNotification,
   SystemNotificationType,
 } from "./notification-types";
 
-const STORAGE_PREFIX =
-  "overseas-erp:system-notifications";
+const UPDATE_EVENT = "overseas-erp:notifications-updated";
 
-const UPDATE_EVENT =
-  "overseas-erp:notifications-updated";
-
-function getStorageKey(
-  userId?: string | null,
-): string {
-  return `${STORAGE_PREFIX}:${userId ?? "default"}`;
-}
-
-function emitUpdate(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
+function emitUpdate() {
+  if (typeof window === "undefined") return;
 
   window.dispatchEvent(
     new CustomEvent(UPDATE_EVENT),
   );
 }
 
-export function getSystemNotifications(
+function mapNotification(row: {
+  id: string;
+  type: SystemNotificationType;
+  title: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  action_url: string | null;
+  metadata: Record<string, unknown> | null;
+}): SystemNotification {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    message: row.message,
+    createdAt: row.created_at,
+    read: row.read_at !== null,
+    actionUrl: row.action_url,
+    metadata: row.metadata ?? {},
+  };
+}
+
+
+/* -------------------------------------------------- */
+/* Current authenticated user                         */
+/* -------------------------------------------------- */
+
+async function getCurrentUserId(): Promise<string | null> {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user.id;
+}
+
+
+/* -------------------------------------------------- */
+/* Get notifications                                  */
+/* -------------------------------------------------- */
+
+export async function getSystemNotifications(
   userId?: string | null,
-): SystemNotification[] {
-  if (typeof window === "undefined") {
+): Promise<SystemNotification[]> {
+  const resolvedUserId =
+    userId ?? (await getCurrentUserId());
+
+  if (!resolvedUserId) {
     return [];
   }
 
-  try {
-    const raw =
-      window.localStorage.getItem(
-        getStorageKey(userId),
-      );
+  const { data, error } = await supabase
+    .from("notifications")
+    .select(
+      `
+        id,
+        type,
+        title,
+        message,
+        created_at,
+        read_at,
+        action_url,
+        metadata
+      `,
+    )
+    .eq("user_id", resolvedUserId)
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(100);
 
-    if (!raw) {
-      return [];
-    }
-
-    const parsed =
-      JSON.parse(raw);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed as SystemNotification[];
-  } catch (error) {
+  if (error) {
     console.error(
-      "[Notifications] Failed to read notifications:",
+      "[Notifications] Failed to load notifications:",
       error,
     );
 
     return [];
   }
+
+  return (data ?? []).map(mapNotification);
 }
 
-function saveNotifications(
-  notifications: SystemNotification[],
+
+/* -------------------------------------------------- */
+/* Unread count                                       */
+/* -------------------------------------------------- */
+
+export async function getUnreadSystemNotificationCount(
   userId?: string | null,
-): void {
-  if (typeof window === "undefined") {
+): Promise<number> {
+  const resolvedUserId =
+    userId ?? (await getCurrentUserId());
+
+  if (!resolvedUserId) {
+    return 0;
+  }
+
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", {
+      count: "exact",
+      head: true,
+    })
+    .eq("user_id", resolvedUserId)
+    .is("read_at", null);
+
+  if (error) {
+    console.error(
+      "[Notifications] Failed to load unread count:",
+      error,
+    );
+
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+
+/* -------------------------------------------------- */
+/* Mark one as read                                   */
+/* -------------------------------------------------- */
+
+export async function markSystemNotificationRead(
+  id: string,
+  userId?: string | null,
+): Promise<void> {
+  const resolvedUserId =
+    userId ?? (await getCurrentUserId());
+
+  if (!resolvedUserId) {
     return;
   }
 
-  window.localStorage.setItem(
-    getStorageKey(userId),
-    JSON.stringify(notifications),
-  );
+  const { error } = await supabase
+    .from("notifications")
+    .update({
+      read_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("user_id", resolvedUserId);
+
+  if (error) {
+    console.error(
+      "[Notifications] Failed to mark notification read:",
+      error,
+    );
+
+    return;
+  }
 
   emitUpdate();
 }
 
-export function getUnreadSystemNotificationCount(
+
+/* -------------------------------------------------- */
+/* Mark all as read                                   */
+/* -------------------------------------------------- */
+
+export async function markAllSystemNotificationsRead(
   userId?: string | null,
-): number {
-  return getSystemNotifications(
-    userId,
-  ).filter(
-    (notification) =>
-      !notification.read,
-  ).length;
-}
+): Promise<void> {
+  const resolvedUserId =
+    userId ?? (await getCurrentUserId());
 
-export function markSystemNotificationRead(
-  id: string,
-  userId?: string | null,
-): void {
-  const notifications =
-    getSystemNotifications(userId);
-
-  const updated =
-    notifications.map(
-      (notification) =>
-        notification.id === id
-          ? {
-              ...notification,
-              read: true,
-            }
-          : notification,
-    );
-
-  saveNotifications(
-    updated,
-    userId,
-  );
-}
-
-export function markAllSystemNotificationsRead(
-  userId?: string | null,
-): void {
-  const notifications =
-    getSystemNotifications(userId);
-
-  if (notifications.length === 0) {
+  if (!resolvedUserId) {
     return;
   }
 
-  const updated =
-    notifications.map(
-      (notification) => ({
-        ...notification,
-        read: true,
-      }),
+  const { error } = await supabase
+    .from("notifications")
+    .update({
+      read_at: new Date().toISOString(),
+    })
+    .eq("user_id", resolvedUserId)
+    .is("read_at", null);
+
+  if (error) {
+    console.error(
+      "[Notifications] Failed to mark all read:",
+      error,
     );
 
-  saveNotifications(
-    updated,
-    userId,
-  );
+    return;
+  }
+
+  emitUpdate();
 }
 
-export function createSystemNotification(
+
+/* -------------------------------------------------- */
+/* Create notification                                */
+/* -------------------------------------------------- */
+
+export async function createSystemNotification(
   input: {
     title: string;
     message: string;
     type?: SystemNotificationType;
+    actionUrl?: string | null;
+    metadata?: Record<string, unknown>;
   },
   userId?: string | null,
-): SystemNotification {
-  const notification: SystemNotification = {
-    id: crypto.randomUUID(),
+): Promise<SystemNotification | null> {
+  const resolvedUserId =
+    userId ?? (await getCurrentUserId());
 
-    type:
-      input.type ?? "info",
+  if (!resolvedUserId) {
+    return null;
+  }
 
-    title: input.title,
-
-    message: input.message,
-
-    createdAt:
-      new Date().toISOString(),
-
-    read: false,
-  };
-
-  const existing =
-    getSystemNotifications(userId);
-
-  saveNotifications(
-    [
-      notification,
-      ...existing,
-    ].slice(0, 100),
-    userId,
+  const {
+    data: tenantId,
+    error: tenantError,
+  } = await supabase.rpc(
+    "get_my_tenant_id",
   );
 
-  return notification;
+  if (tenantError || !tenantId) {
+    console.error(
+      "[Notifications] Failed to resolve tenant:",
+      tenantError,
+    );
+
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .insert({
+      tenant_id: tenantId,
+      user_id: resolvedUserId,
+
+      type:
+        input.type ?? "info",
+
+      title:
+        input.title,
+
+      message:
+        input.message,
+
+      action_url:
+        input.actionUrl ?? null,
+
+      metadata:
+        input.metadata ?? {},
+    })
+    .select(
+      `
+        id,
+        type,
+        title,
+        message,
+        created_at,
+        read_at,
+        action_url,
+        metadata
+      `,
+    )
+    .single();
+
+  if (error || !data) {
+    console.error(
+      "[Notifications] Failed to create notification:",
+      error,
+    );
+
+    return null;
+  }
+
+  emitUpdate();
+
+  return mapNotification(data);
 }
 
+
+/* -------------------------------------------------- */
+/* Realtime subscription                              */
+/* -------------------------------------------------- */
+
 export function subscribeToSystemNotifications(
+  userId: string | null | undefined,
   listener: () => void,
 ): () => void {
-  if (typeof window === "undefined") {
+  if (!userId) {
     return () => undefined;
   }
 
@@ -184,27 +313,28 @@ export function subscribeToSystemNotifications(
     listener();
   };
 
-  const handleStorage = (
-    event: StorageEvent,
-  ) => {
-    if (
-      event.key?.startsWith(
-        STORAGE_PREFIX,
-      )
-    ) {
-      listener();
-    }
-  };
-
   window.addEventListener(
     UPDATE_EVENT,
     handleCustomEvent,
   );
 
-  window.addEventListener(
-    "storage",
-    handleStorage,
-  );
+  const channel = supabase
+    .channel(
+      `notifications:${userId}`,
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        listener();
+      },
+    )
+    .subscribe();
 
   return () => {
     window.removeEventListener(
@@ -212,9 +342,8 @@ export function subscribeToSystemNotifications(
       handleCustomEvent,
     );
 
-    window.removeEventListener(
-      "storage",
-      handleStorage,
+    void supabase.removeChannel(
+      channel,
     );
   };
 }
