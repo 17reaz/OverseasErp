@@ -7,7 +7,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-import { PageHeader } from "../../shared/page-header";
 
 import { FinanceOverview } from "./finance-overview";
 import { FinanceTransactions } from "./finance-transactions";
@@ -20,8 +19,6 @@ import { FinanceReports } from "./finance-reports";
 export function FinancePage() {
   return (
     <div className="space-y-6 p-4">
-      
-
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
