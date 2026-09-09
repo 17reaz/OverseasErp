@@ -180,6 +180,28 @@ export function ErpSidebar() {
                                   item.title
                                 }
                               </span>
+                              <span
+                                className="
+                                  ml-auto
+                                  flex 
+                                  h-5
+                                  min-w-5
+                                  shrink-0
+                                  items-center
+                                  justify-center
+                                  rounded-full
+                                  bg-foreground
+                                  px-1.5
+                                  text-[10px]
+                                  font-semibold
+                                  leading-none
+                                  text-background
+                                  group-data-[collapsible=icon]:absolute
+                                  group-data-[collapsible=icon]:right-1
+                                  group-data-[collapsible=icon]:top-1/2
+                                  group-data-[collapsible=icon]:-translate-y-1/2
+                                "
+                              >9</span>
 
                             </>
 
