@@ -259,27 +259,6 @@ export function ReportsPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full gap-5 overflow-hidden">
-      {/* Report Builder */}
-
-      <section
-        className="
-          flex
-          w-[380px]
-          shrink-0
-          min-h-0
-          flex-col
-          overflow-hidden
-          rounded-lg
-          border
-          bg-background
-        "
-      >
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
-          <ReportBuilder
-            onChange={setConfig}
-          />
-        </div>
-      </section>
 
       {/* Report Preview */}
 
@@ -323,6 +302,27 @@ export function ReportsPage() {
               rows={filteredRows}
             />
           )}
+        </div>
+      </section>
+      {/* Report Builder */}
+
+      <section
+        className="
+          flex
+          w-[380px]
+          shrink-0
+          min-h-0
+          flex-col
+          overflow-hidden
+          rounded-lg
+          border
+          bg-background
+        "
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          <ReportBuilder
+            onChange={setConfig}
+          />
         </div>
       </section>
     </div>
