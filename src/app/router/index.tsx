@@ -98,9 +98,11 @@ import {
   ReportsPage,
 } from "@/modules/erp/reports/reports-page";
 import {
+  TasksPage,
+} from "@/modules/erp/tasks/components/tasks-page";
+import {
   SettingsPage,
 } from "@/modules/erp/settings/settings-page";
-import {SaaSPage} from "@/modules/erp/todo/todo-page"
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -325,7 +327,7 @@ function AppRouter() {
 
             <Route
               path="todo"
-              element={< SaaSPage />}
+              element={< TasksPage />}
             />
             {/* ==================================================
     SETTINGS
