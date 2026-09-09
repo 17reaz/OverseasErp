@@ -308,23 +308,7 @@ export function TasksPage() {
           HEADER
       ================================================= */}
 
-      <div className="border-b px-6 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <ListTodo className="h-5 w-5" />
-
-              <h1 className="text-lg font-semibold">
-                Tasks
-              </h1>
-            </div>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage your work and follow-ups.
-            </p>
-          </div>
-        </div>
-      </div>
+      
 
       {/* =================================================
           KPI
