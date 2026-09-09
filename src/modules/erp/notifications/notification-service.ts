@@ -305,7 +305,7 @@ export function subscribeToSystemNotifications(
   userId: string | null | undefined,
   listener: () => void,
 ): () => void {
-  if (!userId) {
+  if (!userId || typeof window === "undefined") {
     return () => undefined;
   }
 
@@ -318,10 +318,10 @@ export function subscribeToSystemNotifications(
     handleCustomEvent,
   );
 
+  const channelName = `notifications:${userId}`;
+
   const channel = supabase
-    .channel(
-      `notifications:${userId}`,
-    )
+    .channel(channelName)
     .on(
       "postgres_changes",
       {
@@ -333,8 +333,12 @@ export function subscribeToSystemNotifications(
       () => {
         listener();
       },
-    )
-    .subscribe();
+    );
+
+  // IMPORTANT:
+  // All postgres_changes callbacks must be registered
+  // BEFORE subscribe().
+  channel.subscribe();
 
   return () => {
     window.removeEventListener(
@@ -342,8 +346,6 @@ export function subscribeToSystemNotifications(
       handleCustomEvent,
     );
 
-    void supabase.removeChannel(
-      channel,
-    );
+    void supabase.removeChannel(channel);
   };
 }
