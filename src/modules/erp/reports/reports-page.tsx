@@ -107,7 +107,9 @@ function filterRows(
 }
 
 export function ReportsPage() {
-  const previewRef = useRef<HTMLDivElement>(null)
+  const previewRef =
+    useRef<HTMLDivElement>(null)
+
   const [config, setConfig] =
     useState<ReportConfig>(
       initialConfig,
@@ -259,8 +261,18 @@ export function ReportsPage() {
     [rows, config],
   )
 
-    return (
-    <div className="flex h-full min-h-0 w-full gap-5 overflow-hidden">
+  return (
+    <div
+      className="
+        flex
+        h-full
+        min-h-0
+        max-h-full
+        w-full
+        gap-5
+        overflow-hidden
+      "
+    >
       {/* Report Preview */}
       <section
         ref={previewRef}
@@ -269,6 +281,7 @@ export function ReportsPage() {
           flex
           min-w-0
           min-h-0
+          max-h-full
           flex-1
           flex-col
           overflow-hidden
@@ -278,16 +291,24 @@ export function ReportsPage() {
           outline-none
         "
       >
-        <div className="min-h-0 flex-1 overflow-hidden p-6">
+        <div
+          className="
+            flex
+            min-h-0
+            flex-1
+            overflow-hidden
+            p-6
+          "
+        >
           {loading ? (
-            <div className="flex h-full items-center justify-center">
+            <div className="flex h-full w-full items-center justify-center">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
                 Loading report data...
               </div>
             </div>
           ) : error ? (
-            <div className="flex h-full items-center justify-center">
+            <div className="flex h-full w-full items-center justify-center">
               <div className="max-w-md rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
                 <p className="text-sm font-medium text-destructive">
                   Failed to load report
@@ -311,6 +332,8 @@ export function ReportsPage() {
       <section
         className="
           flex
+          h-full
+          max-h-full
           w-[380px]
           shrink-0
           min-h-0

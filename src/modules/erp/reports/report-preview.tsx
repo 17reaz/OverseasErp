@@ -1,9 +1,14 @@
 import { useState } from "react"
-import { Download, FileText, Loader2, Printer } from "lucide-react"
+
+import {
+  Download,
+  FileText,
+  Loader2,
+  Printer,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-
 
 import type {
   ReportColumn,
@@ -132,7 +137,10 @@ function createFileName(
 
   return (
     reportName
-      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .replace(
+        /[^a-zA-Z0-9-_ ]/g,
+        "",
+      )
       .replace(/\s+/g, "-")
       .toLowerCase() + ".pdf"
   )
@@ -153,34 +161,39 @@ export function ReportPreview({
     }))
 
   const generatePdf = async () => {
-  if (columns.length === 0) {
-    return null
-  }
+    if (columns.length === 0) {
+      return null
+    }
 
-  setIsGenerating(true)
+    setIsGenerating(true)
 
-  try {
-    const [{ pdf }, { ReportDocument }] =
-      await Promise.all([
+    try {
+      const [
+        { pdf },
+        { ReportDocument },
+      ] = await Promise.all([
         import("@react-pdf/renderer"),
-        import("./pdf/report-document"),
+        import(
+          "./pdf/report-document"
+        ),
       ])
 
-    const blob = await pdf(
-      <ReportDocument
-        config={config}
-        rows={rows}
-      />,
-    ).toBlob()
+      const blob = await pdf(
+        <ReportDocument
+          config={config}
+          rows={rows}
+        />,
+      ).toBlob()
 
-    return blob
-  } finally {
-    setIsGenerating(false)
+      return blob
+    } finally {
+      setIsGenerating(false)
+    }
   }
-}
 
   const handleDownload = async () => {
-    const blob = await generatePdf()
+    const blob =
+      await generatePdf()
 
     if (!blob) {
       return
@@ -193,6 +206,7 @@ export function ReportPreview({
       document.createElement("a")
 
     link.href = url
+
     link.download =
       createFileName(config)
 
@@ -208,7 +222,8 @@ export function ReportPreview({
   }
 
   const handlePrint = async () => {
-    const blob = await generatePdf()
+    const blob =
+      await generatePdf()
 
     if (!blob) {
       return
@@ -231,8 +246,9 @@ export function ReportPreview({
     }
 
     /*
-     * Keep the Blob URL alive while the
-     * new browser tab is using the PDF.
+     * Keep the Blob URL alive while
+     * the new browser tab is using
+     * the PDF.
      */
     setTimeout(() => {
       URL.revokeObjectURL(url)
@@ -240,18 +256,36 @@ export function ReportPreview({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      className="
+        flex
+        h-full
+        min-h-0
+        max-h-full
+        w-full
+        flex-col
+        overflow-hidden
+      "
+    >
       {/* Header */}
 
-      <div className="flex shrink-0 items-start justify-between gap-4">
+      <div
+        className="
+          flex
+          shrink-0
+          items-start
+          justify-between
+          gap-4
+        "
+      >
         <div>
           <h2 className="text-lg font-semibold">
             Report Preview
           </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Review the report before exporting
-            it as PDF.
+            Review the report before
+            exporting it as PDF.
           </p>
         </div>
 
@@ -299,16 +333,34 @@ export function ReportPreview({
         </div>
       </div>
 
-            {/* Preview */}
+      {/* Independent Preview Scroll Area */}
 
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
-        <div className="min-w-[850px] px-6 py-6">
+      <div
+        className="
+          min-h-0
+          flex-1
+          overflow-auto
+          overscroll-contain
+        "
+      >
+        <div
+          className="
+            flex
+            min-w-[850px]
+            justify-center
+            px-6
+            py-6
+          "
+        >
+          {/* A4 Paper */}
+
           <div
             className="
-              mx-auto
               w-[794px]
               min-w-[794px]
               min-h-[1123px]
+              shrink-0
+              overflow-hidden
               rounded-lg
               border
               bg-background
@@ -321,11 +373,13 @@ export function ReportPreview({
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <h1 className="text-2xl font-semibold">
-                    {config.name || "Untitled Report"}
+                    {config.name ||
+                      "Untitled Report"}
                   </h1>
 
                   <div className="mt-2 text-sm text-muted-foreground">
-                    {config.dateFrom && config.dateTo
+                    {config.dateFrom &&
+                    config.dateTo
                       ? `${config.dateFrom} → ${config.dateTo}`
                       : "All dates"}
                   </div>
@@ -341,43 +395,85 @@ export function ReportPreview({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    {columns.map((column) => (
-                      <th
-                        key={column.id}
-                        className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium"
-                      >
-                        {column.label}
-                      </th>
-                    ))}
+                    {columns.map(
+                      (column) => (
+                        <th
+                          key={
+                            column.id
+                          }
+                          className="
+                            whitespace-nowrap
+                            px-4
+                            py-3
+                            text-left
+                            text-xs
+                            font-medium
+                          "
+                        >
+                          {
+                            column.label
+                          }
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
 
                 <tbody>
-                  {rows.length === 0 ? (
+                  {rows.length ===
+                  0 ? (
                     <tr>
                       <td
-                        colSpan={Math.max(columns.length, 1)}
-                        className="px-4 py-12 text-center text-sm text-muted-foreground"
+                        colSpan={Math.max(
+                          columns.length,
+                          1,
+                        )}
+                        className="
+                          px-4
+                          py-12
+                          text-center
+                          text-sm
+                          text-muted-foreground
+                        "
                       >
-                        No records found for this report.
+                        No records found
+                        for this report.
                       </td>
                     </tr>
                   ) : (
-                    rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="border-b last:border-0"
-                      >
-                        {columns.map((column) => (
-                          <td
-                            key={column.id}
-                            className="whitespace-nowrap px-4 py-3"
-                          >
-                            {renderValue(row, column.id)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
+                    rows.map(
+                      (row) => (
+                        <tr
+                          key={row.id}
+                          className="
+                            border-b
+                            last:border-0
+                          "
+                        >
+                          {columns.map(
+                            (
+                              column,
+                            ) => (
+                              <td
+                                key={
+                                  column.id
+                                }
+                                className="
+                                  whitespace-nowrap
+                                  px-4
+                                  py-3
+                                "
+                              >
+                                {renderValue(
+                                  row,
+                                  column.id,
+                                )}
+                              </td>
+                            ),
+                          )}
+                        </tr>
+                      ),
+                    )
                   )}
                 </tbody>
               </table>
@@ -385,13 +481,29 @@ export function ReportPreview({
 
             {/* Footer */}
 
-            <div className="flex items-center justify-between border-t px-8 py-4 text-xs text-muted-foreground">
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                border-t
+                px-8
+                py-4
+                text-xs
+                text-muted-foreground
+              "
+            >
               <span>
                 {rows.length} record
-                {rows.length === 1 ? "" : "s"}
+                {rows.length === 1
+                  ? ""
+                  : "s"}
               </span>
 
-              <span>Generated from OverseasErp</span>
+              <span>
+                Generated from
+                OverseasErp
+              </span>
             </div>
           </div>
         </div>
