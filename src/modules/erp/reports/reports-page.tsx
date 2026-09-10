@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -106,6 +107,7 @@ function filterRows(
 }
 
 export function ReportsPage() {
+  const previewRef = useRef<HTMLDivElement>(null)
   const [config, setConfig] =
     useState<ReportConfig>(
       initialConfig,
@@ -258,8 +260,11 @@ export function ReportsPage() {
   )
 
   return (
-    <div className="flex h-full min-h-0 w-full gap-5 overflow-hidden">
-
+<div
+  ref={previewRef}
+  tabIndex={-1}
+  className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background outline-none"
+>
       {/* Report Preview */}
 
       <section
@@ -319,11 +324,14 @@ export function ReportsPage() {
           bg-background
         "
       >
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
-          <ReportBuilder
-            onChange={setConfig}
-          />
-        </div>
+       <div className="flex h-full min-h-0 w-[380px] shrink-0 flex-col overflow-hidden rounded-lg border bg-background">
+  <ReportBuilder
+    onChange={setConfig}
+    onPreview={() => {
+      previewRef.current?.focus()
+    }}
+  />
+</div>
       </section>
     </div>
   )
