@@ -301,9 +301,9 @@ export function ReportPreview({
 
       {/* Preview */}
 
-      <div className="min-h-0 flex-1 overflow-auto py-6">
-        <div className="mx-auto max-w-[1100px] rounded-lg border bg-background shadow-sm">
-
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
+  <div className="min-w-[900px] px-6 py-6">
+    <div className="mx-auto w-full max-w-[1100px] rounded-lg border bg-background shadow-sm">
           {/* Document Header */}
 
           <div className="border-b p-8">
@@ -400,6 +400,7 @@ export function ReportPreview({
             </span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

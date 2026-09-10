@@ -1,4 +1,10 @@
 import { useState } from "react"
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  RotateCcw,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -23,129 +29,48 @@ import type {
 
 const reportColumns: Record<ReportType, ReportColumn[]> = {
   candidates: [
-    {
-      id: "sl",
-      label: "SL",
-    },
-    {
-      id: "name",
-      label: "Candidate",
-    },
-    {
-      id: "passport_no",
-      label: "Passport",
-    },
-    {
-      id: "country",
-      label: "Country",
-    },
-    {
-      id: "agent",
-      label: "Agent",
-    },
-    {
-      id: "stage",
-      label: "Stage",
-    },
-    {
-      id: "status",
-      label: "Status",
-    },
-    {
-      id: "received_date",
-      label: "Received Date",
-    },
+    { id: "sl", label: "SL" },
+    { id: "name", label: "Candidate" },
+    { id: "passport_no", label: "Passport" },
+    { id: "country", label: "Country" },
+    { id: "agent", label: "Agent" },
+    { id: "stage", label: "Stage" },
+    { id: "status", label: "Status" },
+    { id: "received_date", label: "Received Date" },
   ],
 
   medical: [
-    {
-      id: "candidate",
-      label: "Candidate",
-    },
-    {
-      id: "passport_no",
-      label: "Passport",
-    },
-    {
-      id: "medical_date",
-      label: "Medical Date",
-    },
-    {
-      id: "fit_date",
-      label: "Fit Date",
-    },
-    {
-      id: "status",
-      label: "Status",
-    },
+    { id: "candidate", label: "Candidate" },
+    { id: "passport_no", label: "Passport" },
+    { id: "medical_date", label: "Medical Date" },
+    { id: "fit_date", label: "Fit Date" },
+    { id: "status", label: "Status" },
   ],
 
   mofa: [
-    {
-      id: "candidate",
-      label: "Candidate",
-    },
-    {
-      id: "passport_no",
-      label: "Passport",
-    },
-    {
-      id: "mofa_date",
-      label: "MOFA Date",
-    },
-    {
-      id: "status",
-      label: "Status",
-    },
+    { id: "candidate", label: "Candidate" },
+    { id: "passport_no", label: "Passport" },
+    { id: "mofa_date", label: "MOFA Date" },
+    { id: "status", label: "Status" },
   ],
 
   visa: [
-    {
-      id: "candidate",
-      label: "Candidate",
-    },
-    {
-      id: "passport_no",
-      label: "Passport",
-    },
-    {
-      id: "visa_date",
-      label: "Visa Date",
-    },
-    {
-      id: "status",
-      label: "Status",
-    },
+    { id: "candidate", label: "Candidate" },
+    { id: "passport_no", label: "Passport" },
+    { id: "visa_date", label: "Visa Date" },
+    { id: "status", label: "Status" },
   ],
 
   flight: [
-    {
-      id: "candidate",
-      label: "Candidate",
-    },
-    {
-      id: "passport_no",
-      label: "Passport",
-    },
-    {
-      id: "flight_date",
-      label: "Flight Date",
-    },
-    {
-      id: "airline",
-      label: "Airline",
-    },
-    {
-      id: "status",
-      label: "Status",
-    },
+    { id: "candidate", label: "Candidate" },
+    { id: "passport_no", label: "Passport" },
+    { id: "flight_date", label: "Flight Date" },
+    { id: "airline", label: "Airline" },
+    { id: "status", label: "Status" },
   ],
 }
 
-const defaultColumns: Record<
-  ReportType,
-  string[]
-> = {
+const defaultColumns: Record<ReportType, string[]> = {
   candidates: [
     "sl",
     "name",
@@ -197,10 +122,18 @@ const defaultFilters: ReportFilters = {
 
 type ReportBuilderProps = {
   onChange: (config: ReportConfig) => void
+  onPreview?: () => void
 }
+
+type SectionKey =
+  | "information"
+  | "dateRange"
+  | "filters"
+  | "columns"
 
 export function ReportBuilder({
   onChange,
+  onPreview,
 }: ReportBuilderProps) {
   const [name, setName] = useState("")
 
@@ -210,18 +143,23 @@ export function ReportBuilder({
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
 
-  const [columns, setColumns] =
-    useState<string[]>(
-      defaultColumns.candidates,
-    )
+  const [columns, setColumns] = useState<string[]>(
+    defaultColumns.candidates,
+  )
 
   const [filters, setFilters] =
-    useState<ReportFilters>(
-      defaultFilters,
-    )
+    useState<ReportFilters>(defaultFilters)
 
-  const availableColumns =
-    reportColumns[type]
+  const [openSections, setOpenSections] = useState<
+    Record<SectionKey, boolean>
+  >({
+    information: true,
+    dateRange: false,
+    filters: true,
+    columns: false,
+  })
+
+  const availableColumns = reportColumns[type]
 
   const emit = (
     overrides: Partial<ReportConfig> = {},
@@ -235,6 +173,15 @@ export function ReportBuilder({
       filters,
       ...overrides,
     })
+  }
+
+  const toggleSection = (
+    section: SectionKey,
+  ) => {
+    setOpenSections((previous) => ({
+      ...previous,
+      [section]: !previous[section],
+    }))
   }
 
   const handleNameChange = (
@@ -357,11 +304,44 @@ export function ReportBuilder({
     })
   }
 
-  return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
+  const renderSectionHeader = (
+    section: SectionKey,
+    title: string,
+    description: string,
+  ) => {
+    const isOpen = openSections[section]
 
-      <div className="shrink-0">
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          toggleSection(section)
+        }
+        className="flex w-full items-center justify-between gap-3 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium">
+            {title}
+          </h3>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            {description}
+          </p>
+        </div>
+
+        {isOpen ? (
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Header */}
+      <div className="shrink-0 px-6 pt-6">
         <h2 className="text-lg font-semibold">
           Report Builder
         </h2>
@@ -372,400 +352,403 @@ export function ReportBuilder({
         </p>
       </div>
 
-      <Separator className="my-5" />
+      <Separator className="mt-5" />
 
-      {/* Content */}
-
-      <ScrollArea className="min-h-0 flex-1 pr-4">
-        <div className="space-y-7">
-
+      {/* Scrollable Builder Content */}
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="px-6 pb-6">
           {/* Report Information */}
+          <section>
+            {renderSectionHeader(
+              "information",
+              "Report Information",
+              "Basic report information.",
+            )}
 
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">
-                Report Information
-              </h3>
+            {openSections.information && (
+              <div className="space-y-4 pb-5">
+                <div className="space-y-2">
+                  <Label htmlFor="report-name">
+                    Report Name
+                  </Label>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Basic report information.
-              </p>
-            </div>
+                  <Input
+                    id="report-name"
+                    placeholder="Monthly Candidate Report"
+                    value={name}
+                    onChange={(event) =>
+                      handleNameChange(
+                        event.target.value,
+                      )
+                    }
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="report-name">
-                Report Name
-              </Label>
+                <div className="space-y-2">
+                  <Label>
+                    Report Type
+                  </Label>
 
-              <Input
-                id="report-name"
-                placeholder="Monthly Candidate Report"
-                value={name}
-                onChange={(event) =>
-                  handleNameChange(
-                    event.target.value,
-                  )
-                }
-              />
-            </div>
+                  <Select
+                    value={type}
+                    onValueChange={(value) =>
+                      handleTypeChange(
+                        value as ReportType,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
 
-            <div className="space-y-2">
-              <Label>Report Type</Label>
+                    <SelectContent>
+                      <SelectItem value="candidates">
+                        Candidates
+                      </SelectItem>
 
-              <Select
-                value={type}
-                onValueChange={(value) =>
-                  handleTypeChange(
-                    value as ReportType,
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                      <SelectItem value="medical">
+                        Medical
+                      </SelectItem>
 
-                <SelectContent>
-                  <SelectItem value="candidates">
-                    Candidates
-                  </SelectItem>
+                      <SelectItem value="mofa">
+                        MOFA
+                      </SelectItem>
 
-                  <SelectItem value="medical">
-                    Medical
-                  </SelectItem>
+                      <SelectItem value="visa">
+                        Visa
+                      </SelectItem>
 
-                  <SelectItem value="mofa">
-                    MOFA
-                  </SelectItem>
-
-                  <SelectItem value="visa">
-                    Visa
-                  </SelectItem>
-
-                  <SelectItem value="flight">
-                    Flight
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                      <SelectItem value="flight">
+                        Flight
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </section>
 
           <Separator />
 
           {/* Date Range */}
+          <section>
+            {renderSectionHeader(
+              "dateRange",
+              "Date Range",
+              "Filter records by date.",
+            )}
 
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">
-                Date Range
-              </h3>
+            {openSections.dateRange && (
+              <div className="grid grid-cols-2 gap-3 pb-5">
+                <div className="space-y-2">
+                  <Label htmlFor="date-from">
+                    From
+                  </Label>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Filter records by date.
-              </p>
-            </div>
+                  <Input
+                    id="date-from"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) =>
+                      handleDateFromChange(
+                        event.target.value,
+                      )
+                    }
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="date-from">
-                  From
-                </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="date-to">
+                    To
+                  </Label>
 
-                <Input
-                  id="date-from"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(event) =>
-                    handleDateFromChange(
-                      event.target.value,
-                    )
-                  }
-                />
+                  <Input
+                    id="date-to"
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) =>
+                      handleDateToChange(
+                        event.target.value,
+                      )
+                    }
+                  />
+                </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date-to">
-                  To
-                </Label>
-
-                <Input
-                  id="date-to"
-                  type="date"
-                  value={dateTo}
-                  onChange={(event) =>
-                    handleDateToChange(
-                      event.target.value,
-                    )
-                  }
-                />
-              </div>
-            </div>
+            )}
           </section>
 
           <Separator />
 
           {/* Filters */}
+          <section>
+            {renderSectionHeader(
+              "filters",
+              "Filters",
+              "Choose which records should be included.",
+            )}
 
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">
-                Filters
-              </h3>
+            {openSections.filters && (
+              <div className="space-y-4 pb-5">
+                {/* Agent */}
+                <div className="space-y-2">
+                  <Label>
+                    Agent
+                  </Label>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Choose which records should be
-                included.
-              </p>
-            </div>
+                  <Select
+                    value={
+                      filters.agentId ??
+                      "all"
+                    }
+                    onValueChange={(value) =>
+                      handleFilterChange(
+                        "agentId",
+                        value,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Agents" />
+                    </SelectTrigger>
 
-            {/* Agent */}
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Agents
+                      </SelectItem>
 
-            <div className="space-y-2">
-              <Label>Agent</Label>
+                      <SelectItem value="agent-1">
+                        Agent 01
+                      </SelectItem>
 
-              <Select
-                value={
-                  filters.agentId ?? "all"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "agentId",
-                    value,
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Agents" />
-                </SelectTrigger>
+                      <SelectItem value="agent-2">
+                        Agent 02
+                      </SelectItem>
 
-                <SelectContent>
-                  <SelectItem value="all">
-                    All Agents
-                  </SelectItem>
+                      <SelectItem value="agent-3">
+                        Agent 03
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <SelectItem value="agent-1">
-                    Agent 01
-                  </SelectItem>
+                {/* Country */}
+                <div className="space-y-2">
+                  <Label>
+                    Country
+                  </Label>
 
-                  <SelectItem value="agent-2">
-                    Agent 02
-                  </SelectItem>
+                  <Select
+                    value={
+                      filters.country ??
+                      "all"
+                    }
+                    onValueChange={(value) =>
+                      handleFilterChange(
+                        "country",
+                        value,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Countries" />
+                    </SelectTrigger>
 
-                  <SelectItem value="agent-3">
-                    Agent 03
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Countries
+                      </SelectItem>
 
-            {/* Country */}
+                      <SelectItem value="Saudi Arabia">
+                        Saudi Arabia
+                      </SelectItem>
 
-            <div className="space-y-2">
-              <Label>Country</Label>
+                      <SelectItem value="UAE">
+                        UAE
+                      </SelectItem>
 
-              <Select
-                value={
-                  filters.country ?? "all"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "country",
-                    value,
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Countries" />
-                </SelectTrigger>
+                      <SelectItem value="Qatar">
+                        Qatar
+                      </SelectItem>
 
-                <SelectContent>
-                  <SelectItem value="all">
-                    All Countries
-                  </SelectItem>
+                      <SelectItem value="Oman">
+                        Oman
+                      </SelectItem>
 
-                  <SelectItem value="Saudi Arabia">
-                    Saudi Arabia
-                  </SelectItem>
+                      <SelectItem value="Kuwait">
+                        Kuwait
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <SelectItem value="UAE">
-                    UAE
-                  </SelectItem>
+                {/* Stage */}
+                <div className="space-y-2">
+                  <Label>
+                    Stage
+                  </Label>
 
-                  <SelectItem value="Qatar">
-                    Qatar
-                  </SelectItem>
+                  <Select
+                    value={
+                      filters.stage ??
+                      "all"
+                    }
+                    onValueChange={(value) =>
+                      handleFilterChange(
+                        "stage",
+                        value,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Stages" />
+                    </SelectTrigger>
 
-                  <SelectItem value="Oman">
-                    Oman
-                  </SelectItem>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Stages
+                      </SelectItem>
 
-                  <SelectItem value="Kuwait">
-                    Kuwait
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                      <SelectItem value="medical">
+                        Medical
+                      </SelectItem>
 
-            {/* Stage */}
+                      <SelectItem value="mofa">
+                        MOFA
+                      </SelectItem>
 
-            <div className="space-y-2">
-              <Label>Stage</Label>
+                      <SelectItem value="visa">
+                        Visa
+                      </SelectItem>
 
-              <Select
-                value={
-                  filters.stage ?? "all"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "stage",
-                    value,
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Stages" />
-                </SelectTrigger>
+                      <SelectItem value="flight">
+                        Flight
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <SelectContent>
-                  <SelectItem value="all">
-                    All Stages
-                  </SelectItem>
+                {/* Status */}
+                <div className="space-y-2">
+                  <Label>
+                    Status
+                  </Label>
 
-                  <SelectItem value="medical">
-                    Medical
-                  </SelectItem>
+                  <Select
+                    value={
+                      filters.status ??
+                      "all"
+                    }
+                    onValueChange={(value) =>
+                      handleFilterChange(
+                        "status",
+                        value,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
 
-                  <SelectItem value="mofa">
-                    MOFA
-                  </SelectItem>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Status
+                      </SelectItem>
 
-                  <SelectItem value="visa">
-                    Visa
-                  </SelectItem>
+                      <SelectItem value="active">
+                        Active
+                      </SelectItem>
 
-                  <SelectItem value="flight">
-                    Flight
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status */}
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-
-              <Select
-                value={
-                  filters.status ?? "all"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "status",
-                    value,
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="all">
-                    All Status
-                  </SelectItem>
-
-                  <SelectItem value="active">
-                    Active
-                  </SelectItem>
-
-                  <SelectItem value="returned">
-                    Returned
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                      <SelectItem value="returned">
+                        Returned
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </section>
 
           <Separator />
 
           {/* Columns */}
+          <section>
+            {renderSectionHeader(
+              "columns",
+              "Columns",
+              "Select the fields that should appear.",
+            )}
 
-          <section className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">
-                Columns
-              </h3>
+            {openSections.columns && (
+              <div className="pb-5">
+                <div className="overflow-hidden rounded-lg border">
+                  <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
+                    <span className="text-xs font-medium">
+                      Available Columns
+                    </span>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Select the fields that should
-                appear.
-              </p>
-            </div>
+                    <span className="text-xs text-muted-foreground">
+                      {columns.length} selected
+                    </span>
+                  </div>
 
-            <div className="overflow-hidden rounded-lg border">
-              <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
-                <span className="text-xs font-medium">
-                  Available Columns
-                </span>
+                  <div className="space-y-3 p-4">
+                    {availableColumns.map(
+                      (column) => (
+                        <div
+                          key={column.id}
+                          className="flex items-center gap-3"
+                        >
+                          <Checkbox
+                            id={`column-${column.id}`}
+                            checked={columns.includes(
+                              column.id,
+                            )}
+                            onCheckedChange={() =>
+                              toggleColumn(
+                                column.id,
+                              )
+                            }
+                          />
 
-                <span className="text-xs text-muted-foreground">
-                  {columns.length} selected
-                </span>
+                          <Label
+                            htmlFor={`column-${column.id}`}
+                            className="cursor-pointer text-sm font-normal"
+                          >
+                            {column.label}
+                          </Label>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
               </div>
-
-              <div className="space-y-3 p-4">
-                {availableColumns.map(
-                  (column) => (
-                    <div
-                      key={column.id}
-                      className="flex items-center gap-3"
-                    >
-                      <Checkbox
-                        id={`column-${column.id}`}
-                        checked={columns.includes(
-                          column.id,
-                        )}
-                        onCheckedChange={() =>
-                          toggleColumn(
-                            column.id,
-                          )
-                        }
-                      />
-
-                      <Label
-                        htmlFor={`column-${column.id}`}
-                        className="cursor-pointer font-normal"
-                      >
-                        {column.label}
-                      </Label>
-                    </div>
-                  ),
-                )}
-              </div>
-            </div>
+            )}
           </section>
         </div>
       </ScrollArea>
 
-      {/* Footer */}
+      {/* Fixed Footer */}
+      <div className="shrink-0 border-t bg-background px-6 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={reset}
+          >
+            <RotateCcw className="mr-2 size-4" />
+            Reset
+          </Button>
 
-      <Separator className="my-4" />
-
-      <div className="flex shrink-0 justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={reset}
-        >
-          Reset
-        </Button>
-
-        <Button
-          type="button"
-          disabled={columns.length === 0}
-        >
-          Preview
-        </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onPreview}
+          >
+            <Eye className="mr-2 size-4" />
+            Preview
+          </Button>
+        </div>
       </div>
     </div>
   )
