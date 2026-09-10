@@ -299,108 +299,102 @@ export function ReportPreview({
         </div>
       </div>
 
-      {/* Preview */}
+            {/* Preview */}
 
       <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
-  <div className="min-w-[900px] px-6 py-6">
-    <div className="mx-auto w-full max-w-[1100px] rounded-lg border bg-background shadow-sm">
-          {/* Document Header */}
+        <div className="min-w-[850px] px-6 py-6">
+          <div
+            className="
+              mx-auto
+              w-[794px]
+              min-w-[794px]
+              min-h-[1123px]
+              rounded-lg
+              border
+              bg-background
+              shadow-sm
+            "
+          >
+            {/* Document Header */}
 
-          <div className="border-b p-8">
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h1 className="text-2xl font-semibold">
-                  {config.name ||
-                    "Untitled Report"}
-                </h1>
+            <div className="border-b p-8">
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <h1 className="text-2xl font-semibold">
+                    {config.name || "Untitled Report"}
+                  </h1>
 
-                <div className="mt-2 text-sm text-muted-foreground">
-                  {config.dateFrom &&
-                  config.dateTo
-                    ? `${config.dateFrom} → ${config.dateTo}`
-                    : "All dates"}
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    {config.dateFrom && config.dateTo
+                      ? `${config.dateFrom} → ${config.dateTo}`
+                      : "All dates"}
+                  </div>
                 </div>
+
+                <FileText className="size-6 text-muted-foreground" />
               </div>
-
-              <FileText className="size-6 text-muted-foreground" />
             </div>
-          </div>
 
-          {/* Table */}
+            {/* Table */}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40">
-                  {columns.map(
-                    (column) => (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    {columns.map((column) => (
                       <th
                         key={column.id}
                         className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium"
                       >
                         {column.label}
                       </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={Math.max(
-                        columns.length,
-                        1,
-                      )}
-                      className="px-4 py-12 text-center text-sm text-muted-foreground"
-                    >
-                      No records found for
-                      this report.
-                    </td>
+                    ))}
                   </tr>
-                ) : (
-                  rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b last:border-0"
-                    >
-                      {columns.map(
-                        (column) => (
+                </thead>
+
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={Math.max(columns.length, 1)}
+                        className="px-4 py-12 text-center text-sm text-muted-foreground"
+                      >
+                        No records found for this report.
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className="border-b last:border-0"
+                      >
+                        {columns.map((column) => (
                           <td
                             key={column.id}
                             className="whitespace-nowrap px-4 py-3"
                           >
-                            {renderValue(
-                              row,
-                              column.id,
-                            )}
+                            {renderValue(row, column.id)}
                           </td>
-                        ),
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Footer */}
+            {/* Footer */}
 
-          <div className="flex items-center justify-between border-t px-8 py-4 text-xs text-muted-foreground">
-            <span>
-              {rows.length} record
-              {rows.length === 1
-                ? ""
-                : "s"}
-            </span>
+            <div className="flex items-center justify-between border-t px-8 py-4 text-xs text-muted-foreground">
+              <span>
+                {rows.length} record
+                {rows.length === 1 ? "" : "s"}
+              </span>
 
-            <span>
-              Generated from OverseasErp
-            </span>
+              <span>Generated from OverseasErp</span>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   )
