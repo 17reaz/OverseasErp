@@ -335,8 +335,9 @@ export function ReportPreview({
 
       {/* Independent Preview Scroll Area */}
 
-      <div
+            <div
         className="
+          no-scrollbar
           min-h-0
           flex-1
           overflow-auto

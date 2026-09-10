@@ -269,6 +269,7 @@ export function ReportsPage() {
         min-h-0
         max-h-full
         w-full
+        flex-1
         gap-5
         overflow-hidden
       "
