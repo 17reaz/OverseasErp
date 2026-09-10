@@ -128,7 +128,7 @@ export function ReportDocument({
     <Document>
       <Page
         size="A4"
-        orientation="landscape"
+        orientation="portrait"
         style={styles.page}
       >
         {/* Report Header */}

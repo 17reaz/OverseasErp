@@ -259,15 +259,12 @@ export function ReportsPage() {
     [rows, config],
   )
 
-  return (
-<div
-  ref={previewRef}
-  tabIndex={-1}
-  className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background outline-none"
->
+    return (
+    <div className="flex h-full min-h-0 w-full gap-5 overflow-hidden">
       {/* Report Preview */}
-
       <section
+        ref={previewRef}
+        tabIndex={-1}
         className="
           flex
           min-w-0
@@ -278,6 +275,7 @@ export function ReportsPage() {
           rounded-lg
           border
           bg-background
+          outline-none
         "
       >
         <div className="min-h-0 flex-1 overflow-hidden p-6">
@@ -285,7 +283,6 @@ export function ReportsPage() {
             <div className="flex h-full items-center justify-center">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
-
                 Loading report data...
               </div>
             </div>
@@ -309,8 +306,8 @@ export function ReportsPage() {
           )}
         </div>
       </section>
-      {/* Report Builder */}
 
+      {/* Report Builder */}
       <section
         className="
           flex
@@ -324,14 +321,12 @@ export function ReportsPage() {
           bg-background
         "
       >
-       <div className="flex h-full min-h-0 w-[380px] shrink-0 flex-col overflow-hidden rounded-lg border bg-background">
-  <ReportBuilder
-    onChange={setConfig}
-    onPreview={() => {
-      previewRef.current?.focus()
-    }}
-  />
-</div>
+        <ReportBuilder
+          onChange={setConfig}
+          onPreview={() => {
+            previewRef.current?.focus()
+          }}
+        />
       </section>
     </div>
   )
