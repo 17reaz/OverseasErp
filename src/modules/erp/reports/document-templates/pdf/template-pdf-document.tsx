@@ -79,9 +79,6 @@ function arabicTextStyle(text: string) {
     ? { fontFamily: ARABIC_FONT_FAMILY, textAlign: "right" as const }
     : {}
 }
-function alignStyle(align?: "left" | "center" | "right") {
-  return { textAlign: align ?? "left" }
-}
 
 const justifyContentFor: Record<string, "flex-start" | "center" | "flex-end"> = {
   left: "flex-start",
