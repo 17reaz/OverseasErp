@@ -20,6 +20,7 @@ import {
 import {
   MedicalTable,
 } from "./components/medical-table";
+import { MedicalGrid } from "./components/medical-grid";
 
 import {
   MedicalToolbar,
@@ -32,6 +33,8 @@ import {
   deleteMedical,
   getCandidatesWithoutMedical,
   getMedicals,
+   getMedicalPipelineItems,
+  type MedicalPipelineItem,
   type Medical,
   type MedicalCandidate,
 } from "./medical-service";
@@ -62,7 +65,11 @@ export function MedicalPage() {
     setPendingCandidates,
   ] = useState<MedicalCandidate[]>([]);
 
+const [pipelineItems, setPipelineItems] =
+  useState<MedicalPipelineItem[]>([]);
 
+const [pipelineLoading, setPipelineLoading] =
+  useState(false);
   const [
     loading,
     setLoading,
@@ -127,7 +134,25 @@ export function MedicalPage() {
    * LOAD MEDICALS
    * =========================================================
    */
+async function loadPipeline() {
+  setPipelineLoading(true);
 
+  try {
+    const {
+      data,
+      error,
+    } = await getMedicalPipelineItems();
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setPipelineItems(data ?? []);
+  } finally {
+    setPipelineLoading(false);
+  }
+}
   const loadMedicals = useCallback(
     async () => {
 
@@ -227,12 +252,14 @@ export function MedicalPage() {
       await Promise.all([
         loadMedicals(),
         loadPending(),
+        loadPipeline()
       ]);
 
     },
     [
       loadMedicals,
       loadPending,
+      loadPipeline,
     ],
   );
 
@@ -723,51 +750,31 @@ export function MedicalPage() {
 
       />
 
+{filter.view === "medicalable" ? (
+  <MedicalPending
+    candidates={pendingCandidates}
+    loading={pendingLoading}
+    onCreate={handleCreate}
+  />
+) : viewMode === "grid" ? (
+  <MedicalGrid
+    items={pipelineItems}
+    loading={pipelineLoading}
+    onOpen={(candidateId) => {
+      // এখানে পরে existing candidate details / UniversalSheet connect করবে
+      console.log("Open candidate:", candidateId);
+    }}
+  />
+) : (
+  <MedicalTable
+    medicals={filteredMedicals}
+    loading={loading}
+    onEdit={handleEdit}
+    onDelete={handleDelete}
+    onNext={handleNext}
+  />
 
-      {filter.view ===
-        "medicalable" ? (
-
-        <MedicalPending
-
-          candidates={
-            filteredPendingCandidates
-          }
-
-          loading={
-            pendingLoading
-          }
-
-          onAddMedical={
-            handleAddMedical
-          }
-
-        />
-
-      ) : (
-
-        <MedicalTable
-
-          medicals={
-            filteredMedicals
-          }
-
-          loading={
-            loading
-          }
-
-          onEdit={
-            handleEdit
-          }
-
-          onDelete={
-            handleDelete
-          }
-
-          onNext={
-            handleNext
-          }
-
-        />
+     
 
       )}
 

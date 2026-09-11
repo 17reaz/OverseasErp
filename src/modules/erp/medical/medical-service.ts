@@ -501,3 +501,272 @@ return {
   error: null,
 };
 }
+/* =========================================================
+   MEDICAL PIPELINE
+   ---------------------------------------------------------
+   Used by Medical Grid.
+
+   Relationship:
+
+   Medical ─┐
+   MOFA ────┼── candidate_id → Candidate
+   Visa ────┘
+
+   No N+1 queries.
+   ========================================================= */
+
+export interface MedicalPipelineMofa {
+  id: string;
+
+  application_date:
+    | string
+    | null;
+
+  application_number:
+    | string
+    | null;
+
+  stage:
+    | string
+    | null;
+
+  created_at: string;
+}
+
+
+export interface MedicalPipelineVisa {
+  id: string;
+
+  visa_no:
+    | string
+    | null;
+
+  visa_date:
+    | string
+    | null;
+
+  expiry_date:
+    | string
+    | null;
+
+  status:
+    | string
+    | null;
+
+  created_at: string;
+}
+
+
+export interface MedicalPipelineItem {
+  medical: Medical;
+
+  candidate: MedicalCandidate;
+
+  mofa:
+    | MedicalPipelineMofa
+    | null;
+
+  visa:
+    | MedicalPipelineVisa
+    | null;
+}
+
+
+/* =========================================================
+   LATEST RECORD BY CANDIDATE
+   ========================================================= */
+
+function latestByCandidate<
+  T extends {
+    candidate_id: string;
+    created_at: string;
+  },
+>(
+  rows: T[],
+) {
+  const map = new Map<
+    string,
+    T
+  >();
+
+  for (const row of rows) {
+    if (!map.has(row.candidate_id)) {
+      map.set(
+        row.candidate_id,
+        row,
+      );
+    }
+  }
+
+  return map;
+}
+
+
+/* =========================================================
+   GET MEDICAL PIPELINE
+   ========================================================= */
+
+export async function getMedicalPipelineItems() {
+  const [
+    medicalResult,
+    mofaResult,
+    visaResult,
+  ] = await Promise.all([
+    supabase
+      .from("medicals")
+      .select(`
+        *,
+        candidate:candidates (
+          id,
+          name,
+          passport_no,
+          received_date,
+          country,
+          sl,
+          agent_id,
+          agent:agents (
+            id,
+            name,
+            code
+          )
+        )
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
+
+    supabase
+      .from("mofas")
+      .select(`
+        id,
+        candidate_id,
+        application_date,
+        application_number,
+        stage,
+        created_at
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
+
+    supabase
+      .from("visas")
+      .select(`
+        id,
+        candidate_id,
+        visa_no,
+        visa_date,
+        expiry_date,
+        status,
+        created_at
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
+  ]);
+
+
+  if (medicalResult.error) {
+    return {
+      data: null,
+      error: medicalResult.error,
+    };
+  }
+
+
+  if (mofaResult.error) {
+    return {
+      data: null,
+      error: mofaResult.error,
+    };
+  }
+
+
+  if (visaResult.error) {
+    return {
+      data: null,
+      error: visaResult.error,
+    };
+  }
+
+
+  const medicals =
+    (medicalResult.data ??
+      []) as Medical[];
+
+
+  const mofas =
+    (mofaResult.data ??
+      []) as MedicalPipelineMofa[];
+
+
+  const visas =
+    (visaResult.data ??
+      []) as MedicalPipelineVisa[];
+
+
+  const mofaMap =
+    latestByCandidate(
+      mofas as Array<
+        MedicalPipelineMofa & {
+          candidate_id: string;
+        }
+      >,
+    );
+
+
+  const visaMap =
+    latestByCandidate(
+      visas as Array<
+        MedicalPipelineVisa & {
+          candidate_id: string;
+        }
+      >,
+    );
+
+
+  const items: MedicalPipelineItem[] =
+    medicals
+      .filter(
+        (
+          medical,
+        ) => !!medical.candidate,
+      )
+      .map(
+        (medical) => {
+          const candidate =
+            medical.candidate as MedicalCandidate;
+
+          return {
+            medical,
+
+            candidate,
+
+            mofa:
+              mofaMap.get(
+                medical.candidate_id,
+              ) ?? null,
+
+            visa:
+              visaMap.get(
+                medical.candidate_id,
+              ) ?? null,
+          };
+        },
+      );
+
+
+  return {
+    data: items,
+    error: null,
+  };
+}
