@@ -1,5 +1,6 @@
 import {
   Document,
+  Font,
   Page,
   StyleSheet,
   Text,
@@ -24,6 +25,59 @@ import type {
    Use Template screen, and the same resolved blocks feed
    both the on-screen preview and this PDF.
 ========================================================= */
+
+/* ---------------------------------------------------------
+   ARABIC FONT SUPPORT
+   ---------------------------------------------------------
+   @react-pdf/renderer's built-in fonts (Helvetica, Times,
+   Courier) only cover Latin glyphs. Any Arabic text rendered
+   with them shows up blank/boxes in the exported PDF (the
+   on-screen HTML preview is unaffected — browsers already
+   have Arabic fonts installed).
+
+   Font.register() runs once, at module load, and fetches the
+   font file from a CDN at PDF-generation time (in the user's
+   browser) — no local font file or build step needed.
+
+   containsArabic() below then switches JUST the runs of text
+   that actually contain Arabic characters over to this font,
+   so Latin/English text keeps using the default Helvetica
+   (which renders sharper for Latin glyphs).
+--------------------------------------------------------- */
+
+const ARABIC_FONT_FAMILY = "NotoNaskhArabic"
+
+Font.register({
+  family: ARABIC_FONT_FAMILY,
+  fonts: [
+    {
+      src: "https://cdn.jsdelivr.net/fontsource/fonts/noto-naskh-arabic@latest/arabic-400-normal.ttf",
+      fontWeight: 400,
+    },
+    {
+      src: "https://cdn.jsdelivr.net/fontsource/fonts/noto-naskh-arabic@latest/arabic-700-normal.ttf",
+      fontWeight: 700,
+    },
+  ],
+})
+
+const ARABIC_CHAR_PATTERN = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/
+
+function containsArabic(text: string): boolean {
+  return ARABIC_CHAR_PATTERN.test(text)
+}
+
+/**
+ * Returns the extra style to spread onto a <Text> element so
+ * Arabic runs render with a font that actually has Arabic
+ * glyphs, and align right (natural reading direction) instead
+ * of inheriting a left-aligned Latin layout.
+ */
+function arabicTextStyle(text: string) {
+  return containsArabic(text)
+    ? { fontFamily: ARABIC_FONT_FAMILY, textAlign: "right" as const }
+    : {}
+}
 
 type TemplatePdfDocumentProps = {
   title: string
@@ -119,14 +173,20 @@ export function TemplatePdfDocument({
           switch (block.type) {
             case "heading":
               return (
-                <Text key={block.id} style={styles.heading}>
+                <Text
+                  key={block.id}
+                  style={[styles.heading, arabicTextStyle(block.text)]}
+                >
                   {block.text}
                 </Text>
               )
 
             case "paragraph":
               return (
-                <Text key={block.id} style={styles.paragraph}>
+                <Text
+                  key={block.id}
+                  style={[styles.paragraph, arabicTextStyle(block.text)]}
+                >
                   {block.text}
                 </Text>
               )
@@ -134,8 +194,16 @@ export function TemplatePdfDocument({
             case "field-row":
               return (
                 <View key={block.id} style={styles.fieldRow}>
-                  <Text style={styles.fieldLabel}>{block.label}:</Text>
-                  <Text style={styles.fieldValue}>{block.token}</Text>
+                  <Text
+                    style={[styles.fieldLabel, arabicTextStyle(block.label)]}
+                  >
+                    {block.label}:
+                  </Text>
+                  <Text
+                    style={[styles.fieldValue, arabicTextStyle(block.token)]}
+                  >
+                    {block.token}
+                  </Text>
                 </View>
               )
 
@@ -150,7 +218,7 @@ export function TemplatePdfDocument({
                       {row.map((cell, cellIndex) => (
                         <Text
                           key={`${block.id}-${rowIndex}-${cellIndex}`}
-                          style={styles.tableCell}
+                          style={[styles.tableCell, arabicTextStyle(cell)]}
                         >
                           {cell}
                         </Text>
@@ -166,7 +234,7 @@ export function TemplatePdfDocument({
                   {block.lines.map((line, index) => (
                     <Text
                       key={`${block.id}-${index}`}
-                      style={styles.signatureLine}
+                      style={[styles.signatureLine, arabicTextStyle(line)]}
                     >
                       {line}
                     </Text>
