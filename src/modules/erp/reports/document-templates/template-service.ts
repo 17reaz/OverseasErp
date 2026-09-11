@@ -328,7 +328,9 @@ export function buildCompanyFieldMap(company: Agency): FieldValueMap {
   }
 }
 
-export function buildAgentFieldMap(agent: Agent | null): FieldValueMap {
+export function buildAgentFieldMap(
+  agent: { name: string | null; code: string | null } | null,
+): FieldValueMap {
   if (!agent) {
     return { name: "", code: "" }
   }

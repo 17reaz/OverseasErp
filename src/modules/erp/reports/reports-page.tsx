@@ -16,7 +16,15 @@ import type {
 } from "./report-types"
 
 import { supabase } from "@/lib/supabase/client"
+import { DocumentTemplatesPage } from "./document-templates/document-templates-page"
 
+
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 const initialConfig: ReportConfig = {
   name: "",
   type: "candidates",
@@ -261,19 +269,21 @@ export function ReportsPage() {
     [rows, config],
   )
 
-  return (
-    <div
-      className="
-        flex
-        h-full
-        min-h-0
-        max-h-full
-        w-full
-        flex-1
-        gap-5
-        overflow-hidden
-      "
+   return (
+    <Tabs
+      defaultValue="standard"
+      className="flex h-full min-h-0 max-h-full w-full flex-col gap-4 overflow-hidden"
     >
+      <TabsList className="shrink-0">
+        <TabsTrigger value="standard">Standard Reports</TabsTrigger>
+        <TabsTrigger value="templates">Document Templates</TabsTrigger>
+      </TabsList>
+
+      <TabsContent
+        value="standard"
+        className="flex min-h-0 flex-1 gap-5 overflow-hidden"
+      >
+      {/* Report Preview */}
       {/* Report Preview */}
       <section
         ref={previewRef}
@@ -351,7 +361,15 @@ export function ReportsPage() {
             previewRef.current?.focus()
           }}
         />
-      </section>
-    </div>
+           </section>
+      </TabsContent>
+
+      <TabsContent
+        value="templates"
+        className="min-h-0 flex-1 overflow-hidden"
+      >
+        <DocumentTemplatesPage />
+      </TabsContent>
+    </Tabs>
   )
 }

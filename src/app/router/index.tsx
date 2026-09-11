@@ -31,6 +31,8 @@ import { VisaPage } from "@/modules/erp/visa/visa-page";
 import { BmetPage } from "@/modules/erp/bmet/bmet-page";
 import { FlightPage } from "@/modules/erp/flight/flight-page";
 import { ReportsPage } from "@/modules/erp/reports/reports-page";
+import { TemplateBuilderPage } from "@/modules/erp/reports/document-templates/template-builder-page";
+import { TemplateUsePage } from "@/modules/erp/reports/document-templates/template-use-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
 import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
 import { SettingsPage } from "@/modules/erp/settings/settings-page";
@@ -132,6 +134,10 @@ function AppRouter() {
             {/* Reports */}
             <Route path="reports" element={<ReportsPage />} />
 
+            {/* Reports → Document Templates (builder + usage) */}
+            <Route path="reports/templates/:templateId" element={<TemplateBuilderPage />} />
+            <Route path="reports/templates/:templateId/use" element={<TemplateUsePage />} />
+            
             {/* Finance */}
             <Route path="finance" element={<FinancePage />} />
 
