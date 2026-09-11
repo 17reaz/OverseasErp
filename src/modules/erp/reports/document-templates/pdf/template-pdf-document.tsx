@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from "@react-pdf/renderer"
 
 import type {
@@ -78,7 +79,15 @@ function arabicTextStyle(text: string) {
     ? { fontFamily: ARABIC_FONT_FAMILY, textAlign: "right" as const }
     : {}
 }
+function alignStyle(align?: "left" | "center" | "right") {
+  return { textAlign: align ?? "left" }
+}
 
+const justifyContentFor: Record<string, "flex-start" | "center" | "flex-end"> = {
+  left: "flex-start",
+  center: "center",
+  right: "flex-end",
+}
 type TemplatePdfDocumentProps = {
   title: string
   blocks: ContentBlock[]
@@ -152,6 +161,14 @@ function buildStyles(settings: TemplateSettings) {
     spacer: {
       width: "100%",
     },
+    imageWrap: {
+  width: "100%",
+  flexDirection: "row",
+},
+
+image: {
+  objectFit: "contain",
+},
   })
 }
 
@@ -241,7 +258,21 @@ export function TemplatePdfDocument({
                   ))}
                 </View>
               )
-
+              case "image":
+  return block.src ? (
+    <View
+      key={block.id}
+      style={[
+        styles.imageWrap,
+        { justifyContent: justifyContentFor[block.align ?? "left"] },
+      ]}
+    >
+      <Image
+        src={block.src}
+        style={[styles.image, { width: `${block.width ?? 40}%` }]}
+      />
+    </View>
+  ) : null
             case "spacer":
               return (
                 <View

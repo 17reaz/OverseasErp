@@ -89,6 +89,11 @@ const alignClass: Record<string, string> = {
   center: "text-center",
   right: "text-right",
 }
+const justifyClass: Record<string, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+}
 
 export function TemplatePreview({
   blocks,
@@ -201,6 +206,26 @@ export function TemplatePreview({
                     style={{ height: block.height ?? 12 }}
                   />
                 )
+              case "image":
+  return (
+    <div
+      key={block.id}
+      className={`flex ${justifyClass[block.align ?? "left"]}`}
+    >
+      {block.src ? (
+        <img
+          src={block.src}
+          alt=""
+          style={{ width: `${block.width ?? 40}%` }}
+          className="object-contain"
+        />
+      ) : (
+        <div className="flex h-24 w-40 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
+          No image uploaded
+        </div>
+      )}
+    </div>
+  )
 
               default:
                 return null

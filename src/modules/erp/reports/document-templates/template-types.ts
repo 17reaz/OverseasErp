@@ -76,7 +76,15 @@ export type ContentBlock =
   | { id: string; type: "table"; rows: string[][] }
   | { id: string; type: "signature"; lines: string[] }
   | { id: string; type: "spacer"; height?: number }
-
+   | {
+      id: string
+      type: "image"
+      /** Data URL (base64) — uploaded client-side, no storage bucket needed. */
+      src: string
+      align?: "left" | "center" | "right"
+      /** Percentage of the page's content width, 10–100. */
+      width?: number
+    }
 /* ---------------------------------------------------------
    TEMPLATE SCHEMA
 
@@ -216,3 +224,4 @@ export interface TemplateDataContext {
   contract: FieldValueMap
   system: FieldValueMap
 }
+

@@ -156,6 +156,9 @@ export function TemplateBuilderPage() {
       case "signature":
         block = { id, type, lines: ["Signature: ______________________"] }
         break
+        case "image":
+  block = { id, type, src: "", align: "left", width: 40 }
+  break
       case "spacer":
       default:
         block = { id, type: "spacer", height: 12 }
@@ -164,7 +167,16 @@ export function TemplateBuilderPage() {
 
     setBlocks((prev) => [...prev, block])
   }
-
+function handleImageUpload(id: string, file: File) {
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (typeof reader.result === "string") {
+      updateBlock(id, { src: reader.result } as Partial<ContentBlock>)
+    }
+  }
+  reader.onerror = () => toast.error("Failed to read image file")
+  reader.readAsDataURL(file)
+}
   async function handleSaveDraft() {
     if (!profile) {
       return
@@ -396,6 +408,10 @@ export function TemplateBuilderPage() {
                   <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-3.5" />
                   Signature
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => addBlock("image")}>
+  <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-3.5" />
+  Image
+</Button>
                 <Button size="sm" variant="outline" onClick={() => addBlock("spacer")}>
                   <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-3.5" />
                   Spacer
@@ -440,7 +456,26 @@ export function TemplateBuilderPage() {
                         </Button>
                       </div>
                     </div>
-
+                  {block.type === "heading" || block.type === "paragraph" || block.type === "image" ? (
+  <div className="flex items-center gap-2">
+    <Label className="text-xs font-normal text-muted-foreground">Alignment</Label>
+    <Select
+      value={block.align ?? "left"}
+      onValueChange={(v) =>
+        updateBlock(block.id, { align: v as "left" | "center" | "right" } as Partial<ContentBlock>)
+      }
+    >
+      <SelectTrigger className="h-7 w-28 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="left">Left</SelectItem>
+        <SelectItem value="center">Center</SelectItem>
+        <SelectItem value="right">Right</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+) : null}
                     {block.type === "heading" || block.type === "paragraph" ? (
                       <Textarea
                         value={block.text}
@@ -501,6 +536,37 @@ export function TemplateBuilderPage() {
                         className="text-xs"
                       />
                     ) : null}
+                    {block.type === "image" ? (
+  <div className="flex flex-col gap-2">
+    <Input
+      type="file"
+      accept="image/*"
+      className="text-xs"
+      onChange={(e) => {
+        const file = e.target.files?.[0]
+        if (file) handleImageUpload(block.id, file)
+      }}
+    />
+
+    {block.src ? (
+      <img src={block.src} alt="" className="h-20 w-auto rounded border object-contain" />
+    ) : null}
+
+    <div className="flex items-center gap-2">
+      <Label className="text-xs font-normal text-muted-foreground">Width (%)</Label>
+      <Input
+        type="number"
+        min={10}
+        max={100}
+        value={block.width ?? 40}
+        onChange={(e) =>
+          updateBlock(block.id, { width: Number(e.target.value) || 40 } as Partial<ContentBlock>)
+        }
+        className="h-7 w-20 text-xs"
+      />
+    </div>
+  </div>
+) : null}
                   </div>
                 ))}
               </div>
