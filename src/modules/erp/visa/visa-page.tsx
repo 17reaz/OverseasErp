@@ -4,13 +4,12 @@ import { VisaTable } from "./components/visa-table";
 import { VisaToolbar } from "./components/visa-toolbar";
 import { deleteVisa, getVisas, type Visa } from "./visa-service";
 import { getCandidates } from "../candidates/candidate-service";
-
+import { getMofas, type Mofa } from "../mofa/mofa-service";
 export function VisaPage() {
   const [records, setRecords] = useState<Visa[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [agencies] = useState<any[]>([]); // setAgencies বাদ দেওয়া হয়েছে
-  const [mofas] = useState<any[]>([]); // setMofas বাদ দেওয়া হয়েছে
-  
+const [mofas, setMofas] = useState<Mofa[]>([]);  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -19,13 +18,16 @@ export function VisaPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [visaList, candidatesData] = await Promise.all([
-        getVisas(),
-        getCandidates(),
-      ]);
+      const [visaList, candidatesData, mofaResult] =
+  await Promise.all([
+    getVisas(),
+    getCandidates(),
+    getMofas(),
+  ]);
 
-      setRecords(visaList);
-      setCandidates(candidatesData);
+setRecords(visaList);
+setCandidates(candidatesData);
+setMofas(mofaResult.data ?? []);
     } catch (error) {
       console.error("Failed to load visa module:", error);
     } finally {
@@ -125,7 +127,17 @@ export function VisaPage() {
         record={editingRecord}
         candidates={candidates}
         agencies={agencies}
-        mofas={mofas}
+        mofas={mofas.filter(
+  (mofa) =>
+    mofa.candidate_id ===
+    editingRecord?.candidate_id ||
+    mofa.candidate_id ===
+    candidates.find(
+      (candidate) =>
+        candidate.id ===
+        editingRecord?.candidate_id,
+    )?.id,
+)}
         onSuccess={handleFormSuccess}
       />
     </div>

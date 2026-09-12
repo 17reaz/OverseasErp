@@ -317,7 +317,13 @@ export function VisaForm({
     );
 
   const mofaOptions =
-    mofas.map(
+  mofas
+    .filter(
+      (mofa) =>
+        mofa.candidate_id ===
+        form.candidate_id,
+    )
+    .map(
       (mofa) => ({
         value: mofa.id,
         label:
@@ -553,24 +559,25 @@ export function VisaForm({
           />
 
           <FormSelect
-            label="MOFA Application"
-            placeholder="Select MOFA (optional)"
-            value={
-              form.mofa_id
-            }
-            onValueChange={(
-              value,
-            ) =>
-              updateField(
-                "mofa_id",
-                value,
-              )
-            }
-            disabled={saving}
-            options={
-              mofaOptions
-            }
-          />
+  label="MOFA Application"
+  placeholder={
+    form.candidate_id
+      ? "Select MOFA (optional)"
+      : "Select candidate first"
+  }
+  value={form.mofa_id}
+  onValueChange={(value) =>
+    updateField(
+      "mofa_id",
+      value,
+    )
+  }
+  disabled={
+    saving ||
+    !form.candidate_id
+  }
+  options={mofaOptions}
+/>
         </div>
       </FormSection>
 
