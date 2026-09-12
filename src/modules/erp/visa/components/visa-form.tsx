@@ -389,27 +389,16 @@ export function VisaForm({
         description="Select the candidate for this visa record."
       >
         <FormSelect
-          label="Candidate"
-          placeholder="Select candidate"
-          value={
-            form.candidate_id
-          }
-          onValueChange={(
-            value,
-          ) =>
-            updateField(
-              "candidate_id",
-              value,
-            )
-          }
-          disabled={
-            isEdit || saving
-          }
-          required
-          options={
-            candidateOptions
-          }
-        />
+  label="Candidate"
+  placeholder="Select candidate"
+  value={form.candidate_id}
+  onValueChange={(value) => {
+    updateField("candidate_id", value);
+    updateField("mofa_id", "");
+  }}
+  disabled={isEdit || saving}
+  options={candidateOptions}
+/>
       </FormSection>
 
       {/* ===================================================
