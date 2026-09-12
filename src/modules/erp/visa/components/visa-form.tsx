@@ -1,8 +1,36 @@
 import {
   useEffect,
+  useMemo,
   useState,
   type FormEvent,
 } from "react";
+
+import {
+  Check,
+  ChevronsUpDown,
+  Lock,
+} from "lucide-react";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import { cn } from "@/lib/utils";
 
 import {
   FormDate,
@@ -19,9 +47,6 @@ import {
   updateVisa,
   type Visa,
 } from "../visa-service";
-import {
-  getMofas,
-} from "../../mofa/mofa-service";
 
 /* =========================================================
    TYPES
@@ -116,11 +141,23 @@ export function VisaForm({
   const [error, setError] =
     useState("");
 
-  const [availableMofas, setAvailableMofas] =
-    useState<MofaOption[]>(mofas);
+  const [candidateOpen, setCandidateOpen] =
+    useState(false);
 
   const isEdit =
     Boolean(record);
+
+  /* =======================================================
+     CURRENT CANDIDATE
+  ======================================================= */
+
+  const currentCandidate = useMemo(
+    () =>
+      candidates.find(
+        (candidate) => candidate.id === form.candidate_id,
+      ) ?? null,
+    [candidates, form.candidate_id],
+  );
 
   /* =======================================================
      DIRTY STATE
@@ -183,6 +220,8 @@ export function VisaForm({
       );
     }
 
+    setCandidateOpen(false);
+
     setError("");
   }, [
     open,
@@ -190,81 +229,56 @@ export function VisaForm({
   ]);
 
   /* =======================================================
-     REFRESH MOFAS EFFECT
+     AVAILABLE MOFAS
+     ---------------------------------------------------
+     candidate onujayi filter kora hocche, ar existing
+     record er mofa_id filter theke bad porleo (kono
+     karone) seta jeno list e thake, noyle select box e
+     dekhabe na / change kora jabe na.
   ======================================================= */
 
-  useEffect(() => {
-    if (!open || !form.candidate_id) {
-      setAvailableMofas([]);
-      return;
-    }
+  const availableMofas = useMemo(() => {
+    if (!form.candidate_id) return [];
 
-    const candidateMofas = mofas.filter(
+    const filtered = mofas.filter(
       (mofa) =>
         mofa.candidate_id === form.candidate_id,
     );
 
-    setAvailableMofas(candidateMofas);
+    if (
+      form.mofa_id &&
+      !filtered.some(
+        (mofa) => mofa.id === form.mofa_id,
+      )
+    ) {
+      const current = mofas.find(
+        (mofa) => mofa.id === form.mofa_id,
+      );
 
-    async function refreshMofas() {
-      try {
-        const result = await getMofas();
-
-        if (result.error) {
-          console.error(
-            "Failed to refresh MOFA records:",
-            result.error,
-          );
-          return;
-        }
-
-        const freshMofas = result.data ?? [];
-
-        setAvailableMofas(
-          freshMofas
-            .filter(
-              (mofa) =>
-                mofa.candidate_id ===
-                form.candidate_id,
-            )
-            .map((mofa) => ({
-              id: mofa.id,
-              candidate_id: mofa.candidate_id,
-              application_number:
-                mofa.application_number ?? "",
-            })),
-        );
-      } catch (error) {
-        console.error(
-          "Failed to refresh MOFA records:",
-          error,
-        );
+      if (current) {
+        filtered.push(current);
       }
     }
 
-    refreshMofas();
+    return filtered;
   }, [
-    open,
-    form.candidate_id,
     mofas,
+    form.candidate_id,
+    form.mofa_id,
   ]);
 
   /* =======================================================
      UPDATE FIELD
   ======================================================= */
 
-  function updateField<
-    K extends keyof FormState,
-  >(
+  function updateField<K extends keyof FormState>(
     field: K,
     value: FormState[K],
   ) {
-    setForm(
-      (previous) => ({
-        ...previous,
-        [field]: value,
-      }),
-    );
+    setForm((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   }
 
   /* =======================================================
@@ -365,16 +379,6 @@ export function VisaForm({
      OPTIONS
   ======================================================= */
 
-  const candidateOptions =
-    candidates.map(
-      (candidate) => ({
-        value: candidate.id,
-
-        label:
-          `${candidate.name} — ${candidate.passport_no}`,
-      }),
-    );
-
   const agencyOptions =
     agencies.map(
       (agency) => ({
@@ -446,19 +450,110 @@ export function VisaForm({
 
       <FormSection
         title="Candidate Information"
-        description="Select the candidate for this visa record."
+        description={
+          isEdit
+            ? "Candidate is locked for this visa record."
+            : "Select the candidate for this visa record."
+        }
       >
-        <FormSelect
-          label="Candidate"
-          placeholder="Select candidate"
-          value={form.candidate_id}
-          onValueChange={(value) => {
-            updateField("candidate_id", value);
-            updateField("mofa_id", "");
-          }}
-          disabled={isEdit || saving}
-          options={candidateOptions}
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Candidate
+          </label>
+
+          {isEdit ? (
+            <div className="flex min-h-10 w-full items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+              <div className="min-w-0">
+                {currentCandidate ? (
+                  <>
+                    <p className="truncate text-sm font-medium">
+                      {currentCandidate.name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Passport: {currentCandidate.passport_no}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Candidate
+                  </p>
+                )}
+              </div>
+
+              <Lock className="ml-3 h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
+          ) : (
+            <Popover open={candidateOpen} onOpenChange={setCandidateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={candidateOpen}
+                  disabled={saving}
+                  className="w-full justify-between font-normal"
+                >
+                  {currentCandidate ? (
+                    <span className="truncate">
+                      {currentCandidate.name} — {currentCandidate.passport_no}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Select candidate
+                    </span>
+                  )}
+
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent
+                align="start"
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+              >
+                <Command>
+                  <CommandInput placeholder="Search name or passport..." />
+
+                  <CommandList>
+                    <CommandEmpty>No candidate found.</CommandEmpty>
+
+                    <CommandGroup>
+                      {candidates.map((candidate) => (
+                        <CommandItem
+                          key={candidate.id}
+                          value={`${candidate.name} ${candidate.passport_no}`}
+                          onSelect={() => {
+                            updateField("candidate_id", candidate.id);
+                            updateField("mofa_id", "");
+                            setCandidateOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              form.candidate_id === candidate.id
+                                ? "opacity-100"
+                                : "opacity-0",
+                            )}
+                          />
+
+                          <div>
+                            <p className="text-sm font-medium">
+                              {candidate.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Passport: {candidate.passport_no}
+                            </p>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
       </FormSection>
 
       {/* ===================================================
