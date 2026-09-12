@@ -127,17 +127,8 @@ setMofas(mofaResult.data ?? []);
         record={editingRecord}
         candidates={candidates}
         agencies={agencies}
-        mofas={mofas.filter(
-  (mofa) =>
-    mofa.candidate_id ===
-    editingRecord?.candidate_id ||
-    mofa.candidate_id ===
-    candidates.find(
-      (candidate) =>
-        candidate.id ===
-        editingRecord?.candidate_id,
-    )?.id,
-)}
+         mofas={mofas}
+
         onSuccess={handleFormSuccess}
       />
     </div>
