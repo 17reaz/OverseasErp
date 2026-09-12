@@ -19,6 +19,9 @@ import {
   updateVisa,
   type Visa,
 } from "../visa-service";
+import {
+  getMofas,
+} from "../../mofa/mofa-service";
 
 /* =========================================================
    TYPES
@@ -113,6 +116,9 @@ export function VisaForm({
   const [error, setError] =
     useState("");
 
+  const [availableMofas, setAvailableMofas] =
+    useState<MofaOption[]>(mofas);
+
   const isEdit =
     Boolean(record);
 
@@ -181,6 +187,66 @@ export function VisaForm({
   }, [
     open,
     record,
+  ]);
+
+  /* =======================================================
+     REFRESH MOFAS EFFECT
+  ======================================================= */
+
+  useEffect(() => {
+    if (!open || !form.candidate_id) {
+      setAvailableMofas([]);
+      return;
+    }
+
+    const candidateMofas = mofas.filter(
+      (mofa) =>
+        mofa.candidate_id === form.candidate_id,
+    );
+
+    setAvailableMofas(candidateMofas);
+
+    async function refreshMofas() {
+      try {
+        const result = await getMofas();
+
+        if (result.error) {
+          console.error(
+            "Failed to refresh MOFA records:",
+            result.error,
+          );
+          return;
+        }
+
+        const freshMofas = result.data ?? [];
+
+        setAvailableMofas(
+          freshMofas
+            .filter(
+              (mofa) =>
+                mofa.candidate_id ===
+                form.candidate_id,
+            )
+            .map((mofa) => ({
+              id: mofa.id,
+              candidate_id: mofa.candidate_id,
+              application_number:
+                mofa.application_number ?? "",
+            })),
+        );
+      } catch (error) {
+        console.error(
+          "Failed to refresh MOFA records:",
+          error,
+        );
+      }
+    }
+
+    refreshMofas();
+  }, [
+    open,
+    form.candidate_id,
+    mofas,
   ]);
 
   /* =======================================================
@@ -318,13 +384,7 @@ export function VisaForm({
     );
 
   const mofaOptions =
-  mofas
-    .filter(
-      (mofa) =>
-        mofa.candidate_id ===
-        form.candidate_id,
-    )
-    .map(
+    availableMofas.map(
       (mofa) => ({
         value: mofa.id,
         label:
@@ -389,16 +449,16 @@ export function VisaForm({
         description="Select the candidate for this visa record."
       >
         <FormSelect
-  label="Candidate"
-  placeholder="Select candidate"
-  value={form.candidate_id}
-  onValueChange={(value) => {
-    updateField("candidate_id", value);
-    updateField("mofa_id", "");
-  }}
-  disabled={isEdit || saving}
-  options={candidateOptions}
-/>
+          label="Candidate"
+          placeholder="Select candidate"
+          value={form.candidate_id}
+          onValueChange={(value) => {
+            updateField("candidate_id", value);
+            updateField("mofa_id", "");
+          }}
+          disabled={isEdit || saving}
+          options={candidateOptions}
+        />
       </FormSection>
 
       {/* ===================================================
@@ -549,25 +609,25 @@ export function VisaForm({
           />
 
           <FormSelect
-  label="MOFA Application"
-  placeholder={
-    form.candidate_id
-      ? "Select MOFA (optional)"
-      : "Select candidate first"
-  }
-  value={form.mofa_id}
-  onValueChange={(value) =>
-    updateField(
-      "mofa_id",
-      value,
-    )
-  }
-  disabled={
-    saving ||
-    !form.candidate_id
-  }
-  options={mofaOptions}
-/>
+            label="MOFA Application"
+            placeholder={
+              form.candidate_id
+                ? "Select MOFA (optional)"
+                : "Select candidate first"
+            }
+            value={form.mofa_id}
+            onValueChange={(value) =>
+              updateField(
+                "mofa_id",
+                value,
+              )
+            }
+            disabled={
+              saving ||
+              !form.candidate_id
+            }
+            options={mofaOptions}
+          />
         </div>
       </FormSection>
 
