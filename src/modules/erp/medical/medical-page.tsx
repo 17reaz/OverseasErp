@@ -134,25 +134,31 @@ const [pipelineLoading, setPipelineLoading] =
    * LOAD MEDICALS
    * =========================================================
    */
-async function loadPipeline() {
-  setPipelineLoading(true);
-
+const loadPipeline = useCallback(async () => {
   try {
+    setPipelineLoading(true);
+
     const {
       data,
       error,
     } = await getMedicalPipelineItems();
 
     if (error) {
-      toast.error(error.message);
-      return;
+      throw error;
     }
 
     setPipelineItems(data ?? []);
+  } catch (error) {
+    console.error(error);
+
+    toast.error(
+      "Failed to load medical pipeline.",
+      "Please try again.",
+    );
   } finally {
     setPipelineLoading(false);
   }
-}
+}, []);
   const loadMedicals = useCallback(
     async () => {
 
@@ -510,6 +516,102 @@ async function loadPipeline() {
    * CREATE FROM TOOLBAR
    * =========================================================
    */
+  const filteredPipelineItems = useMemo(() => {
+  const query = search
+    .trim()
+    .toLowerCase();
+
+  let result = pipelineItems.filter((item) => {
+    const medical = item.medical;
+    const candidate = item.candidate;
+
+    const matchesSearch =
+      !query ||
+      Boolean(
+        candidate?.name
+          ?.toLowerCase()
+          .includes(query),
+      ) ||
+      Boolean(
+        candidate?.passport_no
+          ?.toLowerCase()
+          .includes(query),
+      );
+
+    const matchesStatus =
+      filter.view === "all" ||
+      medical.status === filter.view;
+
+    const matchesMonth =
+      filter.month === "all" ||
+      Boolean(
+        medical.medical_date &&
+        medical.medical_date.startsWith(
+          filter.month,
+        ),
+      );
+
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesMonth
+    );
+  });
+
+  result = [...result].sort((a, b) => {
+    let first = "";
+    let second = "";
+
+    switch (sort.field) {
+      case "name":
+        first = a.candidate?.name ?? "";
+        second = b.candidate?.name ?? "";
+        break;
+
+      case "passport_no":
+        first = a.candidate?.passport_no ?? "";
+        second = b.candidate?.passport_no ?? "";
+        break;
+
+      case "medical_date":
+        first = a.medical.medical_date ?? "";
+        second = b.medical.medical_date ?? "";
+        break;
+
+      case "updated_at":
+        first = a.medical.updated_at ?? "";
+        second = b.medical.updated_at ?? "";
+        break;
+
+      case "created_at":
+      default:
+        first = a.medical.created_at ?? "";
+        second = b.medical.created_at ?? "";
+        break;
+    }
+
+    const comparison = first.localeCompare(
+      second,
+      undefined,
+      {
+        numeric: true,
+        sensitivity: "base",
+      },
+    );
+
+    return sort.mode === "descending"
+      ? -comparison
+      : comparison;
+  });
+
+  return result;
+}, [
+  pipelineItems,
+  search,
+  filter.view,
+  filter.month,
+  sort,
+]);
 
   function handleCreate() {
 
@@ -721,7 +823,8 @@ async function loadPipeline() {
 
         refreshing={
           loading ||
-          pendingLoading
+          pendingLoading ||
+          pipelineLoading
         }
 
         filter={
@@ -752,19 +855,18 @@ async function loadPipeline() {
 
 {filter.view === "medicalable" ? (
   <MedicalPending
-    candidates={pendingCandidates}
-    loading={pendingLoading}
-    onCreate={handleCreate}
-  />
+  candidates={filteredPendingCandidates}
+  loading={pendingLoading}
+  onCreate={handleAddMedical}
+/>
 ) : viewMode === "grid" ? (
-  <MedicalGrid
-    items={pipelineItems}
-    loading={pipelineLoading}
-    onOpen={(candidateId) => {
-      // এখানে পরে existing candidate details / UniversalSheet connect করবে
-      console.log("Open candidate:", candidateId);
-    }}
-  />
+ <MedicalGrid
+  items={filteredPipelineItems}
+  loading={pipelineLoading}
+  onOpen={(candidateId) => {
+    console.log("Open candidate:", candidateId);
+  }}
+/>
 ) : (
   <MedicalTable
     medicals={filteredMedicals}
