@@ -156,7 +156,8 @@ export type TemplateStatus = "draft" | "locked"
 
 export interface DocumentTemplate {
   id: string
-  tenant_id: string
+  tenant_id: string | null
+  is_system: boolean 
   name: string
   category: TemplateCategory
   description: string | null

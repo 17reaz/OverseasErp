@@ -57,6 +57,9 @@ export function TemplateCard({
           <Badge variant={template.is_active ? "default" : "destructive"}>
             {template.is_active ? "Active" : "Inactive"}
           </Badge>
+          {template.is_system ? (
+    <Badge variant="outline">System</Badge>
+  ) : null}
         </div>
 
         <div className="flex gap-2">
@@ -69,7 +72,7 @@ export function TemplateCard({
             Use Template
           </Button>
 
-          {canManage ? (
+          {canManage && !template.is_system ? (
             <Button
               size="sm"
               variant="outline"

@@ -39,6 +39,7 @@ import type {
 const DOCUMENT_TEMPLATE_SELECT = `
   id,
   tenant_id,
+  is_system,
   name,
   category,
   description,
