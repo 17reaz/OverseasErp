@@ -8,9 +8,13 @@ import type {
 /* =========================================================
    VALIDITY RULES
 
-   Medical = 60 days
-   MOFA    = 30 days
-   Visa    = 90 days
+   Medical = 60 days (own window, before MOFA starts)
+   Medical→MOFA cascade = 60 + 30 = 90 days
+     (once MOFA has started, the deadline extends from the
+     medical date by mofaDays instead of expiring on its
+     own 60-day clock)
+   Visa    = 90 days (independent — counted from visa's own
+     date/expiry, not cascaded from medical/mofa)
    Flight  → Iqama = 90 days
 ========================================================= */
 
@@ -120,7 +124,9 @@ interface WorkflowInput {
       ↓
    PROCESSING
 
-   Then validity controls HOLD automatically.
+   Then validity controls HOLD automatically, with the
+   medical→MOFA window cascading (see below) and visa
+   tracked independently on its own date.
 ========================================================= */
 
 export function calculateWorkflowState(
@@ -209,55 +215,71 @@ export function calculateWorkflowState(
   }
 
   /* -------------------------------------------------------
-     MEDICAL FIT
+     VISA ISSUED → cascade stops here
 
-     Medical is completed.
+     Once a visa is issued/approved, it takes over as the
+     controlling deadline (own date, see VISA block below).
+     Medical/MOFA no longer matter at that point — they've
+     already served their purpose in getting here.
+  ------------------------------------------------------- */
 
-     Now validity starts.
+  const visaIsIssued = Boolean(
+    input.visaStatus &&
+      ["issued", "approved"].includes(
+        input.visaStatus,
+      ),
+  );
+
+  /* -------------------------------------------------------
+     MEDICAL FIT → MOFA CASCADE
+
+     Medical alone is valid 60 days from its own date.
+
+     Once MOFA has started (a mofaDate exists), the
+     deadline cascades: instead of expiring independently
+     on medical's own 60-day clock (or MOFA's own date),
+     the combined window becomes:
+
+         medicalDate + medicalDays + mofaDays
+       = medicalDate + 60 + 30
+       = medicalDate + 90 days
+
+     This means starting MOFA buys 30 extra days measured
+     from the *medical* date, not from MOFA's own date.
+     The candidate stays in Processing throughout, as long
+     as they're within this combined window (or until visa
+     is issued, which takes over above).
   ------------------------------------------------------- */
 
   if (
+    !visaIsIssued &&
     input.medicalStatus === "fit" &&
     input.medicalDate
   ) {
+    const mofaStarted = Boolean(
+      input.mofaDate,
+    );
+
+    const cascadeDays = mofaStarted
+      ? WORKFLOW_VALIDITY.medicalDays +
+        WORKFLOW_VALIDITY.mofaDays
+      : WORKFLOW_VALIDITY.medicalDays;
+
     if (
       isExpired(
         input.medicalDate,
-        WORKFLOW_VALIDITY.medicalDays,
+        cascadeDays,
       )
     ) {
       return {
         mainStatus: "active",
         workflowState: "hold",
         currentStage:
-          input.current_stage ?? "medical",
-        holdReason: "medical_expired",
-      };
-    }
-  }
-
-  /* -------------------------------------------------------
-     MOFA
-
-     If MOFA is approved, its 30-day validity applies.
-  ------------------------------------------------------- */
-
-  if (
-    input.mofaStage === "approved" &&
-    input.mofaDate
-  ) {
-    if (
-      isExpired(
-        input.mofaDate,
-        WORKFLOW_VALIDITY.mofaDays,
-      )
-    ) {
-      return {
-        mainStatus: "active",
-        workflowState: "hold",
-        currentStage:
-          input.current_stage ?? "mofa",
-        holdReason: "mofa_expired",
+          input.current_stage ??
+          (mofaStarted ? "mofa" : "medical"),
+        holdReason: mofaStarted
+          ? "mofa_expired"
+          : "medical_expired",
       };
     }
   }
@@ -270,15 +292,12 @@ export function calculateWorkflowState(
 
      If expiry_date is unavailable:
        visa_date + 90 days.
+
+     This is independent of the medical/MOFA cascade above —
+     visa runs on its own clock from its own date.
   ------------------------------------------------------- */
 
-  if (
-    input.visaStatus &&
-    [
-      "issued",
-      "approved",
-    ].includes(input.visaStatus)
-  ) {
+  if (visaIsIssued) {
     if (input.visaExpiryDate) {
       if (
         new Date(
