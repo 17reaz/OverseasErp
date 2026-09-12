@@ -517,6 +517,7 @@ return {
 
 export interface MedicalPipelineMofa {
   id: string;
+  candidate_id: string;
 
   application_date:
     | string
@@ -536,6 +537,7 @@ export interface MedicalPipelineMofa {
 
 export interface MedicalPipelineVisa {
   id: string;
+  candidate_id: string;
 
   visa_no:
     | string
@@ -571,7 +573,44 @@ export interface MedicalPipelineItem {
     | null;
 }
 
+/* =========================================================
+   MEDICAL PIPELINE FILTER HELPERS
+   ========================================================= */
 
+function isMedicalValid(medical: Medical) {
+  if (medical.status !== "fit") {
+    return false;
+  }
+
+  const baseDate =
+    medical.fit_date ||
+    medical.medical_date;
+
+  if (!baseDate) {
+    return false;
+  }
+
+  const validUntil = new Date(baseDate);
+
+  validUntil.setDate(
+    validUntil.getDate() + 60,
+  );
+
+  return validUntil.getTime() >= Date.now();
+}
+
+
+function isVisaIssued(
+  visa: MedicalPipelineVisa | null,
+) {
+  const status =
+    visa?.status?.toLowerCase();
+
+  return (
+    status === "issued" ||
+    status === "approved"
+  );
+}
 /* =========================================================
    LATEST RECORD BY CANDIDATE
    ========================================================= */
@@ -715,54 +754,46 @@ export async function getMedicalPipelineItems() {
 
 
   const mofaMap =
-    latestByCandidate(
-      mofas as Array<
-        MedicalPipelineMofa & {
-          candidate_id: string;
-        }
-      >,
-    );
+  latestByCandidate(mofas);
 
 
-  const visaMap =
-    latestByCandidate(
-      visas as Array<
-        MedicalPipelineVisa & {
-          candidate_id: string;
-        }
-      >,
-    );
+ const visaMap =
+  latestByCandidate(visas);
 
 
   const items: MedicalPipelineItem[] =
-    medicals
-      .filter(
-        (
+  medicals
+    .filter(
+      (medical) =>
+        !!medical.candidate,
+    )
+    .map(
+      (medical) => {
+        const candidate =
+          medical.candidate as MedicalCandidate;
+
+        return {
           medical,
-        ) => !!medical.candidate,
-      )
-      .map(
-        (medical) => {
-          const candidate =
-            medical.candidate as MedicalCandidate;
 
-          return {
-            medical,
+          candidate,
 
-            candidate,
+          mofa:
+            mofaMap.get(
+              medical.candidate_id,
+            ) ?? null,
 
-            mofa:
-              mofaMap.get(
-                medical.candidate_id,
-              ) ?? null,
-
-            visa:
-              visaMap.get(
-                medical.candidate_id,
-              ) ?? null,
-          };
-        },
-      );
+          visa:
+            visaMap.get(
+              medical.candidate_id,
+            ) ?? null,
+        };
+      },
+    )
+    .filter(
+      (item) =>
+        isMedicalValid(item.medical) &&
+        !isVisaIssued(item.visa),
+    );
 
 
   return {
