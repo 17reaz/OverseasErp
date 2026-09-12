@@ -538,7 +538,7 @@ export interface MedicalPipelineMofa {
 export interface MedicalPipelineVisa {
   id: string;
   candidate_id: string;
-
+  mofa_id: string | null;
   visa_no:
     | string
     | null;
@@ -699,6 +699,7 @@ export async function getMedicalPipelineItems() {
       .select(`
         id,
         candidate_id,
+        mofa_id,
         visa_no,
         visa_date,
         expiry_date,
@@ -755,7 +756,9 @@ export async function getMedicalPipelineItems() {
 
   const mofaMap =
   latestByCandidate(mofas);
-
+const mofaById = new Map(
+  mofas.map((mofa) => [mofa.id, mofa]),
+);
 
  const visaMap =
   latestByCandidate(visas);
@@ -771,16 +774,16 @@ export async function getMedicalPipelineItems() {
       (medical) => {
         const candidate =
           medical.candidate as MedicalCandidate;
-
+        const visa =
+  visaMap.get(medical.candidate_id) ?? null;
         return {
           medical,
 
           candidate,
 
-          mofa:
-            mofaMap.get(
-              medical.candidate_id,
-            ) ?? null,
+         mofa: visa?.mofa_id
+  ? mofaById.get(visa.mofa_id) ?? null
+  : mofaMap.get(medical.candidate_id) ?? null,
 
           visa:
             visaMap.get(
