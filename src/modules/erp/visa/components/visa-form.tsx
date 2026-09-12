@@ -37,6 +37,7 @@ interface AgencyOption {
 
 interface MofaOption {
   id: string;
+  candidate_id: string;
   application_number: string;
 }
 
