@@ -857,7 +857,7 @@ const loadPipeline = useCallback(async () => {
   <MedicalPending
   candidates={filteredPendingCandidates}
   loading={pendingLoading}
-  onCreate={handleAddMedical}
+  onAddMedical={handleAddMedical}
 />
 ) : viewMode === "grid" ? (
  <MedicalGrid

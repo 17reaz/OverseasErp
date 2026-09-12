@@ -196,12 +196,14 @@ function StageRow({
   title,
   completed,
   status,
+  variant,
   date,
   secondary,
 }: {
   title: string;
   completed: boolean;
   status: string;
+  variant?: "default" | "secondary" | "destructive" | "outline";
   date?: string;
   secondary?: string;
 }) {
@@ -215,12 +217,15 @@ function StageRow({
             {title}
           </span>
 
-          <Badge
-            variant={completed ? "default" : "outline"}
-            className="h-5 px-1.5 text-[10px]"
-          >
-            {status}
-          </Badge>
+         <Badge
+  variant={
+    variant ??
+    (completed ? "default" : "outline")
+  }
+  className="h-5 px-1.5 text-[10px]"
+>
+  {status}
+</Badge>
         </div>
 
         {(date || secondary) && (
@@ -323,40 +328,37 @@ export function MedicalPipelineCard({
       <CardContent className="px-3.5 py-1">
         <div className="rounded-lg bg-muted/30 px-2.5 py-2">
           <StageRow
-            title="Medical"
-            completed={medicalCompleted}
-            status={
-              medical.status === "fit"
-                ? "Fit"
-                : medical.status
-            }
-            date={formatDate(
-              medical.fit_date ||
-                medical.medical_date,
-            )}
-            secondary={
-              medicalValidUntil
-                ? `Valid ${formatDate(
-                    medicalValidUntil,
-                  )}`
-                : undefined
-            }
-          />
+  title="Medical"
+  completed={medicalCompleted}
+  status={
+    medical.status === "fit"
+      ? "Fit"
+      : medical.status
+  }
+  date={formatDate(
+    medical.fit_date ||
+      medical.medical_date,
+  )}
+  secondary={
+    medicalValidUntil
+      ? `Valid ${formatDate(medicalValidUntil)}`
+      : undefined
+  }
+/>
 
           <StageConnector />
 
           <StageRow
-            title="MOFA"
-            completed={mofaCompleted}
-            status={getMofaLabel(mofa)}
-            date={
-              mofa
-                ? formatDate(
-                    mofa.application_date,
-                  )
-                : undefined
-            }
-          />
+  title="MOFA"
+  completed={mofaCompleted}
+  status={getMofaLabel(mofa)}
+  variant={getMofaVariant(mofa)}
+  date={
+    mofa
+      ? formatDate(mofa.application_date)
+      : undefined
+  }
+/>
 
           <StageConnector />
 
