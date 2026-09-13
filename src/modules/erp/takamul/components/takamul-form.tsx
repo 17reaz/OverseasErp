@@ -14,7 +14,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Check, ChevronsUpDown } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { UniversalSheet } from "../../shared/forms/universal-sheet";
 
 import {
@@ -182,20 +199,93 @@ export function TradeTestForm({
           <Label htmlFor="tt-candidate">
             Candidate <span className="text-destructive">*</span>
           </Label>
-          <select
-            id="tt-candidate"
-            value={form.candidate_id}
-            onChange={(e) => updateField("candidate_id", e.target.value)}
-            disabled={isEdit || saving}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="">Select candidate</option>
-            {candidates.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} — {c.passport_no}
-              </option>
-            ))}
-          </select>
+          <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      type="button"
+      variant="outline"
+      role="combobox"
+      disabled={isEdit || saving}
+      className="w-full justify-between font-normal"
+    >
+      {form.candidate_id
+        ? (() => {
+            const candidate = candidates.find(
+              (item) => item.id === form.candidate_id,
+            );
+
+            return candidate ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate">
+                  {candidate.name}
+                </span>
+
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {candidate.passport_no}
+                </span>
+              </div>
+            ) : (
+              "Select candidate"
+            );
+          })()
+        : (
+          <span className="text-muted-foreground">
+            Select candidate
+          </span>
+        )}
+
+      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    </Button>
+  </PopoverTrigger>
+
+  <PopoverContent
+    align="start"
+    className="w-[var(--radix-popover-trigger-width)] p-0"
+  >
+    <Command>
+      <CommandInput placeholder="Search candidate or passport..." />
+
+      <CommandList>
+        <CommandEmpty>
+          No candidate found.
+        </CommandEmpty>
+
+        <CommandGroup>
+          {candidates.map((candidate) => (
+            <CommandItem
+              key={candidate.id}
+              value={`${candidate.name} ${candidate.passport_no}`}
+              onSelect={() =>
+                updateField(
+                  "candidate_id",
+                  candidate.id,
+                )
+              }
+            >
+              <Check
+                className={`mr-2 h-4 w-4 ${
+                  form.candidate_id === candidate.id
+                    ? "opacity-100"
+                    : "opacity-0"
+                }`}
+              />
+
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate">
+                  {candidate.name}
+                </span>
+
+                <span className="text-xs text-muted-foreground">
+                  {candidate.passport_no}
+                </span>
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  </PopoverContent>
+</Popover>
           {isEdit && (
             <p className="text-xs text-muted-foreground">
               Candidate cannot be changed after creation.
