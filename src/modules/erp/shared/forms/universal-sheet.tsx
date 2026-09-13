@@ -115,9 +115,12 @@ export function UniversalSheet({
 }}
       >
         <SheetContent
-          side="right"
-          className="flex w-full flex-col sm:max-w-lg"
-        >
+  side="right"
+  className="flex w-full flex-col sm:max-w-lg"
+  onInteractOutside={(event) => {
+    event.preventDefault();
+  }}
+>
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
 
