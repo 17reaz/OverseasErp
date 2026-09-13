@@ -15,7 +15,6 @@ import {
   Phone,
   FingerprintPattern,
   BadgeCheck,
-  Vault,
 } from "lucide-react";
 
 /* =========================================================
@@ -73,7 +72,7 @@ export const erpNavigation = [
   {
     title: "Police Clearance",
     url: "/app/police-clearance",
-    icon: Vault,
+    icon: ShieldCheck,
   },
 
   {
