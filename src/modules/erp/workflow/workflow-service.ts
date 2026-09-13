@@ -168,7 +168,21 @@ const currentStage =
 
 if (currentStage === "visa") {
   const visaIsExpired =
-    input.visaStatus === "expired";
+    input.visaStatus === "expired" ||
+    Boolean(
+      input.visaExpiryDate &&
+        new Date(
+          input.visaExpiryDate,
+        ).getTime() < Date.now(),
+    ) ||
+    Boolean(
+      !input.visaExpiryDate &&
+        input.visaDate &&
+        isExpired(
+          input.visaDate,
+          WORKFLOW_VALIDITY.visaDays,
+        ),
+    );
 
   if (visaIsExpired) {
     return {
