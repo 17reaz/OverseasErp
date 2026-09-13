@@ -106,13 +106,13 @@ export function UniversalSheet({
       <Sheet
         open={open}
         onOpenChange={(value) => {
-          if (!value) {
-            handleCloseRequest();
-            return;
-          }
+  if (value) {
+    onOpenChange(true);
+    return;
+  }
 
-          onOpenChange(true);
-        }}
+  handleCloseRequest();
+}}
       >
         <SheetContent
           side="right"
