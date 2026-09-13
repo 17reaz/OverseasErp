@@ -85,14 +85,24 @@ function addDays(dateValue: string, days: number) {
   return date.toISOString();
 }
 
-function getMedicalValidUntil(medical: Medical) {
+function getMedicalValidUntil(
+  medical: Medical,
+  mofa: MedicalPipelineMofa | null,
+  visaIssued: boolean,
+) {
+  if (visaIssued) {
+    return null;
+  }
+
   const baseDate = medical.fit_date || medical.medical_date;
 
   if (!baseDate) {
     return null;
   }
 
-  return addDays(baseDate, 60);
+  const mofaStarted = Boolean(mofa?.application_date);
+
+  return addDays(baseDate, mofaStarted ? 60 + 30 : 60);
 }
 
 function isVisaIssued(visa: MedicalPipelineVisa | null) {
@@ -261,11 +271,11 @@ export function MedicalPipelineCard({
     visa,
   } = item;
 
-  const medicalValidUntil =
-    getMedicalValidUntil(medical);
-
+  
   const visaIssued =
-    isVisaIssued(visa);
+   isVisaIssued(visa);
+  const medicalValidUntil =
+    getMedicalValidUntil(medical, mofa, visaIssued);
 
   const medicalCompleted =
     medical.status === "fit";
