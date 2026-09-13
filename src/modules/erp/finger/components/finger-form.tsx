@@ -24,7 +24,26 @@ import {
   type FingerStatus,
   type FingerType,
 } from "../finger-service";
+import { Check, ChevronsUpDown, Lock } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import { cn } from "@/lib/utils";
 interface CandidateOption {
   id: string;
   name: string;
@@ -68,6 +87,7 @@ export function FingerForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+const [candidateOpen, setCandidateOpen] = useState(false);
   /* =======================================================
    * DIRTY STATE
    * ======================================================= */
@@ -95,6 +115,7 @@ export function FingerForm({
 
     setError("");
     setDirty(false);
+    setCandidateOpen(false);
   }, [open, record]);
 
   function updateField<K extends keyof FingerFormState>(
@@ -108,7 +129,9 @@ export function FingerForm({
 
     setDirty(true);
   }
-
+const currentCandidate = candidates.find(
+  (candidate) => candidate.id === form.candidate_id,
+);
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -194,41 +217,89 @@ export function FingerForm({
             </span>
           </Label>
 
-          <Select
-            value={form.candidate_id}
-            onValueChange={(value) =>
-              updateField(
-                "candidate_id",
-                value,
-              )
-            }
-            disabled={isEdit || saving}
-          >
-            <SelectTrigger id="finger-candidate">
-              <SelectValue placeholder="Select candidate" />
-            </SelectTrigger>
+          <Popover
+  open={candidateOpen}
+  onOpenChange={setCandidateOpen}
+>
+  <PopoverTrigger asChild>
+    <Button
+      id="finger-candidate"
+      type="button"
+      variant="outline"
+      role="combobox"
+      aria-expanded={candidateOpen}
+      disabled={isEdit || saving}
+      className="w-full justify-between font-normal"
+    >
+      {currentCandidate ? (
+        <span className="truncate">
+          {currentCandidate.name} —{" "}
+          {currentCandidate.passport_no}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">
+          Select candidate
+        </span>
+      )}
 
-            <SelectContent>
-              {candidates.length === 0 ? (
-                <SelectItem
-                  value="__no_candidates__"
-                  disabled
-                >
-                  No candidates found
-                </SelectItem>
-              ) : (
-                candidates.map((candidate) => (
-                  <SelectItem
-                    key={candidate.id}
-                    value={candidate.id}
-                  >
-                    {candidate.name} —{" "}
-                    {candidate.passport_no}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    </Button>
+  </PopoverTrigger>
+
+  <PopoverContent
+    align="start"
+    className="w-[var(--radix-popover-trigger-width)] p-0"
+  >
+    <Command>
+      <CommandInput
+        placeholder="Search name or passport..."
+      />
+
+      <CommandList>
+        <CommandEmpty>
+          No candidate found.
+        </CommandEmpty>
+
+        <CommandGroup>
+          {candidates.map((candidate) => (
+            <CommandItem
+              key={candidate.id}
+              value={`${candidate.name} ${candidate.passport_no}`}
+              onSelect={() => {
+                updateField(
+                  "candidate_id",
+                  candidate.id,
+                );
+
+                setCandidateOpen(false);
+                setError("");
+              }}
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  form.candidate_id === candidate.id
+                    ? "opacity-100"
+                    : "opacity-0",
+                )}
+              />
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {candidate.name}
+                </p>
+
+                <p className="truncate text-xs text-muted-foreground">
+                  Passport: {candidate.passport_no}
+                </p>
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  </PopoverContent>
+</Popover>
 
           {isEdit && (
             <p className="text-xs text-muted-foreground">
