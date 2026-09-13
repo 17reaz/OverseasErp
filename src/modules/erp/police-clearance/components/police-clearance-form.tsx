@@ -1,4 +1,31 @@
 import {
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import {
+  cn,
+} from "@/lib/utils";
+import {
   useEffect,
   useState,
   type FormEvent,
@@ -67,29 +94,35 @@ export function PoliceClearanceForm({
   const [dirty, setDirty] = useState(false);
 
   const isEdit = Boolean(record);
-
+const [candidateOpen, setCandidateOpen] = useState(false);
+const currentCandidate =
+  candidates.find(
+    (candidate) =>
+      candidate.id === form.candidate_id,
+  ) ?? null;
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+  if (!open) {
+    return;
+  }
 
-    if (record) {
-      setForm({
-        candidate_id: record.candidate_id,
-        received_date:
-          record.received_date ?? "",
-        verified: record.verified,
-        verified_date:
-          record.verified_date ?? "",
-        remarks: record.remarks ?? "",
-      });
-    } else {
-      setForm(DEFAULT_FORM);
-    }
+  if (record) {
+    setForm({
+      candidate_id: record.candidate_id,
+      received_date:
+        record.received_date ?? "",
+      verified: record.verified,
+      verified_date:
+        record.verified_date ?? "",
+      remarks: record.remarks ?? "",
+    });
+  } else {
+    setForm(DEFAULT_FORM);
+  }
 
-    setError("");
-    setDirty(false);
-  }, [open, record]);
+  setCandidateOpen(false);
+  setError("");
+  setDirty(false);
+}, [open, record]);
 
   function updateField<K extends keyof FormState>(
     field: K,
@@ -197,49 +230,101 @@ export function PoliceClearanceForm({
     >
       <div className="flex flex-col gap-5">
         {/* Candidate */}
-        <div className="space-y-2">
-          <Label htmlFor="pcc-candidate">
-            Candidate{" "}
-            <span className="text-destructive">
-              *
-            </span>
-          </Label>
+<div className="space-y-2">
+  <Label htmlFor="pcc-candidate">
+    Candidate{" "}
+    <span className="text-destructive">
+      *
+    </span>
+  </Label>
 
-          <select
-            id="pcc-candidate"
-            value={form.candidate_id}
-            onChange={(event) =>
-              updateField(
-                "candidate_id",
-                event.target.value,
-              )
-            }
-            disabled={isEdit || saving}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="">
-              Select candidate
-            </option>
+  <Popover
+    open={candidateOpen}
+    onOpenChange={setCandidateOpen}
+  >
+    <PopoverTrigger asChild>
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={candidateOpen}
+        disabled={isEdit || saving}
+        className="w-full justify-between font-normal"
+      >
+        {currentCandidate ? (
+          <span className="truncate">
+            {currentCandidate.name} —{" "}
+            {currentCandidate.passport_no}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            Select candidate
+          </span>
+        )}
 
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+
+    <PopoverContent
+      align="start"
+      className="w-[var(--radix-popover-trigger-width)] p-0"
+    >
+      <Command>
+        <CommandInput placeholder="Search name or passport..." />
+
+        <CommandList>
+          <CommandEmpty>
+            No candidate found.
+          </CommandEmpty>
+
+          <CommandGroup>
             {candidates.map((candidate) => (
-              <option
+              <CommandItem
                 key={candidate.id}
-                value={candidate.id}
+                value={`${candidate.name} ${candidate.passport_no}`}
+                onSelect={() => {
+                  updateField(
+                    "candidate_id",
+                    candidate.id,
+                  );
+
+                  setCandidateOpen(false);
+                }}
               >
-                {candidate.name} —{" "}
-                {candidate.passport_no}
-              </option>
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    form.candidate_id === candidate.id
+                      ? "opacity-100"
+                      : "opacity-0",
+                  )}
+                />
+
+                <div>
+                  <p className="text-sm font-medium">
+                    {candidate.name}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Passport: {candidate.passport_no}
+                  </p>
+                </div>
+              </CommandItem>
             ))}
-          </select>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </PopoverContent>
+  </Popover>
 
-          {isEdit && (
-            <p className="text-xs text-muted-foreground">
-              Candidate cannot be changed after
-              the PCC record is created.
-            </p>
-          )}
-        </div>
-
+  {isEdit && (
+    <p className="text-xs text-muted-foreground">
+      Candidate cannot be changed after
+      the PCC record is created.
+    </p>
+  )}
+</div>
         {/* Received Date */}
         <div className="space-y-2">
           <Label htmlFor="pcc-received-date">
