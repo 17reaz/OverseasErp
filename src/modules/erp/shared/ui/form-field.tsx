@@ -243,9 +243,10 @@ export function FormSelect({
         onValueChange={onValueChange}
         disabled={disabled}
       >
-        <SelectTrigger
-          aria-invalid={Boolean(error)}
-        >
+       <SelectTrigger
+  type="button"
+  aria-invalid={Boolean(error)}
+>
           <SelectValue
             placeholder={placeholder}
           />
