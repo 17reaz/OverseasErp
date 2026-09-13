@@ -7,9 +7,11 @@ import {
   Trash2,
   Ban,
   PlayCircle,
+  Copy,
+  Check,
   ListChecks,
 } from "lucide-react";
-
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -120,7 +122,31 @@ export function CandidatesTable({
   onCandidateUpdated, 
 }: CandidatesTableProps) {
 
+  const [copiedPassportId, setCopiedPassportId] = useState<string | null>(
+  null,
+);
 
+const handleCopyPassport = async (
+  candidate: Candidate,
+) => {
+  const passport = candidate.passport_no?.trim();
+
+  if (!passport) return;
+
+  try {
+    await navigator.clipboard.writeText(passport);
+
+    setCopiedPassportId(candidate.id);
+
+    window.setTimeout(() => {
+      setCopiedPassportId((current) =>
+        current === candidate.id ? null : current,
+      );
+    }, 1200);
+  } catch {
+    // Clipboard API unavailable — do nothing.
+  }
+};
   /* =======================================================
      COLUMNS
   ======================================================= */
@@ -176,20 +202,77 @@ export function CandidatesTable({
     ----------------------------------------------------- */
 
     {
-      key: "passport",
+  key: "passport",
 
-      header: "Passport",
+  header: "Passport",
 
-      hideOnMobile: true,
+  hideOnMobile: true,
 
-      cell: (candidate) => (
+  cell: (candidate) => {
+    const isCopied =
+      copiedPassportId === candidate.id;
 
-        <span className="block truncate">
-          {candidate.passport_no}
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          void handleCopyPassport(candidate);
+        }}
+        disabled={!candidate.passport_no}
+        className={`
+          group flex max-w-full items-center gap-1.5
+          rounded-sm text-left
+          transition-all duration-200
+          focus:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-ring
+          disabled:cursor-default
+          disabled:opacity-50
+          ${isCopied ? "animate-pulse" : ""}
+        `}
+        title={
+          isCopied
+            ? "Copied"
+            : "Copy passport number"
+        }
+      >
+        <span
+          className={`
+            block truncate
+            transition-all duration-200
+            ${
+              isCopied
+                ? "font-medium opacity-70"
+                : ""
+            }
+          `}
+        >
+          {candidate.passport_no ?? "—"}
         </span>
 
-      ),
-    },
+        {candidate.passport_no && (
+          <span
+            className={`
+              shrink-0 transition-all duration-200
+              ${
+                isCopied
+                  ? "text-green-600"
+                  : "text-muted-foreground opacity-0 group-hover:opacity-100"
+              }
+            `}
+          >
+            {isCopied ? (
+              <Check className="h-3.5 w-3.5" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </span>
+        )}
+      </button>
+    );
+  },
+},
 
 
     /* -----------------------------------------------------
