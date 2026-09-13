@@ -7,7 +7,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Check, ChevronsUpDown } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { UniversalSheet } from "../../shared/forms/universal-sheet";
 
 import {
@@ -184,32 +201,90 @@ export function BmetForm({
             <span className="text-destructive">*</span>
           </Label>
 
-          <select
-            id="bmet-candidate"
-            value={form.candidate_id}
-            onChange={(event) =>
-              updateField(
-                "candidate_id",
-                event.target.value,
-              )
-            }
-            disabled={isEdit || saving}
-            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">
-              Select candidate
-            </option>
+          <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      type="button"
+      variant="outline"
+      role="combobox"
+      disabled={isEdit || saving}
+      className="w-full justify-between font-normal"
+    >
+      {form.candidate_id
+        ? (() => {
+            const candidate = candidates.find(
+              (item) => item.id === form.candidate_id,
+            );
 
-            {candidates.map((candidate) => (
-              <option
-                key={candidate.id}
-                value={candidate.id}
-              >
-                {candidate.name} —{" "}
-                {candidate.passport_no}
-              </option>
-            ))}
-          </select>
+            return candidate ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate">
+                  {candidate.name}
+                </span>
+
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {candidate.passport_no}
+                </span>
+              </div>
+            ) : (
+              "Select candidate"
+            );
+          })()
+        : (
+          <span className="text-muted-foreground">
+            Select candidate
+          </span>
+        )}
+
+      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    </Button>
+  </PopoverTrigger>
+
+  <PopoverContent
+    align="start"
+    className="w-[var(--radix-popover-trigger-width)] p-0"
+  >
+    <Command>
+      <CommandInput placeholder="Search candidate or passport..." />
+
+      <CommandList>
+        <CommandEmpty>
+          No candidate found.
+        </CommandEmpty>
+
+        <CommandGroup>
+          {candidates.map((candidate) => (
+            <CommandItem
+              key={candidate.id}
+              value={`${candidate.name} ${candidate.passport_no}`}
+              onSelect={() =>
+                updateField("candidate_id", candidate.id)
+              }
+            >
+              <Check
+                className={`mr-2 h-4 w-4 ${
+                  form.candidate_id === candidate.id
+                    ? "opacity-100"
+                    : "opacity-0"
+                }`}
+              />
+
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate">
+                  {candidate.name}
+                </span>
+
+                <span className="text-xs text-muted-foreground">
+                  {candidate.passport_no}
+                </span>
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  </PopoverContent>
+</Popover>
 
           {isEdit && (
             <p className="text-xs text-muted-foreground">
