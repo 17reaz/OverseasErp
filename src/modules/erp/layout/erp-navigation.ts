@@ -15,6 +15,7 @@ import {
   Phone,
   FingerprintPattern,
   BadgeCheck,
+  Stamp,
 } from "lucide-react";
 
 /* =========================================================
@@ -84,7 +85,7 @@ export const erpNavigation = [
   {
     title: "Visa",
     url: "/app/visa",
-    icon: ShieldCheck,
+    icon: Stamp,
   },
   {
   title: "BMET",
