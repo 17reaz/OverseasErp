@@ -151,37 +151,29 @@ function getHoldReasonLabel(
 ========================================================= */
 
 export interface DashboardStatsContext {
-  /*
-   * All active candidates.
-   *
-   * active =
-   *   processing + hold
-   */
   activeCandidateIds: {
     id: string;
   }[];
 
-  /*
-   * Active candidates with workflow information.
-   */
   activeStageCandidates:
     DashboardWorkflowCandidate[];
 
-  /*
-   * Candidates that have at least one
-   * medical record.
+  /**
+   * LIVE workflow state অনুযায়ী
+   * বর্তমানে processing candidate.
+   *
+   * Database workflow_state stale হলেও
+   * dashboard pipeline এই list ব্যবহার করবে।
    */
+  processingCandidates:
+    DashboardWorkflowCandidate[];
+
   medicalCandidateIds:
     Set<string>;
 
-  /*
-   * Candidates that have at least one
-   * BMET record.
-   */
   bmetCandidateIds:
     Set<string>;
 }
-
 /* =========================================================
    MAIN
 ========================================================= */
@@ -1133,13 +1125,15 @@ export async function getDashboardStats(): Promise<{
     },
 
     context: {
-      activeCandidateIds,
+  activeCandidateIds,
 
-      activeStageCandidates,
+  activeStageCandidates,
 
-      medicalCandidateIds,
+  processingCandidates,
 
-      bmetCandidateIds,
-    },
+  medicalCandidateIds,
+
+  bmetCandidateIds,
+},
   };
 }

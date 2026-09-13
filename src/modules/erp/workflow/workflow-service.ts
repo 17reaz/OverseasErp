@@ -148,7 +148,44 @@ export function calculateWorkflowState(
       holdReason: null,
     };
   }
+  /* -------------------------------------------------------
+   EXPLICIT VISA STAGE
 
+   If the candidate has already been moved to the
+   Visa stage, the pipeline stage is authoritative.
+
+   Do NOT send the candidate back to "Received/Hold"
+   just because the medical record is missing/stale.
+
+   Visa expiration is still handled below.
+------------------------------------------------------- */
+
+const currentStage =
+  String(input.current_stage ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+if (currentStage === "visa") {
+  const visaIsExpired =
+    input.visaStatus === "expired";
+
+  if (visaIsExpired) {
+    return {
+      mainStatus: "active",
+      workflowState: "hold",
+      currentStage: "visa",
+      holdReason: "visa_expired",
+    };
+  }
+
+  return {
+    mainStatus: "active",
+    workflowState: "processing",
+    currentStage: "visa",
+    holdReason: null,
+  };
+}
   /* -------------------------------------------------------
      MEDICAL NOT STARTED
      

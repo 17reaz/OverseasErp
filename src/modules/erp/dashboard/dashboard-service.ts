@@ -1,6 +1,5 @@
 import {
   getDashboardStats,
-  normalizeWorkflowState,
 } from "./services/dashboard-stats-service";
 
 import {
@@ -21,7 +20,6 @@ export type {
 import type {
   DashboardWorkflowState,
   DashboardHoldReason,
-  DashboardWorkflowCandidate,
 } from "./services/dashboard-stats-service";
 
 export interface DashboardCandidate {
@@ -132,13 +130,8 @@ export async function getDashboardData(): Promise<DashboardData> {
    * =====================================================
    */
 
-  const processingCandidates: DashboardWorkflowCandidate[] =
-    context.activeStageCandidates.filter(
-      (candidate) =>
-        normalizeWorkflowState(
-          candidate.workflow_state,
-        ) === "processing",
-    );
+ const processingCandidates =
+  context.processingCandidates;
 
   /*
    * =====================================================
