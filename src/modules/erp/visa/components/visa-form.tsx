@@ -14,7 +14,7 @@ import {
 import {
   Button,
 } from "@/components/ui/button";
-
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -143,7 +143,7 @@ export function VisaForm({
 
   const [candidateOpen, setCandidateOpen] =
     useState(false);
-
+    const [advanceStage, setAdvanceStage] = useState(true);
   const isEdit =
     Boolean(record);
 
@@ -346,13 +346,16 @@ export function VisaForm({
             input,
           );
       } else {
-        savedRecord =
-          await createVisa({
-            candidate_id:
-              form.candidate_id,
+         savedRecord =
+    await createVisa({
+      candidate_id:
+        form.candidate_id,
 
-            ...input,
-          });
+      ...input,
+
+      advance_stage:
+        advanceStage,
+    });
       }
 
       onSuccess?.(
@@ -554,6 +557,24 @@ export function VisaForm({
             </Popover>
           )}
         </div>
+
+        {!isEdit && (
+          <label className="mt-3 flex items-start gap-2 text-sm">
+            <Checkbox
+              checked={advanceStage}
+              onCheckedChange={(checked) =>
+                setAdvanceStage(checked === true)
+              }
+            />
+
+            <span>
+              Update candidate stage to Visa
+              <span className="block text-xs text-muted-foreground">
+                Move this candidate to the Visa stage after creating the visa.
+              </span>
+            </span>
+          </label>
+        )}
       </FormSection>
 
       {/* ===================================================

@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
+import { updateCandidateStage } from "../candidates/candidate-service";
+
 import { syncCandidateWorkflowState } from "../workflow/workflow-service";
 
 export interface Visa {
@@ -28,6 +30,7 @@ export type VisaInput = {
   status?: string;
   agency_id?: string | null;
   remarks?: string | null;
+    advance_stage?: boolean;
 };
 
 export async function getVisas(): Promise<Visa[]> {
@@ -44,9 +47,14 @@ export async function getVisas(): Promise<Visa[]> {
 }
 
 export async function createVisa(input: VisaInput): Promise<Visa> {
+  const {
+    advance_stage,
+    ...visaData
+  } = input;
+
   const { data, error } = await supabase
     .from("visas")
-    .insert([input])
+    .insert([visaData])
     .select()
     .single();
 
@@ -54,8 +62,24 @@ export async function createVisa(input: VisaInput): Promise<Visa> {
     throw new Error(error.message);
   }
 
+  if (advance_stage !== false) {
+    try {
+      await updateCandidateStage(
+        data.candidate_id,
+        "visa",
+      );
+    } catch (stageError) {
+      console.error(
+        "Failed to auto-advance candidate stage to visa:",
+        stageError,
+      );
+    }
+  }
+
   try {
-    await syncCandidateWorkflowState(data.candidate_id);
+    await syncCandidateWorkflowState(
+      data.candidate_id,
+    );
   } catch (workflowError) {
     console.error(
       "Failed to sync candidate workflow state after visa create:",
