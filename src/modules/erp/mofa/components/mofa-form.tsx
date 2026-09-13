@@ -45,7 +45,27 @@ import {
   type MofaStage,
 } from "../mofa-service";
 
+import {
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import { Button } from "@/components/ui/button";
 /* =========================================================
  * PROPS
  * ========================================================= */
@@ -834,100 +854,90 @@ export function MofaForm({
         </Label>
 
 
-        <Select
+        <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      type="button"
+      variant="outline"
+      role="combobox"
+      disabled={saving}
+      className="w-full justify-between font-normal"
+    >
+      {currentCandidate ? (
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate">
+            {currentCandidate.name}
+          </span>
 
-          value={
-            form.candidate_id
-          }
+          {currentCandidate.passport_no && (
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {currentCandidate.passport_no}
+            </span>
+          )}
+        </div>
+      ) : (
+        <span className="text-muted-foreground">
+          Select candidate
+        </span>
+      )}
 
-          onValueChange={
-            handleCandidateChange
-          }
+      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    </Button>
+  </PopoverTrigger>
 
-          disabled={
-            saving
-          }
+  <PopoverContent
+    align="start"
+    className="w-[var(--radix-popover-trigger-width)] p-0"
+  >
+    <Command>
+      <CommandInput
+        placeholder="Search candidate or passport..."
+      />
 
-        >
+      <CommandList>
+        <CommandEmpty>
+          No candidate found.
+        </CommandEmpty>
 
-          <SelectTrigger
-            id="mofa-candidate"
-          >
+        <CommandGroup>
+          {candidates.map((candidate) => (
+            <CommandItem
+              key={candidate.id}
+              value={`${candidate.name} ${candidate.passport_no ?? ""}`}
+              onSelect={() => {
+                handleCandidateChange(
+                  candidate.id,
+                );
+              }}
+            >
+              <Check
+                className={
+                  `mr-2 h-4 w-4 ${
+                    form.candidate_id === candidate.id
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`
+                }
+              />
 
-            <SelectValue
-              placeholder="
-                Select candidate
-              "
-            />
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate">
+                  {candidate.name}
+                </span>
 
-          </SelectTrigger>
-
-
-          <SelectContent>
-
-            {candidates.length ===
-              0 ? (
-
-              <SelectItem
-                value="__empty"
-                disabled
-              >
-                No candidates found
-              </SelectItem>
-
-            ) : (
-
-              candidates.map(
-                (
-                  candidate,
-                ) => (
-
-                  <SelectItem
-                    key={
-                      candidate.id
-                    }
-                    value={
-                      candidate.id
-                    }
-                  >
-
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-
-                      <span>
-                        {
-                          candidate.name
-                        }
-                      </span>
-
-                      <span
-                        className="
-                          text-muted-foreground
-                        "
-                      >
-                        •{" "}
-                        {
-                          candidate.passport_no
-                        }
-                      </span>
-
-                    </div>
-
-                  </SelectItem>
-
-                ),
-              )
-
-            )}
-
-          </SelectContent>
-
-        </Select>
+                {candidate.passport_no && (
+                  <span className="text-xs text-muted-foreground">
+                    {candidate.passport_no}
+                  </span>
+                )}
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  </PopoverContent>
+</Popover>
 
 
         {currentCandidate && (
