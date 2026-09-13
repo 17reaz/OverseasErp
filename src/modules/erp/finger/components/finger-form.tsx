@@ -24,7 +24,7 @@ import {
   type FingerStatus,
   type FingerType,
 } from "../finger-service";
-import { Check, ChevronsUpDown, Lock } from "lucide-react";
+import { Check, ChevronsUpDown} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
