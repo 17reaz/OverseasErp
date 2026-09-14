@@ -51,32 +51,22 @@ export async function getVisas(): Promise<Visa[]> {
  * =========================================================
  * VISAABLE
  *
- * Approved MOFAs that:
+ * Approved MOFAs that don't have a visa yet.
  *
- *   - do NOT have a visa yet
- *   - have a completed fingerprint record
- *   - have a verified police clearance
+ * Finger + Police Clearance status are attached as
+ * booleans (not filtered on) so the office can see
+ * readiness at a glance and decide when to proceed.
  *
  * Same pattern as getFitMedicalsWithoutMofa()
  * in mofa-service.ts.
  * =========================================================
  */
 
-export interface VisaEligibleAgent {
-  id: string;
-  name: string | null;
-  code: string | null;
-}
-
 export interface VisaEligibleCandidate {
   id: string;
   name: string;
   passport_no: string;
-  received_date: string | null;
-  country: string | null;
   sl: number | null;
-  agent_id: string | null;
-  agent: VisaEligibleAgent | null;
 }
 
 export interface VisaEligibleMofa {
@@ -84,9 +74,11 @@ export interface VisaEligibleMofa {
 
   application_number: string;
 
-  application_date: string | null;
+  fit_date: string | null;
 
-  trade: string | null;
+  finger_completed: boolean;
+
+  police_clearance_verified: boolean;
 
   candidate_id: string;
 
@@ -95,7 +87,8 @@ export interface VisaEligibleMofa {
 
 export async function getApprovedMofasWithoutVisa() {
   /*
-   * 1. Approved MOFAs + candidate
+   * 1. Approved MOFAs + candidate + fit date
+   *    (fit date comes from the linked medical)
    */
 
   const {
@@ -106,23 +99,16 @@ export async function getApprovedMofasWithoutVisa() {
     .select(`
       id,
       application_number,
-      application_date,
-      trade,
       candidate_id,
       stage,
       candidate:candidates (
         id,
         name,
         passport_no,
-        received_date,
-        country,
-        sl,
-        agent_id,
-        agent:agents (
-          id,
-          name,
-          code
-        )
+        sl
+      ),
+      medical:medicals (
+        fit_date
       )
     `)
     .eq(
@@ -245,6 +231,10 @@ export async function getApprovedMofasWithoutVisa() {
 
   /*
    * 5. Combine
+   *
+   * Only gate on "no visa yet" — finger
+   * and police clearance are shown as
+   * booleans, not filtered on.
    */
 
   const pending: VisaEligibleMofa[] =
@@ -253,12 +243,6 @@ export async function getApprovedMofasWithoutVisa() {
         (mofa) =>
           !visaMofaIds.has(
             mofa.id,
-          ) &&
-          fingerCompletedCandidateIds.has(
-            mofa.candidate_id,
-          ) &&
-          verifiedPoliceClearanceCandidateIds.has(
-            mofa.candidate_id,
           ),
       )
       .map((mofa) => {
@@ -268,23 +252,29 @@ export async function getApprovedMofasWithoutVisa() {
             ? mofa.candidate[0]
             : mofa.candidate;
 
+        const rawMedical =
+          Array.isArray(mofa.medical)
+            ? mofa.medical[0]
+            : mofa.medical;
+
         return {
           id: mofa.id,
           application_number: mofa.application_number,
-          application_date: mofa.application_date,
-          trade: mofa.trade,
+          fit_date: rawMedical?.fit_date ?? null,
+          finger_completed:
+            fingerCompletedCandidateIds.has(
+              mofa.candidate_id,
+            ),
+          police_clearance_verified:
+            verifiedPoliceClearanceCandidateIds.has(
+              mofa.candidate_id,
+            ),
           candidate_id: mofa.candidate_id,
           candidate: {
             id: rawCandidate.id,
             name: rawCandidate.name,
             passport_no: rawCandidate.passport_no,
-            received_date: rawCandidate.received_date,
-            country: rawCandidate.country,
             sl: rawCandidate.sl,
-            agent_id: rawCandidate.agent_id,
-            agent: Array.isArray(rawCandidate.agent)
-              ? rawCandidate.agent[0] ?? null
-              : rawCandidate.agent,
           },
         };
 

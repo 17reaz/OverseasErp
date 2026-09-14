@@ -1,6 +1,7 @@
 import {
+  Check,
   FileCheck2,
-  FileText,
+  X,
 } from "lucide-react";
 
 import {
@@ -20,6 +21,37 @@ interface VisaPendingProps {
   onAddVisa?: (
     item: VisaEligibleMofa,
   ) => void;
+}
+
+
+function BooleanBadge({
+  value,
+}: {
+  value: boolean;
+}) {
+  return (
+    <span
+      className={`
+        inline-flex
+        h-6
+        w-6
+        items-center
+        justify-center
+        rounded-full
+        ${
+          value
+            ? "bg-emerald-500/15 text-emerald-600"
+            : "bg-red-500/15 text-red-600"
+        }
+      `}
+    >
+      {value ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : (
+        <X className="h-3.5 w-3.5" />
+      )}
+    </span>
+  );
 }
 
 
@@ -70,7 +102,7 @@ export function VisaPending({
 
               <th
                 className="
-                  w-[70px]
+                  w-[60px]
                   px-4
                   py-3
                   text-left
@@ -82,7 +114,7 @@ export function VisaPending({
               </th>
 
 
-              {/* CANDIDATE */}
+              {/* NAME */}
 
               <th
                 className="
@@ -93,7 +125,7 @@ export function VisaPending({
                   font-medium
                 "
               >
-                Candidate
+                Name
               </th>
 
 
@@ -112,7 +144,7 @@ export function VisaPending({
               </th>
 
 
-              {/* COUNTRY */}
+              {/* FIT DATE */}
 
               <th
                 className="
@@ -123,11 +155,11 @@ export function VisaPending({
                   font-medium
                 "
               >
-                Country
+                Fit Date
               </th>
 
 
-              {/* MOFA APPLICATION */}
+              {/* MOFA */}
 
               <th
                 className="
@@ -138,23 +170,39 @@ export function VisaPending({
                   font-medium
                 "
               >
-                MOFA App. No
+                MOFA
               </th>
 
 
-              {/* AGENT */}
+              {/* PC */}
 
               <th
                 className="
-                  w-[180px]
+                  w-[70px]
                   px-4
                   py-3
-                  text-left
+                  text-center
                   text-sm
                   font-medium
                 "
               >
-                Agent
+                PC
+              </th>
+
+
+              {/* FINGER */}
+
+              <th
+                className="
+                  w-[80px]
+                  px-4
+                  py-3
+                  text-center
+                  text-sm
+                  font-medium
+                "
+              >
+                Finger
               </th>
 
 
@@ -162,7 +210,7 @@ export function VisaPending({
 
               <th
                 className="
-                  w-[120px]
+                  w-[110px]
                   px-4
                   py-3
                   text-right
@@ -258,9 +306,8 @@ export function VisaPending({
                   text-muted-foreground
                 "
               >
-                Approved MOFA + completed fingerprint +
-                verified police clearance, without a
-                visa yet — none right now.
+                Every approved MOFA already has
+                a visa.
               </p>
 
             </div>
@@ -304,7 +351,7 @@ export function VisaPending({
 
                     <td
                       className="
-                        w-[70px]
+                        w-[60px]
                         px-4
                         py-3
                         text-sm
@@ -318,71 +365,28 @@ export function VisaPending({
 
 
                     {/* =================================================
-                        CANDIDATE
+                        NAME
                         ================================================= */}
 
                     <td
                       className="
                         px-4
                         py-3
+                        text-sm
+                        font-medium
                       "
                     >
 
-                      <div
+                      <span
                         className="
-                          flex
-                          min-w-0
-                          items-center
-                          gap-2
+                          block
+                          truncate
                         "
                       >
-
-                        <div
-                          className="
-                            flex
-                            h-8
-                            w-8
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-full
-                            border
-                            bg-muted/30
-                          "
-                        >
-
-                          <FileText
-                            className="
-                              h-4
-                              w-4
-                              text-muted-foreground
-                            "
-                          />
-
-                        </div>
-
-
-                        <div
-                          className="
-                            min-w-0
-                          "
-                        >
-
-                          <p
-                            className="
-                              truncate
-                              text-sm
-                              font-medium
-                            "
-                          >
-                            {
-                              item.candidate.name
-                            }
-                          </p>
-
-                        </div>
-
-                      </div>
+                        {
+                          item.candidate.name
+                        }
+                      </span>
 
                     </td>
 
@@ -414,7 +418,7 @@ export function VisaPending({
 
 
                     {/* =================================================
-                        COUNTRY
+                        FIT DATE
                         ================================================= */}
 
                     <td
@@ -432,7 +436,7 @@ export function VisaPending({
                         "
                       >
                         {
-                          item.candidate.country ??
+                          item.fit_date ??
                           "—"
                         }
                       </span>
@@ -441,7 +445,7 @@ export function VisaPending({
 
 
                     {/* =================================================
-                        MOFA APPLICATION
+                        MOFA
                         ================================================= */}
 
                     <td
@@ -468,70 +472,45 @@ export function VisaPending({
 
 
                     {/* =================================================
-                        AGENT
+                        PC
                         ================================================= */}
 
                     <td
                       className="
-                        w-[180px]
+                        w-[70px]
                         px-4
                         py-3
-                        text-sm
+                        text-center
                       "
                     >
 
-                      {item.candidate.agent ? (
+                      <BooleanBadge
+                        value={
+                          item.police_clearance_verified
+                        }
+                      />
 
-                        <div
-                          className="
-                            flex
-                            min-w-0
-                            flex-col
-                          "
-                        >
-
-                          <span
-                            className="
-                              truncate
-                              font-medium
-                            "
-                          >
-                            {
-                              item.candidate.agent.name ??
-                              "Unnamed Agent"
-                            }
-                          </span>
+                    </td>
 
 
-                          {item.candidate.agent.code && (
+                    {/* =================================================
+                        FINGER
+                        ================================================= */}
 
-                            <span
-                              className="
-                                truncate
-                                text-xs
-                                text-muted-foreground
-                              "
-                            >
-                              {
-                                item.candidate.agent.code
-                              }
-                            </span>
+                    <td
+                      className="
+                        w-[80px]
+                        px-4
+                        py-3
+                        text-center
+                      "
+                    >
 
-                          )}
-
-                        </div>
-
-                      ) : (
-
-                        <span
-                          className="
-                            text-muted-foreground
-                          "
-                        >
-                          —
-                        </span>
-
-                      )}
+                      <BooleanBadge
+                        value={
+                          item.finger_completed
+                        }
+                      />
 
                     </td>
 
@@ -542,7 +521,7 @@ export function VisaPending({
 
                     <td
                       className="
-                        w-[120px]
+                        w-[110px]
                         px-4
                         py-3
                         text-right
