@@ -645,6 +645,10 @@ function latestByCandidate<
    GET MEDICAL PIPELINE
    ========================================================= */
 
+/* =========================================================
+   GET MEDICAL PIPELINE
+   ========================================================= */
+
 export async function getMedicalPipelineItems() {
   const [
     medicalResult,
@@ -714,6 +718,9 @@ export async function getMedicalPipelineItems() {
       ),
   ]);
 
+  /* =======================================================
+     ERROR HANDLING
+     ======================================================= */
 
   if (medicalResult.error) {
     return {
@@ -722,14 +729,12 @@ export async function getMedicalPipelineItems() {
     };
   }
 
-
   if (mofaResult.error) {
     return {
       data: null,
       error: mofaResult.error,
     };
   }
-
 
   if (visaResult.error) {
     return {
@@ -738,66 +743,114 @@ export async function getMedicalPipelineItems() {
     };
   }
 
+  /* =======================================================
+     NORMALIZE DATA
+     ======================================================= */
 
   const medicals =
-    (medicalResult.data ??
-      []) as Medical[];
-
+    (medicalResult.data ?? []) as Medical[];
 
   const mofas =
-    (mofaResult.data ??
-      []) as MedicalPipelineMofa[];
-
+    (mofaResult.data ?? []) as MedicalPipelineMofa[];
 
   const visas =
-    (visaResult.data ??
-      []) as MedicalPipelineVisa[];
+    (visaResult.data ?? []) as MedicalPipelineVisa[];
 
+  /* =======================================================
+     MOFA MAP
+     -------------------------------------------------------
+     Candidate → latest MOFA
+     ======================================================= */
 
   const mofaMap =
-  latestByCandidate(mofas);
-const mofaById = new Map(
-  mofas.map((mofa) => [mofa.id, mofa]),
-);
+    latestByCandidate(mofas);
 
- const visaMap =
-  latestByCandidate(visas);
+  /* =======================================================
+     VISA MAP
+     -------------------------------------------------------
+     MOFA → latest Visa
 
+     IMPORTANT:
+     Visa is related to MOFA through:
+
+       visas.mofa_id → mofas.id
+
+     NOT:
+
+       visas.candidate_id → candidates.id
+     ======================================================= */
+
+  const visaByMofaId =
+    new Map<
+      string,
+      MedicalPipelineVisa
+    >();
+
+  for (const visa of visas) {
+    if (!visa.mofa_id) {
+      continue;
+    }
+
+    /*
+     * Because visas are ordered by created_at DESC,
+     * the first Visa for a MOFA is the latest one.
+     */
+    if (!visaByMofaId.has(visa.mofa_id)) {
+      visaByMofaId.set(
+        visa.mofa_id,
+        visa,
+      );
+    }
+  }
+
+  /* =======================================================
+     BUILD MEDICAL PIPELINE
+     ======================================================= */
 
   const items: MedicalPipelineItem[] =
-  medicals
-    .filter(
-      (medical) =>
-        !!medical.candidate,
-    )
-    .map(
-      (medical) => {
-        const candidate =
-          medical.candidate as MedicalCandidate;
-        const visa =
-  visaMap.get(medical.candidate_id) ?? null;
-        return {
-          medical,
+    medicals
+      .filter(
+        (medical) =>
+          !!medical.candidate,
+      )
+      .map(
+        (medical) => {
+          const candidate =
+            medical.candidate as MedicalCandidate;
 
-          candidate,
-
-         mofa: visa?.mofa_id
-  ? mofaById.get(visa.mofa_id) ?? null
-  : mofaMap.get(medical.candidate_id) ?? null,
-
-          visa:
-            visaMap.get(
+          /*
+           * Candidate → latest MOFA
+           */
+          const mofa =
+            mofaMap.get(
               medical.candidate_id,
-            ) ?? null,
-        };
-      },
-    )
-    .filter(
-      (item) =>
-        isMedicalValid(item.medical) &&
-        !isVisaIssued(item.visa),
-    );
+            ) ?? null;
 
+          /*
+           * MOFA → latest Visa
+           *
+           * This is the important fix.
+           */
+          const visa =
+            mofa?.id
+              ? visaByMofaId.get(
+                  mofa.id,
+                ) ?? null
+              : null;
+
+          return {
+            medical,
+            candidate,
+            mofa,
+            visa,
+          };
+        },
+      )
+      .filter(
+        (item) =>
+          isMedicalValid(item.medical) &&
+          !isVisaIssued(item.visa),
+      );
 
   return {
     data: items,
