@@ -3,7 +3,6 @@ import {
   Landmark,
   Loader2,
   MoreHorizontal,
-  Plus,
   Wallet,
 } from "lucide-react";
 
