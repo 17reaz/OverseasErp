@@ -378,6 +378,147 @@ export async function getCandidateMedicals(
 
 /*
  * =========================================================
+ * MOFAABLE
+ *
+ * Fit medicals that do NOT have a MOFA yet.
+ *
+ * Same pattern as
+ * getCandidatesWithoutMedical() in medical-service.ts.
+ * =========================================================
+ */
+
+export interface MofaPendingMedical {
+  id: string;
+
+  medical_date: string | null;
+
+  fit_date: string | null;
+
+  status: MofaMedicalStatus;
+
+  candidate: MofaCandidate;
+}
+
+
+export async function getFitMedicalsWithoutMofa() {
+  const {
+    data: medicals,
+    error: medicalsError,
+  } = await supabase
+    .from("medicals")
+    .select(`
+      id,
+      medical_date,
+      fit_date,
+      status,
+      candidate:candidates (
+        id,
+        name,
+        passport_no,
+        received_date,
+        country,
+        sl,
+        agent_id,
+        agent:agents (
+          id,
+          name,
+          code
+        )
+      )
+    `)
+    .eq(
+      "status",
+      "fit",
+    )
+    .order(
+      "fit_date",
+      {
+        ascending: false,
+      },
+    );
+
+  if (medicalsError) {
+    return {
+      data: null,
+      error: medicalsError,
+    };
+  }
+
+
+  const {
+    data: mofas,
+    error: mofasError,
+  } = await supabase
+    .from("mofas")
+    .select(
+      "medical_id",
+    );
+
+  if (mofasError) {
+    return {
+      data: null,
+      error: mofasError,
+    };
+  }
+
+
+  const mofaMedicalIds =
+    new Set(
+      (mofas ?? [])
+        .map(
+          (item) =>
+            item.medical_id,
+        )
+        .filter(Boolean),
+    );
+
+
+  const pending: MofaPendingMedical[] =
+    (medicals ?? [])
+      .filter(
+        (medical) =>
+          !mofaMedicalIds.has(
+            medical.id,
+          ),
+      )
+      .map((medical) => {
+
+        const rawCandidate =
+          Array.isArray(medical.candidate)
+            ? medical.candidate[0]
+            : medical.candidate;
+
+        return {
+          id: medical.id,
+          medical_date: medical.medical_date,
+          fit_date: medical.fit_date,
+          status: medical.status,
+          candidate: {
+            id: rawCandidate.id,
+            name: rawCandidate.name,
+            passport_no: rawCandidate.passport_no,
+            received_date: rawCandidate.received_date,
+            country: rawCandidate.country,
+            sl: rawCandidate.sl,
+            agent_id: rawCandidate.agent_id,
+            agent: Array.isArray(rawCandidate.agent)
+              ? rawCandidate.agent[0] ?? null
+              : rawCandidate.agent,
+          },
+        };
+
+      });
+
+
+  return {
+    data: pending,
+    error: null,
+  };
+}
+
+
+/*
+ * =========================================================
  * GET AGENCIES
  * =========================================================
  */

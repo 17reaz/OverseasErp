@@ -14,6 +14,10 @@ import {
 } from "./components/mofa-form";
 
 import {
+  MofaPending,
+} from "./components/mofa-pending";
+
+import {
   MofaTable,
 } from "./components/mofa-table";
 
@@ -26,10 +30,12 @@ import {
 
 import {
   deleteMofa,
+  getFitMedicalsWithoutMofa,
   getMofaCandidates,
   getMofas,
   type Mofa,
   type MofaCandidate,
+  type MofaPendingMedical,
 } from "./mofa-service";
 
 
@@ -92,6 +98,22 @@ export function MofaPage() {
   const [
     candidatesLoading,
     setCandidatesLoading,
+  ] = useState(false);
+
+
+  /* =======================================================
+   * MOFAABLE — fit medicals without a MOFA yet
+   * ======================================================= */
+
+  const [
+    pendingMedicals,
+    setPendingMedicals,
+  ] = useState<MofaPendingMedical[]>([]);
+
+
+  const [
+    pendingLoading,
+    setPendingLoading,
   ] = useState(false);
 
 
@@ -260,6 +282,58 @@ export function MofaPage() {
 
 
   /* =======================================================
+   * LOAD MOFAABLE
+   *
+   * Fit medicals that don't have a
+   * MOFA yet.
+   *
+   * Same pattern as loadPending()
+   * in medical-page.tsx.
+   * ======================================================= */
+
+  const loadPendingMedicals = useCallback(
+    async () => {
+
+      try {
+
+        setPendingLoading(true);
+
+        const {
+          data,
+          error,
+        } = await getFitMedicalsWithoutMofa();
+
+        if (error) {
+          throw error;
+        }
+
+        setPendingMedicals(
+          data ?? [],
+        );
+
+      } catch (error) {
+
+        console.error(
+          error,
+        );
+
+        toast.error(
+          "Failed to load mofaable candidates.",
+          "Please try again.",
+        );
+
+      } finally {
+
+        setPendingLoading(false);
+
+      }
+
+    },
+    [],
+  );
+
+
+  /* =======================================================
    * INITIAL LOAD
    * ======================================================= */
 
@@ -267,11 +341,56 @@ export function MofaPage() {
 
     void loadMofas();
     void loadCandidates();
+    void loadPendingMedicals();
 
   }, [
     loadMofas,
     loadCandidates,
+    loadPendingMedicals,
   ]);
+
+
+  /* =======================================================
+   * MOFAABLE SEARCH
+   * ======================================================= */
+
+  const filteredPendingMedicals = useMemo(
+    () => {
+
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (!query) {
+        return pendingMedicals;
+      }
+
+      return pendingMedicals.filter(
+        (item) => {
+
+          const name =
+            item.candidate.name
+              ?.toLowerCase() ?? "";
+
+          const passport =
+            item.candidate.passport_no
+              ?.toLowerCase() ?? "";
+
+          return (
+            name.includes(query) ||
+            passport.includes(query)
+          );
+
+        },
+      );
+
+    },
+    [
+      pendingMedicals,
+      search,
+    ],
+  );
 
 
   /* =======================================================
@@ -531,24 +650,22 @@ export function MofaPage() {
 
 
   /* =======================================================
-   * CREATE FROM CANDIDATE
-   *
-   * Reserved for future Candidate → MOFA flow.
+   * CREATE FROM MOFAABLE
    * ======================================================= */
 
-  // function handleAddMofa(
-  //   candidate: MofaCandidate,
-  // ) {
+  function handleAddMofa(
+    item: MofaPendingMedical,
+  ) {
 
-  //   setEditingMofa(null);
+    setEditingMofa(null);
 
-  //   setSelectedCandidate(
-  //     candidate,
-  //   );
+    setSelectedCandidate(
+      item.candidate,
+    );
 
-  //   setFormOpen(true);
+    setFormOpen(true);
 
-  // }
+  }
 
 
   /* =======================================================
@@ -614,7 +731,10 @@ export function MofaPage() {
       );
 
 
-      await loadMofas();
+      await Promise.all([
+        loadMofas(),
+        loadPendingMedicals(),
+      ]);
 
     } catch (error) {
 
@@ -646,6 +766,7 @@ export function MofaPage() {
     setSelectedCandidate(null);
 
     void loadMofas();
+    void loadPendingMedicals();
 
   }
 
@@ -681,6 +802,7 @@ export function MofaPage() {
     await Promise.all([
       loadMofas(),
       loadCandidates(),
+      loadPendingMedicals(),
     ]);
 
   }
@@ -728,7 +850,8 @@ export function MofaPage() {
 
         refreshing={
           loading ||
-          candidatesLoading
+          candidatesLoading ||
+          pendingLoading
         }
 
         filter={
@@ -759,28 +882,50 @@ export function MofaPage() {
 
 
       {/* =================================================
-       * TABLE
+       * MOFAABLE / TABLE
        * ================================================= */}
 
-      <MofaTable
+      {filter.view === "mofaable" ? (
 
-        mofas={
-          filteredMofas
-        }
+        <MofaPending
 
-        loading={
-          loading
-        }
+          items={
+            filteredPendingMedicals
+          }
 
-        onEdit={
-          handleEdit
-        }
+          loading={
+            pendingLoading
+          }
 
-        onDelete={
-          handleDelete
-        }
+          onAddMofa={
+            handleAddMofa
+          }
 
-      />
+        />
+
+      ) : (
+
+        <MofaTable
+
+          mofas={
+            filteredMofas
+          }
+
+          loading={
+            loading
+          }
+
+          onEdit={
+            handleEdit
+          }
+
+          onDelete={
+            handleDelete
+          }
+
+        />
+
+      )}
 
 
       {/* =================================================

@@ -5,6 +5,7 @@ import {
   ArrowUpAZ,
   ArrowUpDown,
   Check,
+  FileCheck2,
   Grid2X2,
   List,
   SlidersHorizontal,
@@ -31,7 +32,7 @@ import type { MofaStage } from "../mofa-service";
 import { PageToolbar } from "../../shared/ui/page-toolbar";
 
 export type MofaFilterState = {
-  view: MofaStage | "all";
+  view: MofaStage | "all" | "mofaable";
   month: "all" | string;
 };
 
@@ -143,7 +144,10 @@ export function MofaToolbar({
     onSortChange?.({ ...sort, ...changes });
   }
 
-  // Status is handled by its own dropdown.
+  const isMofaable = filter.view === "mofaable";
+  const statusValue = isMofaable ? "all" : filter.view;
+
+  // Mofaable + status are handled by their own controls.
   const activeFilterCount = [filter.month !== "all" ? "month" : null].filter(
     Boolean,
   ).length;
@@ -156,17 +160,17 @@ export function MofaToolbar({
         : "Custom";
 
   const statusLabel =
-    filter.view === "new"
+    statusValue === "new"
       ? "New"
-      : filter.view === "medupdated"
+      : statusValue === "medupdated"
         ? "Med Updated"
-        : filter.view === "approved"
+        : statusValue === "approved"
           ? "Approved"
-          : filter.view === "canceled"
+          : statusValue === "canceled"
             ? "Canceled"
-            : filter.view === "expired"
+            : statusValue === "expired"
               ? "Expired"
-              : filter.view === "invalid"
+              : statusValue === "invalid"
                 ? "Invalid"
                 : "All";
 
@@ -181,6 +185,23 @@ export function MofaToolbar({
       createLabel="Add MOFA"
     >
       {/* ===================================================
+          MOFAABLE — standalone toggle
+          =================================================== */}
+
+      <Button
+        type="button"
+        variant={isMofaable ? "secondary" : "outline"}
+        className="h-9 shrink-0"
+        onClick={() =>
+          updateFilter({ view: isMofaable ? "all" : "mofaable" })
+        }
+      >
+        <FileCheck2 className="mr-2 h-4 w-4" />
+
+        <span className="hidden sm:inline">Mofaable</span>
+      </Button>
+
+      {/* ===================================================
           STATUS FILTER — ALL / NEW / MED UPDATED / APPROVED /
           CANCELED / EXPIRED / INVALID
           =================================================== */}
@@ -193,7 +214,7 @@ export function MofaToolbar({
             <span className="hidden sm:inline">{statusLabel}</span>
 
             <span className="sm:hidden">
-              {filter.view === "all" ? "All" : statusLabel}
+              {statusValue === "all" ? "All" : statusLabel}
             </span>
           </Button>
         </DropdownMenuTrigger>
@@ -204,7 +225,7 @@ export function MofaToolbar({
           <DropdownMenuSeparator />
 
           <DropdownMenuRadioGroup
-            value={filter.view}
+            value={statusValue}
             onValueChange={(value) =>
               updateFilter({
                 view: value as MofaFilterState["view"],
