@@ -615,30 +615,7 @@ function isVisaIssued(
    LATEST RECORD BY CANDIDATE
    ========================================================= */
 
-function latestByCandidate<
-  T extends {
-    candidate_id: string;
-    created_at: string;
-  },
->(
-  rows: T[],
-) {
-  const map = new Map<
-    string,
-    T
-  >();
 
-  for (const row of rows) {
-    if (!map.has(row.candidate_id)) {
-      map.set(
-        row.candidate_id,
-        row,
-      );
-    }
-  }
-
-  return map;
-}
 
 
 /* =========================================================
