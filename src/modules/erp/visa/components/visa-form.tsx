@@ -84,6 +84,11 @@ interface VisaFormProps {
 
   mofas: MofaOption[];
 
+  prefill?: {
+    candidate_id: string;
+    mofa_id: string;
+  } | null;
+
   onSuccess?: (
     record: Visa,
   ) => void;
@@ -128,6 +133,7 @@ export function VisaForm({
   candidates,
   agencies,
   mofas,
+  prefill,
   onSuccess,
 }: VisaFormProps) {
   const [form, setForm] =
@@ -215,9 +221,17 @@ export function VisaForm({
           record.remarks ?? "",
       });
     } else {
-      setForm(
-        DEFAULT_FORM,
-      );
+      setForm({
+        ...DEFAULT_FORM,
+
+        candidate_id:
+          prefill?.candidate_id ??
+          DEFAULT_FORM.candidate_id,
+
+        mofa_id:
+          prefill?.mofa_id ??
+          DEFAULT_FORM.mofa_id,
+      });
     }
 
     setCandidateOpen(false);
@@ -226,6 +240,7 @@ export function VisaForm({
   }, [
     open,
     record,
+    prefill,
   ]);
 
   /* =======================================================
