@@ -96,6 +96,13 @@ export async function getBmetRecordsByCandidate(
  * tenant_id is intentionally NOT sent.
  * It should be resolved by the database/RLS layer.
  */
+/**
+ * Create a BMET record.
+ *
+ * tenant_id is intentionally NOT supplied here.
+ * The database trigger resolves tenant_id from the
+ * authenticated user's profile before RLS is evaluated.
+ */
 export async function createBmetRecord(
   input: CreateBmetInput,
 ): Promise<BmetRecord> {
