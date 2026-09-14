@@ -33,6 +33,7 @@ import { FlightPage } from "@/modules/erp/flight/flight-page";
 import { ReportsPage } from "@/modules/erp/reports/reports-page";
 import { TemplateBuilderPage } from "@/modules/erp/reports/document-templates/template-builder-page";
 import { TemplateUsePage } from "@/modules/erp/reports/document-templates/template-use-page";
+import { AccountsPage } from "@/modules/erp/accounts/accounts-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
 import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
 import { SettingsPage } from "@/modules/erp/settings/settings-page";
@@ -137,6 +138,9 @@ function AppRouter() {
             {/* Reports → Document Templates (builder + usage) */}
             <Route path="reports/templates/:templateId" element={<TemplateBuilderPage />} />
             <Route path="reports/templates/:templateId/use" element={<TemplateUsePage />} />
+            
+            {/* Accounts */}
+            <Route path="accounts" element={<AccountsPage />} />
             
             {/* Finance */}
             <Route path="finance" element={<FinancePage />} />

@@ -103,6 +103,11 @@ export const erpNavigation = [
     url: "/app/reports",
     icon: BarChart3,
   },
+  {
+    title: "Accounts",
+    url: "/app/accounts",
+    icon: WalletCards,
+  },
 
   {
     title: "Finance",
