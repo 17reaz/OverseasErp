@@ -649,7 +649,26 @@ function latestByCandidate<
    GET MEDICAL PIPELINE
    ========================================================= */
 
+
 export async function getMedicalPipelineItems() {
+  /*
+   * =========================================================
+   * LOAD MEDICAL PIPELINE
+   *
+   * Relation:
+   *
+   * Candidate
+   *   ↓ candidate_id
+   * MOFA
+   *   ↓ mofa.id = visa.mofa_id
+   * Visa
+   *
+   * IMPORTANT:
+   * Do NOT map Visa directly by candidate_id.
+   * Visa belongs to MOFA through mofa_id.
+   * =========================================================
+   */
+
   const [
     medicalResult,
     mofaResult,
@@ -661,12 +680,10 @@ export async function getMedicalPipelineItems() {
         *,
         candidate:candidates (
           id,
+          sl,
           name,
           passport_no,
-          received_date,
           country,
-          sl,
-          agent_id,
           agent:agents (
             id,
             name,
@@ -674,12 +691,9 @@ export async function getMedicalPipelineItems() {
           )
         )
       `)
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        },
-      ),
+      .order("created_at", {
+        ascending: false,
+      }),
 
     supabase
       .from("mofas")
@@ -691,12 +705,9 @@ export async function getMedicalPipelineItems() {
         stage,
         created_at
       `)
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        },
-      ),
+      .order("created_at", {
+        ascending: false,
+      }),
 
     supabase
       .from("visas")
@@ -710,17 +721,16 @@ export async function getMedicalPipelineItems() {
         status,
         created_at
       `)
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        },
-      ),
+      .order("created_at", {
+        ascending: false,
+      }),
   ]);
 
-  /* =======================================================
-     ERROR HANDLING
-     ======================================================= */
+  /*
+   * =========================================================
+   * ERROR HANDLING
+   * =========================================================
+   */
 
   if (medicalResult.error) {
     return {
@@ -743,48 +753,61 @@ export async function getMedicalPipelineItems() {
     };
   }
 
-  /* =======================================================
-     NORMALIZE DATA
-     ======================================================= */
+  const medicals = medicalResult.data ?? [];
+  const mofas = mofaResult.data ?? [];
+  const visas = visaResult.data ?? [];
 
-  const medicals =
-    (medicalResult.data ?? []) as Medical[];
+  /*
+   * =========================================================
+   * LATEST MOFA PER CANDIDATE
+   * =========================================================
+   *
+   * mofas are already ordered newest → oldest.
+   * Therefore the first record for a candidate is the latest.
+   */
 
-  const mofas =
-    (mofaResult.data ?? []) as MedicalPipelineMofa[];
+  const mofaMap = new Map<
+    string,
+    MedicalPipelineMofa
+  >();
 
-  const visas =
-    (visaResult.data ?? []) as MedicalPipelineVisa[];
+  for (const mofa of mofas) {
+    if (!mofa.candidate_id) {
+      continue;
+    }
 
-  /* =======================================================
-     MOFA MAP
-     -------------------------------------------------------
-     Candidate → latest MOFA
-     ======================================================= */
+    if (!mofaMap.has(mofa.candidate_id)) {
+      mofaMap.set(
+        mofa.candidate_id,
+        mofa,
+      );
+    }
+  }
 
-  const mofaMap =
-    latestByCandidate(mofas);
+  /*
+   * =========================================================
+   * VISA BY MOFA ID
+   * =========================================================
+   *
+   * IMPORTANT:
+   *
+   * WRONG:
+   *
+   * visaMap.get(medical.candidate_id)
+   *
+   * CORRECT:
+   *
+   * visaByMofaId.get(mofa.id)
+   *
+   * Because:
+   *
+   * visas.mofa_id → mofas.id
+   */
 
-  /* =======================================================
-     VISA MAP
-     -------------------------------------------------------
-     MOFA → latest Visa
-
-     IMPORTANT:
-     Visa is related to MOFA through:
-
-       visas.mofa_id → mofas.id
-
-     NOT:
-
-       visas.candidate_id → candidates.id
-     ======================================================= */
-
-  const visaByMofaId =
-    new Map<
-      string,
-      MedicalPipelineVisa
-    >();
+  const visaByMofaId = new Map<
+    string,
+    MedicalPipelineVisa
+  >();
 
   for (const visa of visas) {
     if (!visa.mofa_id) {
@@ -792,8 +815,8 @@ export async function getMedicalPipelineItems() {
     }
 
     /*
-     * Because visas are ordered by created_at DESC,
-     * the first Visa for a MOFA is the latest one.
+     * Since visas are ordered newest → oldest,
+     * keep only the latest Visa for each MOFA.
      */
     if (!visaByMofaId.has(visa.mofa_id)) {
       visaByMofaId.set(
@@ -803,9 +826,11 @@ export async function getMedicalPipelineItems() {
     }
   }
 
-  /* =======================================================
-     BUILD MEDICAL PIPELINE
-     ======================================================= */
+  /*
+   * =========================================================
+   * BUILD PIPELINE
+   * =========================================================
+   */
 
   const items: MedicalPipelineItem[] =
     medicals
@@ -813,43 +838,51 @@ export async function getMedicalPipelineItems() {
         (medical) =>
           !!medical.candidate,
       )
-      .map(
-        (medical) => {
-          const candidate =
-            medical.candidate as MedicalCandidate;
+      .map((medical) => {
+        const candidate =
+          medical.candidate as MedicalCandidate;
 
-          /*
-           * Candidate → latest MOFA
-           */
-          const mofa =
-            mofaMap.get(
-              medical.candidate_id,
-            ) ?? null;
+        /*
+         * Candidate → latest MOFA
+         */
+        const mofa =
+          mofaMap.get(
+            medical.candidate_id,
+          ) ?? null;
 
-          /*
-           * MOFA → latest Visa
-           *
-           * This is the important fix.
-           */
-          const visa =
-            mofa?.id
-              ? visaByMofaId.get(
-                  mofa.id,
-                ) ?? null
-              : null;
+        /*
+         * MOFA → latest Visa
+         *
+         * This is the critical fix.
+         */
+        const visa =
+          mofa?.id
+            ? visaByMofaId.get(
+                mofa.id,
+              ) ?? null
+            : null;
 
-          return {
-            medical,
-            candidate,
-            mofa,
-            visa,
-          };
-        },
-      )
+        return {
+          medical,
+          candidate,
+          mofa,
+          visa,
+        };
+      })
+      /*
+       * Keep only valid Medical records.
+       *
+       * Candidates whose Visa is already issued/approved
+       * leave the Medical pipeline.
+       */
       .filter(
         (item) =>
-          isMedicalValid(item.medical) &&
-          !isVisaIssued(item.visa),
+          isMedicalValid(
+            item.medical,
+          ) &&
+          !isVisaIssued(
+            item.visa,
+          ),
       );
 
   return {
@@ -857,3 +890,4 @@ export async function getMedicalPipelineItems() {
     error: null,
   };
 }
+``
