@@ -9,7 +9,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { AccountSheet } from "./components/account-sheet";
 import {
   getAccounts,
   type FinanceAccount,
@@ -40,7 +40,7 @@ function AccountsPage() {
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   async function loadAccounts() {
     try {
       setLoading(true);
@@ -83,10 +83,9 @@ function AccountsPage() {
           </p>
         </div>
 
-        <Button>
-          <Plus className="mr-2 size-4" />
-          Add Account
-        </Button>
+        <Button onClick={() => setAccountSheetOpen(true)}>
+  Add Account
+</Button>
       </div>
 
       {/* Content */}
@@ -199,6 +198,11 @@ function AccountsPage() {
           </div>
         )}
       </div>
+      <AccountSheet
+  open={accountSheetOpen}
+  onOpenChange={setAccountSheetOpen}
+  onCreated={loadAccounts}
+/>
     </div>
   );
 }
