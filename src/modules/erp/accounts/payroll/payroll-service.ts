@@ -1,5 +1,3 @@
-// src/modules/erp/accounts/payroll/payroll-service.ts
-
 import { supabase } from "@/lib/supabase/client";
 
 export type PayrollStatus =
@@ -42,17 +40,19 @@ export interface CreatePayrollInput {
   employeeCode: string | null;
   designation: string | null;
   payrollMonth: string;
+
   basicSalary: number;
   bonus: number;
   allowances: number;
   deductions: number;
+
   paymentMethod: string | null;
   accountId: string | null;
+
   notes: string | null;
 }
 
-export type UpdatePayrollInput =
-  CreatePayrollInput;
+export type UpdatePayrollInput = CreatePayrollInput;
 
 interface PayrollRow {
   id: string;
@@ -106,36 +106,22 @@ const PAYROLL_SELECT = `
   updated_at
 `;
 
-/* =========================================================
- * GET PAYROLL
- * ========================================================= */
-
-export async function getPayrollRecords(): Promise<
-  PayrollRecord[]
-> {
+export async function getPayrollRecords(): Promise<PayrollRecord[]> {
   const { data, error } = await supabase
     .schema("finance")
     .from("payroll")
     .select(PAYROLL_SELECT)
-    .order("payroll_month", {
-      ascending: false,
-    })
-    .order("created_at", {
-      ascending: false,
-    });
+    .order("payroll_month", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (
-    (data as PayrollRow[] | null) ?? []
-  ).map(normalizePayroll);
+  return ((data as PayrollRow[] | null) ?? []).map(
+    normalizePayroll,
+  );
 }
-
-/* =========================================================
- * GET SINGLE PAYROLL
- * ========================================================= */
 
 export async function getPayrollRecord(
   id: string,
@@ -151,14 +137,8 @@ export async function getPayrollRecord(
     throw new Error(error.message);
   }
 
-  return normalizePayroll(
-    data as PayrollRow,
-  );
+  return normalizePayroll(data as PayrollRow);
 }
-
-/* =========================================================
- * CREATE
- * ========================================================= */
 
 export async function createPayroll(
   input: CreatePayrollInput,
@@ -171,14 +151,18 @@ export async function createPayroll(
       employee_code: input.employeeCode,
       designation: input.designation,
       payroll_month: input.payrollMonth,
+
       basic_salary: input.basicSalary,
       bonus: input.bonus,
       allowances: input.allowances,
       deductions: input.deductions,
+
+      status: "pending",
+
       payment_method: input.paymentMethod,
       account_id: input.accountId,
+
       notes: input.notes,
-      status: "pending",
     })
     .select(PAYROLL_SELECT)
     .single();
@@ -187,14 +171,8 @@ export async function createPayroll(
     throw new Error(error.message);
   }
 
-  return normalizePayroll(
-    data as PayrollRow,
-  );
+  return normalizePayroll(data as PayrollRow);
 }
-
-/* =========================================================
- * UPDATE
- * ========================================================= */
 
 export async function updatePayroll(
   id: string,
@@ -208,12 +186,15 @@ export async function updatePayroll(
       employee_code: input.employeeCode,
       designation: input.designation,
       payroll_month: input.payrollMonth,
+
       basic_salary: input.basicSalary,
       bonus: input.bonus,
       allowances: input.allowances,
       deductions: input.deductions,
+
       payment_method: input.paymentMethod,
       account_id: input.accountId,
+
       notes: input.notes,
     })
     .eq("id", id)
@@ -225,14 +206,8 @@ export async function updatePayroll(
     throw new Error(error.message);
   }
 
-  return normalizePayroll(
-    data as PayrollRow,
-  );
+  return normalizePayroll(data as PayrollRow);
 }
-
-/* =========================================================
- * CANCEL
- * ========================================================= */
 
 export async function cancelPayroll(
   id: string,
@@ -252,33 +227,25 @@ export async function cancelPayroll(
     throw new Error(error.message);
   }
 
-  return normalizePayroll(
-    data as PayrollRow,
-  );
+  return normalizePayroll(data as PayrollRow);
 }
-
-/* =========================================================
- * MARK PAID
- *
- * NOTE:
- * Actual transaction creation will be wired after
- * the payroll sheet/page UI is connected.
- * ========================================================= */
 
 export async function markPayrollPaid(
   id: string,
-  paymentDate: string,
-  paymentMethod: string,
-  accountId: string,
+  input: {
+    paymentDate: string;
+    paymentMethod: string;
+    accountId: string;
+  },
 ): Promise<PayrollRecord> {
   const { data, error } = await supabase
     .schema("finance")
     .from("payroll")
     .update({
       status: "paid",
-      payment_date: paymentDate,
-      payment_method: paymentMethod,
-      account_id: accountId,
+      payment_date: input.paymentDate,
+      payment_method: input.paymentMethod,
+      account_id: input.accountId,
     })
     .eq("id", id)
     .eq("status", "pending")
@@ -289,18 +256,10 @@ export async function markPayrollPaid(
     throw new Error(error.message);
   }
 
-  return normalizePayroll(
-    data as PayrollRow,
-  );
+  return normalizePayroll(data as PayrollRow);
 }
 
-/* =========================================================
- * NORMALIZER
- * ========================================================= */
-
-function normalizePayroll(
-  row: PayrollRow,
-): PayrollRecord {
+function normalizePayroll(row: PayrollRow): PayrollRecord {
   return {
     id: row.id,
     tenantId: row.tenant_id,
@@ -311,30 +270,19 @@ function normalizePayroll(
 
     payrollMonth: row.payroll_month,
 
-    basicSalary: Number(
-      row.basic_salary,
-    ),
+    basicSalary: Number(row.basic_salary),
     bonus: Number(row.bonus),
-    allowances: Number(
-      row.allowances,
-    ),
-    deductions: Number(
-      row.deductions,
-    ),
-    netSalary: Number(
-      row.net_salary,
-    ),
+    allowances: Number(row.allowances),
+    deductions: Number(row.deductions),
+    netSalary: Number(row.net_salary),
 
-    status:
-      row.status as PayrollStatus,
+    status: row.status as PayrollStatus,
 
     paymentDate: row.payment_date,
-    paymentMethod:
-      row.payment_method,
+    paymentMethod: row.payment_method,
 
     accountId: row.account_id,
-    transactionId:
-      row.transaction_id,
+    transactionId: row.transaction_id,
 
     notes: row.notes,
 
