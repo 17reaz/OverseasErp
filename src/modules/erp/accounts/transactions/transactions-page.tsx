@@ -40,7 +40,7 @@ import {
   TransactionDetailsSheet,
 } from "./components/transaction-details-sheet";
 
-export function TransactionPage() {
+export function TransactionsPage() {
   const [
     transactions,
     setTransactions,
