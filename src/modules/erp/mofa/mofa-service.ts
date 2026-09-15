@@ -608,9 +608,7 @@ export async function getFitMedicalsWithoutMofa() {
     error: mofasError,
   } = await supabase
     .from("mofas")
-    .select(
-      "medical_id",
-    );
+    .select("medical_id");
 
   if (mofasError) {
     return {
@@ -619,74 +617,105 @@ export async function getFitMedicalsWithoutMofa() {
     };
   }
 
-  const mofaMedicalIds =
-    new Set(
-      (mofas ?? [])
-        .map(
-          (item) =>
-            item.medical_id,
-        )
-        .filter(Boolean),
-    );
-
-  const pending: MofaPendingMedical[] =
-    (medicals ?? [])
-      .filter(
-        (medical) =>
-          !mofaMedicalIds.has(
-            medical.id,
-          ),
+  const mofaMedicalIds = new Set(
+    (mofas ?? [])
+      .map(
+        (item) => item.medical_id,
       )
-      .map((medical) => {
-        const rawCandidate =
-          Array.isArray(
-            medical.candidate,
-          )
-            ? medical.candidate[0]
-            : medical.candidate;
-
-        if (!rawCandidate) {
-          return null;
-        }
-
-        return {
-          id: medical.id,
-          medical_date:
-            medical.medical_date,
-          fit_date:
-            medical.fit_date,
-          status:
-            medical.status,
-          candidate: {
-            id:
-              rawCandidate.id,
-            name:
-              rawCandidate.name,
-            passport_no:
-              rawCandidate.passport_no,
-            received_date:
-              rawCandidate.received_date,
-            country:
-              rawCandidate.country,
-            sl:
-              rawCandidate.sl,
-            agent_id:
-              rawCandidate.agent_id,
-            agent:
-              Array.isArray(
-                rawCandidate.agent,
-              )
-                ? rawCandidate.agent[0] ?? null
-                : rawCandidate.agent,
-          },
-        };
-      })
       .filter(
         (
-          item,
-        ): item is MofaPendingMedical =>
-          item !== null,
-      );
+          medicalId,
+        ): medicalId is string =>
+          Boolean(medicalId),
+      ),
+  );
+
+  const pending: MofaPendingMedical[] = [];
+
+  for (const medical of medicals ?? []) {
+    /*
+     * Supabase may return candidate as:
+     *
+     * candidate
+     * candidate[]
+     *
+     * depending on the generated relation type.
+     */
+    const rawCandidate =
+      Array.isArray(medical.candidate)
+        ? medical.candidate[0] ?? null
+        : medical.candidate;
+
+    /*
+     * A medical without a candidate
+     * cannot be used for MOFA.
+     */
+    if (!rawCandidate) {
+      continue;
+    }
+
+    /*
+     * Skip medicals that already have a MOFA.
+     */
+    if (
+      mofaMedicalIds.has(
+        medical.id,
+      )
+    ) {
+      continue;
+    }
+
+    const rawAgent =
+      Array.isArray(
+        rawCandidate.agent,
+      )
+        ? rawCandidate.agent[0] ?? null
+        : rawCandidate.agent;
+
+    const candidate: MofaCandidate = {
+      id: rawCandidate.id,
+
+      name: rawCandidate.name,
+
+      passport_no:
+        rawCandidate.passport_no,
+
+      received_date:
+        rawCandidate.received_date,
+
+      country:
+        rawCandidate.country as MofaCandidateCountry,
+
+      sl:
+        rawCandidate.sl,
+
+      agent_id:
+        rawCandidate.agent_id,
+
+      agent: rawAgent
+        ? {
+            id: rawAgent.id,
+            name: rawAgent.name,
+            code: rawAgent.code,
+          }
+        : null,
+    };
+
+    pending.push({
+      id: medical.id,
+
+      medical_date:
+        medical.medical_date,
+
+      fit_date:
+        medical.fit_date,
+
+      status:
+        medical.status as MofaMedicalStatus,
+
+      candidate,
+    });
+  }
 
   return {
     data: pending,
