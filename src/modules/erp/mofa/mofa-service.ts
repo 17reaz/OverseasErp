@@ -77,6 +77,33 @@ export interface MofaMedical {
 
 /*
  * =========================================================
+ * VISA
+ *
+ * Relation:
+ *
+ * visas.mofa_id -> mofas.id
+ *
+ * We intentionally load visas separately instead of
+ * relying on a nested Supabase relation.
+ * =========================================================
+ */
+
+export interface MofaVisa {
+  id: string;
+  candidate_id: string;
+  mofa_id: string | null;
+  visa_no: string | null;
+  visa_date: string | null;
+  expiry_date: string | null;
+  visa_type: string | null;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+
+/*
+ * =========================================================
  * AGENCY
  *
  * IMPORTANT:
@@ -126,6 +153,13 @@ export interface Mofa {
   candidate?: MofaCandidate | null;
   medical?: MofaMedical | null;
   agency?: MofaAgency | null;
+
+  /*
+   * Visa relation is loaded separately.
+   *
+   * One MOFA may have zero or more visa records.
+   */
+  visas?: MofaVisa[];
 }
 
 
@@ -178,8 +212,9 @@ const candidateSelect = `
  * =========================================================
  * MOFA SELECT
  *
- * IMPORTANT:
- * agencies.country removed.
+ * Visa is intentionally NOT nested here.
+ *
+ * Visa relation is loaded separately through mofa_id.
  * =========================================================
  */
 
@@ -227,17 +262,58 @@ const mofaSelect = `
 
 /*
  * =========================================================
- * GET MOFAS
+ * VISA SELECT
  * =========================================================
  */
 
-export async function getMofas() {
+const visaSelect = `
+  id,
+  candidate_id,
+  mofa_id,
+  visa_no,
+  visa_date,
+  expiry_date,
+  visa_type,
+  status,
+  created_at,
+  updated_at
+`;
+
+
+/*
+ * =========================================================
+ * ATTACH VISAS
+ *
+ * Relation:
+ *
+ * visas.mofa_id = mofas.id
+ *
+ * This keeps the main MOFA query simple and avoids
+ * depending on Supabase's nested relation shape.
+ * =========================================================
+ */
+
+async function attachMofaVisas(
+  mofas: Mofa[],
+) {
+  if (mofas.length === 0) {
+    return mofas;
+  }
+
+  const mofaIds = mofas.map(
+    (mofa) => mofa.id,
+  );
+
   const {
-    data,
+    data: visas,
     error,
   } = await supabase
-    .from("mofas")
-    .select(mofaSelect)
+    .from("visas")
+    .select(visaSelect)
+    .in(
+      "mofa_id",
+      mofaIds,
+    )
     .order(
       "created_at",
       {
@@ -245,10 +321,96 @@ export async function getMofas() {
       },
     );
 
-  return {
-    data: data as Mofa[] | null,
-    error,
-  };
+  if (error) {
+    throw error;
+  }
+
+  const visasByMofa =
+    new Map<string, MofaVisa[]>();
+
+  for (const visa of (visas ?? []) as MofaVisa[]) {
+    if (!visa.mofa_id) {
+      continue;
+    }
+
+    const existing =
+      visasByMofa.get(
+        visa.mofa_id,
+      ) ?? [];
+
+    existing.push(visa);
+
+    visasByMofa.set(
+      visa.mofa_id,
+      existing,
+    );
+  }
+
+  return mofas.map(
+    (mofa) => ({
+      ...mofa,
+
+      visas:
+        visasByMofa.get(
+          mofa.id,
+        ) ?? [],
+    }),
+  );
+}
+
+
+/*
+ * =========================================================
+ * GET MOFAS
+ * =========================================================
+ */
+
+export async function getMofas() {
+  try {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("mofas")
+      .select(mofaSelect)
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      );
+
+    if (error) {
+      return {
+        data: null,
+        error,
+      };
+    }
+
+    const mofas =
+      (data ?? []) as Mofa[];
+
+    const mofasWithVisas =
+      await attachMofaVisas(
+        mofas,
+      );
+
+    return {
+      data: mofasWithVisas,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+
+      error:
+        error instanceof Error
+          ? error
+          : new Error(
+              "Failed to load MOFA records.",
+            ),
+    };
+  }
 }
 
 
@@ -381,9 +543,6 @@ export async function getCandidateMedicals(
  * MOFAABLE
  *
  * Fit medicals that do NOT have a MOFA yet.
- *
- * Same pattern as
- * getCandidatesWithoutMedical() in medical-service.ts.
  * =========================================================
  */
 
@@ -444,7 +603,6 @@ export async function getFitMedicalsWithoutMofa() {
     };
   }
 
-
   const {
     data: mofas,
     error: mofasError,
@@ -461,7 +619,6 @@ export async function getFitMedicalsWithoutMofa() {
     };
   }
 
-
   const mofaMedicalIds =
     new Set(
       (mofas ?? [])
@@ -472,7 +629,6 @@ export async function getFitMedicalsWithoutMofa() {
         .filter(Boolean),
     );
 
-
   const pending: MofaPendingMedical[] =
     (medicals ?? [])
       .filter(
@@ -482,33 +638,55 @@ export async function getFitMedicalsWithoutMofa() {
           ),
       )
       .map((medical) => {
-
         const rawCandidate =
-          Array.isArray(medical.candidate)
+          Array.isArray(
+            medical.candidate,
+          )
             ? medical.candidate[0]
             : medical.candidate;
 
+        if (!rawCandidate) {
+          return null;
+        }
+
         return {
           id: medical.id,
-          medical_date: medical.medical_date,
-          fit_date: medical.fit_date,
-          status: medical.status,
+          medical_date:
+            medical.medical_date,
+          fit_date:
+            medical.fit_date,
+          status:
+            medical.status,
           candidate: {
-            id: rawCandidate.id,
-            name: rawCandidate.name,
-            passport_no: rawCandidate.passport_no,
-            received_date: rawCandidate.received_date,
-            country: rawCandidate.country,
-            sl: rawCandidate.sl,
-            agent_id: rawCandidate.agent_id,
-            agent: Array.isArray(rawCandidate.agent)
-              ? rawCandidate.agent[0] ?? null
-              : rawCandidate.agent,
+            id:
+              rawCandidate.id,
+            name:
+              rawCandidate.name,
+            passport_no:
+              rawCandidate.passport_no,
+            received_date:
+              rawCandidate.received_date,
+            country:
+              rawCandidate.country,
+            sl:
+              rawCandidate.sl,
+            agent_id:
+              rawCandidate.agent_id,
+            agent:
+              Array.isArray(
+                rawCandidate.agent,
+              )
+                ? rawCandidate.agent[0] ?? null
+                : rawCandidate.agent,
           },
         };
-
-      });
-
+      })
+      .filter(
+        (
+          item,
+        ): item is MofaPendingMedical =>
+          item !== null,
+      );
 
   return {
     data: pending,
@@ -565,7 +743,6 @@ export async function getMofaAgencies() {
  * BACKWARD COMPATIBILITY
  *
  * Current mofa-form.tsx may import getAgencies().
- * Keep this alias so existing imports continue working.
  * =========================================================
  */
 
@@ -634,7 +811,6 @@ async function getCurrentTenantId() {
  *
  * application_date NOT NULL
  * trade             NOT NULL
- *
  * =========================================================
  */
 
@@ -726,17 +902,6 @@ export async function createMofa(
     } = await supabase
       .from("mofas")
       .insert({
-        /*
-         * tenant_id:
-         * explicitly supplied from authenticated profile.
-         *
-         * sl:
-         * NOT supplied.
-         *
-         * Database trigger generates
-         * tenant-wise serial automatically.
-         */
-
         tenant_id:
           tenantId,
 
@@ -765,26 +930,21 @@ export async function createMofa(
       .single();
 
     if (!error && data) {
-
       try {
-
         await syncCandidateWorkflowState(
           values.candidate_id,
         );
-
       } catch (workflowError) {
-
         console.error(
           "Failed to sync candidate workflow state after MOFA create:",
           workflowError,
         );
-
       }
-
     }
 
     return {
-      data: data as Mofa | null,
+      data:
+        data as Mofa | null,
       error,
     };
   } catch (error) {
@@ -862,26 +1022,21 @@ export async function updateMofa(
       .single();
 
     if (!error && data) {
-
       try {
-
         await syncCandidateWorkflowState(
           values.candidate_id,
         );
-
       } catch (workflowError) {
-
         console.error(
           "Failed to sync candidate workflow state after MOFA update:",
           workflowError,
         );
-
       }
-
     }
 
     return {
-      data: data as Mofa | null,
+      data:
+        data as Mofa | null,
       error,
     };
   } catch (error) {

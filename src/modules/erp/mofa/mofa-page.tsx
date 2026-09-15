@@ -22,6 +22,10 @@ import {
 } from "./components/mofa-table";
 
 import {
+  MofaGrid,
+} from "./components/mofa-grid";
+
+import {
   MofaToolbar,
   type MofaFilterState,
   type MofaSortState,
@@ -102,7 +106,7 @@ export function MofaPage() {
 
 
   /* =======================================================
-   * MOFAABLE — fit medicals without a MOFA yet
+   * MOFAABLE
    * ======================================================= */
 
   const [
@@ -233,10 +237,6 @@ export function MofaPage() {
 
   /* =======================================================
    * LOAD CANDIDATES
-   *
-   * MOFA does NOT require medical.
-   *
-   * Therefore candidates are loaded independently.
    * ======================================================= */
 
   const loadCandidates = useCallback(
@@ -283,54 +283,54 @@ export function MofaPage() {
 
   /* =======================================================
    * LOAD MOFAABLE
-   *
-   * Fit medicals that don't have a
-   * MOFA yet.
-   *
-   * Same pattern as loadPending()
-   * in medical-page.tsx.
    * ======================================================= */
 
-  const loadPendingMedicals = useCallback(
-    async () => {
+  const loadPendingMedicals =
+    useCallback(
+      async () => {
 
-      try {
+        try {
 
-        setPendingLoading(true);
+          setPendingLoading(
+            true,
+          );
 
-        const {
-          data,
-          error,
-        } = await getFitMedicalsWithoutMofa();
+          const {
+            data,
+            error,
+          } =
+            await getFitMedicalsWithoutMofa();
 
-        if (error) {
-          throw error;
+          if (error) {
+            throw error;
+          }
+
+          setPendingMedicals(
+            data ?? [],
+          );
+
+        } catch (error) {
+
+          console.error(
+            error,
+          );
+
+          toast.error(
+            "Failed to load mofaable candidates.",
+            "Please try again.",
+          );
+
+        } finally {
+
+          setPendingLoading(
+            false,
+          );
+
         }
 
-        setPendingMedicals(
-          data ?? [],
-        );
-
-      } catch (error) {
-
-        console.error(
-          error,
-        );
-
-        toast.error(
-          "Failed to load mofaable candidates.",
-          "Please try again.",
-        );
-
-      } finally {
-
-        setPendingLoading(false);
-
-      }
-
-    },
-    [],
-  );
+      },
+      [],
+    );
 
 
   /* =======================================================
@@ -354,284 +354,331 @@ export function MofaPage() {
    * MOFAABLE SEARCH
    * ======================================================= */
 
-  const filteredPendingMedicals = useMemo(
-    () => {
+  const filteredPendingMedicals =
+    useMemo(
+      () => {
 
-      const query =
-        search
-          .trim()
-          .toLowerCase();
+        const query =
+          search
+            .trim()
+            .toLowerCase();
 
-      if (!query) {
-        return pendingMedicals;
-      }
+        if (!query) {
+          return pendingMedicals;
+        }
 
-      return pendingMedicals.filter(
-        (item) => {
+        return pendingMedicals.filter(
+          (item) => {
 
-          const name =
-            item.candidate.name
-              ?.toLowerCase() ?? "";
+            const name =
+              item.candidate.name
+                ?.toLowerCase() ??
+              "";
 
-          const passport =
-            item.candidate.passport_no
-              ?.toLowerCase() ?? "";
+            const passport =
+              item.candidate.passport_no
+                ?.toLowerCase() ??
+              "";
 
-          return (
-            name.includes(query) ||
-            passport.includes(query)
-          );
+            return (
+              name.includes(query) ||
+              passport.includes(query)
+            );
 
-        },
-      );
+          },
+        );
 
-    },
-    [
-      pendingMedicals,
-      search,
-    ],
-  );
+      },
+      [
+        pendingMedicals,
+        search,
+      ],
+    );
 
 
   /* =======================================================
    * FILTER + SEARCH + SORT
    * ======================================================= */
 
-  const filteredMofas = useMemo(
-    () => {
+  const filteredMofas =
+    useMemo(
+      () => {
 
-      const query =
-        search
-          .trim()
-          .toLowerCase();
+        const query =
+          search
+            .trim()
+            .toLowerCase();
 
+        let result =
+          mofas.filter(
+            (mofa) => {
 
-      let result =
-        mofas.filter(
-          (mofa) => {
+              /* =============================================
+               * SEARCH
+               * ============================================= */
 
-            /* =============================================
-             * SEARCH
-             * ============================================= */
-
-            const matchesSearch =
-              !query ||
-              (
-                mofa.candidate?.name
-                  ?.toLowerCase()
-                  .includes(query)
-              ) ||
-              (
-                mofa.candidate?.passport_no
-                  ?.toLowerCase()
-                  .includes(query)
-              ) ||
-              (
-                mofa.application_number
-                  ?.toLowerCase()
-                  .includes(query)
-              ) ||
-              (
-                mofa.trade
-                  ?.toLowerCase()
-                  .includes(query)
-              ) ||
-              (
-                mofa.agency?.name
-                  ?.toLowerCase()
-                  .includes(query)
-              );
-
-
-            /* =============================================
-             * STAGE
-             * ============================================= */
-
-            const matchesStage =
-              filter.view === "all" ||
-              mofa.stage === filter.view;
+              const matchesSearch =
+                !query ||
+                (
+                  mofa.candidate?.name
+                    ?.toLowerCase()
+                    .includes(query)
+                ) ||
+                (
+                  mofa.candidate?.passport_no
+                    ?.toLowerCase()
+                    .includes(query)
+                ) ||
+                (
+                  mofa.application_number
+                    ?.toLowerCase()
+                    .includes(query)
+                ) ||
+                (
+                  mofa.trade
+                    ?.toLowerCase()
+                    .includes(query)
+                ) ||
+                (
+                  mofa.agency?.name
+                    ?.toLowerCase()
+                    .includes(query)
+                );
 
 
-            /* =============================================
-             * MONTH
-             *
-             * Toolbar gives:
-             *
-             * 2026-08
-             *
-             * So compare YYYY-MM directly.
-             * ============================================= */
+              /* =============================================
+               * STAGE
+               * ============================================= */
 
-            let matchesMonth = true;
+              const matchesStage =
+                filter.view === "all" ||
+                filter.view === "mofaable" ||
+                mofa.stage === filter.view;
 
-            if (
-              filter.month !== "all"
-            ) {
 
-              const date =
-                mofa.application_date;
+              /* =============================================
+               * MONTH
+               * ============================================= */
 
-              if (!date) {
+              let matchesMonth = true;
 
-                matchesMonth = false;
+              if (
+                filter.month !== "all"
+              ) {
 
-              } else {
+                const date =
+                  mofa.application_date;
 
-                const monthKey =
-                  date.slice(0, 7);
+                if (!date) {
 
-                matchesMonth =
-                  monthKey === filter.month;
+                  matchesMonth = false;
+
+                } else {
+
+                  const monthKey =
+                    date.slice(0, 7);
+
+                  matchesMonth =
+                    monthKey ===
+                    filter.month;
+
+                }
 
               }
+
+
+              return (
+                matchesSearch &&
+                matchesStage &&
+                matchesMonth
+              );
+
+            },
+          );
+
+
+        /* ===================================================
+         * SORT
+         * =================================================== */
+
+        result = [
+          ...result,
+        ].sort(
+          (a, b) => {
+
+            let first = "";
+            let second = "";
+
+
+            switch (
+              sort.field
+            ) {
+
+              case "name":
+
+                first =
+                  a.candidate?.name ??
+                  "";
+
+                second =
+                  b.candidate?.name ??
+                  "";
+
+                break;
+
+
+              case "passport_no":
+
+                first =
+                  a.candidate?.passport_no ??
+                  "";
+
+                second =
+                  b.candidate?.passport_no ??
+                  "";
+
+                break;
+
+
+              case "application_number":
+
+                first =
+                  a.application_number ??
+                  "";
+
+                second =
+                  b.application_number ??
+                  "";
+
+                break;
+
+
+              case "application_date":
+
+                first =
+                  a.application_date ??
+                  "";
+
+                second =
+                  b.application_date ??
+                  "";
+
+                break;
+
+
+              case "updated_at":
+
+                first =
+                  a.updated_at ??
+                  "";
+
+                second =
+                  b.updated_at ??
+                  "";
+
+                break;
+
+
+              case "created_at":
+
+              default:
+
+                first =
+                  a.created_at ??
+                  "";
+
+                second =
+                  b.created_at ??
+                  "";
+
+                break;
 
             }
 
 
-            return (
-              matchesSearch &&
-              matchesStage &&
-              matchesMonth
-            );
+            const comparison =
+              first.localeCompare(
+                second,
+                undefined,
+                {
+                  numeric: true,
+                  sensitivity: "base",
+                },
+              );
+
+
+            if (
+              sort.mode ===
+              "descending"
+            ) {
+              return -comparison;
+            }
+
+
+            return comparison;
 
           },
         );
 
 
-      /* =====================================================
-       * SORT
-       * ===================================================== */
+        return result;
 
-      result = [
-        ...result,
-      ].sort(
-        (a, b) => {
-
-          let first = "";
-          let second = "";
-
-
-          switch (
-            sort.field
-          ) {
-
-            case "name":
-
-              first =
-                a.candidate?.name ??
-                "";
-
-              second =
-                b.candidate?.name ??
-                "";
-
-              break;
+      },
+      [
+        mofas,
+        search,
+        filter,
+        sort,
+      ],
+    );
 
 
-            case "passport_no":
+  /* =======================================================
+   * ACTIVE MOFA / VISA READY
+   *
+   * Definition:
+   *
+   * 1. MOFA must be approved.
+   * 2. MOFA must not have any visa record.
+   *
+   * Therefore:
+   *
+   * approved + no visa = active MOFA
+   *
+   * This mirrors the existing Visa module's
+   * getApprovedMofasWithoutVisa() logic.
+   * ======================================================= */
 
-              first =
-                a.candidate?.passport_no ??
-                "";
+  const activeMofas =
+    useMemo(
+      () => {
 
-              second =
-                b.candidate?.passport_no ??
-                "";
+        return filteredMofas.filter(
+          (mofa) => {
 
-              break;
+            const approved =
+              mofa.stage ===
+              "approved";
 
+            const hasVisa =
+              (
+                mofa.visas?.length ??
+                0
+              ) > 0;
 
-            case "application_number":
-
-              first =
-                a.application_number ??
-                "";
-
-              second =
-                b.application_number ??
-                "";
-
-              break;
-
-
-            case "application_date":
-
-              first =
-                a.application_date ??
-                "";
-
-              second =
-                b.application_date ??
-                "";
-
-              break;
-
-
-            case "updated_at":
-
-              first =
-                a.updated_at ??
-                "";
-
-              second =
-                b.updated_at ??
-                "";
-
-              break;
-
-
-            case "created_at":
-
-            default:
-
-              first =
-                a.created_at ??
-                "";
-
-              second =
-                b.created_at ??
-                "";
-
-              break;
-
-          }
-
-
-          const comparison =
-            first.localeCompare(
-              second,
-              undefined,
-              {
-                numeric: true,
-                sensitivity: "base",
-              },
+            return (
+              approved &&
+              !hasVisa
             );
 
+          },
+        );
 
-          if (
-            sort.mode ===
-            "descending"
-          ) {
-            return -comparison;
-          }
-
-
-          return comparison;
-
-        },
-      );
-
-
-      return result;
-
-    },
-    [
-      mofas,
-      search,
-      filter,
-      sort,
-    ],
-  );
+      },
+      [
+        filteredMofas,
+      ],
+    );
 
 
   /* =======================================================
@@ -640,11 +687,17 @@ export function MofaPage() {
 
   function handleCreate() {
 
-    setEditingMofa(null);
+    setEditingMofa(
+      null,
+    );
 
-    setSelectedCandidate(null);
+    setSelectedCandidate(
+      null,
+    );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
@@ -657,13 +710,17 @@ export function MofaPage() {
     item: MofaPendingMedical,
   ) {
 
-    setEditingMofa(null);
+    setEditingMofa(
+      null,
+    );
 
     setSelectedCandidate(
       item.candidate,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
 
   }
 
@@ -684,7 +741,24 @@ export function MofaPage() {
       null,
     );
 
-    setFormOpen(true);
+    setFormOpen(
+      true,
+    );
+
+  }
+
+
+  /* =======================================================
+   * OPEN FROM GRID
+   * ======================================================= */
+
+  function handleOpenGrid(
+    mofa: Mofa,
+  ) {
+
+    handleEdit(
+      mofa,
+    );
 
   }
 
@@ -705,7 +779,6 @@ export function MofaPage() {
         }?`,
       );
 
-
     if (!confirmed) {
       return;
     }
@@ -718,7 +791,6 @@ export function MofaPage() {
       } = await deleteMofa(
         mofa.id,
       );
-
 
       if (error) {
         throw error;
@@ -759,11 +831,17 @@ export function MofaPage() {
 
   function handleFormSuccess() {
 
-    setFormOpen(false);
+    setFormOpen(
+      false,
+    );
 
-    setEditingMofa(null);
+    setEditingMofa(
+      null,
+    );
 
-    setSelectedCandidate(null);
+    setSelectedCandidate(
+      null,
+    );
 
     void loadMofas();
     void loadPendingMedicals();
@@ -779,14 +857,20 @@ export function MofaPage() {
     open: boolean,
   ) {
 
-    setFormOpen(open);
+    setFormOpen(
+      open,
+    );
 
 
     if (!open) {
 
-      setEditingMofa(null);
+      setEditingMofa(
+        null,
+      );
 
-      setSelectedCandidate(null);
+      setSelectedCandidate(
+        null,
+      );
 
     }
 
@@ -882,7 +966,7 @@ export function MofaPage() {
 
 
       {/* =================================================
-       * MOFAABLE / TABLE
+       * MOFAABLE
        * ================================================= */}
 
       {filter.view === "mofaable" ? (
@@ -899,6 +983,36 @@ export function MofaPage() {
 
           onAddMofa={
             handleAddMofa
+          }
+
+        />
+
+      ) : viewMode === "grid" ? (
+
+        /*
+         * IMPORTANT:
+         *
+         * Grid intentionally shows ONLY:
+         *
+         * approved MOFA
+         * +
+         * no visa
+         *
+         * So this becomes the Visa Ready board.
+         */
+
+        <MofaGrid
+
+          items={
+            activeMofas
+          }
+
+          loading={
+            loading
+          }
+
+          onOpen={
+            handleOpenGrid
           }
 
         />
@@ -942,12 +1056,12 @@ export function MofaPage() {
           editingMofa
         }
 
-        selectedCandidate={
-          selectedCandidate
-        }
-
         candidates={
           candidates
+        }
+
+        selectedCandidate={
+          selectedCandidate
         }
 
         onOpenChange={
