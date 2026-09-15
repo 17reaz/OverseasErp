@@ -313,7 +313,7 @@ function FixedCostsPage() {
             variant="ghost"
             size="icon"
             onClick={() =>
-              navigate("/app/finance")
+              navigate("/app/accounts")
             }
           >
             <ArrowLeft className="size-4" />

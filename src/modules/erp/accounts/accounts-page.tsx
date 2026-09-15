@@ -127,23 +127,33 @@ function AccountsPage() {
 
             {/* Accounts */}
             <div>
-              <div className="mb-3 flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="font-semibold">Your Accounts</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Current balances by account.
-                  </p>
-                </div>
+              <div className="flex items-center gap-2">
+  <Button
+    variant="outline"
+    onClick={() =>
+      navigate("/app/accounts/payroll")
+    }
+  >
+    Payroll
+  </Button>
 
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    navigate("/app/accounts/transactions")
-                  }
-                >
-                  Transactions
-                </Button>
-              </div>
+  <Button
+    variant="outline"
+    onClick={() =>
+      navigate("/app/accounts/fixed-costs")
+    }
+  >
+    Fixed Costs
+  </Button>
+
+  <Button
+    onClick={() =>
+      navigate("/app/accounts/transactions")
+    }
+  >
+    Transactions
+  </Button>
+</div>
 
               {accounts.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-10 text-center">
