@@ -1,0 +1,392 @@
+// src/modules/erp/finance/payroll/payroll-page.tsx
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  ArrowLeft,
+  RefreshCw,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/ui/data-table";
+
+import {
+  getPayrollRecords,
+} from "./payroll-service";
+
+import type {
+  PayrollRecord,
+} from "./payroll-service";
+
+function formatMoney(
+  amount: number,
+) {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatMonth(
+  value: string,
+) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(
+    `${value}-01`,
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-BD",
+    {
+      month: "long",
+      year: "numeric",
+    },
+  ).format(date);
+}
+
+function PayrollPage() {
+  const navigate = useNavigate();
+
+  const [
+    payroll,
+    setPayroll,
+  ] = useState<PayrollRecord[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [search, setSearch] =
+    useState("");
+
+  async function loadPayroll(
+    showRefresh = false,
+  ) {
+    try {
+      if (showRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError(null);
+
+      const data =
+        await getPayrollRecords();
+
+      setPayroll(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load payroll.",
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadPayroll();
+  }, []);
+
+  const filteredPayroll =
+    useMemo(() => {
+      const query =
+        search.trim().toLowerCase();
+
+      if (!query) {
+        return payroll;
+      }
+
+      return payroll.filter(
+        (item) =>
+          item.employeeName
+            .toLowerCase()
+            .includes(query) ||
+          item.employeeId
+            ?.toLowerCase()
+            .includes(query) ||
+          item.salaryMonth
+            .toLowerCase()
+            .includes(query),
+      );
+    }, [payroll, search]);
+
+  const summary = useMemo(() => {
+    const total = payroll.reduce(
+      (sum, item) =>
+        sum + item.netSalary,
+      0,
+    );
+
+    const paid = payroll
+      .filter(
+        (item) =>
+          item.status === "paid",
+      )
+      .reduce(
+        (sum, item) =>
+          sum + item.netSalary,
+        0,
+      );
+
+    const pending = payroll
+      .filter(
+        (item) =>
+          item.status === "pending",
+      )
+      .reduce(
+        (sum, item) =>
+          sum + item.netSalary,
+        0,
+      );
+
+    return {
+      total,
+      paid,
+      pending,
+    };
+  }, [payroll]);
+
+  const columns:
+    DataTableColumn<PayrollRecord>[] =
+    [
+      {
+        key: "salaryMonth",
+        header: "Month",
+        cell: (item) =>
+          formatMonth(
+            item.salaryMonth,
+          ),
+      },
+
+      {
+        key: "employee",
+        header: "Employee",
+        cell: (item) => (
+          <div className="min-w-[180px]">
+            <div className="font-medium">
+              {item.employeeName}
+            </div>
+
+            {item.employeeId && (
+              <div className="text-xs text-muted-foreground">
+                {item.employeeId}
+              </div>
+            )}
+          </div>
+        ),
+      },
+
+      {
+        key: "basicSalary",
+        header: "Basic",
+        cell: (item) =>
+          formatMoney(
+            item.basicSalary,
+          ),
+      },
+
+      {
+        key: "allowance",
+        header: "Allowance",
+        cell: (item) =>
+          formatMoney(
+            item.allowance,
+          ),
+      },
+
+      {
+        key: "deduction",
+        header: "Deduction",
+        cell: (item) =>
+          formatMoney(
+            item.deduction,
+          ),
+      },
+
+      {
+        key: "netSalary",
+        header: "Net Salary",
+        className: "text-right",
+        cell: (item) => (
+          <span className="font-semibold">
+            {formatMoney(
+              item.netSalary,
+            )}
+          </span>
+        ),
+      },
+
+      {
+        key: "status",
+        header: "Status",
+        cell: (item) => (
+          <Badge
+            variant={
+              item.status === "paid"
+                ? "default"
+                : item.status ===
+                    "cancelled"
+                  ? "destructive"
+                  : "outline"
+            }
+          >
+            {item.status}
+          </Badge>
+        ),
+      },
+    ];
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* HEADER */}
+      <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() =>
+              navigate("/app/finance")
+            }
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+
+          <div>
+            <h1 className="text-lg font-semibold">
+              Payroll
+            </h1>
+
+            <p className="text-sm text-muted-foreground">
+              Manage employee salaries
+              and payroll payments.
+            </p>
+          </div>
+        </div>
+
+        <Button disabled>
+          Add Payroll
+        </Button>
+      </div>
+
+      {/* CONTENT */}
+      <div className="flex-1 overflow-auto p-6">
+        {/* SUMMARY */}
+        <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-lg border p-4">
+            <div className="text-sm text-muted-foreground">
+              Total Payroll
+            </div>
+
+            <div className="mt-1 text-xl font-semibold">
+              {formatMoney(
+                summary.total,
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div className="text-sm text-muted-foreground">
+              Paid
+            </div>
+
+            <div className="mt-1 text-xl font-semibold">
+              {formatMoney(
+                summary.paid,
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div className="text-sm text-muted-foreground">
+              Pending
+            </div>
+
+            <div className="mt-1 text-xl font-semibold">
+              {formatMoney(
+                summary.pending,
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* TOOLBAR */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Input
+            value={search}
+            onChange={(event) =>
+              setSearch(
+                event.target.value,
+              )
+            }
+            placeholder="Search employee or month..."
+            className="sm:max-w-sm"
+          />
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() =>
+              void loadPayroll(true)
+            }
+            disabled={refreshing}
+          >
+            <RefreshCw
+              className={
+                refreshing
+                  ? "size-4 animate-spin"
+                  : "size-4"
+              }
+            />
+          </Button>
+        </div>
+
+        {/* ERROR */}
+        {error ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+            {error}
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={filteredPayroll}
+            getRowKey={(item) =>
+              item.id
+            }
+            loading={loading}
+            emptyTitle="No payroll records found"
+            emptyDescription="No payroll records have been created yet."
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { PayrollPage };
