@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Banknote,
   Landmark,
   Loader2,
   MoreHorizontal,
+  Plus,
+  ReceiptText,
   Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { AccountSheet } from "./components/account-sheet";
 import {
   getAccounts,
@@ -23,7 +33,9 @@ function formatMoney(amount: number, currency: string) {
   }).format(amount);
 }
 
-function getAccountTypeLabel(type: FinanceAccount["type"]) {
+function getAccountTypeLabel(
+  type: FinanceAccount["type"],
+) {
   switch (type) {
     case "bank":
       return "Bank";
@@ -42,7 +54,8 @@ function AccountsPage() {
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] =
+    useState(false);
 
   async function loadAccounts() {
     try {
@@ -66,27 +79,55 @@ function AccountsPage() {
     void loadAccounts();
   }, []);
 
-  const totalBalance = useMemo(
-    () =>
-      accounts.reduce(
-        (total, account) => total + account.currentBalance,
-        0,
-      ),
-    [accounts],
-  );
+  const summary = useMemo(() => {
+    return accounts.reduce(
+      (result, account) => {
+        result.total += account.currentBalance;
+
+        if (account.type === "bank") {
+          result.bank += account.currentBalance;
+        }
+
+        if (account.type === "cash") {
+          result.cash += account.currentBalance;
+        }
+
+        if (account.type === "mobile_banking") {
+          result.mobile += account.currentBalance;
+        }
+
+        return result;
+      },
+      {
+        total: 0,
+        bank: 0,
+        cash: 0,
+        mobile: 0,
+      },
+    );
+  }, [accounts]);
+
+  const accountCountLabel =
+    accounts.length === 1 ? "account" : "accounts";
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex items-center justify-between border-b px-6 py-4">
         <div>
-          <h1 className="text-lg font-semibold">Accounts</h1>
+          <h1 className="text-lg font-semibold">
+            Accounts
+          </h1>
+
           <p className="text-sm text-muted-foreground">
             Manage your bank, cash, and mobile banking accounts.
           </p>
         </div>
 
-        <Button onClick={() => setAccountSheetOpen(true)}>
+        <Button
+          onClick={() => setAccountSheetOpen(true)}
+        >
+          <Plus className="mr-2 size-4" />
           Add Account
         </Button>
       </div>
@@ -103,88 +144,237 @@ function AccountsPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Total Balance */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Balance
-                </CardTitle>
+            {/* Summary */}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <Wallet className="size-4" />
+                    </div>
 
-                <Wallet className="size-5 text-muted-foreground" />
-              </CardHeader>
+                    <span className="text-xs text-muted-foreground">
+                      {accounts.length} {accountCountLabel}
+                    </span>
+                  </div>
 
-              <CardContent>
-                <div className="text-2xl font-semibold">
-                  {formatMoney(totalBalance, "BDT")}
-                </div>
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Total Balance
+                  </p>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Across {accounts.length} active account
-                  {accounts.length === 1 ? "" : "s"}
+                  <p className="mt-1 text-2xl font-semibold">
+                    {formatMoney(summary.total, "BDT")}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                    <Landmark className="size-4" />
+                  </div>
+
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Bank
+                  </p>
+
+                  <p className="mt-1 text-xl font-semibold">
+                    {formatMoney(summary.bank, "BDT")}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                    <Banknote className="size-4" />
+                  </div>
+
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Cash
+                  </p>
+
+                  <p className="mt-1 text-xl font-semibold">
+                    {formatMoney(summary.cash, "BDT")}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                    <Wallet className="size-4" />
+                  </div>
+
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Mobile Banking
+                  </p>
+
+                  <p className="mt-1 text-xl font-semibold">
+                    {formatMoney(summary.mobile, "BDT")}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold">
+                  Finance
+                </h2>
+
+                <p className="text-xs text-muted-foreground">
+                  Manage your financial operations.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/transactions")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <ReceiptText className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+
+                  <p className="mt-3 font-medium">
+                    Transactions
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    View income and expense transactions.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/payroll")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <ArrowDownLeft className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+
+                  <p className="mt-3 font-medium">
+                    Payroll
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Manage employee salary and payments.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/fixed-costs")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <ReceiptText className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+
+                  <p className="mt-3 font-medium">
+                    Fixed Costs
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Manage rent, utilities, and recurring costs.
+                  </p>
+                </button>
+              </div>
+            </div>
 
             {/* Accounts */}
             <div>
-              <div className="flex items-center gap-2">
-  <Button
-    variant="outline"
-    onClick={() =>
-      navigate("/app/accounts/payroll")
-    }
-  >
-    Payroll
-  </Button>
+              <div className="mb-3 flex items-end justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold">
+                    Your Accounts
+                  </h2>
 
-  <Button
-    variant="outline"
-    onClick={() =>
-      navigate("/app/accounts/fixed-costs")
-    }
-  >
-    Fixed Costs
-  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Bank, cash, and mobile banking balances.
+                  </p>
+                </div>
 
-  <Button
-    onClick={() =>
-      navigate("/app/accounts/transactions")
-    }
-  >
-    Transactions
-  </Button>
-</div>
+                <span className="text-xs text-muted-foreground">
+                  {accounts.length} {accountCountLabel}
+                </span>
+              </div>
 
               {accounts.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-10 text-center">
-                  <Landmark className="mx-auto mb-3 size-8 text-muted-foreground" />
+                <div className="rounded-lg border border-dashed p-12 text-center">
+                  <div className="mx-auto flex size-10 items-center justify-center rounded-lg bg-muted">
+                    <Landmark className="size-5 text-muted-foreground" />
+                  </div>
 
-                  <h3 className="font-medium">
-                    No accounts found
+                  <h3 className="mt-4 font-medium">
+                    No accounts yet
                   </h3>
 
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Add a bank, cash, or mobile banking account
-                    to get started.
+                  <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                    Add your first bank, cash, or mobile banking
+                    account to start managing your finances.
                   </p>
+
+                  <Button
+                    className="mt-4"
+                    onClick={() =>
+                      setAccountSheetOpen(true)
+                    }
+                  >
+                    <Plus className="mr-2 size-4" />
+                    Add Account
+                  </Button>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {accounts.map((account) => (
-                    <Card key={account.id}>
+                    <Card
+                      key={account.id}
+                      className="transition-shadow hover:shadow-sm"
+                    >
                       <CardHeader className="flex flex-row items-start justify-between pb-3">
                         <div className="flex items-center gap-3">
                           <div className="flex size-10 items-center justify-center rounded-lg border bg-muted/40">
-                            <Landmark className="size-5" />
+                            {account.type === "bank" ? (
+                              <Landmark className="size-5" />
+                            ) : account.type === "cash" ? (
+                              <Banknote className="size-5" />
+                            ) : (
+                              <Wallet className="size-5" />
+                            )}
                           </div>
 
-                          <div>
-                            <CardTitle className="text-base">
+                          <div className="min-w-0">
+                            <CardTitle className="truncate text-base">
                               {account.name}
                             </CardTitle>
 
                             <p className="text-xs text-muted-foreground">
-                              {getAccountTypeLabel(account.type)}
+                              {getAccountTypeLabel(
+                                account.type,
+                              )}
                             </p>
                           </div>
                         </div>
@@ -192,25 +382,35 @@ function AccountsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8"
+                          className="size-8 shrink-0"
                         >
                           <MoreHorizontal className="size-4" />
                         </Button>
                       </CardHeader>
 
                       <CardContent>
-                        <div className="text-xl font-semibold">
+                        <p className="text-2xl font-semibold">
                           {formatMoney(
                             account.currentBalance,
                             account.currency,
                           )}
-                        </div>
+                        </p>
 
-                        {account.accountNumber && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {account.accountNumber}
-                          </p>
-                        )}
+                        <div className="mt-3 flex items-center justify-between border-t pt-3">
+                          {account.accountNumber ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {account.accountNumber}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No account number
+                            </p>
+                          )}
+
+                          <span className="text-xs text-muted-foreground">
+                            {account.currency}
+                          </span>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
