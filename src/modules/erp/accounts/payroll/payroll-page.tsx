@@ -10,7 +10,10 @@ import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
-
+import {
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +29,7 @@ import {
   getPayrollRecords,
 } from "./payroll-service";
 import { PayrollSheet } from "./payroll-sheet";
+import { PayrollEmployees } from "./payroll-employees";
 import type {
   PayrollRecord,
 } from "./payroll-service";
@@ -86,6 +90,8 @@ function PayrollPage() {
   const [search, setSearch] =
     useState("");
 const [sheetOpen, setSheetOpen] =
+  useState(false);
+  const [employeesOpen, setEmployeesOpen] =
   useState(false);
   /* =======================================================
    * LOAD
@@ -327,11 +333,20 @@ const [sheetOpen, setSheetOpen] =
           </div>
         </div>
 
-        <Button
-  onClick={() => setSheetOpen(true)}
->
-  Add Payroll
-</Button>
+       <div className="flex items-center gap-2">
+  <Button
+    variant="outline"
+    onClick={() => setEmployeesOpen(true)}
+  >
+    Employees
+  </Button>
+
+  <Button
+    onClick={() => setSheetOpen(true)}
+  >
+    Add Payroll
+  </Button>
+</div>
       </div>
 
       {/* CONTENT */}
@@ -435,6 +450,17 @@ const [sheetOpen, setSheetOpen] =
     void loadPayroll(true);
   }}
 />
+<Sheet
+  open={employeesOpen}
+  onOpenChange={setEmployeesOpen}
+>
+  <SheetContent
+    side="right"
+    className="w-full p-0 sm:max-w-6xl"
+  >
+    <PayrollEmployees />
+  </SheetContent>
+</Sheet>
     </div>
   );
 }
