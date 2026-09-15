@@ -34,6 +34,7 @@ import { ReportsPage } from "@/modules/erp/reports/reports-page";
 import { TemplateBuilderPage } from "@/modules/erp/reports/document-templates/template-builder-page";
 import { TemplateUsePage } from "@/modules/erp/reports/document-templates/template-use-page";
 import { AccountsPage } from "@/modules/erp/accounts/accounts-page";
+import { TransactionsPage } from "@/modules/erp/accounts/transactions/transactions-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
 import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
 import { SettingsPage } from "@/modules/erp/settings/settings-page";
@@ -141,7 +142,11 @@ function AppRouter() {
             
             {/* Accounts */}
             <Route path="accounts" element={<AccountsPage />} />
-            
+            {/* Accounts → Transactions */}
+<Route
+  path="accounts/transactions"
+  element={<TransactionsPage />}
+/>
             {/* Finance */}
             <Route path="finance" element={<FinancePage />} />
 

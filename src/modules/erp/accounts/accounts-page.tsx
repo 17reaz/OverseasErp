@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Landmark,
   Loader2,
@@ -36,10 +37,13 @@ function getAccountTypeLabel(type: FinanceAccount["type"]) {
 }
 
 function AccountsPage() {
+  const navigate = useNavigate();
+
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+
   async function loadAccounts() {
     try {
       setLoading(true);
@@ -83,8 +87,8 @@ const [accountSheetOpen, setAccountSheetOpen] = useState(false);
         </div>
 
         <Button onClick={() => setAccountSheetOpen(true)}>
-  Add Account
-</Button>
+          Add Account
+        </Button>
       </div>
 
       {/* Content */}
@@ -123,13 +127,22 @@ const [accountSheetOpen, setAccountSheetOpen] = useState(false);
 
             {/* Accounts */}
             <div>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="font-semibold">Your Accounts</h2>
                   <p className="text-sm text-muted-foreground">
                     Current balances by account.
                   </p>
                 </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    navigate("/app/accounts/transactions")
+                  }
+                >
+                  Transactions
+                </Button>
               </div>
 
               {accounts.length === 0 ? (
@@ -197,11 +210,12 @@ const [accountSheetOpen, setAccountSheetOpen] = useState(false);
           </div>
         )}
       </div>
+
       <AccountSheet
-  open={accountSheetOpen}
-  onOpenChange={setAccountSheetOpen}
-  onCreated={loadAccounts}
-/>
+        open={accountSheetOpen}
+        onOpenChange={setAccountSheetOpen}
+        onCreated={loadAccounts}
+      />
     </div>
   );
 }
