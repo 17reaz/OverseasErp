@@ -58,6 +58,7 @@ export async function getTransactionAccounts(): Promise<
   TransactionAccount[]
 > {
   const { data, error } = await supabase
+  .schema("finance")
     .from("accounts")
     .select(
       `
@@ -69,7 +70,6 @@ export async function getTransactionAccounts(): Promise<
         is_active
       `,
     )
-    .schema("finance")
     .eq("is_active", true)
     .order("name", { ascending: true });
 
@@ -95,6 +95,7 @@ export async function getTransactionCategories(): Promise<
   TransactionCategory[]
 > {
   const { data, error } = await supabase
+  .schema("finance")
     .from("categories")
     .select(
       `
@@ -105,7 +106,6 @@ export async function getTransactionCategories(): Promise<
         is_active
       `,
     )
-    .schema("finance")
     .eq("is_active", true)
     .order("name", { ascending: true });
 
@@ -130,6 +130,7 @@ export async function getTransactionParties(): Promise<
   TransactionParty[]
 > {
   const { data, error } = await supabase
+  .schema("finance")
     .from("parties")
     .select(
       `
@@ -141,7 +142,6 @@ export async function getTransactionParties(): Promise<
         is_active
       `,
     )
-    .schema("finance")
     .eq("is_active", true)
     .order("name", { ascending: true });
 
@@ -177,6 +177,7 @@ export async function getTransactions(): Promise<
   ]);
 
   const { data, error } = await supabase
+  .schema("finance")
     .from("transactions")
     .select(
       `
@@ -196,7 +197,6 @@ export async function getTransactions(): Promise<
         updated_at
       `,
     )
-    .schema("finance")
     .order("transaction_date", {
       ascending: false,
     })
@@ -310,6 +310,7 @@ export async function createTransaction(
   }
 
   const { data, error } = await supabase
+    .schema("finance")
     .from("transactions")
     .insert({
       tenant_id: tenantId,
@@ -331,7 +332,6 @@ export async function createTransaction(
 
       created_by: userId,
     })
-    .schema("finance")
     .select(
       `
         id,
@@ -392,6 +392,7 @@ export async function updateTransaction(
   }
 
   const { data, error } = await supabase
+    .schema("finance")
     .from("transactions")
     .update({
       account_id: input.accountId,
@@ -411,7 +412,6 @@ export async function updateTransaction(
 
       updated_at: new Date().toISOString(),
     })
-    .schema("finance")
     .eq("id", id)
     .select(
       `
@@ -462,10 +462,10 @@ export async function deleteTransaction(
   id: string,
 ): Promise<void> {
   const { error } = await supabase
+    .schema("finance")
     .from("transactions")
     .delete()
-    .eq("id", id)
-    .schema("finance");
+    .eq("id", id);
 
   if (error) {
     throw new Error(error.message);
