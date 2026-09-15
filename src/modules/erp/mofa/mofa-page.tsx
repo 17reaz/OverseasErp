@@ -649,36 +649,14 @@ export function MofaPage() {
    * getApprovedMofasWithoutVisa() logic.
    * ======================================================= */
 
-  const activeMofas =
-    useMemo(
-      () => {
+  const activeMofas = useMemo(() => {
+  return mofas.filter((mofa) => {
+    const hasVisa =
+      (mofa.visas?.length ?? 0) > 0;
 
-        return filteredMofas.filter(
-          (mofa) => {
-
-            const approved =
-              mofa.stage ===
-              "approved";
-
-            const hasVisa =
-              (
-                mofa.visas?.length ??
-                0
-              ) > 0;
-
-            return (
-              approved &&
-              !hasVisa
-            );
-
-          },
-        );
-
-      },
-      [
-        filteredMofas,
-      ],
-    );
+    return !hasVisa;
+  });
+}, [mofas]);
 
 
   /* =======================================================
