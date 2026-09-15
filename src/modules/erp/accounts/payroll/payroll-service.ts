@@ -1,4 +1,4 @@
-// src/modules/erp/finance/payroll/payroll-service.ts
+// src/modules/erp/accounts/payroll/payroll-service.ts
 
 import { supabase } from "@/lib/supabase/client";
 
@@ -18,6 +18,7 @@ export interface PayrollRecord {
   payrollMonth: string;
 
   basicSalary: number;
+  bonus: number;
   allowances: number;
   deductions: number;
   netSalary: number;
@@ -28,12 +29,30 @@ export interface PayrollRecord {
   paymentMethod: string | null;
 
   accountId: string | null;
+  transactionId: string | null;
 
   notes: string | null;
 
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CreatePayrollInput {
+  employeeName: string;
+  employeeCode: string | null;
+  designation: string | null;
+  payrollMonth: string;
+  basicSalary: number;
+  bonus: number;
+  allowances: number;
+  deductions: number;
+  paymentMethod: string | null;
+  accountId: string | null;
+  notes: string | null;
+}
+
+export type UpdatePayrollInput =
+  CreatePayrollInput;
 
 interface PayrollRow {
   id: string;
@@ -46,6 +65,7 @@ interface PayrollRow {
   payroll_month: string;
 
   basic_salary: number | string;
+  bonus: number | string;
   allowances: number | string;
   deductions: number | string;
   net_salary: number | string;
@@ -56,6 +76,7 @@ interface PayrollRow {
   payment_method: string | null;
 
   account_id: string | null;
+  transaction_id: string | null;
 
   notes: string | null;
 
@@ -71,6 +92,7 @@ const PAYROLL_SELECT = `
   designation,
   payroll_month,
   basic_salary,
+  bonus,
   allowances,
   deductions,
   net_salary,
@@ -78,6 +100,7 @@ const PAYROLL_SELECT = `
   payment_date,
   payment_method,
   account_id,
+  transaction_id,
   notes,
   created_at,
   updated_at
@@ -134,6 +157,144 @@ export async function getPayrollRecord(
 }
 
 /* =========================================================
+ * CREATE
+ * ========================================================= */
+
+export async function createPayroll(
+  input: CreatePayrollInput,
+): Promise<PayrollRecord> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("payroll")
+    .insert({
+      employee_name: input.employeeName,
+      employee_code: input.employeeCode,
+      designation: input.designation,
+      payroll_month: input.payrollMonth,
+      basic_salary: input.basicSalary,
+      bonus: input.bonus,
+      allowances: input.allowances,
+      deductions: input.deductions,
+      payment_method: input.paymentMethod,
+      account_id: input.accountId,
+      notes: input.notes,
+      status: "pending",
+    })
+    .select(PAYROLL_SELECT)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizePayroll(
+    data as PayrollRow,
+  );
+}
+
+/* =========================================================
+ * UPDATE
+ * ========================================================= */
+
+export async function updatePayroll(
+  id: string,
+  input: UpdatePayrollInput,
+): Promise<PayrollRecord> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("payroll")
+    .update({
+      employee_name: input.employeeName,
+      employee_code: input.employeeCode,
+      designation: input.designation,
+      payroll_month: input.payrollMonth,
+      basic_salary: input.basicSalary,
+      bonus: input.bonus,
+      allowances: input.allowances,
+      deductions: input.deductions,
+      payment_method: input.paymentMethod,
+      account_id: input.accountId,
+      notes: input.notes,
+    })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select(PAYROLL_SELECT)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizePayroll(
+    data as PayrollRow,
+  );
+}
+
+/* =========================================================
+ * CANCEL
+ * ========================================================= */
+
+export async function cancelPayroll(
+  id: string,
+): Promise<PayrollRecord> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("payroll")
+    .update({
+      status: "cancelled",
+    })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select(PAYROLL_SELECT)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizePayroll(
+    data as PayrollRow,
+  );
+}
+
+/* =========================================================
+ * MARK PAID
+ *
+ * NOTE:
+ * Actual transaction creation will be wired after
+ * the payroll sheet/page UI is connected.
+ * ========================================================= */
+
+export async function markPayrollPaid(
+  id: string,
+  paymentDate: string,
+  paymentMethod: string,
+  accountId: string,
+): Promise<PayrollRecord> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("payroll")
+    .update({
+      status: "paid",
+      payment_date: paymentDate,
+      payment_method: paymentMethod,
+      account_id: accountId,
+    })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select(PAYROLL_SELECT)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizePayroll(
+    data as PayrollRow,
+  );
+}
+
+/* =========================================================
  * NORMALIZER
  * ========================================================= */
 
@@ -153,6 +314,7 @@ function normalizePayroll(
     basicSalary: Number(
       row.basic_salary,
     ),
+    bonus: Number(row.bonus),
     allowances: Number(
       row.allowances,
     ),
@@ -171,6 +333,8 @@ function normalizePayroll(
       row.payment_method,
 
     accountId: row.account_id,
+    transactionId:
+      row.transaction_id,
 
     notes: row.notes,
 

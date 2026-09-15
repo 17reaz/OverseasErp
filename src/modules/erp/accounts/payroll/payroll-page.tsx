@@ -25,7 +25,7 @@ import {
 import {
   getPayrollRecords,
 } from "./payroll-service";
-
+import { PayrollSheet } from "./payroll-sheet";
 import type {
   PayrollRecord,
 } from "./payroll-service";
@@ -85,7 +85,8 @@ function PayrollPage() {
 
   const [search, setSearch] =
     useState("");
-
+const [sheetOpen, setSheetOpen] =
+  useState(false);
   /* =======================================================
    * LOAD
    * ======================================================= */
@@ -326,9 +327,11 @@ function PayrollPage() {
           </div>
         </div>
 
-        <Button disabled>
-          Add Payroll
-        </Button>
+        <Button
+  onClick={() => setSheetOpen(true)}
+>
+  Add Payroll
+</Button>
       </div>
 
       {/* CONTENT */}
@@ -425,6 +428,13 @@ function PayrollPage() {
           />
         )}
       </div>
+      <PayrollSheet
+  open={sheetOpen}
+  onOpenChange={setSheetOpen}
+  onCreated={() => {
+    void loadPayroll(true);
+  }}
+/>
     </div>
   );
 }
