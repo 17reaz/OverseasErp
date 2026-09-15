@@ -35,9 +35,7 @@ import type {
  * HELPERS
  * ========================================================= */
 
-function formatMoney(
-  amount: number,
-) {
+function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-BD", {
     style: "currency",
     currency: "BDT",
@@ -52,23 +50,18 @@ function formatFrequency(
     case "monthly":
       return "Monthly";
 
-    case "quarterly":
-      return "Quarterly";
-
     case "yearly":
       return "Yearly";
 
-    case "custom":
-      return "Custom";
+    case "one_time":
+      return "One Time";
 
     default:
       return frequency;
   }
 }
 
-function formatDate(
-  value: string | null,
-) {
+function formatDate(value: string | null) {
   if (!value) {
     return "—";
   }
@@ -79,14 +72,11 @@ function formatDate(
     return value;
   }
 
-  return new Intl.DateTimeFormat(
-    "en-BD",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    },
-  ).format(date);
+  return new Intl.DateTimeFormat("en-BD", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 /* =========================================================
@@ -167,10 +157,16 @@ function FixedCostsPage() {
           item.name
             .toLowerCase()
             .includes(query) ||
-          item.description
+          item.category
+            .toLowerCase()
+            .includes(query) ||
+          item.vendor
             ?.toLowerCase()
             .includes(query) ||
           item.frequency
+            .toLowerCase()
+            .includes(query) ||
+          item.status
             .toLowerCase()
             .includes(query),
       );
@@ -184,23 +180,25 @@ function FixedCostsPage() {
    * ======================================================= */
 
   const summary = useMemo(() => {
-    const activeCosts =
+    const pendingCosts =
       fixedCosts.filter(
         (item) =>
-          item.status === "active",
+          item.status === "pending",
       );
 
     const monthlyEquivalent =
-      activeCosts.reduce(
+      fixedCosts.reduce(
         (total, item) => {
+          if (
+            item.status === "cancelled"
+          ) {
+            return total;
+          }
+
           switch (item.frequency) {
             case "monthly":
-              return total + item.amount;
-
-            case "quarterly":
               return (
-                total +
-                item.amount / 3
+                total + item.amount
               );
 
             case "yearly":
@@ -208,6 +206,9 @@ function FixedCostsPage() {
                 total +
                 item.amount / 12
               );
+
+            case "one_time":
+              return total;
 
             default:
               return total;
@@ -217,8 +218,8 @@ function FixedCostsPage() {
       );
 
     return {
-      activeCount:
-        activeCosts.length,
+      pendingCount:
+        pendingCosts.length,
 
       monthlyEquivalent,
     };
@@ -240,11 +241,13 @@ function FixedCostsPage() {
               {item.name}
             </div>
 
-            {item.description && (
-              <div className="text-xs text-muted-foreground">
-                {item.description}
-              </div>
-            )}
+            <div className="text-xs text-muted-foreground">
+              {item.category}
+
+              {item.vendor
+                ? ` • ${item.vendor}`
+                : ""}
+            </div>
           </div>
         ),
       },
@@ -271,11 +274,20 @@ function FixedCostsPage() {
       },
 
       {
-        key: "nextDueDate",
-        header: "Next Due",
+        key: "dueDate",
+        header: "Due Date",
         cell: (item) =>
           formatDate(
-            item.nextDueDate,
+            item.dueDate,
+          ),
+      },
+
+      {
+        key: "paymentDate",
+        header: "Payment Date",
+        cell: (item) =>
+          formatDate(
+            item.paymentDate,
           ),
       },
 
@@ -285,7 +297,7 @@ function FixedCostsPage() {
         cell: (item) => (
           <Badge
             variant={
-              item.status === "active"
+              item.status === "paid"
                 ? "default"
                 : item.status ===
                     "cancelled"
@@ -344,11 +356,11 @@ function FixedCostsPage() {
         <div className="mb-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border p-4">
             <div className="text-sm text-muted-foreground">
-              Active Costs
+              Pending Costs
             </div>
 
             <div className="mt-1 text-xl font-semibold">
-              {summary.activeCount}
+              {summary.pendingCount}
             </div>
           </div>
 
@@ -383,9 +395,7 @@ function FixedCostsPage() {
             variant="outline"
             size="icon"
             onClick={() =>
-              void loadFixedCosts(
-                true,
-              )
+              void loadFixedCosts(true)
             }
             disabled={refreshing}
           >

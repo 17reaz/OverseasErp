@@ -5,10 +5,12 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
+
 import { useNavigate } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +30,11 @@ import type {
   PayrollRecord,
 } from "./payroll-service";
 
-function formatMoney(
-  amount: number,
-) {
+/* =========================================================
+ * HELPERS
+ * ========================================================= */
+
+function formatMoney(amount: number) {
   return new Intl.NumberFormat("en-BD", {
     style: "currency",
     currency: "BDT",
@@ -38,16 +42,12 @@ function formatMoney(
   }).format(amount);
 }
 
-function formatMonth(
-  value: string,
-) {
+function formatMonth(value: string) {
   if (!value) {
     return "—";
   }
 
-  const date = new Date(
-    `${value}-01`,
-  );
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -61,6 +61,10 @@ function formatMonth(
     },
   ).format(date);
 }
+
+/* =========================================================
+ * PAGE
+ * ========================================================= */
 
 function PayrollPage() {
   const navigate = useNavigate();
@@ -81,6 +85,10 @@ function PayrollPage() {
 
   const [search, setSearch] =
     useState("");
+
+  /* =======================================================
+   * LOAD
+   * ======================================================= */
 
   async function loadPayroll(
     showRefresh = false,
@@ -114,6 +122,10 @@ function PayrollPage() {
     void loadPayroll();
   }, []);
 
+  /* =======================================================
+   * FILTER
+   * ======================================================= */
+
   const filteredPayroll =
     useMemo(() => {
       const query =
@@ -128,14 +140,21 @@ function PayrollPage() {
           item.employeeName
             .toLowerCase()
             .includes(query) ||
-          item.employeeId
+          item.employeeCode
             ?.toLowerCase()
             .includes(query) ||
-          item.salaryMonth
+          item.designation
+            ?.toLowerCase()
+            .includes(query) ||
+          item.payrollMonth
             .toLowerCase()
             .includes(query),
       );
     }, [payroll, search]);
+
+  /* =======================================================
+   * SUMMARY
+   * ======================================================= */
 
   const summary = useMemo(() => {
     const total = payroll.reduce(
@@ -173,15 +192,19 @@ function PayrollPage() {
     };
   }, [payroll]);
 
+  /* =======================================================
+   * COLUMNS
+   * ======================================================= */
+
   const columns:
     DataTableColumn<PayrollRecord>[] =
     [
       {
-        key: "salaryMonth",
+        key: "payrollMonth",
         header: "Month",
         cell: (item) =>
           formatMonth(
-            item.salaryMonth,
+            item.payrollMonth,
           ),
       },
 
@@ -194,9 +217,17 @@ function PayrollPage() {
               {item.employeeName}
             </div>
 
-            {item.employeeId && (
+            {(item.employeeCode ||
+              item.designation) && (
               <div className="text-xs text-muted-foreground">
-                {item.employeeId}
+                {item.employeeCode ?? ""}
+
+                {item.employeeCode &&
+                item.designation
+                  ? " • "
+                  : ""}
+
+                {item.designation ?? ""}
               </div>
             )}
           </div>
@@ -213,20 +244,20 @@ function PayrollPage() {
       },
 
       {
-        key: "allowance",
+        key: "allowances",
         header: "Allowance",
         cell: (item) =>
           formatMoney(
-            item.allowance,
+            item.allowances,
           ),
       },
 
       {
-        key: "deduction",
+        key: "deductions",
         header: "Deduction",
         cell: (item) =>
           formatMoney(
-            item.deduction,
+            item.deductions,
           ),
       },
 
@@ -263,9 +294,14 @@ function PayrollPage() {
       },
     ];
 
+  /* =======================================================
+   * RENDER
+   * ======================================================= */
+
   return (
     <div className="flex h-full flex-col">
       {/* HEADER */}
+
       <div className="flex items-center justify-between border-b px-6 py-4">
         <div className="flex items-center gap-3">
           <Button
@@ -296,8 +332,10 @@ function PayrollPage() {
       </div>
 
       {/* CONTENT */}
+
       <div className="flex-1 overflow-auto p-6">
         {/* SUMMARY */}
+
         <div className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-lg border p-4">
             <div className="text-sm text-muted-foreground">
@@ -337,6 +375,7 @@ function PayrollPage() {
         </div>
 
         {/* TOOLBAR */}
+
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Input
             value={search}
@@ -368,6 +407,7 @@ function PayrollPage() {
         </div>
 
         {/* ERROR */}
+
         {error ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
             {error}
