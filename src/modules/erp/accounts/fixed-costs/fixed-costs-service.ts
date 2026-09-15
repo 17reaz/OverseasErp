@@ -1,16 +1,13 @@
-// src/modules/erp/finance/fixed-costs/fixed-costs-service.ts
-
 import { supabase } from "@/lib/supabase/client";
 
 export type FixedCostFrequency =
   | "monthly"
-  | "quarterly"
   | "yearly"
-  | "custom";
+  | "one_time";
 
 export type FixedCostStatus =
-  | "active"
-  | "paused"
+  | "pending"
+  | "paid"
   | "cancelled";
 
 export interface FixedCost {
@@ -18,20 +15,22 @@ export interface FixedCost {
   tenantId: string;
 
   name: string;
-  categoryId: string | null;
+  category: string;
 
   amount: number;
   frequency: FixedCostFrequency;
 
-  startDate: string;
-  nextDueDate: string | null;
-
-  accountId: string | null;
-  vendorId: string | null;
+  dueDate: string | null;
 
   status: FixedCostStatus;
 
-  description: string | null;
+  paymentDate: string | null;
+  paymentMethod: string | null;
+
+  accountId: string | null;
+  vendor: string | null;
+
+  notes: string | null;
 
   createdAt: string;
   updatedAt: string;
@@ -42,54 +41,51 @@ interface FixedCostRow {
   tenant_id: string;
 
   name: string;
-  category_id: string | null;
+  category: string;
 
   amount: number | string;
   frequency: string;
 
-  start_date: string;
-  next_due_date: string | null;
-
-  account_id: string | null;
-  vendor_id: string | null;
+  due_date: string | null;
 
   status: string;
 
-  description: string | null;
+  payment_date: string | null;
+  payment_method: string | null;
+
+  account_id: string | null;
+  vendor: string | null;
+
+  notes: string | null;
 
   created_at: string;
   updated_at: string;
 }
 
-/* =========================================================
- * GET FIXED COSTS
- * ========================================================= */
+const FIXED_COST_SELECT = `
+  id,
+  tenant_id,
+  name,
+  category,
+  amount,
+  frequency,
+  due_date,
+  status,
+  payment_date,
+  payment_method,
+  account_id,
+  vendor,
+  notes,
+  created_at,
+  updated_at
+`;
 
-export async function getFixedCosts(): Promise<
-  FixedCost[]
-> {
+export async function getFixedCosts(): Promise<FixedCost[]> {
   const { data, error } = await supabase
     .schema("finance")
     .from("fixed_costs")
-    .select(
-      `
-        id,
-        tenant_id,
-        name,
-        category_id,
-        amount,
-        frequency,
-        start_date,
-        next_due_date,
-        account_id,
-        vendor_id,
-        status,
-        description,
-        created_at,
-        updated_at
-      `,
-    )
-    .order("next_due_date", {
+    .select(FIXED_COST_SELECT)
+    .order("due_date", {
       ascending: true,
       nullsFirst: false,
     })
@@ -106,34 +102,13 @@ export async function getFixedCosts(): Promise<
   ).map(normalizeFixedCost);
 }
 
-/* =========================================================
- * GET SINGLE FIXED COST
- * ========================================================= */
-
 export async function getFixedCost(
   id: string,
 ): Promise<FixedCost> {
   const { data, error } = await supabase
     .schema("finance")
     .from("fixed_costs")
-    .select(
-      `
-        id,
-        tenant_id,
-        name,
-        category_id,
-        amount,
-        frequency,
-        start_date,
-        next_due_date,
-        account_id,
-        vendor_id,
-        status,
-        description,
-        created_at,
-        updated_at
-      `,
-    )
+    .select(FIXED_COST_SELECT)
     .eq("id", id)
     .single();
 
@@ -146,10 +121,6 @@ export async function getFixedCost(
   );
 }
 
-/* =========================================================
- * NORMALIZER
- * ========================================================= */
-
 function normalizeFixedCost(
   row: FixedCostRow,
 ): FixedCost {
@@ -158,22 +129,24 @@ function normalizeFixedCost(
     tenantId: row.tenant_id,
 
     name: row.name,
-    categoryId: row.category_id,
+    category: row.category,
 
     amount: Number(row.amount),
     frequency:
       row.frequency as FixedCostFrequency,
 
-    startDate: row.start_date,
-    nextDueDate: row.next_due_date,
-
-    accountId: row.account_id,
-    vendorId: row.vendor_id,
+    dueDate: row.due_date,
 
     status:
       row.status as FixedCostStatus,
 
-    description: row.description,
+    paymentDate: row.payment_date,
+    paymentMethod: row.payment_method,
+
+    accountId: row.account_id,
+    vendor: row.vendor,
+
+    notes: row.notes,
 
     createdAt: row.created_at,
     updatedAt: row.updated_at,
