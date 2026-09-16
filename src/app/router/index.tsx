@@ -39,6 +39,9 @@ import { PayrollPage } from "@/modules/erp/accounts/payroll/payroll-page";
 import { FixedCostsPage } from "@/modules/erp/accounts/fixed-costs/fixed-costs-page";
 import { PartiesPage } from "@/modules/erp/accounts/parties/parties-page";
 import { InvoicesPage } from "@/modules/erp/accounts/invoices/invoices-page";
+import { AssetsPage } from "@/modules/erp/accounts/assets/assets-page";
+import { InvestmentsPage } from "@/modules/erp/accounts/assets/investments/investments-page";
+import { VisaInventoryPage } from "@/modules/erp/accounts/assets/visa-inventory/visa-inventory-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
 import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
 import { SettingsPage } from "@/modules/erp/settings/settings-page";
@@ -152,7 +155,20 @@ function AppRouter() {
             <Route path="accounts/fixed-costs" element={<FixedCostsPage />} />
             <Route path="accounts/invoices" element={<InvoicesPage />} />
             <Route path="accounts/parties" element={<PartiesPage />} />
+            <Route
+  path="accounts/assets"
+  element={<AssetsPage />}
+/>
 
+<Route
+  path="accounts/assets/investments"
+  element={<InvestmentsPage />}
+/>
+
+<Route
+  path="accounts/assets/visa-inventory"
+  element={<VisaInventoryPage />}
+/>
             {/* Finance */}
             <Route path="finance" element={<FinancePage />} />
 

@@ -11,7 +11,9 @@ import {
   ReceiptText,
   Wallet,
   FileText,
-  Users
+  Users,
+  Package,
+  TrendingUp
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -307,6 +309,7 @@ function AccountsPage() {
       </p>
     </button>
 
+
     {/* Payroll */}
     <button
       type="button"
@@ -350,6 +353,52 @@ function AccountsPage() {
 
   <p className="mt-1 text-xs text-muted-foreground">
     Manage agents, vendors, and customers.
+  </p>
+</button>
+<button
+  type="button"
+  onClick={() =>
+    navigate("/app/accounts/assets/investments")
+  }
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <TrendingUp className="size-4" />
+    </div>
+
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+  </div>
+
+  <p className="mt-3 font-medium">
+    Investments
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Track shares, deposits and other investments.
+  </p>
+</button>
+<button
+  type="button"
+  onClick={() =>
+    navigate("/app/accounts/assets/visa-inventory")
+  }
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <Package className="size-4" />
+    </div>
+
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+  </div>
+
+  <p className="mt-3 font-medium">
+    Visa Inventory
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Manage purchased visas held as business assets.
   </p>
 </button>
     {/* Fixed Costs */}
