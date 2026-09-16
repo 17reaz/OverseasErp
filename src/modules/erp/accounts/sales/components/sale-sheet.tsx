@@ -30,19 +30,41 @@ import { Button } from "@/components/ui/button";
 
 import type {
   CreateSaleInput,
+  Sale,
   SaleStatus,
+  UpdateSaleInput,
 } from "../sales-types";
 
 interface SaleSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate?: (input: CreateSaleInput) => Promise<void> | void;
+
+  /**
+   * Create mode
+   */
+  onCreate?: (
+    input: CreateSaleInput,
+  ) => Promise<void> | void;
+
+  /**
+   * Edit mode
+   */
+  sale?: Sale | null;
+
+  onUpdate?: (
+    saleId: string,
+    input: UpdateSaleInput,
+  ) => Promise<void> | void;
 }
 
 const defaultForm: CreateSaleInput = {
+  partyId: null,
   customerName: "",
   service: "",
+  description: "",
   amount: 0,
+  costAmount: 0,
+  paidAmount: 0,
   saleDate: new Date().toISOString().slice(0, 10),
   status: "draft",
   notes: "",
@@ -52,7 +74,11 @@ export function SaleSheet({
   open,
   onOpenChange,
   onCreate,
+  sale,
+  onUpdate,
 }: SaleSheetProps) {
+  const isEditMode = Boolean(sale);
+
   const [form, setForm] =
     useState<CreateSaleInput>(defaultForm);
 
@@ -60,14 +86,37 @@ export function SaleSheet({
     useState(false);
 
   useEffect(() => {
-    if (open) {
-      setForm(defaultForm);
-      setLoading(false);
+    if (!open) {
+      return;
     }
-  }, [open]);
+
+    if (sale) {
+      setForm({
+        partyId: sale.partyId,
+        customerName: sale.customerName,
+        service: sale.service,
+        description: sale.description ?? "",
+        amount: sale.amount,
+        costAmount: sale.costAmount,
+        paidAmount: sale.paidAmount,
+        saleDate: sale.saleDate,
+        status: sale.status,
+        notes: sale.notes ?? "",
+      });
+    } else {
+      setForm({
+        ...defaultForm,
+        saleDate: new Date()
+          .toISOString()
+          .slice(0, 10),
+      });
+    }
+
+    setLoading(false);
+  }, [open, sale]);
 
   const updateField = <
-    K extends keyof CreateSaleInput
+    K extends keyof CreateSaleInput,
   >(
     field: K,
     value: CreateSaleInput[K],
@@ -95,22 +144,70 @@ export function SaleSheet({
       return;
     }
 
+    if (form.costAmount < 0) {
+      return;
+    }
+
+    if (
+      form.paidAmount < 0 ||
+      form.paidAmount > form.amount
+    ) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await onCreate?.({
-        ...form,
-        customerName:
-          form.customerName.trim(),
-        service: form.service.trim(),
-        notes: form.notes.trim(),
-      });
+      if (isEditMode && sale) {
+        const updateInput: UpdateSaleInput = {
+          partyId: form.partyId ?? null,
+          customerName:
+            form.customerName.trim(),
+          service: form.service.trim(),
+          description:
+            form.description?.trim() || null,
+          amount: form.amount,
+          costAmount: form.costAmount,
+          paidAmount: form.paidAmount,
+          saleDate: form.saleDate,
+          status: form.status,
+          notes: form.notes?.trim() || null,
+        };
+
+        await onUpdate?.(
+          sale.id,
+          updateInput,
+        );
+      } else {
+        await onCreate?.({
+          partyId: form.partyId ?? null,
+          customerName:
+            form.customerName.trim(),
+          service: form.service.trim(),
+          description:
+            form.description?.trim() || "",
+          amount: form.amount,
+          costAmount: form.costAmount,
+          paidAmount: form.paidAmount,
+          saleDate: form.saleDate,
+          status: form.status,
+          notes: form.notes.trim(),
+        });
+      }
 
       onOpenChange(false);
     } finally {
       setLoading(false);
     }
   };
+
+  const dueAmount = Math.max(
+    form.amount - form.paidAmount,
+    0,
+  );
+
+  const grossProfit =
+    form.amount - form.costAmount;
 
   return (
     <Sheet
@@ -127,12 +224,15 @@ export function SaleSheet({
         >
           <SheetHeader>
             <SheetTitle>
-              New Sale
+              {isEditMode
+                ? "Edit Sale"
+                : "New Sale"}
             </SheetTitle>
 
             <SheetDescription>
-              Record a customer sale or service
-              revenue.
+              {isEditMode
+                ? "Update the customer sale or service revenue."
+                : "Record a customer sale or service revenue."}
             </SheetDescription>
           </SheetHeader>
 
@@ -175,10 +275,30 @@ export function SaleSheet({
               />
             </div>
 
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="sale-description">
+                Description
+              </Label>
+
+              <Textarea
+                id="sale-description"
+                value={form.description}
+                onChange={(event) =>
+                  updateField(
+                    "description",
+                    event.target.value,
+                  )
+                }
+                placeholder="Optional sale description"
+                rows={3}
+              />
+            </div>
+
             {/* Amount */}
             <div className="space-y-2">
               <Label htmlFor="sale-amount">
-                Amount
+                Sale Amount
               </Label>
 
               <Input
@@ -199,6 +319,110 @@ export function SaleSheet({
                 }
                 placeholder="0.00"
               />
+            </div>
+
+            {/* Cost */}
+            <div className="space-y-2">
+              <Label htmlFor="sale-cost">
+                Cost Amount
+              </Label>
+
+              <Input
+                id="sale-cost"
+                type="number"
+                min="0"
+                step="0.01"
+                value={
+                  form.costAmount === 0
+                    ? ""
+                    : form.costAmount
+                }
+                onChange={(event) =>
+                  updateField(
+                    "costAmount",
+                    Number(event.target.value) || 0,
+                  )
+                }
+                placeholder="0.00"
+              />
+
+              <p className="text-xs text-muted-foreground">
+                Direct cost associated with this sale.
+              </p>
+            </div>
+
+            {/* Profit Preview */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Gross Profit
+                </p>
+
+                <p
+                  className={`mt-1 font-semibold ${
+                    grossProfit < 0
+                      ? "text-destructive"
+                      : ""
+                  }`}
+                >
+                  {grossProfit.toLocaleString(
+                    "en-BD",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    },
+                  )}{" "}
+                  BDT
+                </p>
+              </div>
+
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Due
+                </p>
+
+                <p className="mt-1 font-semibold">
+                  {dueAmount.toLocaleString(
+                    "en-BD",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    },
+                  )}{" "}
+                  BDT
+                </p>
+              </div>
+            </div>
+
+            {/* Paid Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="sale-paid">
+                Paid Amount
+              </Label>
+
+              <Input
+                id="sale-paid"
+                type="number"
+                min="0"
+                max={form.amount}
+                step="0.01"
+                value={
+                  form.paidAmount === 0
+                    ? ""
+                    : form.paidAmount
+                }
+                onChange={(event) =>
+                  updateField(
+                    "paidAmount",
+                    Number(event.target.value) || 0,
+                  )
+                }
+                placeholder="0.00"
+              />
+
+              <p className="text-xs text-muted-foreground">
+                Amount already received from the customer.
+              </p>
             </div>
 
             {/* Date */}
@@ -298,14 +522,19 @@ export function SaleSheet({
                 loading ||
                 !form.customerName.trim() ||
                 !form.service.trim() ||
-                form.amount <= 0
+                form.amount <= 0 ||
+                form.costAmount < 0 ||
+                form.paidAmount < 0 ||
+                form.paidAmount > form.amount
               }
             >
               {loading && (
                 <Loader2 className="mr-2 size-4 animate-spin" />
               )}
 
-              Create Sale
+              {isEditMode
+                ? "Save Changes"
+                : "Create Sale"}
             </Button>
           </SheetFooter>
         </form>

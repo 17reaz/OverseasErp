@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowDownLeft,
   ArrowUpRight,
   Banknote,
+  FileText,
   Landmark,
   Loader2,
   MoreHorizontal,
+  Package,
   Plus,
   ReceiptText,
-  Wallet,
-  FileText,
-  Users,
-  Package,
+  ShoppingCart,
   TrendingUp,
-  ShoppingCart
+  Users,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import { AccountSheet } from "./components/account-sheet";
 import {
   getAccounts,
@@ -44,10 +44,13 @@ function getAccountTypeLabel(
   switch (type) {
     case "bank":
       return "Bank";
+
     case "cash":
       return "Cash";
+
     case "mobile_banking":
       return "Mobile Banking";
+
     default:
       return type;
   }
@@ -117,7 +120,9 @@ function AccountsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Page Header */}
+      {/* =========================================================
+          PAGE HEADER
+      ========================================================= */}
       <div className="flex items-center justify-between border-b px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold">
@@ -137,7 +142,9 @@ function AccountsPage() {
         </Button>
       </div>
 
-      {/* Content */}
+      {/* =========================================================
+          CONTENT
+      ========================================================= */}
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex min-h-60 items-center justify-center">
@@ -148,312 +155,357 @@ function AccountsPage() {
             {error}
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Summary */}
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
+          <div className="space-y-8">
+            {/* =====================================================
+                BALANCE SUMMARY
+            ===================================================== */}
+            <section>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold">
+                  Overview
+                </h2>
+
+                <p className="text-xs text-muted-foreground">
+                  Current balances across your financial accounts.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {/* Total Balance */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                        <Wallet className="size-4" />
+                      </div>
+
+                      <span className="text-xs text-muted-foreground">
+                        {accounts.length} {accountCountLabel}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Total Balance
+                    </p>
+
+                    <p className="mt-1 text-2xl font-semibold">
+                      {formatMoney(summary.total, "BDT")}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Bank */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <Landmark className="size-4" />
+                    </div>
+
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Bank
+                    </p>
+
+                    <p className="mt-1 text-xl font-semibold">
+                      {formatMoney(summary.bank, "BDT")}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Cash */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <Banknote className="size-4" />
+                    </div>
+
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Cash
+                    </p>
+
+                    <p className="mt-1 text-xl font-semibold">
+                      {formatMoney(summary.cash, "BDT")}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Mobile Banking */}
+                <Card>
+                  <CardContent className="p-5">
                     <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
                       <Wallet className="size-4" />
                     </div>
 
-                    <span className="text-xs text-muted-foreground">
-                      {accounts.length} {accountCountLabel}
-                    </span>
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Mobile Banking
+                    </p>
+
+                    <p className="mt-1 text-xl font-semibold">
+                      {formatMoney(summary.mobile, "BDT")}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
+            {/* =====================================================
+                FINANCE OPERATIONS
+            ===================================================== */}
+            <section>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold">
+                  Finance Operations
+                </h2>
+
+                <p className="text-xs text-muted-foreground">
+                  Manage sales, invoices, transactions, and party accounts.
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {/* Sales */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/sales")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <ShoppingCart className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
 
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Total Balance
+                  <p className="mt-3 font-medium">
+                    Sales
                   </p>
 
-                  <p className="mt-1 text-2xl font-semibold">
-                    {formatMoney(summary.total, "BDT")}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Record customer sales and service revenue.
                   </p>
-                </CardContent>
-              </Card>
+                </button>
 
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                    <Landmark className="size-4" />
+                {/* Invoices */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/invoices")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <FileText className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
 
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Bank
+                  <p className="mt-3 font-medium">
+                    Invoices
                   </p>
 
-                  <p className="mt-1 text-xl font-semibold">
-                    {formatMoney(summary.bank, "BDT")}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Create and manage customer invoices.
                   </p>
-                </CardContent>
-              </Card>
+                </button>
 
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                    <Banknote className="size-4" />
+                {/* Transactions */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/transactions")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <ReceiptText className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
 
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Cash
+                  <p className="mt-3 font-medium">
+                    Transactions
                   </p>
 
-                  <p className="mt-1 text-xl font-semibold">
-                    {formatMoney(summary.cash, "BDT")}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    View and manage financial transactions.
                   </p>
-                </CardContent>
-              </Card>
+                </button>
 
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                    <Wallet className="size-4" />
+                {/* Party Accounts */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/parties")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <Users className="size-4" />
+                    </div>
+
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
 
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Mobile Banking
+                  <p className="mt-3 font-medium">
+                    Party Accounts
                   </p>
 
-                  <p className="mt-1 text-xl font-semibold">
-                    {formatMoney(summary.mobile, "BDT")}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Manage agents, vendors, and customers.
                   </p>
-                </CardContent>
-              </Card>
-            </div>
+                </button>
+              </div>
+            </section>
 
-            {/* Quick Actions */}
-            <div>
-  <div className="mb-3">
-    <h2 className="text-sm font-semibold">
-      Finance
-    </h2>
+            {/* =====================================================
+                ASSETS
+            ===================================================== */}
+            <section>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold">
+                  Assets
+                </h2>
 
-    <p className="text-xs text-muted-foreground">
-      Manage your financial operations.
-    </p>
-  </div>
+                <p className="text-xs text-muted-foreground">
+                  Track business assets and investments separately from cash.
+                </p>
+              </div>
 
-  <div className="grid gap-3 md:grid-cols-3">
-    {/* Accounts */}
-    <button
-      type="button"
-      onClick={() =>
-        navigate("/app/accounts")
-      }
-      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-          <Wallet className="size-4" />
-        </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {/* Investments */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      "/app/accounts/assets/investments",
+                    )
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <TrendingUp className="size-4" />
+                    </div>
 
-        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
 
-      <p className="mt-3 font-medium">
-        Accounts
-      </p>
+                  <p className="mt-3 font-medium">
+                    Investments
+                  </p>
 
-      <p className="mt-1 text-xs text-muted-foreground">
-        Manage bank, cash, and mobile accounts.
-      </p>
-    </button>
-      {/* Sales */}
-<button
-  type="button"
-  onClick={() =>
-    navigate("/app/accounts/sales")
-  }
-  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
->
-  <div className="flex items-start justify-between">
-    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-      <ShoppingCart className="size-4" />
-    </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Track shares, deposits, and other investments.
+                  </p>
+                </button>
 
-    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-  </div>
+                {/* Visa Inventory */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      "/app/accounts/assets/visa-inventory",
+                    )
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <Package className="size-4" />
+                    </div>
 
-  <p className="mt-3 font-medium">
-    Sales
-  </p>
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
 
-  <p className="mt-1 text-xs text-muted-foreground">
-    Record customer sales and service revenue.
-  </p>
-</button>
-    {/* Transactions */}
-    <button
-      type="button"
-      onClick={() =>
-        navigate("/app/accounts/transactions")
-      }
-      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-          <ReceiptText className="size-4" />
-        </div>
+                  <p className="mt-3 font-medium">
+                    Visa Inventory
+                  </p>
 
-        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Manage purchased visas held as business assets.
+                  </p>
+                </button>
+              </div>
+            </section>
 
-      <p className="mt-3 font-medium">
-        Transactions
-      </p>
+            {/* =====================================================
+                PEOPLE & COSTS
+            ===================================================== */}
+            <section>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold">
+                  People & Costs
+                </h2>
 
-      <p className="mt-1 text-xs text-muted-foreground">
-        View income and expense transactions.
-      </p>
-    </button>
+                <p className="text-xs text-muted-foreground">
+                  Manage payroll and recurring business costs.
+                </p>
+              </div>
 
-    {/* Invoices */}
-    <button
-      type="button"
-      onClick={() =>
-        navigate("/app/accounts/invoices")
-      }
-      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-          <FileText className="size-4" />
-        </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {/* Payroll */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/payroll")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <Users className="size-4" />
+                    </div>
 
-        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
 
-      <p className="mt-3 font-medium">
-        Invoices
-      </p>
+                  <p className="mt-3 font-medium">
+                    Payroll
+                  </p>
 
-      <p className="mt-1 text-xs text-muted-foreground">
-        Create and manage customer invoices.
-      </p>
-    </button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Manage employee salary and payments.
+                  </p>
+                </button>
 
+                {/* Fixed Costs */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/app/accounts/fixed-costs")
+                  }
+                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                      <ReceiptText className="size-4" />
+                    </div>
 
-    {/* Payroll */}
-    <button
-      type="button"
-      onClick={() =>
-        navigate("/app/accounts/payroll")
-      }
-      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-          <ArrowDownLeft className="size-4" />
-        </div>
+                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
 
-        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
+                  <p className="mt-3 font-medium">
+                    Fixed Costs
+                  </p>
 
-      <p className="mt-3 font-medium">
-        Payroll
-      </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Manage rent, utilities, and recurring costs.
+                  </p>
+                </button>
+              </div>
+            </section>
 
-      <p className="mt-1 text-xs text-muted-foreground">
-        Manage employee salary and payments.
-      </p>
-    </button>
-      <button
-  type="button"
-  onClick={() => navigate("/app/accounts/parties")}
-  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
->
-  <div className="flex items-start justify-between">
-    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-      <Users className="size-4" />
-    </div>
-
-    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-  </div>
-
-  <p className="mt-3 font-medium">
-    Party Accounts
-  </p>
-
-  <p className="mt-1 text-xs text-muted-foreground">
-    Manage agents, vendors, and customers.
-  </p>
-</button>
-<button
-  type="button"
-  onClick={() =>
-    navigate("/app/accounts/assets/investments")
-  }
-  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
->
-  <div className="flex items-start justify-between">
-    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-      <TrendingUp className="size-4" />
-    </div>
-
-    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-  </div>
-
-  <p className="mt-3 font-medium">
-    Investments
-  </p>
-
-  <p className="mt-1 text-xs text-muted-foreground">
-    Track shares, deposits and other investments.
-  </p>
-</button>
-<button
-  type="button"
-  onClick={() =>
-    navigate("/app/accounts/assets/visa-inventory")
-  }
-  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
->
-  <div className="flex items-start justify-between">
-    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-      <Package className="size-4" />
-    </div>
-
-    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-  </div>
-
-  <p className="mt-3 font-medium">
-    Visa Inventory
-  </p>
-
-  <p className="mt-1 text-xs text-muted-foreground">
-    Manage purchased visas held as business assets.
-  </p>
-</button>
-    {/* Fixed Costs */}
-    <button
-      type="button"
-      onClick={() =>
-        navigate("/app/accounts/fixed-costs")
-      }
-      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-          <ReceiptText className="size-4" />
-        </div>
-
-        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
-
-      <p className="mt-3 font-medium">
-        Fixed Costs
-      </p>
-
-      <p className="mt-1 text-xs text-muted-foreground">
-        Manage rent, utilities, and recurring costs.
-      </p>
-    </button>
-  </div>
-</div>
-
-            {/* Accounts */}
-            <div>
+            {/* =====================================================
+                YOUR ACCOUNTS
+            ===================================================== */}
+            <section>
               <div className="mb-3 flex items-end justify-between">
                 <div>
                   <h2 className="text-sm font-semibold">
@@ -520,9 +572,7 @@ function AccountsPage() {
                             </CardTitle>
 
                             <p className="text-xs text-muted-foreground">
-                              {getAccountTypeLabel(
-                                account.type,
-                              )}
+                              {getAccountTypeLabel(account.type)}
                             </p>
                           </div>
                         </div>
@@ -564,11 +614,14 @@ function AccountsPage() {
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           </div>
         )}
       </div>
 
+      {/* =========================================================
+          ACCOUNT SHEET
+      ========================================================= */}
       <AccountSheet
         open={accountSheetOpen}
         onOpenChange={setAccountSheetOpen}

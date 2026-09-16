@@ -1,23 +1,24 @@
 import {
   ArrowLeft,
+  MoreHorizontal,
   Plus,
   Search,
   ShoppingCart,
 } from "lucide-react";
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,75 +27,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { SaleSheet } from "./components/sale-sheet";
 import {
-  Badge,
-} from "@/components/ui/badge";
-
-import {
-  SaleSheet,
-} from "./components/sale-sheet";
+  createSale,
+  getSales,
+  updateSale,
+} from "./sales-service";
 
 import type {
   CreateSaleInput,
   Sale,
   SaleStatus,
+  UpdateSaleInput,
 } from "./sales-types";
 
-const initialSales: Sale[] = [
-  {
-    id: "sale-001",
-    customerName: "Rahim Ahmed",
-    service: "Visa Processing",
-    amount: 120000,
-    saleDate: "2026-09-16",
-    status: "paid",
-    notes: "",
-  },
-  {
-    id: "sale-002",
-    customerName: "Karim Hasan",
-    service: "Recruitment Processing",
-    amount: 85000,
-    saleDate: "2026-09-15",
-    status: "confirmed",
-    notes: "",
-  },
-  {
-    id: "sale-003",
-    customerName: "Sakib Khan",
-    service: "Medical Processing",
-    amount: 15000,
-    saleDate: "2026-09-14",
-    status: "paid",
-    notes: "",
-  },
-  {
-    id: "sale-004",
-    customerName: "Nayeem Islam",
-    service: "Flight Processing",
-    amount: 65000,
-    saleDate: "2026-09-12",
-    status: "draft",
-    notes: "",
-  },
-];
-
-function formatAmount(
-  amount: number,
-) {
-  return new Intl.NumberFormat(
-    "en-BD",
-    {
-      style: "currency",
-      currency: "BDT",
-      maximumFractionDigits: 0,
-    },
-  ).format(amount);
+function formatAmount(amount: number) {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
-function getStatusLabel(
-  status: SaleStatus,
-) {
+function getStatusLabel(status: SaleStatus) {
   switch (status) {
     case "draft":
       return "Draft";
@@ -113,9 +68,7 @@ function getStatusLabel(
   }
 }
 
-function getStatusVariant(
-  status: SaleStatus,
-) {
+function getStatusVariant(status: SaleStatus) {
   switch (status) {
     case "paid":
       return "default" as const;
@@ -135,29 +88,60 @@ function getStatusVariant(
 export function SalesPage() {
   const navigate = useNavigate();
 
-  const [
-    sales,
-    setSales,
-  ] = useState<Sale[]>(initialSales);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] =
+    useState<string | null>(null);
 
-  const [
-    search,
-    setSearch,
-  ] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState("all");
 
-  const [
-    statusFilter,
-    setStatusFilter,
-  ] = useState("all");
+  const [sheetOpen, setSheetOpen] =
+    useState(false);
 
-  const [
-    sheetOpen,
-    setSheetOpen,
-  ] = useState(false);
+  const [selectedSale, setSelectedSale] =
+    useState<Sale | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSales() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await getSales();
+
+        if (mounted) {
+          setSales(data);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load sales.",
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadSales();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filteredSales = useMemo(() => {
-    const query =
-      search.trim().toLowerCase();
+    const query = search
+      .trim()
+      .toLowerCase();
 
     return sales.filter((sale) => {
       const matchesSearch =
@@ -184,70 +168,101 @@ export function SalesPage() {
     statusFilter,
   ]);
 
+  const activeSales = useMemo(
+    () =>
+      sales.filter(
+        (sale) =>
+          sale.status !== "cancelled",
+      ),
+    [sales],
+  );
+
   const totalSales = useMemo(
     () =>
-      sales
-        .filter(
-          (sale) =>
-            sale.status !== "cancelled",
-        )
-        .reduce(
-          (sum, sale) =>
-            sum + sale.amount,
-          0,
-        ),
-    [sales],
+      activeSales.reduce(
+        (sum, sale) =>
+          sum + sale.amount,
+        0,
+      ),
+    [activeSales],
   );
 
   const paidSales = useMemo(
     () =>
-      sales
-        .filter(
-          (sale) =>
-            sale.status === "paid",
-        )
-        .reduce(
-          (sum, sale) =>
-            sum + sale.amount,
-          0,
-        ),
-    [sales],
+      activeSales.reduce(
+        (sum, sale) =>
+          sum + sale.paidAmount,
+        0,
+      ),
+    [activeSales],
   );
 
   const pendingSales = useMemo(
     () =>
-      sales
-        .filter(
-          (sale) =>
-            sale.status ===
-              "confirmed" ||
-            sale.status === "draft",
-        )
-        .reduce(
-          (sum, sale) =>
-            sum + sale.amount,
-          0,
-        ),
-    [sales],
+      activeSales.reduce(
+        (sum, sale) =>
+          sum + sale.dueAmount,
+        0,
+      ),
+    [activeSales],
   );
 
-  const handleCreateSale = (
+  const grossProfit = useMemo(
+    () =>
+      activeSales.reduce(
+        (sum, sale) =>
+          sum + sale.grossProfit,
+        0,
+      ),
+    [activeSales],
+  );
+
+  const handleNewSale = () => {
+    setSelectedSale(null);
+    setSheetOpen(true);
+  };
+
+  const handleEditSale = (sale: Sale) => {
+    setSelectedSale(sale);
+    setSheetOpen(true);
+  };
+
+  const handleCreateSale = async (
     input: CreateSaleInput,
   ) => {
-    const newSale: Sale = {
-      id: `sale-${Date.now()}`,
-      ...input,
-    };
+    const createdSale =
+      await createSale(input);
 
     setSales((current) => [
-      newSale,
+      createdSale,
       ...current,
     ]);
   };
 
+  const handleUpdateSale = async (
+    saleId: string,
+    input: UpdateSaleInput,
+  ) => {
+    const updatedSale =
+      await updateSale(
+        saleId,
+        input,
+      );
+
+    setSales((current) =>
+      current.map((sale) =>
+        sale.id === saleId
+          ? updatedSale
+          : sale,
+      ),
+    );
+  };
+
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
       <div className="border-b">
         <div className="flex items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-3">
@@ -277,9 +292,7 @@ export function SalesPage() {
           </div>
 
           <Button
-            onClick={() =>
-              setSheetOpen(true)
-            }
+            onClick={handleNewSale}
           >
             <Plus className="mr-2 size-4" />
             New Sale
@@ -287,11 +300,23 @@ export function SalesPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* =====================================================
+          CONTENT
+      ===================================================== */}
       <div className="flex-1 overflow-auto p-6">
         <div className="space-y-6">
-          {/* Summary */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Error */}
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* =================================================
+              SUMMARY
+          ================================================= */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Total Sales */}
             <Card>
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">
@@ -304,6 +329,7 @@ export function SalesPage() {
               </CardContent>
             </Card>
 
+            {/* Paid */}
             <Card>
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">
@@ -316,6 +342,7 @@ export function SalesPage() {
               </CardContent>
             </Card>
 
+            {/* Pending */}
             <Card>
               <CardContent className="p-5">
                 <p className="text-sm text-muted-foreground">
@@ -327,9 +354,30 @@ export function SalesPage() {
                 </p>
               </CardContent>
             </Card>
+
+            {/* Gross Profit */}
+            <Card>
+              <CardContent className="p-5">
+                <p className="text-sm text-muted-foreground">
+                  Gross Profit
+                </p>
+
+                <p
+                  className={`mt-2 text-2xl font-semibold ${
+                    grossProfit < 0
+                      ? "text-destructive"
+                      : ""
+                  }`}
+                >
+                  {formatAmount(grossProfit)}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Toolbar */}
+          {/* =================================================
+              TOOLBAR
+          ================================================= */}
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -337,9 +385,7 @@ export function SalesPage() {
               <Input
                 value={search}
                 onChange={(event) =>
-                  setSearch(
-                    event.target.value,
-                  )
+                  setSearch(event.target.value)
                 }
                 placeholder="Search customer or service..."
                 className="pl-9"
@@ -348,9 +394,7 @@ export function SalesPage() {
 
             <Select
               value={statusFilter}
-              onValueChange={
-                setStatusFilter
-              }
+              onValueChange={setStatusFilter}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue />
@@ -380,7 +424,9 @@ export function SalesPage() {
             </Select>
           </div>
 
-          {/* Sales table */}
+          {/* =================================================
+              SALES TABLE
+          ================================================= */}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -399,6 +445,18 @@ export function SalesPage() {
                         Amount
                       </th>
 
+                      <th className="px-4 py-3 text-right font-medium">
+                        Paid
+                      </th>
+
+                      <th className="px-4 py-3 text-right font-medium">
+                        Due
+                      </th>
+
+                      <th className="px-4 py-3 text-right font-medium">
+                        Profit
+                      </th>
+
                       <th className="px-4 py-3 text-left font-medium">
                         Date
                       </th>
@@ -406,12 +464,29 @@ export function SalesPage() {
                       <th className="px-4 py-3 text-left font-medium">
                         Status
                       </th>
+
+                      <th className="px-4 py-3 text-right font-medium">
+                        Action
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {filteredSales.map(
-                      (sale) => (
+                    {/* Loading */}
+                    {loading && (
+                      <tr>
+                        <td
+                          colSpan={9}
+                          className="px-4 py-12 text-center text-sm text-muted-foreground"
+                        >
+                          Loading sales...
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Rows */}
+                    {!loading &&
+                      filteredSales.map((sale) => (
                         <tr
                           key={sale.id}
                           className="border-b last:border-0"
@@ -430,6 +505,30 @@ export function SalesPage() {
                             )}
                           </td>
 
+                          <td className="px-4 py-3 text-right">
+                            {formatAmount(
+                              sale.paidAmount,
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3 text-right text-muted-foreground">
+                            {formatAmount(
+                              sale.dueAmount,
+                            )}
+                          </td>
+
+                          <td
+                            className={`px-4 py-3 text-right font-medium ${
+                              sale.grossProfit < 0
+                                ? "text-destructive"
+                                : ""
+                            }`}
+                          >
+                            {formatAmount(
+                              sale.grossProfit,
+                            )}
+                          </td>
+
                           <td className="px-4 py-3 text-muted-foreground">
                             {sale.saleDate}
                           </td>
@@ -445,21 +544,37 @@ export function SalesPage() {
                               )}
                             </Badge>
                           </td>
-                        </tr>
-                      ),
-                    )}
 
-                    {filteredSales.length ===
-                      0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-4 py-12 text-center text-sm text-muted-foreground"
-                        >
-                          No sales found.
-                        </td>
-                      </tr>
-                    )}
+                          {/* Action */}
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              onClick={() =>
+                                handleEditSale(
+                                  sale,
+                                )
+                              }
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+
+                    {/* Empty */}
+                    {!loading &&
+                      filteredSales.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={9}
+                            className="px-4 py-12 text-center text-sm text-muted-foreground"
+                          >
+                            No sales found.
+                          </td>
+                        </tr>
+                      )}
                   </tbody>
                 </table>
               </div>
@@ -468,10 +583,21 @@ export function SalesPage() {
         </div>
       </div>
 
+      {/* =====================================================
+          SALE SHEET
+      ===================================================== */}
       <SaleSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open);
+
+          if (!open) {
+            setSelectedSale(null);
+          }
+        }}
+        sale={selectedSale}
         onCreate={handleCreateSale}
+        onUpdate={handleUpdateSale}
       />
     </div>
   );
