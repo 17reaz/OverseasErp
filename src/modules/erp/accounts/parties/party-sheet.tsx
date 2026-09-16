@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Command,
@@ -23,11 +22,11 @@ import {
 
 import { supabase } from "@/lib/supabase/client";
 
-import {
-  createParty,
-  type CreatePartyInput,
-} from "./parties-service";
-import type { FinancePartyType } from "./party-types";
+import { createParty } from "./parties-service";
+import type {
+  CreatePartyInput,
+  FinancePartyType,
+} from "./party-types";
 
 interface AgentOption {
   id: string;
