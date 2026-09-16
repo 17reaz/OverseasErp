@@ -58,8 +58,8 @@ export function ErpSidebar() {
 
    const tenantSerial =
      tenant?.sl != null
-       ? `TEN-${String(tenant.sl).padStart(4, "0")}`
-       : "TEN-----";
+       ? `${String(tenant.sl).padStart(4, "0")}`
+       : "----";
      const planLabel =
     tenant?.access_type
       ? (planLabels[tenant.access_type] ?? tenant.access_type)
