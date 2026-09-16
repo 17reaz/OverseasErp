@@ -10,6 +10,7 @@ import {
   Plus,
   ReceiptText,
   Wallet,
+  FileText
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -219,90 +220,143 @@ function AccountsPage() {
 
             {/* Quick Actions */}
             <div>
-              <div className="mb-3">
-                <h2 className="text-sm font-semibold">
-                  Finance
-                </h2>
+  <div className="mb-3">
+    <h2 className="text-sm font-semibold">
+      Finance
+    </h2>
 
-                <p className="text-xs text-muted-foreground">
-                  Manage your financial operations.
-                </p>
-              </div>
+    <p className="text-xs text-muted-foreground">
+      Manage your financial operations.
+    </p>
+  </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/app/accounts/transactions")
-                  }
-                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                      <ReceiptText className="size-4" />
-                    </div>
+  <div className="grid gap-3 md:grid-cols-3">
+    {/* Accounts */}
+    <button
+      type="button"
+      onClick={() =>
+        navigate("/app/accounts")
+      }
+      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+          <Wallet className="size-4" />
+        </div>
 
-                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </div>
+        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </div>
 
-                  <p className="mt-3 font-medium">
-                    Transactions
-                  </p>
+      <p className="mt-3 font-medium">
+        Accounts
+      </p>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    View income and expense transactions.
-                  </p>
-                </button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Manage bank, cash, and mobile accounts.
+      </p>
+    </button>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/app/accounts/payroll")
-                  }
-                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                      <ArrowDownLeft className="size-4" />
-                    </div>
+    {/* Transactions */}
+    <button
+      type="button"
+      onClick={() =>
+        navigate("/app/accounts/transactions")
+      }
+      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+          <ReceiptText className="size-4" />
+        </div>
 
-                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </div>
+        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </div>
 
-                  <p className="mt-3 font-medium">
-                    Payroll
-                  </p>
+      <p className="mt-3 font-medium">
+        Transactions
+      </p>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Manage employee salary and payments.
-                  </p>
-                </button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        View income and expense transactions.
+      </p>
+    </button>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/app/accounts/fixed-costs")
-                  }
-                  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                      <ReceiptText className="size-4" />
-                    </div>
+    {/* Invoices */}
+    <button
+      type="button"
+      onClick={() =>
+        navigate("/app/accounts/invoices")
+      }
+      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+          <FileText className="size-4" />
+        </div>
 
-                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </div>
+        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </div>
 
-                  <p className="mt-3 font-medium">
-                    Fixed Costs
-                  </p>
+      <p className="mt-3 font-medium">
+        Invoices
+      </p>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Manage rent, utilities, and recurring costs.
-                  </p>
-                </button>
-              </div>
-            </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Create and manage customer invoices.
+      </p>
+    </button>
+
+    {/* Payroll */}
+    <button
+      type="button"
+      onClick={() =>
+        navigate("/app/accounts/payroll")
+      }
+      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+          <ArrowDownLeft className="size-4" />
+        </div>
+
+        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </div>
+
+      <p className="mt-3 font-medium">
+        Payroll
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Manage employee salary and payments.
+      </p>
+    </button>
+
+    {/* Fixed Costs */}
+    <button
+      type="button"
+      onClick={() =>
+        navigate("/app/accounts/fixed-costs")
+      }
+      className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+          <ReceiptText className="size-4" />
+        </div>
+
+        <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </div>
+
+      <p className="mt-3 font-medium">
+        Fixed Costs
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Manage rent, utilities, and recurring costs.
+      </p>
+    </button>
+  </div>
+</div>
 
             {/* Accounts */}
             <div>

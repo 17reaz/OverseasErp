@@ -37,6 +37,7 @@ import { AccountsPage } from "@/modules/erp/accounts/accounts-page";
 import { TransactionsPage } from "@/modules/erp/accounts/transactions/transactions-page";
 import { PayrollPage } from "@/modules/erp/accounts/payroll/payroll-page";
 import { FixedCostsPage } from "@/modules/erp/accounts/fixed-costs/fixed-costs-page";
+import { InvoicesPage } from "@/modules/erp/accounts/invoices/invoices-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
 import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
 import { SettingsPage } from "@/modules/erp/settings/settings-page";
@@ -148,6 +149,7 @@ function AppRouter() {
             <Route path="accounts/transactions" element={<TransactionsPage />} />
             <Route path="accounts/payroll" element={<PayrollPage />} />
             <Route path="accounts/fixed-costs" element={<FixedCostsPage />} />
+            <Route path="accounts/invoices" element={<InvoicesPage />} />
             {/* Finance */}
             <Route path="finance" element={<FinancePage />} />
 
