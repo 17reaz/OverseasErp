@@ -12,7 +12,9 @@ export default defineConfig({
 
     VitePWA({
       registerType: "autoUpdate",
-
+      workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      },
       manifest: {
         name: "Overseas ERP",
         short_name: "Overseas ERP",
