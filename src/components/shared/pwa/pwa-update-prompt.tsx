@@ -18,13 +18,17 @@ export function PwaUpdatePrompt() {
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
       registrationRef.current = registration ?? null;
+
+      // registration hobar shathe shathei ekbar check koro,
+      // 60s interval er jonno wait korte hobe na
+      registration?.update().catch(() => {});
     },
     onRegisterError(error) {
       console.error("SW registration failed:", error);
     },
   });
 
-  // ---- instant detection: interval + tab focus + online ----
+  // ---- periodic + tab focus + online detection ----
   useEffect(() => {
     function checkForUpdate() {
       const registration = registrationRef.current;
@@ -50,7 +54,7 @@ export function PwaUpdatePrompt() {
     };
   }, []);
 
-  // ---- notun version pele ----
+  // ---- notun version pele, sathe sathe toast ----
   useEffect(() => {
     if (!needRefresh) return;
 
