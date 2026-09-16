@@ -235,3 +235,36 @@ export async function deleteParty(
     throw new Error(error.message);
   }
 }
+export async function setPartyActive(
+  id: string,
+  isActive: boolean,
+): Promise<FinanceParty> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("parties")
+    .update({
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select(
+      `
+        id,
+        tenant_id,
+        party_type,
+        party_id,
+        name,
+        phone,
+        is_active,
+        created_at,
+        updated_at
+      `,
+    )
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapParty(data as PartyRow);
+}
