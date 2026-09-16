@@ -34,6 +34,7 @@ import { ReportsPage } from "@/modules/erp/reports/reports-page";
 import { TemplateBuilderPage } from "@/modules/erp/reports/document-templates/template-builder-page";
 import { TemplateUsePage } from "@/modules/erp/reports/document-templates/template-use-page";
 import { AccountsPage } from "@/modules/erp/accounts/accounts-page";
+import { SalesPage } from "@/modules/erp/accounts/sales/sales-page";
 import { TransactionsPage } from "@/modules/erp/accounts/transactions/transactions-page";
 import { PayrollPage } from "@/modules/erp/accounts/payroll/payroll-page";
 import { FixedCostsPage } from "@/modules/erp/accounts/fixed-costs/fixed-costs-page";
@@ -150,6 +151,10 @@ function AppRouter() {
             {/* Accounts */}
             <Route path="accounts" element={<AccountsPage />} />
             {/* Accounts → Transactions */}
+            <Route
+  path="accounts/sales"
+  element={<SalesPage />}
+/>
             <Route path="accounts/transactions" element={<TransactionsPage />} />
             <Route path="accounts/payroll" element={<PayrollPage />} />
             <Route path="accounts/fixed-costs" element={<FixedCostsPage />} />

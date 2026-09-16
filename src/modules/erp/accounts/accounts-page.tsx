@@ -13,7 +13,8 @@ import {
   FileText,
   Users,
   Package,
-  TrendingUp
+  TrendingUp,
+  ShoppingCart
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -258,7 +259,30 @@ function AccountsPage() {
         Manage bank, cash, and mobile accounts.
       </p>
     </button>
+      {/* Sales */}
+<button
+  type="button"
+  onClick={() =>
+    navigate("/app/accounts/sales")
+  }
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <ShoppingCart className="size-4" />
+    </div>
 
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+  </div>
+
+  <p className="mt-3 font-medium">
+    Sales
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Record customer sales and service revenue.
+  </p>
+</button>
     {/* Transactions */}
     <button
       type="button"
