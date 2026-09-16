@@ -448,23 +448,7 @@ export function ErpSidebar() {
                 Pro · TEN-0001
               </div>
 
-              <div
-                className="
-                  mt-1
-                  truncate
-                  text-[11px]
-                  text-muted-foreground
-                "
-              >
-                Commit 8f3a2c1
-              </div>
-
-            </div>
-
-
-            {/* Collapsed */}
-
-              <div
+                           <div
                 className="
                   mt-1
                   truncate
@@ -474,6 +458,32 @@ export function ErpSidebar() {
               >
                 Commit {__COMMIT_HASH__}
               </div>
+
+            </div>
+
+
+            {/* Collapsed */}
+
+            <div
+              className="
+                hidden
+                items-center
+                justify-center
+                group-data-[collapsible=icon]:flex
+              "
+            >
+
+              <span
+                className="
+                  text-xs
+                  font-semibold
+                "
+                title="Pro · TEN-0001"
+              >
+                P
+              </span>
+
+            </div>
 
           </SidebarFooter>
 
