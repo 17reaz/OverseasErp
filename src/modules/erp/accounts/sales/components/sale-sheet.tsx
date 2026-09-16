@@ -57,7 +57,20 @@ interface SaleSheetProps {
   ) => Promise<void> | void;
 }
 
-const defaultForm: CreateSaleInput = {
+/**
+ * Local form state.
+ *
+ * CreateSaleInput keeps paidAmount optional because
+ * the service can default it to 0.
+ *
+ * Inside this form, however, paidAmount is always
+ * a number so TypeScript does not need undefined checks.
+ */
+type SaleForm = Omit<CreateSaleInput, "paidAmount"> & {
+  paidAmount: number;
+};
+
+const defaultForm: SaleForm = {
   partyId: null,
   customerName: "",
   service: "",
@@ -80,7 +93,7 @@ export function SaleSheet({
   const isEditMode = Boolean(sale);
 
   const [form, setForm] =
-    useState<CreateSaleInput>(defaultForm);
+    useState<SaleForm>(defaultForm);
 
   const [loading, setLoading] =
     useState(false);
@@ -116,10 +129,10 @@ export function SaleSheet({
   }, [open, sale]);
 
   const updateField = <
-    K extends keyof CreateSaleInput,
+    K extends keyof SaleForm,
   >(
     field: K,
-    value: CreateSaleInput[K],
+    value: SaleForm[K],
   ) => {
     setForm((current) => ({
       ...current,
