@@ -24,20 +24,22 @@ interface Profile {
   is_active: boolean;
 }
 
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  country: string;
-  timezone: string;
-  language: string;
-  currency: string;
-  is_active: boolean;
-}
+ interface Tenant {
+   id: string;
+   sl: number;
+   name: string;
+   slug: string;
+   logo_url: string | null;
+   phone: string | null;
+   email: string | null;
+   website: string | null;
+   country: string;
+   timezone: string;
+   language: string;
+   currency: string;
+ access_type: "early_access" | "monthly" | "yearly" | "lifetime" | "free_trial";
+   is_active: boolean;
+ }
 
 interface AuthContextValue {
   session: Session | null;

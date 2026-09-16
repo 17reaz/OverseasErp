@@ -57,19 +57,21 @@ export async function getTenant(tenantId: string) {
   return await supabase
     .from("tenants")
     .select(`
-      id,
-      name,
-      slug,
-      logo_url,
-      phone,
-      email,
-      website,
-      country,
-      timezone,
-      language,
-      currency,
-      is_active
-    `)
+       id,
+       sl,
+       name,
+       slug,
+       logo_url,
+       phone,
+       email,
+       website,
+       country,
+       timezone,
+       language,
+       currency,
++      access_type,
+       is_active
+     `)
     .eq("id", tenantId)
     .single();
 }

@@ -44,8 +44,24 @@ import type {
 // =====================================================
 // ERP SIDEBAR
 // =====================================================
-
+ const planLabels: Record<string, string> = {
+  early_access: "Early Access",
+  monthly: "Pro",
+  yearly: "Pro",
+  lifetime: "Lifetime",
+  free_trial: "Free Trial",
+};
 export function ErpSidebar() {
+  const { tenant } = useAuth();
+
+   const tenantSerial =
+     tenant?.sl != null
+       ? `TEN-${String(tenant.sl).padStart(4, "0")}`
+       : "TEN-----";
+     const planLabel =
+    tenant?.access_type
+      ? (planLabels[tenant.access_type] ?? tenant.access_type)
+      : "—";
    const [
     badgeCounts,
     setBadgeCounts,
@@ -445,8 +461,7 @@ export function ErpSidebar() {
                   font-medium
                 "
               >
-                Pro · TEN-0001
-              </div>
+ {planLabel} · {tenantSerial}              </div>
 
                            <div
                 className="
@@ -478,7 +493,7 @@ export function ErpSidebar() {
                   text-xs
                   font-semibold
                 "
-                title="Pro · TEN-0001"
+                title={`${planLabel} · ${tenantSerial}`}
               >
                 P
               </span>
