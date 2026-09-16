@@ -35,12 +35,14 @@ import { TemplateBuilderPage } from "@/modules/erp/reports/document-templates/te
 import { TemplateUsePage } from "@/modules/erp/reports/document-templates/template-use-page";
 import { AccountsPage } from "@/modules/erp/accounts/accounts-page";
 import { SalesPage } from "@/modules/erp/accounts/sales/sales-page";
+import { PayablesPage } from "@/modules/erp/accounts/payables/payables-page";
 import { TransactionsPage } from "@/modules/erp/accounts/transactions/transactions-page";
 import { PayrollPage } from "@/modules/erp/accounts/payroll/payroll-page";
 import { FixedCostsPage } from "@/modules/erp/accounts/fixed-costs/fixed-costs-page";
 import { PartiesPage } from "@/modules/erp/accounts/parties/parties-page";
 import { InvoicesPage } from "@/modules/erp/accounts/invoices/invoices-page";
 import { AssetsPage } from "@/modules/erp/accounts/assets/assets-page";
+import { ReceivablesPage } from "@/modules/erp/accounts/receivables/receivables-page";
 import { InvestmentsPage } from "@/modules/erp/accounts/assets/investments/investments-page";
 import { VisaInventoryPage } from "@/modules/erp/accounts/assets/visa-inventory/visa-inventory-page";
 import { FinancePage } from "@/modules/erp/finance/components/finance-page";
@@ -164,7 +166,10 @@ function AppRouter() {
   path="accounts/assets"
   element={<AssetsPage />}
 />
-
+<Route
+  path="accounts/receivables"
+  element={<ReceivablesPage />}
+/>
 <Route
   path="accounts/assets/investments"
   element={<InvestmentsPage />}
@@ -174,6 +179,7 @@ function AppRouter() {
   path="accounts/assets/visa-inventory"
   element={<VisaInventoryPage />}
 />
+<Route path="accounts/payables" element={<PayablesPage />} />
             {/* Finance */}
             <Route path="finance" element={<FinancePage />} />
 
