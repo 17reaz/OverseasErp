@@ -192,7 +192,36 @@ export async function updateParty(
 
   return mapParty(data as PartyRow);
 }
+export async function getPartyBySource(
+  partyType: FinancePartyType,
+  partyId: string,
+): Promise<FinanceParty | null> {
+  const { data, error } = await supabase
+    .schema("finance")
+    .from("parties")
+    .select(
+      `
+        id,
+        tenant_id,
+        party_type,
+        party_id,
+        name,
+        phone,
+        is_active,
+        created_at,
+        updated_at
+      `,
+    )
+    .eq("party_type", partyType)
+    .eq("party_id", partyId)
+    .maybeSingle();
 
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mapParty(data as PartyRow) : null;
+}
 export async function deleteParty(
   partyId: string,
 ): Promise<void> {
