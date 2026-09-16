@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Trash2,
   Users,
+  WalletCards,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 import { PartySheet } from "./party-sheet";
+import { PartyStatementSheet } from "./party-statement-sheet";
 import {
   deleteParty,
   getParties,
@@ -39,7 +41,9 @@ import type {
 
 type PartyFilter = "all" | FinancePartyType;
 
-function getPartyTypeLabel(type: FinancePartyType): string {
+function getPartyTypeLabel(
+  type: FinancePartyType,
+): string {
   switch (type) {
     case "agent":
       return "Agent";
@@ -73,6 +77,32 @@ function getPartyTypeBadgeVariant(
   }
 }
 
+function getDummyBalance(
+  party: FinanceParty,
+): number {
+  switch (party.partyType) {
+    case "agent":
+      return 130000;
+
+    case "vendor":
+      return 75000;
+
+    case "candidate":
+      return 45000;
+
+    default:
+      return 0;
+  }
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export function PartiesPage() {
   const [parties, setParties] = useState<FinanceParty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +114,14 @@ export function PartiesPage() {
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const [error, setError] = useState<string | null>(null);
+  const [statementOpen, setStatementOpen] =
+    useState(false);
+
+  const [selectedParty, setSelectedParty] =
+    useState<FinanceParty | null>(null);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   const loadParties = useCallback(async () => {
     try {
@@ -126,11 +163,16 @@ export function PartiesPage() {
     }
   };
 
-  const handleToggleActive = async (party: FinanceParty) => {
+  const handleToggleActive = async (
+    party: FinanceParty,
+  ) => {
     try {
       setError(null);
 
-      await setPartyActive(party.id, !party.isActive);
+      await setPartyActive(
+        party.id,
+        !party.isActive,
+      );
 
       await loadParties();
     } catch (err) {
@@ -142,7 +184,9 @@ export function PartiesPage() {
     }
   };
 
-  const handleDelete = async (party: FinanceParty) => {
+  const handleDelete = async (
+    party: FinanceParty,
+  ) => {
     const confirmed = window.confirm(
       `Delete ${party.name}?`,
     );
@@ -162,6 +206,13 @@ export function PartiesPage() {
           : "Failed to delete party.",
       );
     }
+  };
+
+  const handleViewStatement = (
+    party: FinanceParty,
+  ) => {
+    setSelectedParty(party);
+    setStatementOpen(true);
   };
 
   const filteredParties = useMemo(() => {
@@ -189,15 +240,18 @@ export function PartiesPage() {
       all: parties.length,
 
       agent: parties.filter(
-        (party) => party.partyType === "agent",
+        (party) =>
+          party.partyType === "agent",
       ).length,
 
       vendor: parties.filter(
-        (party) => party.partyType === "vendor",
+        (party) =>
+          party.partyType === "vendor",
       ).length,
 
       candidate: parties.filter(
-        (party) => party.partyType === "candidate",
+        (party) =>
+          party.partyType === "candidate",
       ).length,
     };
   }, [parties]);
@@ -227,7 +281,9 @@ export function PartiesPage() {
           >
             <RefreshCw
               className={
-                refreshing ? "size-4 animate-spin" : "size-4"
+                refreshing
+                  ? "size-4 animate-spin"
+                  : "size-4"
               }
             />
           </Button>
@@ -318,7 +374,9 @@ export function PartiesPage() {
               ? "cursor-pointer border-primary"
               : "cursor-pointer"
           }
-          onClick={() => setPartyFilter("candidate")}
+          onClick={() =>
+            setPartyFilter("candidate")
+          }
         >
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">
@@ -360,7 +418,9 @@ export function PartiesPage() {
                     ? "default"
                     : "outline"
                 }
-                onClick={() => setPartyFilter("all")}
+                onClick={() =>
+                  setPartyFilter("all")
+                }
               >
                 All
               </Button>
@@ -373,7 +433,9 @@ export function PartiesPage() {
                     ? "default"
                     : "outline"
                 }
-                onClick={() => setPartyFilter("agent")}
+                onClick={() =>
+                  setPartyFilter("agent")
+                }
               >
                 Agent
               </Button>
@@ -386,7 +448,9 @@ export function PartiesPage() {
                     ? "default"
                     : "outline"
                 }
-                onClick={() => setPartyFilter("vendor")}
+                onClick={() =>
+                  setPartyFilter("vendor")
+                }
               >
                 Vendor
               </Button>
@@ -399,7 +463,9 @@ export function PartiesPage() {
                     ? "default"
                     : "outline"
                 }
-                onClick={() => setPartyFilter("candidate")}
+                onClick={() =>
+                  setPartyFilter("candidate")
+                }
               >
                 Customer
               </Button>
@@ -414,124 +480,183 @@ export function PartiesPage() {
           )}
 
           {/* Empty */}
-          {!loading && filteredParties.length === 0 && (
-            <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed">
-              <Users className="mb-3 size-8 text-muted-foreground" />
+          {!loading &&
+            filteredParties.length === 0 && (
+              <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed">
+                <Users className="mb-3 size-8 text-muted-foreground" />
 
-              <p className="font-medium">
-                No party accounts found
-              </p>
+                <p className="font-medium">
+                  No party accounts found
+                </p>
 
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add an agent, vendor, or customer to get started.
-              </p>
-            </div>
-          )}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add an agent, vendor, or customer to
+                  get started.
+                </p>
+              </div>
+            )}
 
           {/* List */}
-          {!loading && filteredParties.length > 0 && (
-            <div className="divide-y rounded-lg border">
-              {filteredParties.map((party) => (
-                <div
-                  key={party.id}
-                  className="flex items-center justify-between gap-4 p-4"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <Users className="size-4" />
+          {!loading &&
+            filteredParties.length > 0 && (
+              <div className="divide-y rounded-lg border">
+                {filteredParties.map((party) => (
+                  <div
+                    key={party.id}
+                    className="flex items-center justify-between gap-4 p-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        <Users className="size-4" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-medium">
+                            {party.name}
+                          </p>
+
+                          <Badge
+                            variant={getPartyTypeBadgeVariant(
+                              party.partyType,
+                            )}
+                          >
+                            {getPartyTypeLabel(
+                              party.partyType,
+                            )}
+                          </Badge>
+
+                          {!party.isActive && (
+                            <Badge variant="secondary">
+                              Inactive
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          {party.phone && (
+                            <span>{party.phone}</span>
+                          )}
+
+                          <span>
+                            Source ID: {party.partyId}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium">
-                          {party.name}
+                    {/* Right side */}
+                    <div className="flex shrink-0 items-center gap-3">
+                      {/* Dummy Balance */}
+                      <div className="hidden text-right sm:block">
+                        <p className="text-xs text-muted-foreground">
+                          Balance
                         </p>
 
-                        <Badge
-                          variant={getPartyTypeBadgeVariant(
-                            party.partyType,
+                        <p className="font-semibold">
+                          {formatCurrency(
+                            getDummyBalance(party),
                           )}
-                        >
-                          {getPartyTypeLabel(
-                            party.partyType,
-                          )}
-                        </Badge>
-
-                        {!party.isActive && (
-                          <Badge variant="secondary">
-                            Inactive
-                          </Badge>
-                        )}
+                        </p>
                       </div>
 
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {party.phone && (
-                          <span>{party.phone}</span>
-                        )}
-
-                        <span>
-                          Source ID: {party.partyId}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                      {/* Statement */}
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleViewStatement(
+                            party,
+                          )
+                        }
                       >
-                        <MoreHorizontal className="size-4" />
+                        <WalletCards className="mr-2 size-4" />
+                        Statement
                       </Button>
-                    </DropdownMenuTrigger>
 
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          void handleToggleActive(party)
-                        }
-                      >
-                        <Power className="mr-2 size-4" />
+                      {/* Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          asChild
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
 
-                        {party.isActive
-                          ? "Deactivate"
-                          : "Activate"}
-                      </DropdownMenuItem>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleViewStatement(
+                                party,
+                              )
+                            }
+                          >
+                            <WalletCards className="mr-2 size-4" />
+                            View Statement
+                          </DropdownMenuItem>
 
-                      <DropdownMenuItem>
-                        <Pencil className="mr-2 size-4" />
-                        Edit
-                      </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              void handleToggleActive(
+                                party,
+                              )
+                            }
+                          >
+                            <Power className="mr-2 size-4" />
 
-                      <DropdownMenuSeparator />
+                            {party.isActive
+                              ? "Deactivate"
+                              : "Activate"}
+                          </DropdownMenuItem>
 
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() =>
-                          void handleDelete(party)
-                        }
-                      >
-                        <Trash2 className="mr-2 size-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
-            </div>
-          )}
+                          <DropdownMenuItem>
+                            <Pencil className="mr-2 size-4" />
+                            Edit
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() =>
+                              void handleDelete(
+                                party,
+                              )
+                            }
+                          >
+                            <Trash2 className="mr-2 size-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
         </CardContent>
       </Card>
 
+      {/* Add Party */}
       <PartySheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         onCreated={() => {
           void loadParties();
         }}
+      />
+
+      {/* Party Statement */}
+      <PartyStatementSheet
+        open={statementOpen}
+        onOpenChange={setStatementOpen}
+        party={selectedParty}
       />
     </div>
   );
