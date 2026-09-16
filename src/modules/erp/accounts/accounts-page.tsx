@@ -10,7 +10,8 @@ import {
   Plus,
   ReceiptText,
   Wallet,
-  FileText
+  FileText,
+  Users
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -330,7 +331,27 @@ function AccountsPage() {
         Manage employee salary and payments.
       </p>
     </button>
+      <button
+  type="button"
+  onClick={() => navigate("/app/accounts/parties")}
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <Users className="size-4" />
+    </div>
 
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+  </div>
+
+  <p className="mt-3 font-medium">
+    Party Accounts
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Manage agents, vendors, and customers.
+  </p>
+</button>
     {/* Fixed Costs */}
     <button
       type="button"
