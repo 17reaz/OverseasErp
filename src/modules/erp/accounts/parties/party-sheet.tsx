@@ -25,7 +25,6 @@ interface AgentOption {
   id: string;
   name: string;
   code: string | null;
-  phone: string | null;
 }
 
 interface PartySheetProps {
@@ -56,10 +55,12 @@ export function PartySheet({
       setLoadingAgents(true);
       setError(null);
 
-      const { data, error: agentsError } = await supabase
-        .from("agents")
-        .select("id, name, code, phone")
-        .order("name", { ascending: true });
+     const { data, error: agentsError } = await supabase
+  .from("agents")
+  .select("id, name, code")
+  .eq("is_active", true)
+  .eq("is_deleted", false)
+  .order("name", { ascending: true });
 
       if (agentsError) {
         throw new Error(agentsError.message);
@@ -99,8 +100,7 @@ export function PartySheet({
 
     return (
       agent.name.toLowerCase().includes(query) ||
-      agent.code?.toLowerCase().includes(query) ||
-      agent.phone?.toLowerCase().includes(query)
+      agent.code?.toLowerCase().includes(query) 
     );
   });
 
@@ -141,7 +141,6 @@ export function PartySheet({
         partyType: "agent",
         partyId: selectedAgent.id,
         name: selectedAgent.name,
-        phone: selectedAgent.phone,
         isActive: true,
       });
 
@@ -279,12 +278,6 @@ export function PartySheet({
                                 {agent.code || "No code"}
                               </p>
                             </div>
-
-                            {agent.phone && (
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                {agent.phone}
-                              </span>
-                            )}
                           </div>
                         </button>
                       );
@@ -308,9 +301,7 @@ export function PartySheet({
 
                   <p className="text-xs text-muted-foreground">
                     {selectedAgent.code || "No code"}
-                    {selectedAgent.phone
-                      ? ` • ${selectedAgent.phone}`
-                      : ""}
+                    
                   </p>
                 </div>
               </div>
