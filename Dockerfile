@@ -1,6 +1,7 @@
 # Build stage
 FROM oven/bun:1 AS builder
-
+ARG COMMIT_SHA
+ENV COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 
 COPY package.json bun.lock ./

@@ -3,9 +3,24 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
-
+function getCommitHash(): string {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim()
+  } catch {
+    // git na thakle (docker build e .git na thaklew) env var theke fallback
+    return (
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+      process.env.GITHUB_SHA?.slice(0, 7) ??
+      process.env.COMMIT_SHA?.slice(0, 7) ??
+      "unknown"
+    )
+  }
+}
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
+  },
   plugins: [
     react(),
     tailwindcss(),

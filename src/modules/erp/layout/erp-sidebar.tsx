@@ -464,26 +464,16 @@ export function ErpSidebar() {
 
             {/* Collapsed */}
 
-            <div
-              className="
-                hidden
-                items-center
-                justify-center
-                group-data-[collapsible=icon]:flex
-              "
-            >
-
-              <span
+              <div
                 className="
-                  text-xs
-                  font-semibold
+                  mt-1
+                  truncate
+                  text-[11px]
+                  text-muted-foreground
                 "
-                title="Pro · TEN-0001"
               >
-                P
-              </span>
-
-            </div>
+                Commit {__COMMIT_HASH__}
+              </div>
 
           </SidebarFooter>
 

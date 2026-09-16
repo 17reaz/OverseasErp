@@ -31,7 +31,10 @@ jobs:
 
       - name: Lint
         run: bun run lint
-
+      - name: Build production bundle
+        run: bun run build
+        env:
+          COMMIT_SHA: ${{ github.sha }}
       - name: Build production bundle
         run: bun run build
 
