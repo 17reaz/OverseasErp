@@ -497,7 +497,7 @@ export function ErpSidebar() {
                 "
                 title={`${planLabel} · ${tenantSerial}`}
               >
-                P
+                {tenantSerial}
               </span>
 
             </div>
