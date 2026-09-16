@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowDownLeft,
+  CreditCard,
   ArrowUpRight,
   Banknote,
   FileText,
@@ -311,7 +313,54 @@ function AccountsPage() {
                     Create and manage customer invoices.
                   </p>
                 </button>
+                  {/* Receivables */}
+<button
+  type="button"
+  onClick={() =>
+    navigate("/app/accounts/receivables")
+  }
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <ArrowDownLeft className="size-4" />
+    </div>
 
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+  </div>
+
+  <p className="mt-3 font-medium">
+    Receivables
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Track money owed by customers.
+  </p>
+</button>
+{/* Payables */}
+<button
+  type="button"
+  onClick={() =>
+    navigate("/app/accounts/payables")
+  }
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <CreditCard className="size-4" />
+    </div>
+
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+  </div>
+
+  <p className="mt-3 font-medium">
+    Payables
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Track money owed to vendors.
+  </p>
+</button>
                 {/* Transactions */}
                 <button
                   type="button"

@@ -12,13 +12,33 @@ export interface Payable {
   status: "open" | "partial" | "paid" | "cancelled";
 }
 
-export async function getPayables(): Promise<Payable[]> {
-  // Temporary implementation until finance.payables
-  // is connected to the database.
-  //
-  // Keep this service boundary now so the page does not
-  // need to change when the real payable table is added.
+interface PayableRow {
+  id: string;
+  party_id: string | null;
+  vendor_name: string;
+  description: string;
+  amount: number;
+  paid_amount: number;
+  due_amount: number;
+  due_date: string | null;
+  status: Payable["status"];
+}
 
+function mapPayable(row: PayableRow): Payable {
+  return {
+    id: row.id,
+    partyId: row.party_id,
+    vendorName: row.vendor_name,
+    description: row.description,
+    amount: Number(row.amount),
+    paidAmount: Number(row.paid_amount),
+    dueAmount: Number(row.due_amount),
+    dueDate: row.due_date,
+    status: row.status,
+  };
+}
+
+export async function getPayables(): Promise<Payable[]> {
   const { data, error } = await supabase
     .schema("finance")
     .from("payables")
@@ -45,5 +65,7 @@ export async function getPayables(): Promise<Payable[]> {
     );
   }
 
-  return (data ?? []) as Payable[];
+  return (data ?? []).map(
+    (row) => mapPayable(row as PayableRow),
+  );
 }
