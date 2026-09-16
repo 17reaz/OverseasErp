@@ -7,12 +7,17 @@ export type ToastType =
   | "error"
   | "info"
   | "warning";
-
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
 export interface ToastOptions {
   title: string;
   description?: string;
   type?: ToastType;
   duration?: number;
+  action?: ToastAction;   // toast er vitorer button
+  dismissible?: boolean;
 }
 
 type ToastListener = (
@@ -86,6 +91,9 @@ export const toast = {
     return () => {
       listeners.delete(listener);
     };
+  },
+   show(options: ToastOptions) {
+    notify(options);
   },
 
 };

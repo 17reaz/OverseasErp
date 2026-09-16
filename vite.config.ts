@@ -11,9 +11,16 @@ export default defineConfig({
     tailwindcss(),
 
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
+      injectRegister: false, // registration amra nijera code e korbo
       workbox: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+      },
+      devOptions: {
+        enabled: false, // dev e test korte chaile true koro
+        type: "module",
       },
       manifest: {
         name: "Overseas ERP",

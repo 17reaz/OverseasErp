@@ -9,11 +9,13 @@ import {
 import {
   AppRouter,
 } from "./router";
+import { PwaUpdatePrompt } from "@/components/shared/pwa/pwa-update-prompt";
 
 function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <PwaUpdatePrompt />
         <AppRouter />
       </ToastProvider>
     </AuthProvider>

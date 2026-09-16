@@ -125,24 +125,15 @@ export function ToastProvider({
           ],
         );
 
-        const duration =
-          newToast.duration ??
-          4000;
+                const duration = newToast.duration ?? 4000;
 
-        window.setTimeout(
-          () => {
-
-            setToasts(
-              (current) =>
-                current.filter(
-                  (item) =>
-                    item.id !== id,
-                ),
+        if (duration > 0 && Number.isFinite(duration)) {
+          window.setTimeout(() => {
+            setToasts((current) =>
+              current.filter((item) => item.id !== id),
             );
-
-          },
-          duration,
-        );
+          }, duration);
+        }
       },
     );
 
@@ -302,7 +293,22 @@ export function ToastProvider({
                 )}
 
               </div>
+                              {/* ACTION */}
 
+              {item.action && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className="mt-0.5 h-7 shrink-0 px-3 text-xs"
+                  onClick={() => {
+                    item.action?.onClick();
+                    removeToast(item.id);
+                  }}
+                >
+                  {item.action.label}
+                </Button>
+              )}
 
               {/* CLOSE */}
 
