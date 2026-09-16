@@ -1,7 +1,7 @@
 export type FinancePartyType =
   | "agent"
   | "vendor"
-  | "customer";
+  | "candidate";
 
 export interface FinanceParty {
   id: string;

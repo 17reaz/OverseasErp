@@ -169,7 +169,9 @@ export function PartySheet({
     setError(null);
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
     setError(null);
@@ -208,7 +210,7 @@ export function PartySheet({
       }
 
       input = {
-        partyType: "customer",
+        partyType: "candidate",
         partyId: selectedCustomer.id,
         name: selectedCustomer.name || "Unnamed Customer",
         phone: selectedCustomer.phone,
@@ -222,7 +224,6 @@ export function PartySheet({
       await createParty(input);
 
       onCreated?.();
-
       onOpenChange(false);
     } catch (err) {
       setError(
@@ -287,11 +288,11 @@ export function PartySheet({
                 <Button
                   type="button"
                   variant={
-                    partyType === "customer"
+                    partyType === "candidate"
                       ? "default"
                       : "outline"
                   }
-                  onClick={() => resetSelection("customer")}
+                  onClick={() => resetSelection("candidate")}
                 >
                   Customer
                 </Button>
@@ -302,6 +303,7 @@ export function PartySheet({
             {loadingSources && (
               <div className="flex items-center justify-center rounded-lg border p-6">
                 <Loader2 className="mr-2 size-4 animate-spin" />
+
                 <span className="text-sm text-muted-foreground">
                   Loading...
                 </span>
@@ -353,8 +355,7 @@ export function PartySheet({
                 {selectedAgent && (
                   <div className="rounded-lg border bg-muted/30 p-3">
                     <p className="font-medium">
-                      {selectedAgent.name ||
-                        "Unnamed Agent"}
+                      {selectedAgent.name || "Unnamed Agent"}
                     </p>
 
                     {selectedAgent.code && (
@@ -394,8 +395,7 @@ export function PartySheet({
                         >
                           <div className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate font-medium">
-                              {vendor.name ||
-                                "Unnamed Vendor"}
+                              {vendor.name || "Unnamed Vendor"}
                             </span>
 
                             {vendor.code && (
@@ -419,8 +419,7 @@ export function PartySheet({
                 {selectedVendor && (
                   <div className="rounded-lg border bg-muted/30 p-3">
                     <p className="font-medium">
-                      {selectedVendor.name ||
-                        "Unnamed Vendor"}
+                      {selectedVendor.name || "Unnamed Vendor"}
                     </p>
 
                     {selectedVendor.code && (
@@ -440,7 +439,7 @@ export function PartySheet({
             )}
 
             {/* Customer */}
-            {!loadingSources && partyType === "customer" && (
+            {!loadingSources && partyType === "candidate" && (
               <div className="space-y-2">
                 <Label>Customer</Label>
 
@@ -521,7 +520,10 @@ export function PartySheet({
 
                   <div>
                     <p className="text-xs text-muted-foreground">
-                      Selected {partyType}
+                      Selected{" "}
+                      {partyType === "candidate"
+                        ? "customer"
+                        : partyType}
                     </p>
 
                     <p className="font-medium">
@@ -555,12 +557,9 @@ export function PartySheet({
               disabled={
                 loading ||
                 loadingSources ||
-                (partyType === "agent" &&
-                  !selectedAgent) ||
-                (partyType === "vendor" &&
-                  !selectedVendor) ||
-                (partyType === "customer" &&
-                  !selectedCustomer)
+                (partyType === "agent" && !selectedAgent) ||
+                (partyType === "vendor" && !selectedVendor) ||
+                (partyType === "candidate" && !selectedCustomer)
               }
             >
               {loading && (
