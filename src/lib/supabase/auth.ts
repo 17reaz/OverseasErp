@@ -69,7 +69,7 @@ export async function getTenant(tenantId: string) {
        timezone,
        language,
        currency,
-+      access_type,
+       access_type,
        is_active
      `)
     .eq("id", tenantId)

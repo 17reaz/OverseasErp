@@ -3,7 +3,9 @@ import {
   useEffect,
   useState,
 } from "react";
-
+import {
+  useAuth,
+} from "@/modules/auth/components/auth-provider";
 import { Trash2,Settings,Phone } from "lucide-react";
 import {
   Sidebar,
