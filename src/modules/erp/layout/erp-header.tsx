@@ -9,7 +9,6 @@ import {
   FileText,
   CreditCard,
   Plane,
-  Smartphone
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -29,6 +28,7 @@ import { useAuth } from "@/modules/auth/components/auth-provider";
 import { erpNavigation } from "./erp-navigation";
 import { signOut } from "@/lib/supabase/auth";
 import { GlobalSearchDialog } from "../global-search/global-search-dialog";
+import { AndroidDownloadPopover } from "./android-download-popover";
 import {
   getUnreadSystemNotificationCount,
 } from "@/modules/erp/notifications/notification-service";
@@ -126,16 +126,7 @@ const [unreadCount,setUnreadCount] = useState(0);
     {pageName}
   </h1>
 
-  <Button
-    variant="ghost"
-    size="icon"
-    className="shrink-0"
-    onClick={() => navigate("/download")}
-    title="Download OERP Android App"
-    aria-label="Download OERP Android App"
-  >
-    <Smartphone className="h-5 w-5" />
-  </Button>
+  
 </div>
 
         <div className="flex items-center gap-1 md:gap-2">
@@ -163,7 +154,18 @@ const [unreadCount,setUnreadCount] = useState(0);
           >
             <Search className="h-4 w-4" />
           </Button>
+<Button
+  type="button"
+  variant="ghost"
+  size="icon"
+  className="lg:hidden"
+  aria-label="Search"
+  onClick={() => setGlobalSearchOpen(true)}
+>
+  <Search className="h-4 w-4" />
+</Button>
 
+<AndroidDownloadPopover />
           <Button 
             type="button" 
             variant="ghost" 
