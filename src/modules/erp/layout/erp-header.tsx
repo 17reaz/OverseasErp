@@ -9,6 +9,7 @@ import {
   FileText,
   CreditCard,
   Plane,
+  Smartphone
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -118,10 +119,24 @@ const [unreadCount,setUnreadCount] = useState(0);
   return (
     <>
       <header className="flex h-16 w-full items-center justify-between border-b bg-background px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <SidebarTrigger className="-ml-2 shrink-0" />
-          <h1 className="truncate text-lg font-semibold md:text-xl">{pageName}</h1>
-        </div>
+       <div className="flex min-w-0 items-center gap-3">
+  <SidebarTrigger className="-ml-2 shrink-0" />
+
+  <h1 className="truncate text-lg font-semibold md:text-xl">
+    {pageName}
+  </h1>
+
+  <Button
+    variant="ghost"
+    size="icon"
+    className="shrink-0"
+    onClick={() => navigate("/download")}
+    title="Download OERP Android App"
+    aria-label="Download OERP Android App"
+  >
+    <Smartphone className="h-5 w-5" />
+  </Button>
+</div>
 
         <div className="flex items-center gap-1 md:gap-2">
           <Button

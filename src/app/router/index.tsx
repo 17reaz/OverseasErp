@@ -10,7 +10,7 @@ import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-
 
 // Landing
 import { LandingPage } from "@/modules/landing/landing-page";
-
+import { DownloadPage } from "@/modules/landing/download-page";
 // ERP Layout
 import { ErpLayout } from "@/modules/erp/layout/erp-layout";
 
@@ -96,6 +96,7 @@ function AppRouter() {
             </PublicRoute>
           }
         />
+          <Route path="/download" element={<DownloadPage />} />
 
         {/* ============================== PROTECTED ERP ============================== */}
         <Route element={<ProtectedRoute />}>
