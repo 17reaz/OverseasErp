@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase/client";
 import { MODULES } from "./profile/module-configs";
 import type { ModuleStatus } from "./profile/types";
 import { syncCandidateWorkflowState } from "../workflow/workflow-service";
-import { cacheCandidates,updateCachedCandidate } from "@/lib/db/candidate-cache"
+import { cacheCandidates} from "@/lib/db/candidate-cache"
 import type {
   Candidate,
   CandidateInput,

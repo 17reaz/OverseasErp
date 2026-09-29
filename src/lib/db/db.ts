@@ -4,6 +4,7 @@ export interface CacheMetadata {
   key: string
   updatedAt: number
 }
+
 export interface CachedCandidate {
   id: string
   tenant_id: string
@@ -17,7 +18,7 @@ export interface CachedCandidate {
   current_stage: string | null
   workflow_state: string | null
   hold_reason: string | null
-workflow_updated_at?: string | null
+  workflow_updated_at?: string | null
   is_returned: boolean
   returned_date: string | null
   returned_reason: string | null
@@ -27,24 +28,53 @@ workflow_updated_at?: string | null
   created_at: string
   updated_at: string
   agent: {
-    id: string 
+    id: string
     name: string | null
     code: string | null
   } | null
   cached_at: number
 }
+
+export type SyncOperation =
+  | "create"
+  | "update"
+  | "delete"
+
+export interface SyncQueueItem {
+  id?: number
+  entity: string
+  entityId: string
+  operation: SyncOperation
+  payload: unknown
+  createdAt: number
+  attempts: number
+  lastError: string | null
+}
+
 export class AppDatabase extends Dexie {
   cacheMetadata!: Table<CacheMetadata, string>
   candidates!: Table<CachedCandidate, string>
+  syncQueue!: Table<SyncQueueItem, number>
+
   constructor() {
     super("overseas-erp")
 
     this.version(1).stores({
       cacheMetadata: "key",
     })
+
     this.version(2).stores({
-    cacheMetadata: "key",
-    candidates: "id, tenant_id, sl, passport_number, current_stage, updated_at",
+      cacheMetadata: "key",
+      candidates:
+        "id, tenant_id, sl, passport_no, current_stage, updated_at",
+    })
+
+    this.version(3).stores({
+      cacheMetadata: "key",
+      candidates:
+        "id, tenant_id, sl, passport_no, current_stage, updated_at",
+      syncQueue:
+        "++id, entity, entityId, createdAt",
     })
   }
 }
