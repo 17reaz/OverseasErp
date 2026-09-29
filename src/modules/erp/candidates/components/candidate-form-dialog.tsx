@@ -51,13 +51,11 @@ import {
   type CandidateInput,
 } from "../candidate-service";
 
-
 interface Agent {
   id: string;
   name: string | null;
   code: string | null;
 }
-
 
 interface CandidateFormDialogProps {
   open: boolean;
@@ -73,7 +71,6 @@ interface CandidateFormDialogProps {
   ) => void;
 }
 
-
 const countries = [
   "Saudi Arabia",
   "Mauritius",
@@ -82,17 +79,14 @@ const countries = [
   "Belarus",
 ] as const;
 
-
 export function CandidateFormDialog({
   open,
   candidate,
   onOpenChange,
   onSuccess,
 }: CandidateFormDialogProps) {
-
   const isEdit =
     Boolean(candidate);
-
 
   // =====================================================
   // FORM STATE
@@ -106,6 +100,9 @@ export function CandidateFormDialog({
     (state) => state.setDraft,
   );
 
+  const resetDraft = useCandidateStore(
+    (state) => state.resetDraft,
+  );
 
   // =====================================================
   // AGENT STATE
@@ -114,19 +111,21 @@ export function CandidateFormDialog({
   const [agents, setAgents] =
     useState<Agent[]>([]);
 
- const selectedAgentId = useCandidateStore(
-  (state) => state.selectedAgentId,
-);
+  const selectedAgentId =
+    useCandidateStore(
+      (state) => state.selectedAgentId,
+    );
 
-const setSelectedAgentId = useCandidateStore(
-  (state) => state.setSelectedAgentId,
-);
+  const setSelectedAgentId =
+    useCandidateStore(
+      (state) => state.setSelectedAgentId,
+    );
+
   const [agentOpen, setAgentOpen] =
     useState(false);
 
   const [agentLoading, setAgentLoading] =
     useState(false);
-
 
   // =====================================================
   // GENERAL STATE
@@ -138,7 +137,6 @@ const setSelectedAgentId = useCandidateStore(
   const [error, setError] =
     useState<string | null>(null);
 
-
   // =====================================================
   // PASSPORT DUPLICATE STATE
   // =====================================================
@@ -148,7 +146,6 @@ const setSelectedAgentId = useCandidateStore(
 
   const [passportDuplicate, setPassportDuplicate] =
     useState(false);
-
 
   // =====================================================
   // TENANT ID
@@ -171,22 +168,17 @@ const setSelectedAgentId = useCandidateStore(
       tenant_id?: string;
     } | null)?.tenant_id;
 
-
   // =====================================================
   // LOAD AGENTS
   // =====================================================
 
   useEffect(() => {
-
     if (!open) {
       return;
     }
 
-
     async function loadAgents() {
-
       setAgentLoading(true);
-
 
       const {
         data,
@@ -211,116 +203,89 @@ const setSelectedAgentId = useCandidateStore(
           },
         );
 
-
       if (error) {
-
         console.error(
           "Failed to load agents:",
           error,
         );
 
         setAgents([]);
-
       } else {
-
         setAgents(
           data ?? [],
         );
-
       }
-
 
       setAgentLoading(false);
     }
 
-
     loadAgents();
-
   }, [open]);
-
 
   // =====================================================
   // LOAD CANDIDATE INTO FORM
   // =====================================================
 
   useEffect(() => {
-
     if (!open) {
       return;
     }
-
 
     setDraft(
       "passportNo",
       candidate?.passport_no ?? "",
     );
 
-
     setDraft(
       "name",
       candidate?.name ?? "",
     );
-
 
     setDraft(
       "receivedDate",
       candidate?.received_date ?? "",
     );
 
-
     setDraft(
       "country",
       candidate?.country ?? "",
     );
-
 
     setDraft(
       "currentStage",
       candidate?.current_stage ?? "candidate",
     );
 
-
     setSelectedAgentId(
       candidate?.agent_id ??
         null,
     );
 
-
     setError(null);
-
     setPassportDuplicate(false);
-
     setPassportChecking(false);
-
   }, [
     open,
     candidate,
     setDraft,
   ]);
 
-
   // =====================================================
   // PASSPORT DUPLICATE CHECK
   // =====================================================
 
   useEffect(() => {
-
     const normalizedPassport =
       draft.passportNo
         .trim()
         .toUpperCase();
 
-
     // Empty passport
     if (!normalizedPassport) {
-
       setPassportChecking(false);
-
       setPassportDuplicate(false);
-
       return;
     }
-
 
     /*
      * Create mode without tenant ID:
@@ -331,26 +296,18 @@ const setSelectedAgentId = useCandidateStore(
      */
 
     if (!tenantId) {
-
       setPassportChecking(false);
-
       setPassportDuplicate(false);
-
       return;
     }
 
-
     setPassportChecking(true);
-
     setPassportDuplicate(false);
-
 
     const timer =
       window.setTimeout(
         async () => {
-
           try {
-
             const isDuplicate =
               await checkPassportDuplicate(
                 normalizedPassport,
@@ -358,13 +315,10 @@ const setSelectedAgentId = useCandidateStore(
                 candidate?.id,
               );
 
-
             setPassportDuplicate(
               isDuplicate,
             );
-
           } catch (error) {
-
             console.error(
               "Passport duplicate check failed:",
               error,
@@ -381,34 +335,25 @@ const setSelectedAgentId = useCandidateStore(
             setPassportDuplicate(
               false,
             );
-
           } finally {
-
             setPassportChecking(
               false,
             );
-
           }
-
         },
         400,
       );
 
-
     return () => {
-
       window.clearTimeout(
         timer,
       );
-
     };
-
   }, [
     draft.passportNo,
     tenantId,
     candidate?.id,
   ]);
-
 
   // =====================================================
   // SELECTED AGENT
@@ -421,7 +366,6 @@ const setSelectedAgentId = useCandidateStore(
         selectedAgentId,
     );
 
-
   // =====================================================
   // SUBMIT
   // =====================================================
@@ -429,16 +373,13 @@ const setSelectedAgentId = useCandidateStore(
   async function handleSubmit(
     event: React.FormEvent,
   ) {
-
     event.preventDefault();
-
 
     // -----------------------------------------------------
     // PASSPORT REQUIRED
     // -----------------------------------------------------
 
     if (!draft.passportNo.trim()) {
-
       setError(
         "Passport number is required.",
       );
@@ -446,13 +387,11 @@ const setSelectedAgentId = useCandidateStore(
       return;
     }
 
-
     // -----------------------------------------------------
     // DUPLICATE PASSPORT
     // -----------------------------------------------------
 
     if (passportDuplicate) {
-
       setError(
         "This passport number already exists.",
       );
@@ -460,13 +399,11 @@ const setSelectedAgentId = useCandidateStore(
       return;
     }
 
-
     // -----------------------------------------------------
     // NAME REQUIRED
     // -----------------------------------------------------
 
     if (!draft.name.trim()) {
-
       setError(
         "Candidate name is required.",
       );
@@ -474,16 +411,11 @@ const setSelectedAgentId = useCandidateStore(
       return;
     }
 
-
     try {
-
       setLoading(true);
-
       setError(null);
 
-
       const input: CandidateInput = {
-
         passport_no:
           draft.passportNo
             .trim()
@@ -512,7 +444,6 @@ const setSelectedAgentId = useCandidateStore(
           draft.currentStage,
       };
 
-
       const result =
         isEdit
           ? await updateCandidate(
@@ -523,17 +454,14 @@ const setSelectedAgentId = useCandidateStore(
               input,
             );
 
-
       // -----------------------------------------------------
       // DATABASE ERROR
       // -----------------------------------------------------
 
       if (result.error) {
-
         console.error(
           result.error,
         );
-
 
         /*
          * PostgreSQL unique_violation
@@ -548,7 +476,6 @@ const setSelectedAgentId = useCandidateStore(
           result.error.code ===
           "23505"
         ) {
-
           setPassportDuplicate(
             true,
           );
@@ -556,56 +483,45 @@ const setSelectedAgentId = useCandidateStore(
           setError(
             "This passport number already exists.",
           );
-
         } else {
-
           setError(
             result.error.message ||
               "Failed to save candidate.",
           );
-
         }
 
         return;
       }
-
 
       // -----------------------------------------------------
       // SUCCESS
       // -----------------------------------------------------
 
       if (result.data) {
-
         onSuccess(
           result.data,
         );
-
       }
 
+      // Clear persisted Zustand form data
+      // so the next Add Candidate starts fresh.
+      resetDraft();
 
       onOpenChange(
         false,
       );
-
     } catch (error) {
-
       console.error(
         error,
       );
 
-
       setError(
         "Something went wrong. Please try again.",
       );
-
     } finally {
-
       setLoading(false);
-
     }
-
   }
-
 
   // =====================================================
   // UI
@@ -618,32 +534,22 @@ const setSelectedAgentId = useCandidateStore(
         onOpenChange
       }
     >
-
       <DialogContent
         className="sm:max-w-[520px]"
       >
-
         <DialogHeader>
-
           <DialogTitle>
-
             {isEdit
               ? "Edit Candidate"
               : "Create Candidate"}
-
           </DialogTitle>
 
-
           <DialogDescription>
-
             {isEdit
               ? "Update candidate information."
               : "Add a new candidate."}
-
           </DialogDescription>
-
         </DialogHeader>
-
 
         <form
           onSubmit={
@@ -651,20 +557,16 @@ const setSelectedAgentId = useCandidateStore(
           }
           className="space-y-5"
         >
-
-
           {/* =================================================
               PASSPORT
               ================================================= */}
 
           <div className="space-y-2">
-
             <Label
               htmlFor="passport_no"
             >
               Passport Number
             </Label>
-
 
             <Input
               id="passport_no"
@@ -672,7 +574,6 @@ const setSelectedAgentId = useCandidateStore(
                 draft.passportNo
               }
               onChange={(event) => {
-
                 setDraft(
                   "passportNo",
                   event.target.value.toUpperCase(),
@@ -685,7 +586,6 @@ const setSelectedAgentId = useCandidateStore(
                 setError(
                   null,
                 );
-
               }}
               placeholder="A12345678"
               disabled={loading}
@@ -696,37 +596,26 @@ const setSelectedAgentId = useCandidateStore(
               }
             />
 
-
             {/* Checking */}
 
             {passportChecking && (
-
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-
                 <Loader2
                   className="h-3 w-3 animate-spin"
                 />
 
                 Checking passport...
-
               </div>
-
             )}
-
 
             {/* Duplicate */}
 
             {!passportChecking &&
               passportDuplicate && (
-
                 <p className="text-xs text-destructive">
-
                   This passport number already exists.
-
                 </p>
-
               )}
-
 
             {/* Available */}
 
@@ -734,27 +623,21 @@ const setSelectedAgentId = useCandidateStore(
               !passportDuplicate &&
               draft.passportNo.trim() && (
                 <p className="text-xs text-green-600">
-
                   Passport number is available.
-
                 </p>
               )}
-
           </div>
-
 
           {/* =================================================
               NAME
               ================================================= */}
 
           <div className="space-y-2">
-
             <Label
               htmlFor="candidate_name"
             >
               Candidate Name
             </Label>
-
 
             <Input
               id="candidate_name"
@@ -770,20 +653,16 @@ const setSelectedAgentId = useCandidateStore(
               placeholder="Full name"
               disabled={loading}
             />
-
           </div>
-
 
           {/* =================================================
               AGENT
               ================================================= */}
 
           <div className="space-y-2">
-
             <Label>
               Agent
             </Label>
-
 
             <Popover
               open={agentOpen}
@@ -791,11 +670,9 @@ const setSelectedAgentId = useCandidateStore(
                 setAgentOpen
               }
             >
-
               <PopoverTrigger
                 asChild
               >
-
                 <Button
                   type="button"
                   variant="outline"
@@ -809,50 +686,38 @@ const setSelectedAgentId = useCandidateStore(
                   }
                   className="w-full justify-between font-normal"
                 >
-
                   {agentLoading
                     ? "Loading agents..."
                     : selectedAgent
                       ? selectedAgent.name
                       : "Select agent..."}
 
-
                   <ChevronsUpDown
                     className="ml-2 h-4 w-4 shrink-0 opacity-50"
                   />
-
                 </Button>
-
               </PopoverTrigger>
-
 
               <PopoverContent
                 align="start"
                 className="w-[--radix-popover-trigger-width] p-0"
               >
-
                 <Command>
-
                   <CommandInput
                     placeholder="Search agent..."
                   />
 
-
                   <CommandList>
-
                     <CommandEmpty>
                       No agent found.
                     </CommandEmpty>
 
-
                     <CommandGroup>
-
                       {/* No Agent */}
 
                       <CommandItem
                         value="no agent"
                         onSelect={() => {
-
                           setSelectedAgentId(
                             null,
                           );
@@ -860,37 +725,28 @@ const setSelectedAgentId = useCandidateStore(
                           setAgentOpen(
                             false,
                           );
-
                         }}
                       >
-
                         No Agent
-
 
                         {selectedAgentId ===
                           null && (
-
                           <Check
                             className="ml-auto h-4 w-4"
                           />
-
                         )}
-
                       </CommandItem>
-
 
                       {/* Existing Agents */}
 
                       {agents.map(
                         (agent) => (
-
                           <CommandItem
                             key={
                               agent.id
                             }
                             value={`${agent.name ?? ""} ${agent.code ?? ""}`}
                             onSelect={() => {
-
                               setSelectedAgentId(
                                 agent.id,
                               );
@@ -898,74 +754,49 @@ const setSelectedAgentId = useCandidateStore(
                               setAgentOpen(
                                 false,
                               );
-
                             }}
                           >
-
                             <div className="flex flex-col">
-
                               <span>
-
                                 {agent.name ||
                                   "Unnamed Agent"}
-
                               </span>
 
-
                               {agent.code && (
-
                                 <span className="text-xs text-muted-foreground">
-
                                   {
                                     agent.code
                                   }
-
                                 </span>
-
                               )}
-
                             </div>
-
 
                             {selectedAgentId ===
                               agent.id && (
-
                               <Check
                                 className="ml-auto h-4 w-4"
                               />
-
                             )}
-
                           </CommandItem>
-
                         ),
                       )}
-
                     </CommandGroup>
-
                   </CommandList>
-
                 </Command>
-
               </PopoverContent>
-
             </Popover>
-
           </div>
-
 
           {/* =================================================
               RECEIVED DATE
               ================================================= */}
 
           <div className="space-y-2">
-
             <Label
               htmlFor="received_date"
             >
               Received Date
             </Label>
-
 
             <Input
               id="received_date"
@@ -981,22 +812,18 @@ const setSelectedAgentId = useCandidateStore(
               }
               disabled={loading}
             />
-
           </div>
-
 
           {/* =================================================
               COUNTRY
               ================================================= */}
 
           <div className="space-y-2">
-
             <Label
               htmlFor="country"
             >
               Country
             </Label>
-
 
             <select
               id="country"
@@ -1012,42 +839,33 @@ const setSelectedAgentId = useCandidateStore(
               disabled={loading}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none"
             >
-
               <option value="">
                 Select country
               </option>
 
-
               {countries.map(
                 (item) => (
-
                   <option
                     key={item}
                     value={item}
                   >
                     {item}
                   </option>
-
                 ),
               )}
-
             </select>
-
           </div>
-
 
           {/* =================================================
               CURRENT STAGE
               ================================================= */}
 
           <div className="space-y-2">
-
             <Label
               htmlFor="current_stage"
             >
               Current Stage
             </Label>
-
 
             <select
               id="current_stage"
@@ -1063,10 +881,8 @@ const setSelectedAgentId = useCandidateStore(
               disabled={loading}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none"
             >
-
               {CANDIDATE_STAGE_DEFINITIONS.map(
                 (definition) => (
-
                   <option
                     key={
                       definition.value
@@ -1075,52 +891,37 @@ const setSelectedAgentId = useCandidateStore(
                       definition.value
                     }
                   >
-
                     {
                       definition.label
                     }
-
                   </option>
-
                 ),
               )}
-
             </select>
 
-
             <p className="text-xs text-muted-foreground">
-
               সাধারণত এটা Next বাটন দিয়েই এগোয় —
               এখানে সরাসরি বদলালে candidate কোনো
               stage skip করে চলে যেতে পারবে
               (পুরনো data পরে add করা যাবে)।
-
             </p>
-
           </div>
-
 
           {/* =================================================
               ERROR
               ================================================= */}
 
           {error && (
-
             <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-
               {error}
-
             </div>
-
           )}
-
 
           {/* =================================================
               FOOTER
               ================================================= */}
 
           <DialogFooter>
-
             <Button
               type="button"
               variant="outline"
@@ -1134,7 +935,6 @@ const setSelectedAgentId = useCandidateStore(
               Cancel
             </Button>
 
-
             <Button
               type="submit"
               disabled={
@@ -1143,28 +943,19 @@ const setSelectedAgentId = useCandidateStore(
                 passportDuplicate
               }
             >
-
               {loading && (
-
                 <Loader2
                   className="animate-spin"
                 />
-
               )}
-
 
               {isEdit
                 ? "Save Changes"
                 : "Create Candidate"}
-
             </Button>
-
           </DialogFooter>
-
         </form>
-
       </DialogContent>
-
     </Dialog>
   );
 }

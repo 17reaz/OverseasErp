@@ -107,7 +107,7 @@ export function CandidatePassportDialog({
         : false,
     [currentFile],
   );
-
+  
   const previewIsImage = useMemo(
     () =>
       currentFile
