@@ -4,12 +4,12 @@ import { FlightTable } from "./components/flight-table";
 import { FlightToolbar } from "./components/flight-toolbar";
 import { deleteFlight, getFlights, type Flight } from "./flight-service";
 import { getCandidates } from "../candidates/candidate-service";
-
+import { getVisas, type Visa } from "../visa/visa-service";
 export function FlightPage() {
   const [records, setRecords] = useState<Flight[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
-  const [visas] = useState<any[]>([]); // setVisas বাদ দেওয়া হয়েছে
-
+  // const [visas] = useState<any[]>([]); // setVisas বাদ দেওয়া হয়েছে
+const [visas, setVisas] = useState<Visa[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -18,13 +18,16 @@ export function FlightPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [flightList, candidatesData] = await Promise.all([
-        getFlights(),
-        getCandidates(),
-      ]);
+      const [flightList, candidatesData, visasData] =
+  await Promise.all([
+    getFlights(),
+    getCandidates(),
+    getVisas(),
+  ]);
 
       setRecords(flightList);
       setCandidates(candidatesData);
+      setVisas(visasData);
     } catch (error) {
       console.error("Failed to load flight module:", error);
     } finally {
