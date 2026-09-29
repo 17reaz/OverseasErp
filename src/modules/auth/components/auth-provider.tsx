@@ -191,14 +191,36 @@ return profile;
     // Do not make Supabase calls directly
     // inside onAuthStateChange.
     setTimeout(async () => {
-      if (!mounted) return;
+  if (!mounted) return;
 
-      await loadUserData(session);
+  const currentProfile = await loadUserData(session);
 
-      if (mounted) {
-        setLoading(false);
-      }
-    }, 0);
+  if (
+    event === "SIGNED_IN" &&
+    session &&
+    currentProfile?.tenant_id
+  ) {
+    const { data, error } =
+      await createLoginSession(session, {
+        id: currentProfile.id,
+        tenant_id: currentProfile.tenant_id,
+      });
+
+    if (error) {
+      console.error(
+        "Failed to create login session:",
+        error,
+      );
+    } else if (data?.session_id) {
+      loginSessionIdRef.current =
+        data.session_id;
+    }
+  }
+
+  if (mounted) {
+    setLoading(false);
+  }
+}, 0);
   },
 );
 
