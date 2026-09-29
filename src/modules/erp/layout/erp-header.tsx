@@ -196,7 +196,7 @@ const [unreadCount,setUnreadCount] = useState(0);
             {/* <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500" /> */}
           </Button>
 
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="ghost" className="flex h-10 items-center gap-2 px-2">
                 <Avatar className="h-8 w-8 shrink-0">
@@ -236,7 +236,166 @@ const [unreadCount,setUnreadCount] = useState(0);
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu> */}
+          <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button
+      type="button"
+      variant="ghost"
+      className="flex h-10 items-center gap-2 px-2"
+    >
+      <div className="relative">
+        <Avatar className="h-8 w-8 shrink-0">
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+
+        {/* Current user active indicator */}
+        <span
+          className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500"
+          aria-label="Active"
+        />
+      </div>
+
+      <div className="hidden text-left md:block">
+        <p className="max-w-[120px] truncate text-sm font-medium leading-none">
+          {fullName}
+        </p>
+
+        <p className="mt-1 text-xs text-muted-foreground">
+          {profile?.role || "User"}
+        </p>
+      </div>
+    </Button>
+  </DropdownMenuTrigger>
+
+  <DropdownMenuContent
+    align="end"
+    className="w-72"
+  >
+    <DropdownMenuLabel>
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback>
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+
+          <span
+            className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500"
+            aria-hidden="true"
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">
+            {fullName}
+          </p>
+
+          <p className="truncate text-xs font-normal text-muted-foreground">
+            {email}
+          </p>
+
+          {profile?.role && (
+            <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+              Role: {profile.role}
+            </p>
+          )}
+        </div>
+      </div>
+    </DropdownMenuLabel>
+
+    <DropdownMenuSeparator />
+
+    {/* Active presence */}
+    <div className="px-2 py-2">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-medium">
+          Active now
+        </span>
+
+        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          5 users
+        </span>
+      </div>
+
+      <div className="space-y-1">
+        {[
+          {
+            name: fullName,
+            role: profile?.role || "User",
+            initials,
+            current: true,
+          },
+          {
+            name: "Arif",
+            role: "Manager",
+            initials: "A",
+            current: false,
+          },
+          {
+            name: "Hasan",
+            role: "Staff",
+            initials: "H",
+            current: false,
+          },
+        ].map((activeUser) => (
+          <div
+            key={activeUser.name}
+            className="flex items-center gap-2 rounded-md px-2 py-1.5"
+          >
+            <div className="relative">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="text-[10px]">
+                  {activeUser.initials}
+                </AvatarFallback>
+              </Avatar>
+
+              <span
+                className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background bg-emerald-500"
+                aria-hidden="true"
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium">
+                {activeUser.name}
+              </p>
+
+              <p className="truncate text-[11px] text-muted-foreground">
+                {activeUser.current
+                  ? "You"
+                  : activeUser.role}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <DropdownMenuSeparator />
+
+    <DropdownMenuItem
+      onClick={() =>
+        navigate("/app/settings?section=profile")
+      }
+    >
+      <User className="mr-2 h-4 w-4" />
+      Profile
+    </DropdownMenuItem>
+
+    <DropdownMenuSeparator />
+
+    <DropdownMenuItem
+      onClick={handleLogout}
+      className="text-destructive focus:text-destructive"
+    >
+      <LogOut className="mr-2 h-4 w-4" />
+      Logout
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
