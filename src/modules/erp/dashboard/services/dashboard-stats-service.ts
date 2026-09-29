@@ -693,13 +693,31 @@ export async function getDashboardStats(): Promise<{
      processing/pipeline counts.
   ======================================================= */
 
-  const processingCandidates =
-    activeStageCandidates.filter(
-      (candidate) =>
-        resolveWorkflowState(candidate) ===
-        "processing",
-    );
+   const processingCandidates =
+    activeStageCandidates
+      .filter(
+        (candidate) =>
+          resolveWorkflowState(candidate) ===
+          "processing",
+      )
+      .map(
+        (candidate) => {
+          const live =
+            liveWorkflowStates.get(
+              candidate.id,
+            );
 
+          if (!live) {
+            return candidate;
+          }
+
+          return {
+            ...candidate,
+            current_stage:
+              live.currentStage,
+          };
+        },
+      );
   const holdCandidates =
     activeStageCandidates.filter(
       (candidate) =>

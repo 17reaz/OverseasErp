@@ -93,13 +93,28 @@ export async function updateFlight(
   return data;
 }
 
-export async function deleteFlight(id: string): Promise<void> {
-  const { error } = await supabase
+export async function deleteFlight(
+  id: string,
+): Promise<void> {
+  const { data, error } = await supabase
     .from("flights")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("candidate_id")
+    .single();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  try {
+    await syncCandidateWorkflowState(
+      data.candidate_id,
+    );
+  } catch (workflowError) {
+    console.error(
+      "Failed to sync candidate workflow state after flight delete:",
+      workflowError,
+    );
   }
 }

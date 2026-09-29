@@ -45,6 +45,7 @@ export const CANDIDATE_STAGE_DEFINITIONS = [
   { value: "takamul", label: "Takamul" },
   { value: "visa", label: "Visa" },
   { value: "flight", label: "Flight" },
+  { value: "iqama", label: "Iqama" },
 ] as const;
 
 export type CandidateStage = (typeof CANDIDATE_STAGE_DEFINITIONS)[number]["value"];
@@ -97,6 +98,7 @@ const STAGE_TO_SERVICE_KEY: Partial<Record<CandidateStage, RequestedServiceKey>>
   takamul: "takamul",
   visa: "visa",
   flight: "flight",
+  iqama: "iqama",
 };
 
 export function getDefaultRequestedServices(): RequestedServices {

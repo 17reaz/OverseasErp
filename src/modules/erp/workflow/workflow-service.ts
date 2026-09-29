@@ -165,6 +165,42 @@ const currentStage =
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
+      /* -------------------------------------------------------
+     FLIGHT DEPARTED → IQAMA
+
+     Once the candidate has actually departed, the next
+     workflow stage is Iqama — even if current_stage is
+     still "visa" or "flight".
+  ------------------------------------------------------- */
+
+ if (
+  String(input.flightStatus ?? "")
+    .trim()
+    .toLowerCase() === "departed" &&
+  input.iqamaCompleted !== true
+) {
+    if (
+      input.flightDate &&
+      isExpired(
+        input.flightDate,
+        WORKFLOW_VALIDITY.iqamaDays,
+      )
+    ) {
+      return {
+        mainStatus: "active",
+        workflowState: "hold",
+        currentStage: "iqama",
+        holdReason: "iqama_overdue",
+      };
+    }
+
+    return {
+      mainStatus: "active",
+      workflowState: "processing",
+      currentStage: "iqama",
+      holdReason: null,
+    };
+  }
 
 if (currentStage === "visa") {
   const visaIsExpired =
@@ -446,6 +482,8 @@ export async function saveWorkflowState(
 
       hold_reason:
         state.holdReason,
+      current_stage:
+        state.currentStage,
 
       workflow_updated_at:
         new Date().toISOString(),
