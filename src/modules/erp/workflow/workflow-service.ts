@@ -204,7 +204,9 @@ const currentStage =
 
 if (currentStage === "visa") {
   const visaIsExpired =
-    input.visaStatus === "expired" ||
+    String(input.visaStatus ?? "")
+      .trim()
+      .toLowerCase() === "expired" ||
     Boolean(
       input.visaExpiryDate &&
         new Date(
