@@ -1,7 +1,7 @@
 import {
   Outlet,
 } from "react-router-dom";
-
+import { useUIStore } from "@/store/ui-store";
 import {
   SidebarProvider,
   SidebarInset,
@@ -16,8 +16,19 @@ import {
 } from "./erp-header";
 
 export function ErpLayout() {
+  const sidebarOpen = useUIStore(
+    (state) => state.sidebarOpen,
+  );
+
+  const setSidebarOpen = useUIStore(
+    (state) => state.setSidebarOpen,
+  );
+
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
+    >
 
       <ErpSidebar />
 
