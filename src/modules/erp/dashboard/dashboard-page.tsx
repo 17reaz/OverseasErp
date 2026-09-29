@@ -9,6 +9,7 @@ import {
 import { DashboardHoldStages } from "./components/dashboard-hold-stages";
 import { DashboardStats } from "./components/dashboard-stats";
 import { DashboardTable } from "./components/dashboard-table";
+import { DashboardCharts } from "./components/dashboard-charts";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
 import { DashboardShortcuts } from "./components/dashboard-shortcuts";
 import { DashboardPipeline } from "./components/dashboard-pipeline";
@@ -132,6 +133,10 @@ export function DashboardPage() {
       <DashboardStats
         stats={data.stats}
       />
+      <DashboardCharts
+  pipeline={data.pipeline}
+  trend={data.trend}
+/>
       <DashboardPipeline
         data={data.pipeline}
       />
