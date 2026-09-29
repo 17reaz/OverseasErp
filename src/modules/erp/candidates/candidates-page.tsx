@@ -46,7 +46,7 @@ import {
 } from "./candidate-selectors";
 
 import {
-  getCandidates,
+  // getCandidates,
   restoreReturnedCandidate,
   reactivateCandidate,
   getCandidateById,
@@ -61,7 +61,7 @@ import type {
   CandidateStage,
 } from "./stage-service";
 
-
+import { getCachedCandidatesFirst,refreshCandidatesCache } from "./candidate-cache-loader"
 /* =========================================================
    PAGE
 ========================================================= */
@@ -226,8 +226,18 @@ export function CandidatesPage() {
         try {
 
           const data =
-            await getCandidates();
-
+            // await getCandidates();
+             await getCachedCandidatesFirst();
+            void refreshCandidatesCache()
+            .then((freshCandidates) => {
+             setCandidates(freshCandidates)
+              })
+           .catch((error) => {
+             console.error(
+             "Failed to refresh candidates cache:",
+             error,
+             )
+            })
           /* -------------------------------------------------
              LIVE WORKFLOW RECALCULATION
 
