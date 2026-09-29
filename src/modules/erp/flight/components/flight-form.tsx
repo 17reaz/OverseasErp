@@ -128,7 +128,10 @@ export function FlightForm({
     setDirty(false);
   }, [open, record]);
 
-  function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
+  function updateField<K extends keyof FormState>(
+    field: K,
+    value: FormState[K],
+  ) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
@@ -206,90 +209,96 @@ export function FlightForm({
           <Label htmlFor="flight-candidate">
             Candidate <span className="text-destructive">*</span>
           </Label>
-         <Popover>
-  <PopoverTrigger asChild>
-    <Button
-      type="button"
-      variant="outline"
-      role="combobox"
-      disabled={isEdit || saving}
-      className="w-full justify-between font-normal"
-    >
-      {form.candidate_id
-        ? (() => {
-            const candidate = candidates.find(
-              (item) => item.id === form.candidate_id,
-            );
 
-            return candidate ? (
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate">
-                  {candidate.name}
-                </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                disabled={isEdit || saving}
+                className="w-full justify-between font-normal"
+              >
+                {form.candidate_id
+                  ? (() => {
+                      const candidate = candidates.find(
+                        (item) => item.id === form.candidate_id,
+                      );
 
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {candidate.passport_no}
-                </span>
-              </div>
-            ) : (
-              "Select candidate"
-            );
-          })()
-        : (
-          <span className="text-muted-foreground">
-            Select candidate
-          </span>
-        )}
+                      return candidate ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">
+                            {candidate.name}
+                          </span>
 
-      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-    </Button>
-  </PopoverTrigger>
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            {candidate.passport_no}
+                          </span>
+                        </div>
+                      ) : (
+                        "Select candidate"
+                      );
+                    })()
+                  : (
+                    <span className="text-muted-foreground">
+                      Select candidate
+                    </span>
+                  )}
 
-  <PopoverContent
-    align="start"
-    className="w-[var(--radix-popover-trigger-width)] p-0"
-  >
-    <Command>
-      <CommandInput placeholder="Search candidate or passport..." />
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
 
-      <CommandList>
-        <CommandEmpty>
-          No candidate found.
-        </CommandEmpty>
-
-        <CommandGroup>
-          {candidates.map((candidate) => (
-            <CommandItem
-              key={candidate.id}
-              value={`${candidate.name} ${candidate.passport_no}`}
-              onSelect={() =>
-                updateField("candidate_id", candidate.id)
-              }
+            <PopoverContent
+              align="start"
+              className="w-[var(--radix-popover-trigger-width)] p-0"
             >
-              <Check
-                className={`mr-2 h-4 w-4 ${
-                  form.candidate_id === candidate.id
-                    ? "opacity-100"
-                    : "opacity-0"
-                }`}
-              />
+              <Command>
+                <CommandInput placeholder="Search candidate or passport..." />
 
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate">
-                  {candidate.name}
-                </span>
+                <CommandList>
+                  <CommandEmpty>
+                    No candidate found.
+                  </CommandEmpty>
 
-                <span className="text-xs text-muted-foreground">
-                  {candidate.passport_no}
-                </span>
-              </div>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  </PopoverContent>
-</Popover>
+                  <CommandGroup>
+                    {candidates.map((candidate) => (
+                      <CommandItem
+                        key={candidate.id}
+                        value={`${candidate.name} ${candidate.passport_no}`}
+                        onSelect={() => {
+                          setForm((previous) => ({
+                            ...previous,
+                            candidate_id: candidate.id,
+                            visa_id: "",
+                          }));
+                          setDirty(true);
+                        }}
+                      >
+                        <Check
+                          className={`mr-2 h-4 w-4 ${
+                            form.candidate_id === candidate.id
+                              ? "opacity-100"
+                              : "opacity-0"
+                          }`}
+                        />
+
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate">
+                            {candidate.name}
+                          </span>
+
+                          <span className="text-xs text-muted-foreground">
+                            {candidate.passport_no}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Flight No & Airline */}
@@ -304,6 +313,7 @@ export function FlightForm({
               disabled={saving}
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="flight-airline">Airline</Label>
             <Input
@@ -328,15 +338,20 @@ export function FlightForm({
               disabled={saving}
             />
           </div>
+
           <div className="space-y-2">
             <Label>Status</Label>
+
             <Select
               value={form.status}
-              onValueChange={(val: FormState["status"]) => updateField("status", val)}
+              onValueChange={(val: FormState["status"]) =>
+                updateField("status", val)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
+
               <SelectContent>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
                 <SelectItem value="departed">Departed</SelectItem>
@@ -351,20 +366,27 @@ export function FlightForm({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="flight-dep">Departure City</Label>
+
             <Input
               id="flight-dep"
               value={form.departure_city}
-              onChange={(e) => updateField("departure_city", e.target.value)}
+              onChange={(e) =>
+                updateField("departure_city", e.target.value)
+              }
               placeholder="e.g. Dhaka"
               disabled={saving}
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="flight-arr">Arrival City</Label>
+
             <Input
               id="flight-arr"
               value={form.arrival_city}
-              onChange={(e) => updateField("arrival_city", e.target.value)}
+              onChange={(e) =>
+                updateField("arrival_city", e.target.value)
+              }
               placeholder="e.g. Riyadh"
               disabled={saving}
             />
@@ -374,6 +396,7 @@ export function FlightForm({
         {/* Visa */}
         <div className="space-y-2">
           <Label htmlFor="flight-visa">Visa Link</Label>
+
           <select
             id="flight-visa"
             value={form.visa_id}
@@ -382,19 +405,23 @@ export function FlightForm({
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Select visa (optional)</option>
+
             {visas
-  // .filter((visa) => visa.candidate_id === form.candidate_id)
-  .map((visa) => (
-    <option key={visa.id} value={visa.id}>
-      Visa: {visa.visa_no}
-    </option>
-  ))}
+              .filter(
+                (visa) => visa.candidate_id === form.candidate_id,
+              )
+              .map((visa) => (
+                <option key={visa.id} value={visa.id}>
+                  Visa: {visa.visa_no}
+                </option>
+              ))}
           </select>
         </div>
 
         {/* Remarks */}
         <div className="space-y-2">
           <Label htmlFor="flight-remarks">Remarks</Label>
+
           <Textarea
             id="flight-remarks"
             value={form.remarks}
