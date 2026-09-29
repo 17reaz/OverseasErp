@@ -25,3 +25,8 @@ export async function clearCandidateCache(
     .equals(tenantId)
     .delete()
 }
+export async function updateCachedCandidate(
+  candidate: CachedCandidate,
+) {
+  await db.candidates.put(candidate)
+}
