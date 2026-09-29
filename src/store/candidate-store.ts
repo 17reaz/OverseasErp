@@ -26,6 +26,9 @@ export type CandidateDraft = {
 type CandidateStore = {
   draft: CandidateDraft
 
+  selectedAgentId: string | null
+  setSelectedAgentId: (id: string | null) => void
+
   setDraft: <K extends keyof CandidateDraft>(
     key: K,
     value: CandidateDraft[K],
@@ -66,6 +69,13 @@ export const useCandidateStore =
       (set) => ({
         draft: initialDraft,
 
+        selectedAgentId: null,
+
+        setSelectedAgentId: (id) =>
+          set({
+            selectedAgentId: id,
+          }),
+
         setDraft: (key, value) =>
           set((state) => ({
             draft: {
@@ -85,6 +95,7 @@ export const useCandidateStore =
         resetDraft: () =>
           set({
             draft: initialDraft,
+            selectedAgentId: null,
           }),
       }),
       {

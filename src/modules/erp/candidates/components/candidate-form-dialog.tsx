@@ -114,9 +114,13 @@ export function CandidateFormDialog({
   const [agents, setAgents] =
     useState<Agent[]>([]);
 
-  const [selectedAgentId, setSelectedAgentId] =
-    useState<string | null>(null);
+ const selectedAgentId = useCandidateStore(
+  (state) => state.selectedAgentId,
+);
 
+const setSelectedAgentId = useCandidateStore(
+  (state) => state.setSelectedAgentId,
+);
   const [agentOpen, setAgentOpen] =
     useState(false);
 
