@@ -3,6 +3,8 @@ import {
   useState,
 } from "react";
 
+import { useCandidateStore } from "@/store/candidate-store";
+
 import { CANDIDATE_STAGE_DEFINITIONS } from "../stage-service";
 
 import {
@@ -96,20 +98,13 @@ export function CandidateFormDialog({
   // FORM STATE
   // =====================================================
 
-  const [passportNo, setPassportNo] =
-    useState("");
+  const draft = useCandidateStore(
+    (state) => state.draft,
+  );
 
-  const [name, setName] =
-    useState("");
-
-  const [receivedDate, setReceivedDate] =
-    useState("");
-
-  const [country, setCountry] =
-    useState("");
-
-  const [currentStage, setCurrentStage] =
-    useState("candidate");
+  const setDraft = useCandidateStore(
+    (state) => state.setDraft,
+  );
 
 
   // =====================================================
@@ -251,33 +246,33 @@ export function CandidateFormDialog({
     }
 
 
-    setPassportNo(
-      candidate?.passport_no ??
-        "",
+    setDraft(
+      "passportNo",
+      candidate?.passport_no ?? "",
     );
 
 
-    setName(
-      candidate?.name ??
-        "",
+    setDraft(
+      "name",
+      candidate?.name ?? "",
     );
 
 
-    setReceivedDate(
-      candidate?.received_date ??
-        "",
+    setDraft(
+      "receivedDate",
+      candidate?.received_date ?? "",
     );
 
 
-    setCountry(
-      candidate?.country ??
-        "",
+    setDraft(
+      "country",
+      candidate?.country ?? "",
     );
 
 
-    setCurrentStage(
-      candidate?.current_stage ??
-        "candidate",
+    setDraft(
+      "currentStage",
+      candidate?.current_stage ?? "candidate",
     );
 
 
@@ -296,6 +291,7 @@ export function CandidateFormDialog({
   }, [
     open,
     candidate,
+    setDraft,
   ]);
 
 
@@ -306,7 +302,7 @@ export function CandidateFormDialog({
   useEffect(() => {
 
     const normalizedPassport =
-      passportNo
+      draft.passportNo
         .trim()
         .toUpperCase();
 
@@ -329,6 +325,7 @@ export function CandidateFormDialog({
      * The database unique constraint will still protect
      * the final insert.
      */
+
     if (!tenantId) {
 
       setPassportChecking(false);
@@ -403,7 +400,7 @@ export function CandidateFormDialog({
     };
 
   }, [
-    passportNo,
+    draft.passportNo,
     tenantId,
     candidate?.id,
   ]);
@@ -436,7 +433,7 @@ export function CandidateFormDialog({
     // PASSPORT REQUIRED
     // -----------------------------------------------------
 
-    if (!passportNo.trim()) {
+    if (!draft.passportNo.trim()) {
 
       setError(
         "Passport number is required.",
@@ -464,7 +461,7 @@ export function CandidateFormDialog({
     // NAME REQUIRED
     // -----------------------------------------------------
 
-    if (!name.trim()) {
+    if (!draft.name.trim()) {
 
       setError(
         "Candidate name is required.",
@@ -484,21 +481,21 @@ export function CandidateFormDialog({
       const input: CandidateInput = {
 
         passport_no:
-          passportNo
+          draft.passportNo
             .trim()
             .toUpperCase(),
 
         name:
-          name.trim(),
+          draft.name.trim(),
 
         received_date:
-          receivedDate ||
+          draft.receivedDate ||
           null,
 
         country:
-          country
+          draft.country
             ? (
-                country as CandidateInput[
+                draft.country as CandidateInput[
                   "country"
                 ]
               )
@@ -508,7 +505,7 @@ export function CandidateFormDialog({
           selectedAgentId,
 
         current_stage:
-          currentStage,
+          draft.currentStage,
       };
 
 
@@ -667,10 +664,13 @@ export function CandidateFormDialog({
 
             <Input
               id="passport_no"
-              value={passportNo}
+              value={
+                draft.passportNo
+              }
               onChange={(event) => {
 
-                setPassportNo(
+                setDraft(
+                  "passportNo",
                   event.target.value.toUpperCase(),
                 );
 
@@ -728,7 +728,7 @@ export function CandidateFormDialog({
 
             {!passportChecking &&
               !passportDuplicate &&
-              passportNo.trim() && (
+              draft.passportNo.trim() && (
                 <p className="text-xs text-green-600">
 
                   Passport number is available.
@@ -754,9 +754,12 @@ export function CandidateFormDialog({
 
             <Input
               id="candidate_name"
-              value={name}
+              value={
+                draft.name
+              }
               onChange={(event) =>
-                setName(
+                setDraft(
+                  "name",
                   event.target.value,
                 )
               }
@@ -964,10 +967,11 @@ export function CandidateFormDialog({
               id="received_date"
               type="date"
               value={
-                receivedDate
+                draft.receivedDate
               }
               onChange={(event) =>
-                setReceivedDate(
+                setDraft(
+                  "receivedDate",
                   event.target.value,
                 )
               }
@@ -992,9 +996,12 @@ export function CandidateFormDialog({
 
             <select
               id="country"
-              value={country}
+              value={
+                draft.country
+              }
               onChange={(event) =>
-                setCountry(
+                setDraft(
+                  "country",
                   event.target.value,
                 )
               }
@@ -1040,9 +1047,12 @@ export function CandidateFormDialog({
 
             <select
               id="current_stage"
-              value={currentStage}
+              value={
+                draft.currentStage
+              }
               onChange={(event) =>
-                setCurrentStage(
+                setDraft(
+                  "currentStage",
                   event.target.value,
                 )
               }
