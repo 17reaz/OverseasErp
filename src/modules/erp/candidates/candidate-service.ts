@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase/client";
 import { MODULES } from "./profile/module-configs";
 import type { ModuleStatus } from "./profile/types";
 import { syncCandidateWorkflowState } from "../workflow/workflow-service";
-
+import { cacheCandidates } from "@/lib/db/candidate-cache"
 import type {
   Candidate,
   CandidateInput,
@@ -103,7 +103,6 @@ const CANDIDATE_REFERENCE_SELECT = `
 ========================================================= */
 
 export async function getCandidates(): Promise<Candidate[]> {
-
   const {
     data,
     error,
@@ -113,16 +112,23 @@ export async function getCandidates(): Promise<Candidate[]> {
     .eq("is_deleted", false)
     .order("created_at", {
       ascending: false,
-    });
-
+    })
 
   if (error) {
-    throw error;
+    throw error
   }
 
+  const candidates =
+    (data ?? []) as unknown as Candidate[]
 
-  return (data ?? []) as unknown as Candidate[];
+  await cacheCandidates(
+    candidates.map((candidate) => ({
+      ...candidate,
+      cached_at: Date.now(),
+    })),
+  )
 
+  return candidates
 }
 
 
