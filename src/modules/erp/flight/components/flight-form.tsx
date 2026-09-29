@@ -49,6 +49,7 @@ interface CandidateOption {
 interface VisaOption {
   id: string;
   visa_no: string;
+  candidate_id: string;
 }
 
 interface FlightFormProps {
@@ -382,7 +383,7 @@ export function FlightForm({
           >
             <option value="">Select visa (optional)</option>
             {visas
-  .filter((visa) => visa.candidate_id === form.candidate_id)
+  // .filter((visa) => visa.candidate_id === form.candidate_id)
   .map((visa) => (
     <option key={visa.id} value={visa.id}>
       Visa: {visa.visa_no}
