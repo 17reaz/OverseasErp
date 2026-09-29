@@ -381,11 +381,13 @@ export function FlightForm({
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Select visa (optional)</option>
-            {visas.map((v) => (
-              <option key={v.id} value={v.id}>
-                Visa: {v.visa_no}
-              </option>
-            ))}
+            {visas
+  .filter((visa) => visa.candidate_id === form.candidate_id)
+  .map((visa) => (
+    <option key={visa.id} value={visa.id}>
+      Visa: {visa.visa_no}
+    </option>
+  ))}
           </select>
         </div>
 
