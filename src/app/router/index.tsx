@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 // Auth
@@ -11,193 +12,515 @@ import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-
 // Landing
 import { LandingPage } from "@/modules/landing/landing-page";
 import { DownloadPage } from "@/modules/landing/download-page";
+
 // ERP Layout
 import { ErpLayout } from "@/modules/erp/layout/erp-layout";
 
-// ERP Pages
-import { DashboardPage } from "@/modules/erp/dashboard/dashboard-page";
-import { CandidatesPage } from "@/modules/erp/candidates/candidates-page";
-import { CandidateProfilePage } from "@/modules/erp/candidates/profile/candidate-profile-page";
-import { TrashPage } from "@/modules/erp/trash/trash-page";
-import { AgentsPage } from "@/modules/erp/agents/agents-page";
-import { FilesPage } from "@/modules/erp/files/files-page";
-import { MedicalPage } from "@/modules/erp/medical/medical-page";
-import { AgencyPage } from "@/modules/erp/agency/agency-page";
-import { MofaPage } from "@/modules/erp/mofa/mofa-page";
-import { FingerPage } from "@/modules/erp/finger/finger-page";
-import { PoliceClearancePage } from "@/modules/erp/police-clearance/police-clearance-page";
-import { TradeTestPage } from "@/modules/erp/takamul/takamul-page";
-import { VisaPage } from "@/modules/erp/visa/visa-page";
-import { BmetPage } from "@/modules/erp/bmet/bmet-page";
-import { FlightPage } from "@/modules/erp/flight/flight-page";
-import { ReportsPage } from "@/modules/erp/reports/reports-page";
-import { TemplateBuilderPage } from "@/modules/erp/reports/document-templates/template-builder-page";
-import { TemplateUsePage } from "@/modules/erp/reports/document-templates/template-use-page";
-import { AccountsPage } from "@/modules/erp/accounts/accounts-page";
-import { SalesPage } from "@/modules/erp/accounts/sales/sales-page";
-import { PayablesPage } from "@/modules/erp/accounts/payables/payables-page";
-import { TransactionsPage } from "@/modules/erp/accounts/transactions/transactions-page";
-import { PayrollPage } from "@/modules/erp/accounts/payroll/payroll-page";
-import { FixedCostsPage } from "@/modules/erp/accounts/fixed-costs/fixed-costs-page";
-import { PartiesPage } from "@/modules/erp/accounts/parties/parties-page";
-import { InvoicesPage } from "@/modules/erp/accounts/invoices/invoices-page";
-import { AssetsPage } from "@/modules/erp/accounts/assets/assets-page";
-import { ReceivablesPage } from "@/modules/erp/accounts/receivables/receivables-page";
-import { InvestmentsPage } from "@/modules/erp/accounts/assets/investments/investments-page";
-import { VisaInventoryPage } from "@/modules/erp/accounts/assets/visa-inventory/visa-inventory-page";
-import { FinancePage } from "@/modules/erp/finance/components/finance-page";
-import { TasksPage } from "@/modules/erp/tasks/components/tasks-page";
-import { SettingsPage } from "@/modules/erp/settings/settings-page";
+// -----------------------------------------------------------------------------
+// Lazy ERP Pages
+// -----------------------------------------------------------------------------
+
+const DashboardPage = lazy(() =>
+  import("@/modules/erp/dashboard/dashboard-page").then((module) => ({
+    default: module.DashboardPage,
+  })),
+);
+
+const CandidatesPage = lazy(() =>
+  import("@/modules/erp/candidates/candidates-page").then((module) => ({
+    default: module.CandidatesPage,
+  })),
+);
+
+const CandidateProfilePage = lazy(() =>
+  import("@/modules/erp/candidates/profile/candidate-profile-page").then(
+    (module) => ({
+      default: module.CandidateProfilePage,
+    }),
+  ),
+);
+
+const TrashPage = lazy(() =>
+  import("@/modules/erp/trash/trash-page").then((module) => ({
+    default: module.TrashPage,
+  })),
+);
+
+const AgentsPage = lazy(() =>
+  import("@/modules/erp/agents/agents-page").then((module) => ({
+    default: module.AgentsPage,
+  })),
+);
+
+const FilesPage = lazy(() =>
+  import("@/modules/erp/files/files-page").then((module) => ({
+    default: module.FilesPage,
+  })),
+);
+
+const MedicalPage = lazy(() =>
+  import("@/modules/erp/medical/medical-page").then((module) => ({
+    default: module.MedicalPage,
+  })),
+);
+
+const AgencyPage = lazy(() =>
+  import("@/modules/erp/agency/agency-page").then((module) => ({
+    default: module.AgencyPage,
+  })),
+);
+
+const MofaPage = lazy(() =>
+  import("@/modules/erp/mofa/mofa-page").then((module) => ({
+    default: module.MofaPage,
+  })),
+);
+
+const FingerPage = lazy(() =>
+  import("@/modules/erp/finger/finger-page").then((module) => ({
+    default: module.FingerPage,
+  })),
+);
+
+const PoliceClearancePage = lazy(() =>
+  import(
+    "@/modules/erp/police-clearance/police-clearance-page"
+  ).then((module) => ({
+    default: module.PoliceClearancePage,
+  })),
+);
+
+const TradeTestPage = lazy(() =>
+  import("@/modules/erp/takamul/takamul-page").then((module) => ({
+    default: module.TradeTestPage,
+  })),
+);
+
+const VisaPage = lazy(() =>
+  import("@/modules/erp/visa/visa-page").then((module) => ({
+    default: module.VisaPage,
+  })),
+);
+
+const BmetPage = lazy(() =>
+  import("@/modules/erp/bmet/bmet-page").then((module) => ({
+    default: module.BmetPage,
+  })),
+);
+
+const FlightPage = lazy(() =>
+  import("@/modules/erp/flight/flight-page").then((module) => ({
+    default: module.FlightPage,
+  })),
+);
+
+// Reports
+const ReportsPage = lazy(() =>
+  import("@/modules/erp/reports/reports-page").then((module) => ({
+    default: module.ReportsPage,
+  })),
+);
+
+const TemplateBuilderPage = lazy(() =>
+  import(
+    "@/modules/erp/reports/document-templates/template-builder-page"
+  ).then((module) => ({
+    default: module.TemplateBuilderPage,
+  })),
+);
+
+const TemplateUsePage = lazy(() =>
+  import(
+    "@/modules/erp/reports/document-templates/template-use-page"
+  ).then((module) => ({
+    default: module.TemplateUsePage,
+  })),
+);
+
+// Accounts
+const AccountsPage = lazy(() =>
+  import("@/modules/erp/accounts/accounts-page").then((module) => ({
+    default: module.AccountsPage,
+  })),
+);
+
+const SalesPage = lazy(() =>
+  import("@/modules/erp/accounts/sales/sales-page").then((module) => ({
+    default: module.SalesPage,
+  })),
+);
+
+const PayablesPage = lazy(() =>
+  import("@/modules/erp/accounts/payables/payables-page").then((module) => ({
+    default: module.PayablesPage,
+  })),
+);
+
+const TransactionsPage = lazy(() =>
+  import(
+    "@/modules/erp/accounts/transactions/transactions-page"
+  ).then((module) => ({
+    default: module.TransactionsPage,
+  })),
+);
+
+const PayrollPage = lazy(() =>
+  import("@/modules/erp/accounts/payroll/payroll-page").then((module) => ({
+    default: module.PayrollPage,
+  })),
+);
+
+const FixedCostsPage = lazy(() =>
+  import(
+    "@/modules/erp/accounts/fixed-costs/fixed-costs-page"
+  ).then((module) => ({
+    default: module.FixedCostsPage,
+  })),
+);
+
+const PartiesPage = lazy(() =>
+  import("@/modules/erp/accounts/parties/parties-page").then((module) => ({
+    default: module.PartiesPage,
+  })),
+);
+
+const InvoicesPage = lazy(() =>
+  import("@/modules/erp/accounts/invoices/invoices-page").then((module) => ({
+    default: module.InvoicesPage,
+  })),
+);
+
+const AssetsPage = lazy(() =>
+  import("@/modules/erp/accounts/assets/assets-page").then((module) => ({
+    default: module.AssetsPage,
+  })),
+);
+
+const ReceivablesPage = lazy(() =>
+  import(
+    "@/modules/erp/accounts/receivables/receivables-page"
+  ).then((module) => ({
+    default: module.ReceivablesPage,
+  })),
+);
+
+const InvestmentsPage = lazy(() =>
+  import(
+    "@/modules/erp/accounts/assets/investments/investments-page"
+  ).then((module) => ({
+    default: module.InvestmentsPage,
+  })),
+);
+
+const VisaInventoryPage = lazy(() =>
+  import(
+    "@/modules/erp/accounts/assets/visa-inventory/visa-inventory-page"
+  ).then((module) => ({
+    default: module.VisaInventoryPage,
+  })),
+);
+
+// Other ERP
+const FinancePage = lazy(() =>
+  import("@/modules/erp/finance/components/finance-page").then((module) => ({
+    default: module.FinancePage,
+  })),
+);
+
+const TasksPage = lazy(() =>
+  import("@/modules/erp/tasks/components/tasks-page").then((module) => ({
+    default: module.TasksPage,
+  })),
+);
+
+const SettingsPage = lazy(() =>
+  import("@/modules/erp/settings/settings-page").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+
+// -----------------------------------------------------------------------------
+// Loading UI
+// -----------------------------------------------------------------------------
+
+function PageLoading() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="text-sm text-muted-foreground">
+        Loading...
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Router
+// -----------------------------------------------------------------------------
 
 function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* ============================== PUBLIC ============================== */}
-        <Route
-          path="/"
-          element={
-            <PublicRoute>
-              <LandingPage />
-            </PublicRoute>
-          }
-        />
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          {/* ============================== PUBLIC ============================== */}
 
-        {/* ============================== AUTH ============================== */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <PublicRoute>
-              <SignupPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <PublicRoute>
-              <ForgotPasswordPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/reset-password"
-          element={
-            <PublicRoute>
-              <ResetPasswordPage />
-            </PublicRoute>
-          }
-        />
-          <Route path="/download" element={<DownloadPage />} />
+          <Route
+            path="/"
+            element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            }
+          />
 
-        {/* ============================== PROTECTED ERP ============================== */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/app" element={<ErpLayout />}>
-            {/* /app → /app/dashboard */}
-            <Route index element={<Navigate to="dashboard" replace />} />
+          {/* ============================== AUTH ============================== */}
 
-            {/* Dashboard */}
-            <Route path="dashboard" element={<DashboardPage />} />
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
 
-            {/* Candidates */}
-            <Route path="candidates" element={<CandidatesPage />} />
-            <Route path="candidates/:candidateId" element={<CandidateProfilePage />} />
+          <Route
+            path="/signup"
+            element={
+              <PublicRoute>
+                <SignupPage />
+              </PublicRoute>
+            }
+          />
 
-            {/* Agents */}
-            <Route path="agents" element={<AgentsPage />} />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPasswordPage />
+              </PublicRoute>
+            }
+          />
 
-            {/* Agencies */}
-            <Route path="agencies" element={<AgencyPage />} />
+          <Route
+            path="/reset-password"
+            element={
+              <PublicRoute>
+                <ResetPasswordPage />
+              </PublicRoute>
+            }
+          />
 
-            {/* Files */}
-            <Route path="files" element={<FilesPage />} />
+          <Route
+            path="/download"
+            element={<DownloadPage />}
+          />
 
-            {/* Medical */}
-            <Route path="medical" element={<MedicalPage />} />
+          {/* ============================== PROTECTED ERP ============================== */}
 
-            {/* Mofa */}
-            <Route path="mofa" element={<MofaPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/app" element={<ErpLayout />}>
+              {/* /app → /app/dashboard */}
+              <Route
+                index
+                element={<Navigate to="dashboard" replace />}
+              />
 
-            {/* Fingerprint */}
-            <Route path="fingers" element={<FingerPage />} />
+              {/* Dashboard */}
+              <Route
+                path="dashboard"
+                element={<DashboardPage />}
+              />
 
-            {/* Police Clearance */}
-            <Route path="police-clearance" element={<PoliceClearancePage />} />
+              {/* Candidates */}
+              <Route
+                path="candidates"
+                element={<CandidatesPage />}
+              />
 
-            {/* Takamul */}
-            <Route path="takamul" element={<TradeTestPage />} />
+              <Route
+                path="candidates/:candidateId"
+                element={<CandidateProfilePage />}
+              />
 
-            {/* Visa */}
-            <Route path="visa" element={<VisaPage />} />
+              {/* Agents */}
+              <Route
+                path="agents"
+                element={<AgentsPage />}
+              />
 
-            {/* BMET */}
-            <Route path="bmet" element={<BmetPage />} />
+              {/* Agencies */}
+              <Route
+                path="agencies"
+                element={<AgencyPage />}
+              />
 
-            {/* Flight */}
-            <Route path="flight" element={<FlightPage />} />
+              {/* Files */}
+              <Route
+                path="files"
+                element={<FilesPage />}
+              />
 
-            {/* Reports */}
-            <Route path="reports" element={<ReportsPage />} />
+              {/* Medical */}
+              <Route
+                path="medical"
+                element={<MedicalPage />}
+              />
 
-            {/* Reports → Document Templates (builder + usage) */}
-            <Route path="reports/templates/:templateId" element={<TemplateBuilderPage />} />
-            <Route path="reports/templates/:templateId/use" element={<TemplateUsePage />} />
-            
-            {/* Accounts */}
-            <Route path="accounts" element={<AccountsPage />} />
-            {/* Accounts → Transactions */}
-            <Route
-  path="accounts/sales"
-  element={<SalesPage />}
-/>
-            <Route path="accounts/transactions" element={<TransactionsPage />} />
-            <Route path="accounts/payroll" element={<PayrollPage />} />
-            <Route path="accounts/fixed-costs" element={<FixedCostsPage />} />
-            <Route path="accounts/invoices" element={<InvoicesPage />} />
-            <Route path="accounts/parties" element={<PartiesPage />} />
-            <Route
-  path="accounts/assets"
-  element={<AssetsPage />}
-/>
-<Route
-  path="accounts/receivables"
-  element={<ReceivablesPage />}
-/>
-<Route
-  path="accounts/assets/investments"
-  element={<InvestmentsPage />}
-/>
+              {/* Mofa */}
+              <Route
+                path="mofa"
+                element={<MofaPage />}
+              />
 
-<Route
-  path="accounts/assets/visa-inventory"
-  element={<VisaInventoryPage />}
-/>
-<Route path="accounts/payables" element={<PayablesPage />} />
-            {/* Finance */}
-            <Route path="finance" element={<FinancePage />} />
+              {/* Fingerprint */}
+              <Route
+                path="fingers"
+                element={<FingerPage />}
+              />
 
-            {/* Tasks / Todo */}
-            <Route path="todo" element={<TasksPage />} />
+              {/* Police Clearance */}
+              <Route
+                path="police-clearance"
+                element={<PoliceClearancePage />}
+              />
 
-            {/* Settings */}
-            <Route path="settings" element={<SettingsPage />} />
+              {/* Takamul */}
+              <Route
+                path="takamul"
+                element={<TradeTestPage />}
+              />
 
-            {/* Trash */}
-            <Route path="trash" element={<TrashPage />} />
+              {/* Visa */}
+              <Route
+                path="visa"
+                element={<VisaPage />}
+              />
+
+              {/* BMET */}
+              <Route
+                path="bmet"
+                element={<BmetPage />}
+              />
+
+              {/* Flight */}
+              <Route
+                path="flight"
+                element={<FlightPage />}
+              />
+
+              {/* Reports */}
+              <Route
+                path="reports"
+                element={<ReportsPage />}
+              />
+
+              {/* Reports → Document Templates */}
+              <Route
+                path="reports/templates/:templateId"
+                element={<TemplateBuilderPage />}
+              />
+
+              <Route
+                path="reports/templates/:templateId/use"
+                element={<TemplateUsePage />}
+              />
+
+              {/* Accounts */}
+              <Route
+                path="accounts"
+                element={<AccountsPage />}
+              />
+
+              <Route
+                path="accounts/sales"
+                element={<SalesPage />}
+              />
+
+              <Route
+                path="accounts/transactions"
+                element={<TransactionsPage />}
+              />
+
+              <Route
+                path="accounts/payroll"
+                element={<PayrollPage />}
+              />
+
+              <Route
+                path="accounts/fixed-costs"
+                element={<FixedCostsPage />}
+              />
+
+              <Route
+                path="accounts/invoices"
+                element={<InvoicesPage />}
+              />
+
+              <Route
+                path="accounts/parties"
+                element={<PartiesPage />}
+              />
+
+              <Route
+                path="accounts/assets"
+                element={<AssetsPage />}
+              />
+
+              <Route
+                path="accounts/receivables"
+                element={<ReceivablesPage />}
+              />
+
+              <Route
+                path="accounts/assets/investments"
+                element={<InvestmentsPage />}
+              />
+
+              <Route
+                path="accounts/assets/visa-inventory"
+                element={<VisaInventoryPage />}
+              />
+
+              <Route
+                path="accounts/payables"
+                element={<PayablesPage />}
+              />
+
+              {/* Finance */}
+              <Route
+                path="finance"
+                element={<FinancePage />}
+              />
+
+              {/* Tasks / Todo */}
+              <Route
+                path="todo"
+                element={<TasksPage />}
+              />
+
+              {/* Settings */}
+              <Route
+                path="settings"
+                element={<SettingsPage />}
+              />
+
+              {/* Trash */}
+              <Route
+                path="trash"
+                element={<TrashPage />}
+              />
+            </Route>
           </Route>
-        </Route>
 
-        {/* ============================== 404 ============================== */}
-        <Route path="*" element={<div>Not Found</div>} />
-      </Routes>
+          {/* ============================== 404 ============================== */}
+
+          <Route
+            path="*"
+            element={<div>Not Found</div>}
+          />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
