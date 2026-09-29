@@ -3,6 +3,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useUIStore } from "@/store/ui-store";
 import {
   useAuth,
 } from "@/modules/auth/components/auth-provider";
@@ -55,6 +56,14 @@ import type {
 };
 export function ErpSidebar() {
   const { tenant } = useAuth();
+
+  const sidebarOpen = useUIStore(
+    (state) => state.sidebarOpen,
+  );
+
+  const setSidebarOpen = useUIStore(
+    (state) => state.setSidebarOpen,
+  );
 
    const tenantSerial =
      tenant?.sl != null
@@ -126,8 +135,10 @@ export function ErpSidebar() {
     <TooltipProvider>
 
       <Sidebar
-        collapsible="icon"
-      >
+  collapsible="icon"
+  open={sidebarOpen}
+  onOpenChange={setSidebarOpen}
+>
 
         {/* =================================================
             HEADER
