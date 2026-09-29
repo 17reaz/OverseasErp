@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { NumberingSettings } from "./components/numbering-settings";
 import { DataManagementSection } from "./components/data-management-section";
 import { ProfilePage } from "./profile-page";
-
+import { LoginActivity } from "./login-activity";
 type SettingsSectionId =
   | "profile"
   | "organization"
@@ -34,8 +34,8 @@ type SettingsSectionId =
   | "import-export"
   | "billing"
   | "pricing"
-  | "activity-log";
-
+  | "activity-log"
+  | "login-activity";
 interface SettingsSection {
   id: SettingsSectionId;
   label: string;
@@ -92,6 +92,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Audit trail of changes across your tenant.",
     icon: Activity,
   },
+  {
+  id: "login-activity",
+  label: "Login Activity",
+  description: "Recent login sessions and device activity.",
+  icon: Activity,
+},
 ];
 
 function ComingSoonSection({
@@ -231,6 +237,8 @@ function SettingsSectionContent({
 
     case "pricing":
       return <PricingSection />;
+      case "login-activity":
+  return <LoginActivity />;
 
     case "organization":
     case "users":

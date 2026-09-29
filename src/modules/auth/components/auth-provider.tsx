@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -13,6 +14,11 @@ import {
 } from "@/lib/supabase/auth";
 
 import { supabase } from "@/lib/supabase/client";
+import {
+  closeLoginSession,
+  createLoginSession,
+  // updateLoginSessionHeartbeat,
+} from "../services/login-session-service";
 
 interface Profile {
   id: string;
@@ -70,7 +76,9 @@ export function AuthProvider({
     useState<Tenant | null>(null);
 
   const [loading, setLoading] = useState(true);
-
+  const loginSessionIdRef = useRef<string | null>(
+  null,
+);
   useEffect(() => {
     let mounted = true;
 
@@ -78,12 +86,12 @@ export function AuthProvider({
       currentSession: Session | null,
     ) {
       if (!currentSession?.user) {
-        if (!mounted) return;
+  if (!mounted) return null;
 
-        setProfile(null);
-        setTenant(null);
-        return;
-      }
+  setProfile(null);
+  setTenant(null);
+  return null;
+}
 
       const { data: profile } = await getProfile(
         currentSession.user.id,
@@ -94,34 +102,62 @@ export function AuthProvider({
       setProfile(profile);
 
       if (!profile?.tenant_id) {
-        setTenant(null);
-        return;
-      }
+  setTenant(null);
+  return profile;
+}
 
       const { data: tenant } = await getTenant(
         profile.tenant_id,
       );
 
-      if (!mounted) return;
+      if (!mounted) return profile;
 
-      setTenant(tenant);
+setTenant(tenant);
+
+return profile;
     }
 
     async function initializeAuth() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+  if (!mounted) return;
 
-      setSession(session);
+  setSession(session);
 
-      await loadUserData(session);
+  const currentProfile =
+    await loadUserData(session);
 
-      if (mounted) {
-        setLoading(false);
-      }
+  if (
+    session &&
+    currentProfile?.tenant_id
+  ) {
+    const { data, error } =
+      await createLoginSession(
+        session,
+        {
+          id: currentProfile.id,
+          tenant_id:
+            currentProfile.tenant_id,
+        },
+      );
+
+    if (error) {
+      console.error(
+        "Failed to create login session:",
+        error,
+      );
+    } else if (data?.session_id) {
+      loginSessionIdRef.current =
+        data.session_id;
     }
+  }
+
+  if (mounted) {
+    setLoading(false);
+  }
+}
 
     initializeAuth();
 
@@ -133,12 +169,22 @@ export function AuthProvider({
 
     setSession(session);
 
-    if (event === "SIGNED_OUT") {
-      setProfile(null);
-      setTenant(null);
-      setLoading(false);
-      return;
-    }
+   if (event === "SIGNED_OUT") {
+  const sessionId =
+    loginSessionIdRef.current;
+
+  loginSessionIdRef.current = null;
+
+  if (sessionId) {
+    void closeLoginSession(sessionId);
+  }
+
+  setProfile(null);
+  setTenant(null);
+  setLoading(false);
+
+  return;
+}
 
     setLoading(true);
 
