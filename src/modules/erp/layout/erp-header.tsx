@@ -30,6 +30,7 @@ import { signOut } from "@/lib/supabase/auth";
 import { GlobalSearchDialog } from "../global-search/global-search-dialog";
 import { AndroidDownloadPopover } from "./android-download-popover";
 import { SyncStatus } from "@/components/shared/sync-status";
+// import { ActiveUsers } from "../presence/active-users"
 import {
   getUnreadSystemNotificationCount,
 } from "@/modules/erp/notifications/notification-service";
@@ -168,6 +169,7 @@ const [unreadCount,setUnreadCount] = useState(0);
 
 <AndroidDownloadPopover />
 <SyncStatus />
+{/* <ActiveUsers /> */}
           <Button 
             type="button" 
             variant="ghost" 
