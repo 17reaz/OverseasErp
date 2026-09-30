@@ -2,7 +2,7 @@ import { Hono } from "hono"
 
 import { config } from "./config"
 import healthRoute from "./routes/health"
-
+import ocrRoute from "./routes/ocr"
 const app = new Hono()
 
 // Global error handler
@@ -37,7 +37,7 @@ app.notFound((c) => {
 
 // Routes
 app.route("/api/health", healthRoute)
-
+app.route("/api/ocr", ocrRoute)
 app.get("/", (c) => {
   return c.json({
     ok: true,

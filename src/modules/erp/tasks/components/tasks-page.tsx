@@ -9,12 +9,15 @@ import {
   CircleAlert,
   Clock3,
   ListTodo,
+  ScanText,
 } from "lucide-react";
 
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+
+import { Button } from "@/components/ui/button";
 
 import {
   Tabs,
@@ -35,25 +38,17 @@ import {
   updateTaskStatus,
 } from "../task-service";
 
-import {
-  getTaskCounts,
-} from "../task-utils";
+import { getTaskCounts } from "../task-utils";
 
-import {
-  TaskToolbar,
-} from "./task-toolbar";
+import { TaskToolbar } from "./task-toolbar";
 
-import {
-  TasksTable,
-} from "./tasks-table";
+import { TasksTable } from "./tasks-table";
 
-import {
-  TaskForm,
-} from "./task-form";
+import { TaskForm } from "./task-form";
 
-import {
-  TaskDetailsSheet,
-} from "./task-details-sheet";
+import { TaskDetailsSheet } from "./task-details-sheet";
+
+import { TaskDataCollector } from "./task-data-collector";
 
 import {
   UniversalSheet,
@@ -67,58 +62,38 @@ type TaskFilter =
   | "overdue";
 
 export function TasksPage() {
-  const [
-    tasks,
-    setTasks,
-  ] = useState<Task[]>([]);
+  const [tasks, setTasks] =
+    useState<Task[]>([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [
-    creating,
-    setCreating,
-  ] = useState(false);
+  const [creating, setCreating] =
+    useState(false);
 
-  const [
-    search,
-    setSearch,
-  ] = useState("");
+  const [search, setSearch] =
+    useState("");
 
-  const [
-    filter,
-    setFilter,
-  ] =
-    useState<TaskFilter>(
-      "all",
-    );
+  const [filter, setFilter] =
+    useState<TaskFilter>("all");
 
-  const [
-    createOpen,
-    setCreateOpen,
-  ] = useState(false);
+  const [createOpen, setCreateOpen] =
+    useState(false);
 
-  const [
-    selectedTask,
-    setSelectedTask,
-  ] =
-    useState<Task | null>(
-      null,
-    );
+  const [selectedTask, setSelectedTask] =
+    useState<Task | null>(null);
 
-  const [
-    detailsOpen,
-    setDetailsOpen,
-  ] = useState(false);
+  const [detailsOpen, setDetailsOpen] =
+    useState(false);
+
+  const [collectorOpen, setCollectorOpen] =
+    useState(false);
 
   async function loadTasks() {
     try {
       setLoading(true);
 
-      const data =
-        await getTasks();
+      const data = await getTasks();
 
       setTasks(data);
     } catch (error) {
@@ -135,84 +110,62 @@ export function TasksPage() {
     void loadTasks();
   }, []);
 
-  const counts =
-    useMemo(
-      () =>
-        getTaskCounts(
-          tasks,
-        ),
-      [tasks],
-    );
+  const counts = useMemo(
+    () => getTaskCounts(tasks),
+    [tasks],
+  );
 
-  const filteredTasks =
-    useMemo(() => {
-      const query =
-        search
-          .trim()
-          .toLowerCase();
+  const filteredTasks = useMemo(() => {
+    const query = search
+      .trim()
+      .toLowerCase();
 
-      return tasks.filter(
-        (task) => {
-          const matchesSearch =
-            !query ||
-            task.title
-              .toLowerCase()
-              .includes(query) ||
-            task.description
-              ?.toLowerCase()
-              .includes(query) ||
-            task.candidate?.name
-              ?.toLowerCase()
-              .includes(query) ||
-            task.candidate?.passport_no
-              ?.toLowerCase()
-              .includes(query);
+    return tasks.filter((task) => {
+      const matchesSearch =
+        !query ||
+        task.title
+          .toLowerCase()
+          .includes(query) ||
+        task.description
+          ?.toLowerCase()
+          .includes(query) ||
+        task.candidate?.name
+          ?.toLowerCase()
+          .includes(query) ||
+        task.candidate?.passport_no
+          ?.toLowerCase()
+          .includes(query);
 
-          if (
-            !matchesSearch
-          ) {
-            return false;
-          }
+      if (!matchesSearch) {
+        return false;
+      }
 
-          if (
-            filter ===
-            "overdue"
-          ) {
-            if (
-              !task.due_at ||
-              task.status ===
-                "completed" ||
-              task.status ===
-                "cancelled"
-            ) {
-              return false;
-            }
+      if (filter === "overdue") {
+        if (
+          !task.due_at ||
+          task.status === "completed" ||
+          task.status === "cancelled"
+        ) {
+          return false;
+        }
 
-            return (
-              new Date(
-                task.due_at,
-              ).getTime() <
-              Date.now()
-            );
-          }
+        return (
+          new Date(task.due_at).getTime() <
+          Date.now()
+        );
+      }
 
-          if (
-            filter === "all"
-          ) {
-            return true;
-          }
+      if (filter === "all") {
+        return true;
+      }
 
-          return (
-            task.status ===
-            filter
-          );
-        },
-      );
-    }, [
-      tasks,
-      search,
-      filter,
-    ]);
+      return task.status === filter;
+    });
+  }, [
+    tasks,
+    search,
+    filter,
+  ]);
 
   async function handleCreate(
     data: CreateTaskInput,
@@ -279,9 +232,7 @@ export function TasksPage() {
     task: Task,
   ) {
     try {
-      await deleteTask(
-        task.id,
-      );
+      await deleteTask(task.id);
 
       setSelectedTask(null);
       setDetailsOpen(false);
@@ -302,105 +253,127 @@ export function TasksPage() {
     setDetailsOpen(true);
   }
 
+  function handleCollectorComplete(
+    result: {
+      fileName: string;
+      extracted: {
+        name: string;
+        passport_no: string;
+        date_of_birth: string;
+        nationality: string;
+      };
+    },
+  ) {
+    console.log(
+      "Dummy document collection result:",
+      result,
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
-      
-
       {/* =================================================
           KPI
       ================================================= */}
 
-      {/* =================================================
-    KPI
-================================================= */}
+      <div className="grid gap-3 px-6 py-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                Pending
+              </p>
 
-<div className="grid gap-3 px-6 py-3 sm:grid-cols-2 lg:grid-cols-4">
-  <Card>
-    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
-      <div>
-        <p className="text-[11px] text-muted-foreground">
-          Pending
-        </p>
+              <p className="text-lg font-semibold leading-tight">
+                {counts.pending}
+              </p>
+            </div>
 
-        <p className="text-lg font-semibold leading-tight">
-          {counts.pending}
-        </p>
+            <Clock3 className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                In Progress
+              </p>
+
+              <p className="text-lg font-semibold leading-tight">
+                {counts.inProgress}
+              </p>
+            </div>
+
+            <ListTodo className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                Overdue
+              </p>
+
+              <p className="text-lg font-semibold leading-tight">
+                {counts.overdue}
+              </p>
+            </div>
+
+            <CircleAlert className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex h-16 items-center justify-between px-4 py-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground">
+                Completed
+              </p>
+
+              <p className="text-lg font-semibold leading-tight">
+                {counts.completed}
+              </p>
+            </div>
+
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
       </div>
-
-      <Clock3 className="h-4 w-4 text-muted-foreground" />
-    </CardContent>
-  </Card>
-
-  <Card>
-    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
-      <div>
-        <p className="text-[11px] text-muted-foreground">
-          In Progress
-        </p>
-
-        <p className="text-lg font-semibold leading-tight">
-          {counts.inProgress}
-        </p>
-      </div>
-
-      <ListTodo className="h-4 w-4 text-muted-foreground" />
-    </CardContent>
-  </Card>
-
-  <Card>
-    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
-      <div>
-        <p className="text-[11px] text-muted-foreground">
-          Overdue
-        </p>
-
-        <p className="text-lg font-semibold leading-tight">
-          {counts.overdue}
-        </p>
-      </div>
-
-      <CircleAlert className="h-4 w-4 text-muted-foreground" />
-    </CardContent>
-  </Card>
-
-  <Card>
-    <CardContent className="flex h-16 items-center justify-between px-4 py-2">
-      <div>
-        <p className="text-[11px] text-muted-foreground">
-          Completed
-        </p>
-
-        <p className="text-lg font-semibold leading-tight">
-          {counts.completed}
-        </p>
-      </div>
-
-      <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-    </CardContent>
-  </Card>
-</div>
 
       {/* =================================================
           TOOLBAR
       ================================================= */}
 
-      <TaskToolbar
-        search={search}
-        onSearchChange={
-          setSearch
-        }
-        onRefresh={
-          () => void loadTasks()
-        }
-        onCreate={() =>
-          setCreateOpen(true)
-        }
-        loading={loading}
-      />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <TaskToolbar
+            search={search}
+            onSearchChange={setSearch}
+            onRefresh={() =>
+              void loadTasks()
+            }
+            onCreate={() =>
+              setCreateOpen(true)
+            }
+            loading={loading}
+          />
+        </div>
+
+        <div className="pr-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setCollectorOpen(true)
+            }
+          >
+            <ScanText className="h-4 w-4" />
+            Data Collection
+          </Button>
+        </div>
+      </div>
 
       {/* =================================================
           FILTER
@@ -409,9 +382,7 @@ export function TasksPage() {
       <div className="px-6 py-3">
         <Tabs
           value={filter}
-          onValueChange={(
-            value,
-          ) =>
+          onValueChange={(value) =>
             setFilter(
               value as TaskFilter,
             )
@@ -447,32 +418,22 @@ export function TasksPage() {
 
       <div className="min-h-0 flex-1 overflow-auto">
         <TasksTable
-          tasks={
-            filteredTasks
-          }
-          onSelect={
-            handleSelectTask
-          }
-          onComplete={
-            handleComplete
-          }
+          tasks={filteredTasks}
+          onSelect={handleSelectTask}
+          onComplete={handleComplete}
         />
       </div>
 
       {/* =================================================
-          CREATE SHEET
+          CREATE TASK SHEET
       ================================================= */}
 
       <UniversalSheet
         open={createOpen}
-        onOpenChange={
-          setCreateOpen
-        }
+        onOpenChange={setCreateOpen}
         title="Create task"
         description="Add a new task to your workspace."
-        onSubmit={(
-          event,
-        ) => {
+        onSubmit={(event) => {
           event.preventDefault();
 
           const form =
@@ -486,9 +447,7 @@ export function TasksPage() {
               type="button"
               className="hidden"
               onClick={() =>
-                setCreateOpen(
-                  false,
-                )
+                setCreateOpen(false)
               }
             />
 
@@ -506,11 +465,24 @@ export function TasksPage() {
         }
       >
         <TaskForm
-          onSubmit={
-            handleCreate
-          }
-          loading={
-            creating
+          onSubmit={handleCreate}
+          loading={creating}
+        />
+      </UniversalSheet>
+
+      {/* =================================================
+          DATA COLLECTION SHEET
+      ================================================= */}
+
+      <UniversalSheet
+        open={collectorOpen}
+        onOpenChange={setCollectorOpen}
+        title="Document Data Collection"
+        description="Select a document image and collect structured data."
+      >
+        <TaskDataCollector
+          onComplete={
+            handleCollectorComplete
           }
         />
       </UniversalSheet>
@@ -520,24 +492,14 @@ export function TasksPage() {
       ================================================= */}
 
       <TaskDetailsSheet
-        task={
-          selectedTask
-        }
-        open={
-          detailsOpen
-        }
-        onOpenChange={
-          setDetailsOpen
-        }
+        task={selectedTask}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
         onStatusChange={
           handleStatusChange
         }
-        onDelete={
-          handleDelete
-        }
-        loading={
-          loading
-        }
+        onDelete={handleDelete}
+        loading={loading}
       />
     </div>
   );

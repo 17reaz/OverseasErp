@@ -1,0 +1,19 @@
+{
+  "name": "overseas-erp-ocr-lambda",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-textract": "^3.1143.0",
+    "@supabase/supabase-js": "^2.117.2"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
+    "@types/bun": "latest",
+    "typescript": "^7.0.2"
+  },
+  "module": "index.ts"
+}
