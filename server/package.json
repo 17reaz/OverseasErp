@@ -1,0 +1,16 @@
+{
+  "name": "overseas-erp-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch main.ts",
+    "start": "bun main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.13.11"
+  },
+  "devDependencies": {
+    "typescript": "~6"
+  }
+}

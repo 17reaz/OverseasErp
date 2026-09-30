@@ -6,7 +6,7 @@ health.get("/", (c) => {
   return c.json({
     ok: true,
     service: "overseas-erp-api",
-    runtime: "deno",
+    runtime: "bun",
     framework: "hono",
     timestamp: new Date().toISOString(),
   })
