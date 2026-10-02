@@ -13,6 +13,7 @@ import { DashboardCharts } from "./components/dashboard-charts";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
 import { DashboardShortcuts } from "./components/dashboard-shortcuts";
 import { DashboardPipeline } from "./components/dashboard-pipeline";
+import { DashboardCountryPassports } from "./components/dashboard-country-passports";
 export function DashboardPage() {
   const [data, setData] =
     useState<DashboardData | null>(null);
@@ -140,6 +141,9 @@ export function DashboardPage() {
       <DashboardPipeline
         data={data.pipeline}
       />
+      <DashboardCountryPassports
+  data={data.countryPassports}
+/>
       <DashboardHoldStages
   reasons={data.stats.holdReasons}
   total={data.stats.holdCandidates}

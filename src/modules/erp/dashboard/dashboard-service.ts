@@ -9,7 +9,10 @@ import {
 import {
   getDashboardSupportData,
 } from "./services/dashboard-support-service";
-
+import {
+  getDashboardCountryPassportData,
+  type DashboardCountryPassport,
+} from "./services/dashboard-country-service";
 export type {
   DashboardWorkflowState,
   DashboardHoldReason,
@@ -80,7 +83,7 @@ export interface DashboardData {
     label: string;
     value: number;
   }[];
-
+   countryPassports: DashboardCountryPassport[];
   trend: {
     month: string;
     candidates: number;
@@ -174,7 +177,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       stats.mofaPending,
       stats.holdCandidates,
     );
-
+    const countryPassports =
+  await getDashboardCountryPassportData();
   /*
    * =====================================================
    * 5. FINAL DASHBOARD DATA
@@ -185,6 +189,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     stats,
 
     pipeline,
+      countryPassports,
 
     trend:
       support.trend,
