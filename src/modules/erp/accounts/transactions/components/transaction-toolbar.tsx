@@ -1,7 +1,9 @@
-// src/modules/erp/accounting/transactions/components/transaction-toolbar.tsx
+// src/modules/erp/accounts/transactions/components/transaction-toolbar.tsx
 
 import type { ReactNode } from "react";
+
 import {
+  BookOpen,
   FolderPlus,
   Plus,
   RefreshCw,
@@ -46,6 +48,7 @@ interface TransactionToolbarProps {
 
   onCreate: () => void;
   onCreateGroup: () => void;
+  onOpenDailyLedger: () => void;
 
   children?: ReactNode;
 }
@@ -61,6 +64,7 @@ export function TransactionToolbar({
   onRefresh,
   onCreate,
   onCreateGroup,
+  onOpenDailyLedger,
   children,
 }: TransactionToolbarProps) {
   return (
@@ -107,6 +111,18 @@ export function TransactionToolbar({
             />
 
             Refresh
+          </Button>
+
+          {/* Daily Ledger */}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenDailyLedger}
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+
+            Daily Ledger
           </Button>
 
           {/* Create Group */}

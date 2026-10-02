@@ -18,7 +18,9 @@ import {
 import {
   TransactionGroupSheet,
 } from "./components/transaction-group-sheet";
-
+import {
+  DailyLedgerSheet,
+} from "./components/daily-ledger-sheet";
 import {
   getTransactionGroups,
 } from "./transaction-group-service";
@@ -106,8 +108,10 @@ export function TransactionsPage() {
     useState(false);
 
   const [groupSheetOpen, setGroupSheetOpen] =
-    useState(false);
+  useState(false);
 
+const [dailyLedgerOpen, setDailyLedgerOpen] =
+  useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
 
@@ -256,7 +260,9 @@ export function TransactionsPage() {
   function handleCreateGroup() {
     setGroupSheetOpen(true);
   }
-
+function handleOpenDailyLedger() {
+  setDailyLedgerOpen(true);
+}
   /* =======================================================
    * EDIT
    * ======================================================= */
@@ -406,6 +412,9 @@ export function TransactionsPage() {
         }
         onCreate={handleCreate}
         onCreateGroup={handleCreateGroup}
+        onOpenDailyLedger={
+  handleOpenDailyLedger
+}
       >
         {/* Account */}
 
@@ -592,7 +601,13 @@ export function TransactionsPage() {
           handleGroupSuccess
         }
       />
-
+      <DailyLedgerSheet
+  open={dailyLedgerOpen}
+  onOpenChange={
+    setDailyLedgerOpen
+  }
+  transactions={transactions}
+/>
       {/* =================================================
        * DETAILS
        * ================================================= */}
