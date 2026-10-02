@@ -93,8 +93,7 @@ export function SalesPage() {
   const [candidates, setCandidates] =
   useState<CandidateReference[]>([]);
 
-  const [candidatesLoading, setCandidatesLoading] =
-  useState(false);
+  
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] =
@@ -149,10 +148,7 @@ useEffect(() => {
 
   async function loadCandidates() {
     try {
-      setCandidatesLoading(true);
-
-      const data =
-        await getCandidateReferences();
+      const data = await getCandidateReferences();
 
       if (mounted) {
         setCandidates(data);
@@ -162,10 +158,6 @@ useEffect(() => {
         "Failed to load candidate references:",
         err,
       );
-    } finally {
-      if (mounted) {
-        setCandidatesLoading(false);
-      }
     }
   }
 
@@ -634,7 +626,6 @@ useEffect(() => {
   }}
   sale={selectedSale}
   candidates={candidates}
-  candidatesLoading={candidatesLoading}
   onCreate={handleCreateSale}
   onUpdate={handleUpdateSale}
 />

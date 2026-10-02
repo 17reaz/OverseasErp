@@ -4,9 +4,6 @@ import type {
   CreateTransactionGroupInput,
   Transaction,
   TransactionGroup,
-  TransactionAccount,
-  TransactionCategory,
-  TransactionParty,
 } from "./transaction-types";
 
 import {
