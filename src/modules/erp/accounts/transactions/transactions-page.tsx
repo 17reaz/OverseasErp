@@ -1,4 +1,4 @@
-// src/modules/erp/accounting/transactions/transaction-page.tsx
+// src/modules/erp/accounts/transactions/transactions-page.tsx
 
 import {
   useCallback,
@@ -18,9 +18,11 @@ import {
 import {
   TransactionGroupSheet,
 } from "./components/transaction-group-sheet";
+
 import {
   DailyLedgerSheet,
 } from "./components/daily-ledger-sheet";
+
 import {
   getTransactionGroups,
 } from "./transaction-group-service";
@@ -108,10 +110,11 @@ export function TransactionsPage() {
     useState(false);
 
   const [groupSheetOpen, setGroupSheetOpen] =
-  useState(false);
+    useState(false);
 
-const [dailyLedgerOpen, setDailyLedgerOpen] =
-  useState(false);
+  const [dailyLedgerOpen, setDailyLedgerOpen] =
+    useState(false);
+
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
 
@@ -130,25 +133,63 @@ const [dailyLedgerOpen, setDailyLedgerOpen] =
       try {
         setRefreshing(true);
 
+        /*
+         * Core transaction data
+         *
+         * Daily Ledger depends on transactions,
+         * so these must load independently from
+         * transaction groups.
+         */
         const [
           transactionList,
           accountList,
           categoryList,
           partyList,
-          groupList,
         ] = await Promise.all([
           getTransactions(),
           getTransactionAccounts(),
           getTransactionCategories(),
           getTransactionParties(),
-          getTransactionGroups(),
         ]);
 
-        setTransactions(transactionList);
-        setAccounts(accountList);
-        setCategories(categoryList);
-        setParties(partyList);
-        setTransactionGroups(groupList);
+        setTransactions(
+          transactionList,
+        );
+
+        setAccounts(
+          accountList,
+        );
+
+        setCategories(
+          categoryList,
+        );
+
+        setParties(
+          partyList,
+        );
+
+        /*
+         * Transaction groups are loaded separately.
+         *
+         * If transaction_groups has a database problem,
+         * it must NOT prevent the main transaction list
+         * or Daily Ledger from loading.
+         */
+        try {
+          const groupList =
+            await getTransactionGroups();
+
+          setTransactionGroups(
+            groupList,
+          );
+        } catch (error) {
+          console.error(
+            "Failed to load transaction groups:",
+            error,
+          );
+
+          setTransactionGroups([]);
+        }
       } catch (error) {
         console.error(
           "Failed to load accounting transactions:",
@@ -229,11 +270,12 @@ const [dailyLedgerOpen, setDailyLedgerOpen] =
             .join(" ")
             .toLowerCase();
 
-          return searchable.includes(query);
+          return searchable.includes(
+            query,
+          );
         },
       );
-    },
-    [
+    }, [
       transactions,
       search,
       typeFilter,
@@ -241,8 +283,7 @@ const [dailyLedgerOpen, setDailyLedgerOpen] =
       accountFilter,
       categoryFilter,
       partyFilter,
-    ],
-  );
+    ]);
 
   /* =======================================================
    * CREATE TRANSACTION
@@ -260,9 +301,15 @@ const [dailyLedgerOpen, setDailyLedgerOpen] =
   function handleCreateGroup() {
     setGroupSheetOpen(true);
   }
-function handleOpenDailyLedger() {
-  setDailyLedgerOpen(true);
-}
+
+  /* =======================================================
+   * DAILY LEDGER
+   * ======================================================= */
+
+  function handleOpenDailyLedger() {
+    setDailyLedgerOpen(true);
+  }
+
   /* =======================================================
    * EDIT
    * ======================================================= */
@@ -282,7 +329,10 @@ function handleOpenDailyLedger() {
   function handleView(
     transaction: Transaction,
   ) {
-    setSelectedTransaction(transaction);
+    setSelectedTransaction(
+      transaction,
+    );
+
     setDetailsOpen(true);
   }
 
@@ -389,6 +439,10 @@ function handleOpenDailyLedger() {
     setPartyFilter("all");
   }
 
+  /* =======================================================
+   * RENDER
+   * ======================================================= */
+
   return (
     <div className="space-y-4">
       {/* =================================================
@@ -411,10 +465,12 @@ function handleOpenDailyLedger() {
           void loadData()
         }
         onCreate={handleCreate}
-        onCreateGroup={handleCreateGroup}
+        onCreateGroup={
+          handleCreateGroup
+        }
         onOpenDailyLedger={
-  handleOpenDailyLedger
-}
+          handleOpenDailyLedger
+        }
       >
         {/* Account */}
 
@@ -521,7 +577,9 @@ function handleOpenDailyLedger() {
           <p className="text-sm text-muted-foreground">
             Showing{" "}
             <span className="font-medium text-foreground">
-              {filteredTransactions.length}
+              {
+                filteredTransactions.length
+              }
             </span>{" "}
             of{" "}
             <span className="font-medium text-foreground">
@@ -549,7 +607,9 @@ function handleOpenDailyLedger() {
           <p className="text-sm text-muted-foreground">
             Transaction groups:{" "}
             <span className="font-medium text-foreground">
-              {transactionGroups.length}
+              {
+                transactionGroups.length
+              }
             </span>
           </p>
         </div>
@@ -560,7 +620,9 @@ function handleOpenDailyLedger() {
        * ================================================= */}
 
       <TransactionTable
-        transactions={filteredTransactions}
+        transactions={
+          filteredTransactions
+        }
         loading={loading}
         onView={handleView}
         onEdit={handleEdit}
@@ -577,10 +639,14 @@ function handleOpenDailyLedger() {
           setSheetOpen(open);
 
           if (!open) {
-            setEditingTransaction(null);
+            setEditingTransaction(
+              null,
+            );
           }
         }}
-        transaction={editingTransaction}
+        transaction={
+          editingTransaction
+        }
         accounts={accounts}
         categories={categories}
         parties={parties}
@@ -593,7 +659,9 @@ function handleOpenDailyLedger() {
 
       <TransactionGroupSheet
         open={groupSheetOpen}
-        onOpenChange={setGroupSheetOpen}
+        onOpenChange={
+          setGroupSheetOpen
+        }
         accounts={accounts}
         categories={categories}
         parties={parties}
@@ -601,13 +669,21 @@ function handleOpenDailyLedger() {
           handleGroupSuccess
         }
       />
+
+      {/* =================================================
+       * DAILY LEDGER
+       * ================================================= */}
+
       <DailyLedgerSheet
-  open={dailyLedgerOpen}
-  onOpenChange={
-    setDailyLedgerOpen
-  }
-  transactions={transactions}
-/>
+        open={dailyLedgerOpen}
+        onOpenChange={
+          setDailyLedgerOpen
+        }
+        transactions={
+          transactions
+        }
+      />
+
       {/* =================================================
        * DETAILS
        * ================================================= */}
@@ -618,10 +694,14 @@ function handleOpenDailyLedger() {
           setDetailsOpen(open);
 
           if (!open) {
-            setSelectedTransaction(null);
+            setSelectedTransaction(
+              null,
+            );
           }
         }}
-        transaction={selectedTransaction}
+        transaction={
+          selectedTransaction
+        }
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
