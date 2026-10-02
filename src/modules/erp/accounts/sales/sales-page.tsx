@@ -93,7 +93,7 @@ export function SalesPage() {
   const [candidates, setCandidates] =
   useState<CandidateReference[]>([]);
 
-const [candidatesLoading, setCandidatesLoading] =
+  const [candidatesLoading, setCandidatesLoading] =
   useState(false);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -634,6 +634,7 @@ useEffect(() => {
   }}
   sale={selectedSale}
   candidates={candidates}
+  candidatesLoading={candidatesLoading}
   onCreate={handleCreateSale}
   onUpdate={handleUpdateSale}
 />

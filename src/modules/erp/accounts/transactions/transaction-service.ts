@@ -29,19 +29,23 @@ async function getCurrentUserContext() {
     throw new Error("You must be logged in.");
   }
 
-  const { data: profile, error: profileError } =
-    await supabase
-      .from("profiles")
-      .select("tenant_id")
-      .eq("id", user.id)
-      .single();
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
 
   if (profileError) {
     throw new Error(profileError.message);
   }
 
   if (!profile?.tenant_id) {
-    throw new Error("Your account is not linked to a tenant.");
+    throw new Error(
+      "Your account is not linked to a tenant.",
+    );
   }
 
   return {
@@ -58,7 +62,7 @@ export async function getTransactionAccounts(): Promise<
   TransactionAccount[]
 > {
   const { data, error } = await supabase
-  .schema("finance")
+    .schema("finance")
     .from("accounts")
     .select(
       `
@@ -71,7 +75,9 @@ export async function getTransactionAccounts(): Promise<
       `,
     )
     .eq("is_active", true)
-    .order("name", { ascending: true });
+    .order("name", {
+      ascending: true,
+    });
 
   if (error) {
     throw new Error(error.message);
@@ -95,7 +101,7 @@ export async function getTransactionCategories(): Promise<
   TransactionCategory[]
 > {
   const { data, error } = await supabase
-  .schema("finance")
+    .schema("finance")
     .from("categories")
     .select(
       `
@@ -107,7 +113,9 @@ export async function getTransactionCategories(): Promise<
       `,
     )
     .eq("is_active", true)
-    .order("name", { ascending: true });
+    .order("name", {
+      ascending: true,
+    });
 
   if (error) {
     throw new Error(error.message);
@@ -130,7 +138,7 @@ export async function getTransactionParties(): Promise<
   TransactionParty[]
 > {
   const { data, error } = await supabase
-  .schema("finance")
+    .schema("finance")
     .from("parties")
     .select(
       `
@@ -143,7 +151,9 @@ export async function getTransactionParties(): Promise<
       `,
     )
     .eq("is_active", true)
-    .order("name", { ascending: true });
+    .order("name", {
+      ascending: true,
+    });
 
   if (error) {
     throw new Error(error.message);
@@ -151,7 +161,8 @@ export async function getTransactionParties(): Promise<
 
   return (data ?? []).map((row) => ({
     id: row.id,
-    partyType: row.party_type as TransactionParty["partyType"],
+    partyType:
+      row.party_type as TransactionParty["partyType"],
     partyId: row.party_id,
     name: row.name,
     phone: row.phone,
@@ -177,12 +188,13 @@ export async function getTransactions(): Promise<
   ]);
 
   const { data, error } = await supabase
-  .schema("finance")
+    .schema("finance")
     .from("transactions")
     .select(
       `
         id,
         tenant_id,
+        group_id,
         account_id,
         category_id,
         type,
@@ -233,17 +245,21 @@ export async function getTransactions(): Promise<
     id: row.id,
     tenantId: row.tenant_id,
 
+    groupId: row.group_id,
+
     accountId: row.account_id,
     categoryId: row.category_id,
 
     type: row.type as Transaction["type"],
     amount: Number(row.amount),
+
     date: row.transaction_date,
 
     description: row.description,
     reference: row.reference,
 
-    status: row.status as Transaction["status"],
+    status:
+      row.status as Transaction["status"],
 
     partyId: row.party_id,
 
@@ -276,12 +292,15 @@ export async function getTransaction(
   const transactions =
     await getTransactions();
 
-  const transaction = transactions.find(
-    (item) => item.id === id,
-  );
+  const transaction =
+    transactions.find(
+      (item) => item.id === id,
+    );
 
   if (!transaction) {
-    throw new Error("Transaction not found.");
+    throw new Error(
+      "Transaction not found.",
+    );
   }
 
   return transaction;
@@ -300,70 +319,89 @@ export async function createTransaction(
   } = await getCurrentUserContext();
 
   if (!input.accountId) {
-    throw new Error("Account is required.");
+    throw new Error(
+      "Account is required.",
+    );
   }
 
-  if (!input.amount || input.amount <= 0) {
+  if (
+    !input.amount ||
+    input.amount <= 0
+  ) {
     throw new Error(
       "Transaction amount must be greater than zero.",
     );
   }
 
-  const { data, error } = await supabase
-    .schema("finance")
-    .from("transactions")
-    .insert({
-      tenant_id: tenantId,
+  const { data, error } =
+    await supabase
+      .schema("finance")
+      .from("transactions")
+      .insert({
+        tenant_id: tenantId,
 
-      account_id: input.accountId,
-      category_id: input.categoryId,
+        group_id:
+          input.groupId ?? null,
 
-      type: input.type,
-      amount: input.amount,
+        account_id:
+          input.accountId,
 
-      transaction_date: input.date,
+        category_id:
+          input.categoryId ?? null,
 
-      description: input.description,
-      reference: input.reference,
+        type: input.type,
+        amount: input.amount,
 
-      status: input.status,
+        transaction_date:
+          input.date,
 
-      party_id: input.partyId,
+        description:
+          input.description ?? null,
 
-      created_by: userId,
-    })
-    .select(
-      `
-        id,
-        tenant_id,
-        account_id,
-        category_id,
-        type,
-        amount,
-        transaction_date,
-        description,
-        reference,
-        status,
-        party_id,
-        created_by,
-        created_at,
-        updated_at
-      `,
-    )
-    .single();
+        reference:
+          input.reference ?? null,
+
+        status: input.status,
+
+        party_id:
+          input.partyId ?? null,
+
+        created_by: userId,
+      })
+      .select(
+        `
+          id,
+          tenant_id,
+          group_id,
+          account_id,
+          category_id,
+          type,
+          amount,
+          transaction_date,
+          description,
+          reference,
+          status,
+          party_id,
+          created_by,
+          created_at,
+          updated_at
+        `,
+      )
+      .single();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const accounts =
-    await getTransactionAccounts();
-
-  const categories =
-    await getTransactionCategories();
-
-  const parties =
-    await getTransactionParties();
+  const [
+    accounts,
+    categories,
+    parties,
+  ] = await Promise.all([
+    getTransactionAccounts(),
+    getTransactionCategories(),
+    getTransactionParties(),
+  ]);
 
   return normalizeTransaction(
     data,
@@ -382,69 +420,89 @@ export async function updateTransaction(
   input: UpdateTransactionInput,
 ): Promise<Transaction> {
   if (!input.accountId) {
-    throw new Error("Account is required.");
+    throw new Error(
+      "Account is required.",
+    );
   }
 
-  if (!input.amount || input.amount <= 0) {
+  if (
+    !input.amount ||
+    input.amount <= 0
+  ) {
     throw new Error(
       "Transaction amount must be greater than zero.",
     );
   }
 
-  const { data, error } = await supabase
-    .schema("finance")
-    .from("transactions")
-    .update({
-      account_id: input.accountId,
-      category_id: input.categoryId,
+  const { data, error } =
+    await supabase
+      .schema("finance")
+      .from("transactions")
+      .update({
+        group_id:
+          input.groupId ?? null,
 
-      type: input.type,
-      amount: input.amount,
+        account_id:
+          input.accountId,
 
-      transaction_date: input.date,
+        category_id:
+          input.categoryId ?? null,
 
-      description: input.description,
-      reference: input.reference,
+        type: input.type,
+        amount: input.amount,
 
-      status: input.status,
+        transaction_date:
+          input.date,
 
-      party_id: input.partyId,
+        description:
+          input.description ?? null,
 
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select(
-      `
-        id,
-        tenant_id,
-        account_id,
-        category_id,
-        type,
-        amount,
-        transaction_date,
-        description,
-        reference,
-        status,
-        party_id,
-        created_by,
-        created_at,
-        updated_at
-      `,
-    )
-    .single();
+        reference:
+          input.reference ?? null,
+
+        status: input.status,
+
+        party_id:
+          input.partyId ?? null,
+
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select(
+        `
+          id,
+          tenant_id,
+          group_id,
+          account_id,
+          category_id,
+          type,
+          amount,
+          transaction_date,
+          description,
+          reference,
+          status,
+          party_id,
+          created_by,
+          created_at,
+          updated_at
+        `,
+      )
+      .single();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const accounts =
-    await getTransactionAccounts();
-
-  const categories =
-    await getTransactionCategories();
-
-  const parties =
-    await getTransactionParties();
+  const [
+    accounts,
+    categories,
+    parties,
+  ] = await Promise.all([
+    getTransactionAccounts(),
+    getTransactionCategories(),
+    getTransactionParties(),
+  ]);
 
   return normalizeTransaction(
     data,
@@ -461,14 +519,17 @@ export async function updateTransaction(
 export async function deleteTransaction(
   id: string,
 ): Promise<void> {
-  const { error } = await supabase
-    .schema("finance")
-    .from("transactions")
-    .delete()
-    .eq("id", id);
+  const { error } =
+    await supabase
+      .schema("finance")
+      .from("transactions")
+      .delete()
+      .eq("id", id);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(
+      error.message,
+    );
   }
 }
 
@@ -480,6 +541,7 @@ function normalizeTransaction(
   row: {
     id: string;
     tenant_id: string;
+    group_id: string | null;
     account_id: string;
     category_id: string | null;
     type: string;
@@ -501,39 +563,61 @@ function normalizeTransaction(
     id: row.id,
     tenantId: row.tenant_id,
 
+    groupId: row.group_id,
+
     accountId: row.account_id,
     categoryId: row.category_id,
 
-    type: row.type as Transaction["type"],
-    amount: Number(row.amount),
+    type:
+      row.type as Transaction["type"],
 
-    date: row.transaction_date,
+    amount: Number(
+      row.amount,
+    ),
 
-    description: row.description,
-    reference: row.reference,
+    date:
+      row.transaction_date,
+
+    description:
+      row.description,
+
+    reference:
+      row.reference,
 
     status:
       row.status as Transaction["status"],
 
-    partyId: row.party_id,
+    partyId:
+      row.party_id,
 
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdBy:
+      row.created_by,
+
+    createdAt:
+      row.created_at,
+
+    updatedAt:
+      row.updated_at,
 
     account:
       accounts.find(
-        (item) => item.id === row.account_id,
+        (item) =>
+          item.id ===
+          row.account_id,
       ) ?? null,
 
     category:
       categories.find(
-        (item) => item.id === row.category_id,
+        (item) =>
+          item.id ===
+          row.category_id,
       ) ?? null,
 
     party:
       parties.find(
-        (item) => item.id === row.party_id,
+        (item) =>
+          item.id ===
+          row.party_id,
       ) ?? null,
   };
 }

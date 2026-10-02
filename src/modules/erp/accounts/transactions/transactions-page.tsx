@@ -7,7 +7,21 @@ import {
   useState,
 } from "react";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  TransactionGroupSheet,
+} from "./components/transaction-group-sheet";
+
+import {
+  getTransactionGroups,
+} from "./transaction-group-service";
 
 import {
   deleteTransaction,
@@ -21,6 +35,7 @@ import type {
   Transaction,
   TransactionAccount,
   TransactionCategory,
+  TransactionGroup,
   TransactionParty,
 } from "./transaction-types";
 
@@ -41,105 +56,73 @@ import {
 } from "./components/transaction-details-sheet";
 
 export function TransactionsPage() {
-  const [
-    transactions,
-    setTransactions,
-  ] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] =
+    useState<Transaction[]>([]);
 
-  const [
-    accounts,
-    setAccounts,
-  ] = useState<TransactionAccount[]>([]);
+  const [accounts, setAccounts] =
+    useState<TransactionAccount[]>([]);
 
-  const [
-    categories,
-    setCategories,
-  ] = useState<TransactionCategory[]>([]);
+  const [categories, setCategories] =
+    useState<TransactionCategory[]>([]);
 
-  const [
-    parties,
-    setParties,
-  ] = useState<TransactionParty[]>([]);
+  const [parties, setParties] =
+    useState<TransactionParty[]>([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [transactionGroups, setTransactionGroups] =
+    useState<TransactionGroup[]>([]);
 
-  const [
-    refreshing,
-    setRefreshing,
-  ] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [
-    search,
-    setSearch,
-  ] = useState("");
+  const [refreshing, setRefreshing] =
+    useState(false);
 
-  const [
-    typeFilter,
-    setTypeFilter,
-  ] = useState<
-    "all" | "income" | "expense"
-  >("all");
+  const [search, setSearch] =
+    useState("");
 
-  const [
-    statusFilter,
-    setStatusFilter,
-  ] = useState<
-    | "all"
-    | "pending"
-    | "completed"
-    | "cancelled"
-  >("all");
+  const [typeFilter, setTypeFilter] =
+    useState<
+      "all" | "income" | "expense"
+    >("all");
 
-  const [
-    accountFilter,
-    setAccountFilter,
-  ] = useState("all");
+  const [statusFilter, setStatusFilter] =
+    useState<
+      | "all"
+      | "pending"
+      | "completed"
+      | "cancelled"
+    >("all");
 
-  const [
-    categoryFilter,
-    setCategoryFilter,
-  ] = useState("all");
+  const [accountFilter, setAccountFilter] =
+    useState("all");
 
-  const [
-    partyFilter,
-    setPartyFilter,
-  ] = useState("all");
+  const [categoryFilter, setCategoryFilter] =
+    useState("all");
 
-  const [
-    sheetOpen,
-    setSheetOpen,
-  ] = useState(false);
+  const [partyFilter, setPartyFilter] =
+    useState("all");
 
-  const [
-    editingTransaction,
-    setEditingTransaction,
-  ] =
-    useState<Transaction | null>(
-      null,
-    );
+  const [sheetOpen, setSheetOpen] =
+    useState(false);
 
-  const [
-    selectedTransaction,
-    setSelectedTransaction,
-  ] =
-    useState<Transaction | null>(
-      null,
-    );
+  const [groupSheetOpen, setGroupSheetOpen] =
+    useState(false);
 
-  const [
-    detailsOpen,
-    setDetailsOpen,
-  ] = useState(false);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
+
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
+
+  const [detailsOpen, setDetailsOpen] =
+    useState(false);
 
   /* =======================================================
    * LOAD
    * ======================================================= */
 
-  const loadData =
-    useCallback(async () => {
+  const loadData = useCallback(
+    async () => {
       try {
         setRefreshing(true);
 
@@ -148,22 +131,20 @@ export function TransactionsPage() {
           accountList,
           categoryList,
           partyList,
+          groupList,
         ] = await Promise.all([
           getTransactions(),
           getTransactionAccounts(),
           getTransactionCategories(),
           getTransactionParties(),
+          getTransactionGroups(),
         ]);
 
-        setTransactions(
-          transactionList,
-        );
-
+        setTransactions(transactionList);
         setAccounts(accountList);
-        setCategories(
-          categoryList,
-        );
+        setCategories(categoryList);
         setParties(partyList);
+        setTransactionGroups(groupList);
       } catch (error) {
         console.error(
           "Failed to load accounting transactions:",
@@ -173,7 +154,9 @@ export function TransactionsPage() {
         setLoading(false);
         setRefreshing(false);
       }
-    }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     void loadData();
@@ -193,46 +176,36 @@ export function TransactionsPage() {
       return transactions.filter(
         (transaction) => {
           if (
-            typeFilter !==
-              "all" &&
-            transaction.type !==
-              typeFilter
+            typeFilter !== "all" &&
+            transaction.type !== typeFilter
           ) {
             return false;
           }
 
           if (
-            statusFilter !==
-              "all" &&
-            transaction.status !==
-              statusFilter
+            statusFilter !== "all" &&
+            transaction.status !== statusFilter
           ) {
             return false;
           }
 
           if (
-            accountFilter !==
-              "all" &&
-            transaction.accountId !==
-              accountFilter
+            accountFilter !== "all" &&
+            transaction.accountId !== accountFilter
           ) {
             return false;
           }
 
           if (
-            categoryFilter !==
-              "all" &&
-            transaction.categoryId !==
-              categoryFilter
+            categoryFilter !== "all" &&
+            transaction.categoryId !== categoryFilter
           ) {
             return false;
           }
 
           if (
-            partyFilter !==
-              "all" &&
-            transaction.partyId !==
-              partyFilter
+            partyFilter !== "all" &&
+            transaction.partyId !== partyFilter
           ) {
             return false;
           }
@@ -242,28 +215,21 @@ export function TransactionsPage() {
           }
 
           const searchable = [
-            transaction.description ??
-              "",
-            transaction.reference ??
-              "",
-            transaction.account
-              ?.name ?? "",
-            transaction.category
-              ?.name ?? "",
-            transaction.party
-              ?.name ?? "",
-            transaction.party
-              ?.partyType ?? "",
+            transaction.description ?? "",
+            transaction.reference ?? "",
+            transaction.account?.name ?? "",
+            transaction.category?.name ?? "",
+            transaction.party?.name ?? "",
+            transaction.party?.partyType ?? "",
           ]
             .join(" ")
             .toLowerCase();
 
-          return searchable.includes(
-            query,
-          );
+          return searchable.includes(query);
         },
       );
-    }, [
+    },
+    [
       transactions,
       search,
       typeFilter,
@@ -271,15 +237,24 @@ export function TransactionsPage() {
       accountFilter,
       categoryFilter,
       partyFilter,
-    ]);
+    ],
+  );
 
   /* =======================================================
-   * CREATE
+   * CREATE TRANSACTION
    * ======================================================= */
 
   function handleCreate() {
     setEditingTransaction(null);
     setSheetOpen(true);
+  }
+
+  /* =======================================================
+   * CREATE GROUP
+   * ======================================================= */
+
+  function handleCreateGroup() {
+    setGroupSheetOpen(true);
   }
 
   /* =======================================================
@@ -290,9 +265,7 @@ export function TransactionsPage() {
     transaction: Transaction,
   ) {
     setDetailsOpen(false);
-    setEditingTransaction(
-      transaction,
-    );
+    setEditingTransaction(transaction);
     setSheetOpen(true);
   }
 
@@ -303,9 +276,7 @@ export function TransactionsPage() {
   function handleView(
     transaction: Transaction,
   ) {
-    setSelectedTransaction(
-      transaction,
-    );
+    setSelectedTransaction(transaction);
     setDetailsOpen(true);
   }
 
@@ -337,15 +308,12 @@ export function TransactionsPage() {
         (current) =>
           current.filter(
             (item) =>
-              item.id !==
-              transaction.id,
+              item.id !== transaction.id,
           ),
       );
 
       setDetailsOpen(false);
-      setSelectedTransaction(
-        null,
-      );
+      setSelectedTransaction(null);
     } catch (error) {
       console.error(
         "Failed to delete transaction:",
@@ -361,7 +329,7 @@ export function TransactionsPage() {
   }
 
   /* =======================================================
-   * SAVE SUCCESS
+   * TRANSACTION SAVE SUCCESS
    * ======================================================= */
 
   function handleSuccess(
@@ -372,8 +340,7 @@ export function TransactionsPage() {
         const exists =
           current.some(
             (item) =>
-              item.id ===
-              saved.id,
+              item.id === saved.id,
           );
 
         if (exists) {
@@ -391,6 +358,16 @@ export function TransactionsPage() {
         ];
       },
     );
+  }
+
+  /* =======================================================
+   * GROUP SAVE SUCCESS
+   * ======================================================= */
+
+  async function handleGroupSuccess() {
+    setGroupSheetOpen(false);
+
+    await loadData();
   }
 
   /* =======================================================
@@ -419,9 +396,7 @@ export function TransactionsPage() {
         onTypeFilterChange={
           setTypeFilter
         }
-        statusFilter={
-          statusFilter
-        }
+        statusFilter={statusFilter}
         onStatusFilterChange={
           setStatusFilter
         }
@@ -430,6 +405,7 @@ export function TransactionsPage() {
           void loadData()
         }
         onCreate={handleCreate}
+        onCreateGroup={handleCreateGroup}
       >
         {/* Account */}
 
@@ -536,9 +512,7 @@ export function TransactionsPage() {
           <p className="text-sm text-muted-foreground">
             Showing{" "}
             <span className="font-medium text-foreground">
-              {
-                filteredTransactions.length
-              }
+              {filteredTransactions.length}
             </span>{" "}
             of{" "}
             <span className="font-medium text-foreground">
@@ -558,13 +532,26 @@ export function TransactionsPage() {
       )}
 
       {/* =================================================
+       * GROUP SUMMARY
+       * ================================================= */}
+
+      {transactionGroups.length > 0 && (
+        <div className="rounded-md border bg-muted/20 px-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            Transaction groups:{" "}
+            <span className="font-medium text-foreground">
+              {transactionGroups.length}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* =================================================
        * TABLE
        * ================================================= */}
 
       <TransactionTable
-        transactions={
-          filteredTransactions
-        }
+        transactions={filteredTransactions}
         loading={loading}
         onView={handleView}
         onEdit={handleEdit}
@@ -572,7 +559,7 @@ export function TransactionsPage() {
       />
 
       {/* =================================================
-       * CREATE / EDIT
+       * CREATE / EDIT TRANSACTION
        * ================================================= */}
 
       <TransactionSheet
@@ -581,19 +568,28 @@ export function TransactionsPage() {
           setSheetOpen(open);
 
           if (!open) {
-            setEditingTransaction(
-              null,
-            );
+            setEditingTransaction(null);
           }
         }}
-        transaction={
-          editingTransaction
-        }
+        transaction={editingTransaction}
+        accounts={accounts}
+        categories={categories}
+        parties={parties}
+        onSuccess={handleSuccess}
+      />
+
+      {/* =================================================
+       * CREATE TRANSACTION GROUP
+       * ================================================= */}
+
+      <TransactionGroupSheet
+        open={groupSheetOpen}
+        onOpenChange={setGroupSheetOpen}
         accounts={accounts}
         categories={categories}
         parties={parties}
         onSuccess={
-          handleSuccess
+          handleGroupSuccess
         }
       />
 
@@ -607,18 +603,12 @@ export function TransactionsPage() {
           setDetailsOpen(open);
 
           if (!open) {
-            setSelectedTransaction(
-              null,
-            );
+            setSelectedTransaction(null);
           }
         }}
-        transaction={
-          selectedTransaction
-        }
+        transaction={selectedTransaction}
         onEdit={handleEdit}
-        onDelete={
-          handleDelete
-        }
+        onDelete={handleDelete}
       />
     </div>
   );
