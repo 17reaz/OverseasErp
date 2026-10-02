@@ -12,7 +12,6 @@ type SaleRow = {
   tenant_id: string;
 
   candidate_id: string | null;
-
   party_id: string | null;
 
   customer_name: string;
@@ -41,7 +40,6 @@ function mapSale(row: SaleRow): Sale {
     tenantId: row.tenant_id,
 
     candidateId: row.candidate_id,
-
     partyId: row.party_id,
 
     customerName: row.customer_name,
@@ -109,7 +107,6 @@ export async function createSale(
     .from("sales")
     .insert({
       candidate_id: input.candidateId ?? null,
-
       party_id: input.partyId ?? null,
 
       customer_name: input.customerName.trim(),
@@ -160,7 +157,8 @@ export async function updateSale(
       }),
 
       ...(input.description !== undefined && {
-        description: input.description?.trim() || null,
+        description:
+          input.description?.trim() || null,
       }),
 
       ...(input.amount !== undefined && {

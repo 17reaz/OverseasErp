@@ -11,7 +11,10 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-
+import {
+  getCandidateReferences,
+  type CandidateReference,
+} from "@/modules/erp/candidates/candidate-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,7 +90,11 @@ function getStatusVariant(status: SaleStatus) {
 
 export function SalesPage() {
   const navigate = useNavigate();
+  const [candidates, setCandidates] =
+  useState<CandidateReference[]>([]);
 
+const [candidatesLoading, setCandidatesLoading] =
+  useState(false);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] =
@@ -137,7 +144,37 @@ export function SalesPage() {
       mounted = false;
     };
   }, []);
+useEffect(() => {
+  let mounted = true;
 
+  async function loadCandidates() {
+    try {
+      setCandidatesLoading(true);
+
+      const data =
+        await getCandidateReferences();
+
+      if (mounted) {
+        setCandidates(data);
+      }
+    } catch (err) {
+      console.error(
+        "Failed to load candidate references:",
+        err,
+      );
+    } finally {
+      if (mounted) {
+        setCandidatesLoading(false);
+      }
+    }
+  }
+
+  void loadCandidates();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
   const filteredSales = useMemo(() => {
     const query = search
       .trim()
@@ -587,18 +624,19 @@ export function SalesPage() {
           SALE SHEET
       ===================================================== */}
       <SaleSheet
-        open={sheetOpen}
-        onOpenChange={(open) => {
-          setSheetOpen(open);
+  open={sheetOpen}
+  onOpenChange={(open) => {
+    setSheetOpen(open);
 
-          if (!open) {
-            setSelectedSale(null);
-          }
-        }}
-        sale={selectedSale}
-        onCreate={handleCreateSale}
-        onUpdate={handleUpdateSale}
-      />
+    if (!open) {
+      setSelectedSale(null);
+    }
+  }}
+  sale={selectedSale}
+  candidates={candidates}
+  onCreate={handleCreateSale}
+  onUpdate={handleUpdateSale}
+/>
     </div>
   );
 }

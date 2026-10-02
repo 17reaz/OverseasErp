@@ -3,7 +3,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 import {
   Sheet,
@@ -28,6 +28,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
+import type { CandidateReference } from "@/modules/erp/candidates/candidate-types";
+
 import type {
   CreateSaleInput,
   Sale,
@@ -39,16 +41,12 @@ interface SaleSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 
-  /**
-   * Create mode
-   */
+  candidates: CandidateReference[];
+
   onCreate?: (
     input: CreateSaleInput,
   ) => Promise<void> | void;
 
-  /**
-   * Edit mode
-   */
   sale?: Sale | null;
 
   onUpdate?: (
@@ -57,20 +55,12 @@ interface SaleSheetProps {
   ) => Promise<void> | void;
 }
 
-/**
- * Local form state.
- *
- * CreateSaleInput keeps paidAmount optional because
- * the service can default it to 0.
- *
- * Inside this form, however, paidAmount is always
- * a number so TypeScript does not need undefined checks.
- */
 type SaleForm = Omit<CreateSaleInput, "paidAmount"> & {
   paidAmount: number;
 };
 
 const defaultForm: SaleForm = {
+  candidateId: null,
   partyId: null,
   customerName: "",
   service: "",
@@ -78,7 +68,9 @@ const defaultForm: SaleForm = {
   amount: 0,
   costAmount: 0,
   paidAmount: 0,
-  saleDate: new Date().toISOString().slice(0, 10),
+  saleDate: new Date()
+    .toISOString()
+    .slice(0, 10),
   status: "draft",
   notes: "",
 };
@@ -86,6 +78,7 @@ const defaultForm: SaleForm = {
 export function SaleSheet({
   open,
   onOpenChange,
+  candidates,
   onCreate,
   sale,
   onUpdate,
@@ -98,6 +91,9 @@ export function SaleSheet({
   const [loading, setLoading] =
     useState(false);
 
+  const [candidateSearch, setCandidateSearch] =
+    useState("");
+
   useEffect(() => {
     if (!open) {
       return;
@@ -105,6 +101,7 @@ export function SaleSheet({
 
     if (sale) {
       setForm({
+        candidateId: sale.candidateId,
         partyId: sale.partyId,
         customerName: sale.customerName,
         service: sale.service,
@@ -116,6 +113,18 @@ export function SaleSheet({
         status: sale.status,
         notes: sale.notes ?? "",
       });
+
+      const selectedCandidate =
+        candidates.find(
+          (candidate) =>
+            candidate.id === sale.candidateId,
+        );
+
+      setCandidateSearch(
+        selectedCandidate
+          ? `${selectedCandidate.name} • ${selectedCandidate.passport_no}`
+          : "",
+      );
     } else {
       setForm({
         ...defaultForm,
@@ -123,10 +132,12 @@ export function SaleSheet({
           .toISOString()
           .slice(0, 10),
       });
+
+      setCandidateSearch("");
     }
 
     setLoading(false);
-  }, [open, sale]);
+  }, [open, sale, candidates]);
 
   const updateField = <
     K extends keyof SaleForm,
@@ -138,6 +149,53 @@ export function SaleSheet({
       ...current,
       [field]: value,
     }));
+  };
+
+  const filteredCandidates = candidates.filter(
+    (candidate) => {
+      const query = candidateSearch
+        .trim()
+        .toLowerCase();
+
+      if (!query) {
+        return true;
+      }
+
+      return (
+        candidate.name
+          .toLowerCase()
+          .includes(query) ||
+        candidate.passport_no
+          .toLowerCase()
+          .includes(query) ||
+        String(candidate.sl ?? "")
+          .includes(query)
+      );
+    },
+  );
+
+  const selectedCandidate =
+    candidates.find(
+      (candidate) =>
+        candidate.id === form.candidateId,
+    ) ?? null;
+
+  const handleCandidateSelect = (
+    candidate: CandidateReference,
+  ) => {
+    updateField(
+      "candidateId",
+      candidate.id,
+    );
+
+    updateField(
+      "customerName",
+      candidate.name,
+    );
+
+    setCandidateSearch(
+      `${candidate.name} • ${candidate.passport_no}`,
+    );
   };
 
   const handleSubmit = async (
@@ -173,18 +231,30 @@ export function SaleSheet({
     try {
       if (isEditMode && sale) {
         const updateInput: UpdateSaleInput = {
-          partyId: form.partyId ?? null,
+          candidateId:
+            form.candidateId ?? null,
+
+          partyId:
+            form.partyId ?? null,
+
           customerName:
             form.customerName.trim(),
-          service: form.service.trim(),
+
+          service:
+            form.service.trim(),
+
           description:
             form.description?.trim() || null,
+
           amount: form.amount,
           costAmount: form.costAmount,
           paidAmount: form.paidAmount,
+
           saleDate: form.saleDate,
           status: form.status,
-          notes: form.notes?.trim() || null,
+
+          notes:
+            form.notes?.trim() || null,
         };
 
         await onUpdate?.(
@@ -193,17 +263,28 @@ export function SaleSheet({
         );
       } else {
         await onCreate?.({
-          partyId: form.partyId ?? null,
+          candidateId:
+            form.candidateId ?? null,
+
+          partyId:
+            form.partyId ?? null,
+
           customerName:
             form.customerName.trim(),
-          service: form.service.trim(),
+
+          service:
+            form.service.trim(),
+
           description:
             form.description?.trim() || "",
+
           amount: form.amount,
           costAmount: form.costAmount,
           paidAmount: form.paidAmount,
+
           saleDate: form.saleDate,
           status: form.status,
+
           notes: form.notes.trim(),
         });
       }
@@ -250,6 +331,101 @@ export function SaleSheet({
           </SheetHeader>
 
           <div className="flex-1 space-y-5 overflow-y-auto px-4 py-6">
+
+            {/* Candidate */}
+            <div className="space-y-2">
+              <Label>
+                Candidate
+              </Label>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+                <Input
+                  value={candidateSearch}
+                  onChange={(event) => {
+                    setCandidateSearch(
+                      event.target.value,
+                    );
+
+                    if (
+                      form.candidateId
+                    ) {
+                      updateField(
+                        "candidateId",
+                        null,
+                      );
+                    }
+                  }}
+                  placeholder="Search candidate, passport or SL..."
+                  className="pl-9"
+                />
+              </div>
+
+              {candidateSearch.trim() && (
+                <div className="max-h-48 overflow-y-auto rounded-lg border">
+                  {filteredCandidates.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                      No candidate found.
+                    </div>
+                  ) : (
+                    filteredCandidates
+                      .slice(0, 20)
+                      .map((candidate) => (
+                        <button
+                          key={candidate.id}
+                          type="button"
+                          className="flex w-full items-center justify-between gap-3 border-b px-3 py-3 text-left last:border-0 hover:bg-muted/50"
+                          onClick={() =>
+                            handleCandidateSelect(
+                              candidate,
+                            )
+                          }
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {candidate.name}
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              Passport:{" "}
+                              {
+                                candidate.passport_no
+                              }
+                            </p>
+                          </div>
+
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            SL{" "}
+                            {candidate.sl ?? "—"}
+                          </span>
+                        </button>
+                      ))
+                  )}
+                </div>
+              )}
+
+              {selectedCandidate && (
+                <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">
+                    Selected Candidate
+                  </p>
+
+                  <p className="text-sm font-medium">
+                    {selectedCandidate.name}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Passport:{" "}
+                    {selectedCandidate.passport_no}
+                    {" • "}
+                    SL{" "}
+                    {selectedCandidate.sl ?? "—"}
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Customer */}
             <div className="space-y-2">
               <Label htmlFor="sale-customer">
@@ -327,7 +503,9 @@ export function SaleSheet({
                 onChange={(event) =>
                   updateField(
                     "amount",
-                    Number(event.target.value) || 0,
+                    Number(
+                      event.target.value,
+                    ) || 0,
                   )
                 }
                 placeholder="0.00"
@@ -353,7 +531,9 @@ export function SaleSheet({
                 onChange={(event) =>
                   updateField(
                     "costAmount",
-                    Number(event.target.value) || 0,
+                    Number(
+                      event.target.value,
+                    ) || 0,
                   )
                 }
                 placeholder="0.00"
@@ -364,7 +544,7 @@ export function SaleSheet({
               </p>
             </div>
 
-            {/* Profit Preview */}
+            {/* Profit + Due */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-xs text-muted-foreground">
@@ -407,7 +587,7 @@ export function SaleSheet({
               </div>
             </div>
 
-            {/* Paid Amount */}
+            {/* Paid */}
             <div className="space-y-2">
               <Label htmlFor="sale-paid">
                 Paid Amount
@@ -427,7 +607,9 @@ export function SaleSheet({
                 onChange={(event) =>
                   updateField(
                     "paidAmount",
-                    Number(event.target.value) || 0,
+                    Number(
+                      event.target.value,
+                    ) || 0,
                   )
                 }
                 placeholder="0.00"
@@ -538,7 +720,8 @@ export function SaleSheet({
                 form.amount <= 0 ||
                 form.costAmount < 0 ||
                 form.paidAmount < 0 ||
-                form.paidAmount > form.amount
+                form.paidAmount >
+                  form.amount
               }
             >
               {loading && (
