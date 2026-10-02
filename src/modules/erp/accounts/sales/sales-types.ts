@@ -7,6 +7,10 @@ export type SaleStatus =
 export interface Sale {
   id: string;
   tenantId: string;
+
+  // Candidate reference
+  candidateId: string | null;
+
   partyId: string | null;
 
   customerName: string;
@@ -30,6 +34,9 @@ export interface Sale {
 }
 
 export interface CreateSaleInput {
+  // Candidate reference
+  candidateId?: string | null;
+
   partyId?: string | null;
 
   customerName: string;
@@ -46,6 +53,9 @@ export interface CreateSaleInput {
 }
 
 export interface UpdateSaleInput {
+  // Candidate reference
+  candidateId?: string | null;
+
   partyId?: string | null;
 
   customerName?: string;
