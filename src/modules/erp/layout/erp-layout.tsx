@@ -10,10 +10,10 @@ import {
 import {
   ErpSidebar,
 } from "./erp-sidebar";
-
 import {
   ErpHeader,
 } from "./erp-header";
+import { PermissionGuard } from "./permission-guard";
 
 export function ErpLayout() {
   const sidebarOpen = useUIStore(
@@ -60,8 +60,9 @@ export function ErpLayout() {
               p-6
             "
           >
-            <Outlet />
-          </div>
+<PermissionGuard>
+  <Outlet />
+</PermissionGuard>          </div>
         </main>
 
       </SidebarInset>

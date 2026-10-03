@@ -42,7 +42,7 @@ import {
 import type {
   ActionBadgeCounts,
 } from "@/modules/erp/action-center/badge-service";
-
+import { usePermissions } from "@/lib/permissions/use-permissions";
 // =====================================================
 // ERP SIDEBAR
 // =====================================================
@@ -55,7 +55,10 @@ import type {
 };
 export function ErpSidebar() {
   const { tenant } = useAuth();
-
+  const { can, canAccessPath } = usePermissions();
+const visibleNavigation = erpNavigation.filter((item) =>
+  canAccessPath(item.url),
+);
 
    const tenantSerial =
      tenant?.sl != null
@@ -221,7 +224,7 @@ export function ErpSidebar() {
 
               <SidebarMenu>
 
-                {erpNavigation.map(
+                {visibleNavigation.map(
   (
     item,
   ) => {
