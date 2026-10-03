@@ -168,3 +168,68 @@ export async function acceptTenantInvitation(
 
   return data;
 }
+export interface CreateWorkspaceUserInput {
+  email: string;
+  role: InvitationRole;
+}
+
+export interface CreatedWorkspaceUser {
+  id: string;
+  email: string;
+  role: TenantMemberRole;
+}
+
+export interface CreateWorkspaceUserResult {
+  success: true;
+  user: CreatedWorkspaceUser;
+  temporaryPassword: string;
+}
+
+export async function createWorkspaceUser(
+  input: CreateWorkspaceUserInput,
+): Promise<CreateWorkspaceUserResult> {
+  const email = input.email.trim().toLowerCase();
+
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const role = input.role;
+
+  if (!["ADMIN", "MANAGER", "STAFF"].includes(role)) {
+    throw new Error("Invalid user role");
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    "create-workspace-user",
+    {
+      body: {
+        email,
+        role,
+      },
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      error.message || "Unable to create workspace user",
+    );
+  }
+
+  if (!data?.success) {
+    throw new Error(
+      data?.error || "Unable to create workspace user",
+    );
+  }
+
+  if (
+    typeof data.temporaryPassword !== "string" ||
+    !data.temporaryPassword
+  ) {
+    throw new Error(
+      "User was created but temporary password was not returned.",
+    );
+  }
+
+  return data as CreateWorkspaceUserResult;
+}

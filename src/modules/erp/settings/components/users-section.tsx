@@ -7,12 +7,14 @@ import {
 import {
   Check,
   Clipboard,
+  Eye,
+  EyeOff,
+  KeyRound,
   Loader2,
   Mail,
   Send,
   UserRound,
   Users,
-  X,
 } from "lucide-react";
 
 import {
@@ -36,13 +38,11 @@ import {
 } from "@/components/ui/select";
 
 import {
-  createTenantInvitation,
-  getTenantInvitations,
+  createWorkspaceUser,
   getTenantMembers,
-  revokeTenantInvitation,
   type InvitationRole,
-  type TenantInvitation,
   type TenantMember,
+  type CreateWorkspaceUserResult,
 } from "@/modules/auth/invitations/invitation-service";
 
 
@@ -101,35 +101,6 @@ function getMemberName(
 }
 
 
-function formatDate(
-  value: string,
-) {
-  return new Intl.DateTimeFormat(
-    undefined,
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  ).format(new Date(value));
-}
-
-
-function isExpired(
-  value: string,
-) {
-  return new Date(value).getTime() <= Date.now();
-}
-
-
-function getInvitationLink(
-  token: string,
-) {
-  return `${window.location.origin}/accept-invite?token=${encodeURIComponent(
-    token,
-  )}`;
-}
-
-
 function MemberRow({
   member,
 }: {
@@ -185,41 +156,23 @@ function MemberRow({
 }
 
 
-function InvitationRow({
-  invitation,
-  onRevoked,
+function TemporaryPasswordCard({
+  result,
+  onClose,
 }: {
-  invitation: TenantInvitation;
-  onRevoked: () => void;
+  result: CreateWorkspaceUserResult;
+  onClose: () => void;
 }) {
-  const [copying, setCopying] =
-    useState(false);
-
   const [copied, setCopied] =
     useState(false);
 
-  const [revoking, setRevoking] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const expired =
-    isExpired(invitation.expires_at);
-
+  const [visible, setVisible] =
+    useState(true);
 
   const handleCopy = async () => {
     try {
-      setCopying(true);
-      setError(null);
-
-      const link =
-        getInvitationLink(
-          invitation.token,
-        );
-
       await navigator.clipboard.writeText(
-        link,
+        result.temporaryPassword,
       );
 
       setCopied(true);
@@ -227,148 +180,127 @@ function InvitationRow({
       window.setTimeout(() => {
         setCopied(false);
       }, 2000);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to copy invitation link.",
-      );
-    } finally {
-      setCopying(false);
+    } catch {
+      setCopied(false);
     }
   };
-
-
-  const handleRevoke = async () => {
-    const confirmed =
-      window.confirm(
-        `Revoke the invitation for ${invitation.email}?`,
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setRevoking(true);
-      setError(null);
-
-      await revokeTenantInvitation(
-        invitation.id,
-      );
-
-      onRevoked();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to revoke invitation.",
-      );
-    } finally {
-      setRevoking(false);
-    }
-  };
-
 
   return (
-    <div className="border-b px-4 py-4 last:border-b-0">
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <KeyRound className="size-4" />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          User Created
+        </CardTitle>
 
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
-            <Mail className="size-4 shrink-0 text-muted-foreground" />
+        <CardDescription>
+          Give this temporary password to the user
+          securely. It will not be shown again after
+          leaving this screen.
+        </CardDescription>
+      </CardHeader>
 
-            <p className="truncate text-sm font-medium">
-              {invitation.email}
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border bg-background p-4">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Email
+            </p>
+
+            <p className="break-all text-sm font-medium">
+              {result.user.email}
             </p>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-4 space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Role
+            </p>
 
             <span
-              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
-                invitation.role,
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
+                result.user.role,
               )}`}
             >
-              {getRoleLabel(
-                invitation.role,
-              )}
+              {getRoleLabel(result.user.role)}
             </span>
+          </div>
 
-            <span
-              className={
-                expired
-                  ? "text-xs text-destructive"
-                  : "text-xs text-muted-foreground"
-              }
-            >
-              {expired
-                ? "Expired"
-                : `Expires ${formatDate(
-                    invitation.expires_at,
-                  )}`}
-            </span>
+          <div className="mt-4 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Temporary Password
+            </p>
 
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex min-w-0 flex-1 items-center rounded-md border bg-muted/40 px-3">
+                <code className="min-w-0 flex-1 truncate text-sm font-semibold tracking-wide">
+                  {visible
+                    ? result.temporaryPassword
+                    : "••••••••••••••••"}
+                </code>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="ml-2 shrink-0"
+                  onClick={() => {
+                    setVisible((current) => !current);
+                  }}
+                  title={
+                    visible
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                >
+                  {visible ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </Button>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void handleCopy();
+                }}
+              >
+                {copied ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Clipboard className="size-4" />
+                )}
+
+                {copied
+                  ? "Copied"
+                  : "Copy Password"}
+              </Button>
+            </div>
           </div>
         </div>
 
-
-        <div className="flex shrink-0 items-center gap-2">
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void handleCopy();
-            }}
-            disabled={copying || revoking}
-          >
-            {copying ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : copied ? (
-              <Check className="size-4" />
-            ) : (
-              <Clipboard className="size-4" />
-            )}
-
-            {copied
-              ? "Copied"
-              : "Copy Link"}
-          </Button>
-
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void handleRevoke();
-            }}
-            disabled={revoking || copying}
-          >
-            {revoking ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <X className="size-4" />
-            )}
-
-            Revoke
-          </Button>
-
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+          <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">
+            For security, share this temporary password
+            directly with the user. Do not store it in
+            notes, chat history, or other shared locations.
+          </p>
         </div>
 
-      </div>
-
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
-
-    </div>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={onClose}
+          >
+            Done
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -376,9 +308,6 @@ function InvitationRow({
 export function UsersSection() {
   const [members, setMembers] =
     useState<TenantMember[]>([]);
-
-  const [invitations, setInvitations] =
-    useState<TenantInvitation[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -392,37 +321,33 @@ export function UsersSection() {
   const [role, setRole] =
     useState<InvitationRole>("STAFF");
 
-  const [inviting, setInviting] =
+  const [creating, setCreating] =
     useState(false);
 
-  const [inviteError, setInviteError] =
+  const [createError, setCreateError] =
     useState<string | null>(null);
 
-  const [inviteSuccess, setInviteSuccess] =
-    useState<string | null>(null);
+  const [createdUser, setCreatedUser] =
+    useState<CreateWorkspaceUserResult | null>(
+      null,
+    );
 
 
-  const loadData =
+  const loadMembers =
     useCallback(async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const [
-          memberData,
-          invitationData,
-        ] = await Promise.all([
-          getTenantMembers(),
-          getTenantInvitations(),
-        ]);
+        const memberData =
+          await getTenantMembers();
 
         setMembers(memberData);
-        setInvitations(invitationData);
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to load team data.",
+            : "Failed to load team members.",
         );
       } finally {
         setLoading(false);
@@ -431,55 +356,53 @@ export function UsersSection() {
 
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void loadMembers();
+  }, [loadMembers]);
 
 
-  const handleInvite =
+  const handleCreateUser =
     async () => {
       const cleanEmail =
         email.trim().toLowerCase();
 
       if (!cleanEmail) {
-        setInviteError(
+        setCreateError(
           "Email is required.",
         );
-        setInviteSuccess(null);
         return;
       }
 
-      setInviting(true);
-      setInviteError(null);
-      setInviteSuccess(null);
+      setCreating(true);
+      setCreateError(null);
+      setCreatedUser(null);
 
       try {
-        await createTenantInvitation({
-          email: cleanEmail,
-          role,
-        });
+        const result =
+          await createWorkspaceUser({
+            email: cleanEmail,
+            role,
+          });
 
+        setCreatedUser(result);
         setEmail("");
 
-        setInviteSuccess(
-          `Invitation created for ${cleanEmail}.`,
-        );
-
-        await loadData();
+        await loadMembers();
       } catch (err) {
-        setInviteError(
+        setCreateError(
           err instanceof Error
             ? err.message
-            : "Failed to create invitation.",
+            : "Failed to create user.",
         );
       } finally {
-        setInviting(false);
+        setCreating(false);
       }
     };
 
 
-  const handleInvitationRevoked =
-    async () => {
-      await loadData();
+  const handleCreatedUserClose =
+    () => {
+      setCreatedUser(null);
+      setCreateError(null);
     };
 
 
@@ -498,7 +421,7 @@ export function UsersSection() {
       </div>
 
 
-      {/* Invite User */}
+      {/* Create User */}
 
       <Card>
         <CardHeader>
@@ -508,7 +431,8 @@ export function UsersSection() {
           </CardTitle>
 
           <CardDescription>
-            Invite a person to join this workspace.
+            Create a user account and give them the
+            temporary password to sign in.
           </CardDescription>
         </CardHeader>
 
@@ -530,10 +454,10 @@ export function UsersSection() {
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);
-                  setInviteError(null);
-                  setInviteSuccess(null);
+                  setCreateError(null);
+                  setCreatedUser(null);
                 }}
-                disabled={inviting}
+                disabled={creating}
               />
             </div>
 
@@ -549,10 +473,10 @@ export function UsersSection() {
                   setRole(
                     value as InvitationRole,
                   );
-                  setInviteError(null);
-                  setInviteSuccess(null);
+                  setCreateError(null);
+                  setCreatedUser(null);
                 }}
-                disabled={inviting}
+                disabled={creating}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -580,17 +504,17 @@ export function UsersSection() {
                 type="button"
                 className="w-full md:w-auto"
                 onClick={() => {
-                  void handleInvite();
+                  void handleCreateUser();
                 }}
                 disabled={
-                  inviting ||
+                  creating ||
                   !email.trim()
                 }
               >
-                {inviting ? (
+                {creating ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Inviting...
+                    Creating...
                   </>
                 ) : (
                   <>
@@ -604,16 +528,9 @@ export function UsersSection() {
           </div>
 
 
-          {inviteError ? (
+          {createError ? (
             <p className="mt-3 text-sm text-destructive">
-              {inviteError}
-            </p>
-          ) : null}
-
-
-          {inviteSuccess ? (
-            <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
-              {inviteSuccess}
+              {createError}
             </p>
           ) : null}
 
@@ -621,62 +538,14 @@ export function UsersSection() {
       </Card>
 
 
-      {/* Pending Invitations */}
+      {/* Temporary Password */}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Mail className="size-4" />
-            Pending Invitations
-          </CardTitle>
-
-          <CardDescription>
-            Invitations that have not been accepted
-            yet.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="p-0">
-
-          {loading ? (
-            <div className="flex min-h-32 items-center justify-center">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading invitations...
-              </div>
-            </div>
-          ) : invitations.length === 0 ? (
-            <div className="flex min-h-32 flex-col items-center justify-center px-6 text-center">
-              <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-                <Mail className="size-5 text-muted-foreground" />
-              </div>
-
-              <p className="mt-3 text-sm font-medium">
-                No pending invitations
-              </p>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                New invitations will appear here.
-              </p>
-            </div>
-          ) : (
-            <div>
-              {invitations.map(
-                (invitation) => (
-                  <InvitationRow
-                    key={invitation.id}
-                    invitation={invitation}
-                    onRevoked={
-                      handleInvitationRevoked
-                    }
-                  />
-                ),
-              )}
-            </div>
-          )}
-
-        </CardContent>
-      </Card>
+      {createdUser ? (
+        <TemporaryPasswordCard
+          result={createdUser}
+          onClose={handleCreatedUserClose}
+        />
+      ) : null}
 
 
       {/* Members */}
