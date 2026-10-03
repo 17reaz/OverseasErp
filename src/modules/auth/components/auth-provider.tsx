@@ -173,11 +173,10 @@ export function AuthProvider({
         return currentProfile;
       }
 
-      const safeMemberships =
-        currentMemberships ?? [];
+   const safeMemberships: TenantMembership[] =
+  (currentMemberships ?? []) as TenantMembership[];
 
-      setMemberships(safeMemberships);
-
+setMemberships(safeMemberships);
       /*
        * ------------------------------------------------------
        * 3. Resolve active workspace
