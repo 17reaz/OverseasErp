@@ -9,6 +9,7 @@ export async function signIn(
     password,
   });
 }
+
 export async function signInWithGoogle() {
   return await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -17,13 +18,24 @@ export async function signInWithGoogle() {
     },
   });
 }
+
 export async function signUp(
   email: string,
   password: string,
+  invitationToken?: string,
 ) {
+  const token = invitationToken?.trim();
+
   return await supabase.auth.signUp({
     email,
     password,
+    options: token
+      ? {
+          data: {
+            invitation_token: token,
+          },
+        }
+      : undefined,
   });
 }
 
@@ -38,6 +50,7 @@ export async function getSession() {
 export async function getUser() {
   return await supabase.auth.getUser();
 }
+
 export async function getProfile(userId: string) {
   return await supabase
     .from("profiles")
@@ -53,25 +66,32 @@ export async function getProfile(userId: string) {
     .eq("id", userId)
     .single();
 }
+
 export async function getTenant(tenantId: string) {
   return await supabase
     .from("tenants")
     .select(`
-       id,
-       sl,
-       name,
-       slug,
-       logo_url,
-       phone,
-       email,
-       website,
-       country,
-       timezone,
-       language,
-       currency,
-       access_type,
-       is_active
-     `)
+      id,
+      sl,
+      name,
+      slug,
+      logo_url,
+      phone,
+      email,
+      website,
+      country,
+      timezone,
+      language,
+      currency,
+      access_type,
+      is_active
+    `)
     .eq("id", tenantId)
     .single();
+}
+
+export async function getMyTenantMemberships() {
+  return await supabase.rpc(
+    "get_my_tenant_memberships",
+  );
 }

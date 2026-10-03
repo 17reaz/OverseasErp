@@ -8,7 +8,7 @@ import { LoginPage } from "@/modules/auth/login/login-page";
 import { SignupPage } from "@/modules/auth/signup/signup-page";
 import { ForgotPasswordPage } from "@/modules/auth/forgot-password/forgot-password-page";
 import { ResetPasswordPage } from "@/modules/auth/reset-password/reset-password-page";
-
+import { AcceptInvitationPage } from "@/modules/auth/invitations/accept-invitation-page";
 // Landing
 import { LandingPage } from "@/modules/landing/landing-page";
 import { DownloadPage } from "@/modules/landing/download-page";
@@ -304,6 +304,12 @@ function AppRouter() {
               </PublicRoute>
             }
           />
+          <Route
+  path="/accept-invite"
+  element={
+    <AcceptInvitationPage />
+  }
+/>
 
           <Route
             path="/forgot-password"

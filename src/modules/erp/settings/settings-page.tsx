@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 import { NumberingSettings } from "./components/numbering-settings";
 import { DataManagementSection } from "./components/data-management-section";
+import { UsersSection } from "./components/users-section";
 import { ProfilePage } from "./profile-page";
 import { LoginActivity } from "./login-activity";
 type SettingsSectionId =
@@ -242,6 +243,7 @@ function SettingsSectionContent({
 
     case "organization":
     case "users":
+  return <UsersSection />;
     case "billing":
     case "activity-log":
     default: {
