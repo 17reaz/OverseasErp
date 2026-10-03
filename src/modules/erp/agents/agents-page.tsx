@@ -74,23 +74,25 @@ export function AgentsPage() {
     }
   }, []);
 
-  async function handleDelete(id: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this agent?",
-    );
+ async function handleDelete(id: string) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this agent?",
+  );
 
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await deleteAgent(id);
-
-      setAgents((current) => current.filter((agent) => agent.id !== id));
-    } catch (error) {
-      console.error("Failed to delete agent:", error);
-    }
+  if (!confirmed) {
+    return;
   }
+
+  try {
+    await deleteAgent(id);
+
+    setAgents((current) =>
+      current.filter((agent) => agent.id !== id),
+    );
+  } catch (error) {
+    console.error("Failed to delete agent:", error);
+  }
+}
 
   useEffect(() => {
     loadTenant();

@@ -29,7 +29,7 @@ export interface AgentProfileData {
 }
 
 export async function getAgentProfile(
-  agentId: number,
+  agentId: string,
 ): Promise<AgentProfileData> {
   /* =====================================================
    * AGENT

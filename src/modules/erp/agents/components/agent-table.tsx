@@ -19,7 +19,7 @@ interface AgentTableProps {
   total?: number;
   onPageChange?: (page: number) => void;
 
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }
 
 /**
@@ -33,7 +33,7 @@ function buildSlMap(agents: Agent[]) {
       new Date(b.created_at).getTime(),
   );
 
-  const map = new Map<number, number>();
+  const map = new Map<string, number>();
 
   bySl.forEach((agent, index) => {
     map.set(agent.id, index + 1);

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+
 import type { Agent } from "./types";
 
 export async function getAgents(): Promise<Agent[]> {
@@ -7,13 +8,15 @@ export async function getAgents(): Promise<Agent[]> {
     .select("*")
     .order("id", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
   return data ?? [];
 }
 
 export async function getAgent(
-  id: number,
+  id: string,
 ): Promise<Agent | null> {
   const { data, error } = await supabase
     .from("agents")
@@ -21,7 +24,9 @@ export async function getAgent(
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
   return data ?? null;
 }
@@ -41,18 +46,22 @@ export async function createAgent(
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
   return data;
 }
 
 export async function deleteAgent(
-  id: number,
+  id: string,
 ) {
   const { error } = await supabase
     .from("agents")
     .delete()
     .eq("id", id);
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 }

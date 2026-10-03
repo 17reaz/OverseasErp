@@ -38,45 +38,29 @@ import {
   type AgentProfileData,
 } from "./agent-profile-service";
 
-function formatCurrency(
-  amount: number,
-): string {
-  return new Intl.NumberFormat(
-    "en-BD",
-    {
-      style: "currency",
-      currency: "BDT",
-      maximumFractionDigits: 0,
-    },
-  ).format(amount);
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
-function formatDate(
-  date: string,
-): string {
-  return new Intl.DateTimeFormat(
-    "en-BD",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    },
-  ).format(new Date(date));
+function formatDate(date: string): string {
+  return new Intl.DateTimeFormat("en-BD", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(date));
 }
 
-function formatStatus(
-  status: string,
-): string {
+function formatStatus(status: string): string {
   return status
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) =>
-      char.toUpperCase(),
-    );
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function getInitials(
-  name: string | null,
-): string {
+function getInitials(name: string | null): string {
   if (!name?.trim()) {
     return "?";
   }
@@ -87,9 +71,7 @@ function getInitials(
     .filter(Boolean);
 
   if (parts.length === 1) {
-    return parts[0]
-      .slice(0, 2)
-      .toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
   }
 
   return (
@@ -99,15 +81,12 @@ function getInitials(
 }
 
 export function AgentProfilePage() {
-  const { agentId } =
-    useParams<{
-      agentId: string;
-    }>();
+  const { agentId } = useParams<{
+    agentId: string;
+  }>();
 
   const [data, setData] =
-    useState<AgentProfileData | null>(
-      null,
-    );
+    useState<AgentProfileData | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -115,58 +94,52 @@ export function AgentProfilePage() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadProfile =
-    useCallback(async () => {
-      if (!agentId) {
-        setError("Agent ID is missing.");
-        setLoading(false);
-        return;
-      }
+  const loadProfile = useCallback(async () => {
+    if (!agentId) {
+      setError("Agent ID is missing.");
+      setLoading(false);
+      return;
+    }
 
-      const numericId =
-        Number(agentId);
+    try {
+      setLoading(true);
+      setError(null);
 
-      if (!Number.isInteger(numericId)) {
-        setError("Invalid agent ID.");
-        setLoading(false);
-        return;
-      }
+      /*
+       * IMPORTANT:
+       * Agent IDs are UUID strings.
+       * Do NOT convert agentId to Number().
+       */
+      const result = await getAgentProfile(agentId);
 
-      try {
-        setLoading(true);
-        setError(null);
+      setData(result);
+    } catch (err) {
+      console.error(
+        "Failed to load agent profile:",
+        err,
+      );
 
-        const result =
-          await getAgentProfile(
-            numericId,
-          );
-
-        setData(result);
-      } catch (err) {
-        console.error(err);
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load agent profile.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, [agentId]);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load agent profile.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [agentId]);
 
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
 
-  const formattedBalance =
-    useMemo(() => {
-      if (!data) return "৳0";
+  const formattedBalance = useMemo(() => {
+    if (!data) {
+      return "৳0";
+    }
 
-      return formatCurrency(
-        data.summary.balance,
-      );
-    }, [data]);
+    return formatCurrency(data.summary.balance);
+  }, [data]);
 
   /* =====================================================
    * LOADING
@@ -219,8 +192,7 @@ export function AgentProfilePage() {
 
           <div className="space-y-1">
             <p className="font-medium text-destructive">
-              {error ??
-                "Agent not found."}
+              {error ?? "Agent not found."}
             </p>
 
             <p className="text-sm text-muted-foreground">
@@ -232,9 +204,7 @@ export function AgentProfilePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              void loadProfile()
-            }
+            onClick={() => void loadProfile()}
           >
             Try again
           </Button>
@@ -281,8 +251,7 @@ export function AgentProfilePage() {
             <div className="flex flex-wrap items-center gap-2">
 
               <h1 className="truncate text-2xl font-semibold tracking-tight">
-                {agent.name ??
-                  "Unnamed Agent"}
+                {agent.name ?? "Unnamed Agent"}
               </h1>
 
               <Badge>
@@ -339,9 +308,7 @@ export function AgentProfilePage() {
               </p>
 
               <p className="mt-1 font-medium">
-                {formatDate(
-                  agent.created_at,
-                )}
+                {formatDate(agent.created_at)}
               </p>
             </div>
 
@@ -366,9 +333,7 @@ export function AgentProfilePage() {
             </div>
 
             <p className="mt-2 text-2xl font-semibold">
-              {formatCurrency(
-                summary.totalIncome,
-              )}
+              {formatCurrency(summary.totalIncome)}
             </p>
           </CardContent>
         </Card>
@@ -384,9 +349,7 @@ export function AgentProfilePage() {
             </div>
 
             <p className="mt-2 text-2xl font-semibold">
-              {formatCurrency(
-                summary.totalExpense,
-              )}
+              {formatCurrency(summary.totalExpense)}
             </p>
           </CardContent>
         </Card>
@@ -505,103 +468,94 @@ export function AgentProfilePage() {
                 </thead>
 
                 <tbody>
-                  {transactions.map(
-                    (transaction) => {
-                      const isIncome =
-                        transaction.type ===
-                        "income";
+                  {transactions.map((transaction) => {
+                    const isIncome =
+                      transaction.type === "income";
 
-                      return (
-                        <tr
-                          key={
-                            transaction.id
-                          }
-                          className="border-b last:border-0"
-                        >
-                          <td className="whitespace-nowrap px-4 py-4">
-                            <div className="flex items-center gap-2">
-                              <CalendarDays className="size-3.5 text-muted-foreground" />
+                    return (
+                      <tr
+                        key={transaction.id}
+                        className="border-b last:border-0"
+                      >
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="size-3.5 text-muted-foreground" />
 
-                              {formatDate(
-                                transaction.transactionDate,
-                              )}
+                            {formatDate(
+                              transaction.transactionDate,
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="max-w-[280px] px-4 py-4">
+                          <div className="font-medium">
+                            {transaction.description ??
+                              "No description"}
+                          </div>
+
+                          {transaction.reference && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Ref:{" "}
+                              {transaction.reference}
                             </div>
-                          </td>
+                          )}
+                        </td>
 
-                          <td className="max-w-[280px] px-4 py-4">
-                            <div className="font-medium">
-                              {transaction.description ??
-                                "No description"}
-                            </div>
+                        <td className="px-4 py-4">
+                          {transaction.accountName ?? "—"}
+                        </td>
 
-                            {transaction.reference && (
-                              <div className="mt-1 text-xs text-muted-foreground">
-                                Ref:{" "}
-                                {
-                                  transaction.reference
-                                }
-                              </div>
-                            )}
-                          </td>
+                        <td className="px-4 py-4">
+                          {transaction.categoryName ?? "—"}
+                        </td>
 
-                          <td className="px-4 py-4">
-                            {transaction.accountName ??
-                              "—"}
-                          </td>
-
-                          <td className="px-4 py-4">
-                            {transaction.categoryName ??
-                              "—"}
-                          </td>
-
-                          <td className="px-4 py-4 text-right">
-                            {!isIncome ? (
-                              <span className="font-medium">
-                                {formatCurrency(
-                                  transaction.amount,
-                                )}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">
-                                —
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="px-4 py-4 text-right">
-                            {isIncome ? (
-                              <span className="font-medium">
-                                {formatCurrency(
-                                  transaction.amount,
-                                )}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">
-                                —
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="px-4 py-4 text-right">
-                            <div className="font-semibold">
+                        <td className="px-4 py-4 text-right">
+                          {!isIncome ? (
+                            <span className="font-medium">
                               {formatCurrency(
-                                transaction.balance,
+                                transaction.amount,
                               )}
-                            </div>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </td>
 
-                            <Badge
-                              variant="outline"
-                              className="mt-1 text-[10px]"
-                            >
-                              {formatStatus(
-                                transaction.status,
+                        <td className="px-4 py-4 text-right">
+                          {isIncome ? (
+                            <span className="font-medium">
+                              {formatCurrency(
+                                transaction.amount,
                               )}
-                            </Badge>
-                          </td>
-                        </tr>
-                      );
-                    },
-                  )}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-4 text-right">
+                          <div className="font-semibold">
+                            {formatCurrency(
+                              transaction.balance,
+                            )}
+                          </div>
+
+                          <Badge
+                            variant="outline"
+                            className="mt-1 text-[10px]"
+                          >
+                            {formatStatus(
+                              transaction.status,
+                            )}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
 
               </table>

@@ -1,5 +1,5 @@
 export interface Agent {
-  id: number;
+  id: string;
   created_at: string;
   name: string | null;
   code: string | null;
