@@ -1,12 +1,14 @@
-// src/modules/erp/agents/components/agent-table.tsx
-
+import { Link } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 import type { Agent } from "../types";
 
-import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/ui/data-table";
 
 interface AgentTableProps {
   agents: Agent[];
@@ -21,15 +23,14 @@ interface AgentTableProps {
 }
 
 /**
- * Agents don't have an `sl` column in the database, so we derive one
- * from `created_at` — earliest created agent becomes SL 1, and so on.
- * This is independent of however the list is currently sorted for
- * display (e.g. newest-first).
+ * Agents don't have an `sl` column in the database,
+ * so we derive one from `created_at`.
  */
 function buildSlMap(agents: Agent[]) {
   const bySl = [...agents].sort(
     (a, b) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      new Date(a.created_at).getTime() -
+      new Date(b.created_at).getTime(),
   );
 
   const map = new Map<number, number>();
@@ -59,22 +60,34 @@ export function AgentTable({
       key: "sl",
       header: "SL",
       className: "w-[80px] font-medium",
-      cell: (agent) => slMap.get(agent.id) ?? "—",
+      cell: (agent) =>
+        slMap.get(agent.id) ?? "—",
     },
+
     {
       key: "code",
       header: "Code",
       cell: (agent) => agent.code ?? "—",
     },
+
     {
       key: "name",
       header: "Name",
-      cell: (agent) => agent.name ?? "—",
+      cell: (agent) => (
+        <Link
+          to={`/app/agents/${agent.id}`}
+          className="font-medium hover:underline"
+        >
+          {agent.name ?? "—"}
+        </Link>
+      ),
     },
+
     {
       key: "action",
       header: "Actions",
       className: "w-[80px] text-right",
+
       cell: (agent) => (
         <Button
           variant="ghost"
@@ -100,7 +113,10 @@ export function AgentTable({
       page={page}
       onPageChange={onPageChange}
       total={total}
-      serverPagination={typeof total === "number" && total !== agents.length}
+      serverPagination={
+        typeof total === "number" &&
+        total !== agents.length
+      }
     />
   );
 }

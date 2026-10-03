@@ -51,7 +51,13 @@ const AgentsPage = lazy(() =>
     default: module.AgentsPage,
   })),
 );
-
+const AgentProfilePage = lazy(() =>
+  import("@/modules/erp/agents/profile/agent-profile-page").then(
+    (module) => ({
+      default: module.AgentProfilePage,
+    }),
+  ),
+);
 const FilesPage = lazy(() =>
   import("@/modules/erp/files/files-page").then((module) => ({
     default: module.FilesPage,
@@ -348,7 +354,10 @@ function AppRouter() {
                 path="agents"
                 element={<AgentsPage />}
               />
-
+                <Route
+  path="agents/:agentId"
+  element={<AgentProfilePage />}
+/>
               {/* Agencies */}
               <Route
                 path="agencies"
