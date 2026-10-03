@@ -46,6 +46,9 @@ export interface TenantMember {
 
 /**
  * Create a new workspace invitation.
+ *
+ * V2 only.
+ * Current V1 user creation does not use this function.
  */
 export async function createTenantInvitation(
   input: CreateInvitationInput,
@@ -74,8 +77,6 @@ export async function createTenantInvitation(
 
 /**
  * Get all active members of the current workspace.
- *
- * Authorization is handled by the secure database RPC.
  */
 export async function getTenantMembers(): Promise<
   TenantMember[]
@@ -93,9 +94,9 @@ export async function getTenantMembers(): Promise<
 
 
 /**
- * Get pending invitations for the current workspace.
+ * Get pending invitations.
  *
- * Authorization is handled by the secure database RPC.
+ * V2 only.
  */
 export async function getTenantInvitations(): Promise<
   TenantInvitation[]
@@ -115,7 +116,7 @@ export async function getTenantInvitations(): Promise<
 /**
  * Revoke a pending workspace invitation.
  *
- * Authorization is handled by the secure database RPC.
+ * V2 only.
  */
 export async function revokeTenantInvitation(
   invitationId: string,
@@ -143,6 +144,8 @@ export async function revokeTenantInvitation(
 
 /**
  * Accept a workspace invitation.
+ *
+ * V2 only.
  */
 export async function acceptTenantInvitation(
   token: string,
@@ -168,6 +171,13 @@ export async function acceptTenantInvitation(
 
   return data;
 }
+
+
+/* ============================================================
+ * V1 — Immediate Workspace User Creation
+ * ============================================================
+ */
+
 export interface CreateWorkspaceUserInput {
   email: string;
   role: InvitationRole;
@@ -185,49 +195,269 @@ export interface CreateWorkspaceUserResult {
   temporaryPassword: string;
 }
 
+
+function extractFunctionErrorMessage(
+  error: unknown,
+): string {
+  if (
+    error &&
+    typeof error === "object"
+  ) {
+    const candidate =
+      error as {
+        message?: unknown;
+        context?: unknown;
+      };
+
+    if (
+      typeof candidate.context ===
+      "object" &&
+      candidate.context !== null
+    ) {
+      const context =
+        candidate.context as {
+          status?: unknown;
+          statusText?: unknown;
+        };
+
+      const status =
+        typeof context.status === "number"
+          ? `HTTP ${context.status}`
+          : "";
+
+      const statusText =
+        typeof context.statusText === "string"
+          ? context.statusText
+          : "";
+
+      if (status || statusText) {
+        return [
+          status,
+          statusText,
+        ]
+          .filter(Boolean)
+          .join(" ");
+      }
+    }
+
+    if (
+      typeof candidate.message ===
+      "string" &&
+      candidate.message
+    ) {
+      return candidate.message;
+    }
+  }
+
+  return "Unable to create workspace user.";
+}
+
+
+async function readFunctionErrorResponse(
+  error: unknown,
+): Promise<string | null> {
+  if (
+    !error ||
+    typeof error !== "object"
+  ) {
+    return null;
+  }
+
+  const candidate =
+    error as {
+      context?: unknown;
+    };
+
+  const context =
+    candidate.context;
+
+  if (
+    !context ||
+    typeof context !== "object"
+  ) {
+    return null;
+  }
+
+  const response =
+    context as {
+      clone?: () => Response;
+      text?: () => Promise<string>;
+    };
+
+  try {
+    if (
+      typeof response.clone ===
+      "function"
+    ) {
+      const cloned =
+        response.clone();
+
+      if (
+        typeof cloned.text ===
+        "function"
+      ) {
+        const text =
+          await cloned.text();
+
+        if (text.trim()) {
+          return text;
+        }
+      }
+    }
+
+    if (
+      typeof response.text ===
+      "function"
+    ) {
+      const text =
+        await response.text();
+
+      if (text.trim()) {
+        return text;
+      }
+    }
+  } catch {
+    // Ignore response parsing errors.
+  }
+
+  return null;
+}
+
+
 export async function createWorkspaceUser(
   input: CreateWorkspaceUserInput,
 ): Promise<CreateWorkspaceUserResult> {
-  const email = input.email.trim().toLowerCase();
+  const email =
+    input.email
+      .trim()
+      .toLowerCase();
 
   if (!email) {
-    throw new Error("Email is required");
-  }
-
-  const role = input.role;
-
-  if (!["ADMIN", "MANAGER", "STAFF"].includes(role)) {
-    throw new Error("Invalid user role");
-  }
-
-  const { data, error } = await supabase.functions.invoke(
-    "create-workspace-user",
-    {
-      body: {
-        email,
-        role,
-      },
-    },
-  );
-
-  if (error) {
     throw new Error(
-      error.message || "Unable to create workspace user",
+      "Email is required.",
     );
   }
 
-  if (!data?.success) {
+  if (email.length > 320) {
     throw new Error(
-      data?.error || "Unable to create workspace user",
+      "Email address is too long.",
+    );
+  }
+
+  const role =
+    input.role;
+
+  if (
+    ![
+      "ADMIN",
+      "MANAGER",
+      "STAFF",
+    ].includes(role)
+  ) {
+    throw new Error(
+      "Invalid user role.",
+    );
+  }
+
+  const {
+    data,
+    error,
+  } =
+    await supabase.functions.invoke(
+      "create-workspace-user",
+      {
+        body: {
+          email,
+          role,
+        },
+      },
+    );
+
+  if (error) {
+    const responseBody =
+      await readFunctionErrorResponse(
+        error,
+      );
+
+    console.error(
+      "create-workspace-user failed:",
+      {
+        error,
+        responseBody,
+      },
+    );
+
+    let message =
+      extractFunctionErrorMessage(
+        error,
+      );
+
+    if (responseBody) {
+      try {
+        const parsed =
+          JSON.parse(
+            responseBody,
+          ) as {
+            error?: unknown;
+          };
+
+        if (
+          typeof parsed.error ===
+          "string" &&
+          parsed.error
+        ) {
+          message =
+            parsed.error;
+        } else {
+          message =
+            responseBody;
+        }
+      } catch {
+        message =
+          responseBody;
+      }
+    }
+
+    throw new Error(
+      message ||
+        "Unable to create workspace user.",
+    );
+  }
+
+  if (!data) {
+    throw new Error(
+      "The server returned an empty response.",
+    );
+  }
+
+  if (!data.success) {
+    throw new Error(
+      data.error ||
+        "Unable to create workspace user.",
     );
   }
 
   if (
-    typeof data.temporaryPassword !== "string" ||
+    typeof data.temporaryPassword !==
+      "string" ||
     !data.temporaryPassword
   ) {
     throw new Error(
       "User was created but temporary password was not returned.",
+    );
+  }
+
+  if (
+    !data.user ||
+    typeof data.user.id !==
+      "string" ||
+    typeof data.user.email !==
+      "string" ||
+    typeof data.user.role !==
+      "string"
+  ) {
+    throw new Error(
+      "The server returned an invalid user response.",
     );
   }
 

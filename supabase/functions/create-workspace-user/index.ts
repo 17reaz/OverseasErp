@@ -1,3 +1,4 @@
+
 import { handleCorsPreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   resolveCaller,
@@ -45,6 +46,46 @@ function normalizeRole(value: unknown): string {
   return value.trim().toUpperCase();
 }
 
+function getErrorMessage(error: unknown): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return "Unknown error.";
+}
+
+function getErrorDetails(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const value = error as Record<string, unknown>;
+
+  return {
+    message:
+      typeof value.message === "string"
+        ? value.message
+        : null,
+    code:
+      typeof value.code === "string"
+        ? value.code
+        : null,
+    details:
+      typeof value.details === "string"
+        ? value.details
+        : null,
+    hint:
+      typeof value.hint === "string"
+        ? value.hint
+        : null,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   const corsResponse = handleCorsPreflight(req);
 
@@ -62,16 +103,28 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  let stage = "initialization";
+
   try {
     // ----------------------------------------------------------
-    // Authenticate current user and resolve their tenant
+    // 1. Resolve caller
     // ----------------------------------------------------------
+
+    stage = "resolve-caller";
 
     const caller = await resolveCaller(req);
 
+    console.log("create-workspace-user caller resolved:", {
+      userId: caller.userId,
+      tenantId: caller.tenantId,
+      role: caller.role,
+    });
+
     // ----------------------------------------------------------
-    // Only OWNER / ADMIN can create users
+    // 2. Authorization
     // ----------------------------------------------------------
+
+    stage = "authorization";
 
     if (
       caller.role !== "OWNER" &&
@@ -88,8 +141,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // ----------------------------------------------------------
-    // Parse request
+    // 3. Parse request
     // ----------------------------------------------------------
+
+    stage = "parse-request";
 
     let body: unknown;
 
@@ -124,8 +179,10 @@ Deno.serve(async (req: Request) => {
     const role = normalizeRole(payload.role);
 
     // ----------------------------------------------------------
-    // Validate email
+    // 4. Validate input
     // ----------------------------------------------------------
+
+    stage = "validate-input";
 
     if (!email) {
       return jsonResponse(
@@ -147,10 +204,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Basic email validation.
-    if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return jsonResponse(
         {
           success: false,
@@ -159,10 +213,6 @@ Deno.serve(async (req: Request) => {
         400,
       );
     }
-
-    // ----------------------------------------------------------
-    // Validate role
-    // ----------------------------------------------------------
 
     if (!ALLOWED_ROLES.has(role)) {
       return jsonResponse(
@@ -176,21 +226,19 @@ Deno.serve(async (req: Request) => {
     }
 
     // ----------------------------------------------------------
-    // Generate temporary password
+    // 5. Generate temporary password
     // ----------------------------------------------------------
+
+    stage = "generate-password";
 
     const temporaryPassword =
       generateTemporaryPassword();
 
     // ----------------------------------------------------------
-    // Create Auth user
-    //
-    // IMPORTANT:
-    // app_metadata is server-controlled.
-    //
-    // handle_new_user() checks this flag and returns without
-    // creating a tenant/profile.
+    // 6. Create Supabase Auth user
     // ----------------------------------------------------------
+
+    stage = "create-auth-user";
 
     const {
       data: createdUserData,
@@ -210,28 +258,25 @@ Deno.serve(async (req: Request) => {
       createUserError ||
       !createdUserData.user
     ) {
-      const message =
-        createUserError?.message ??
-        "Unable to create the user.";
+      console.error(
+        "create-workspace-user auth.admin.createUser failed:",
+        getErrorDetails(createUserError),
+      );
+
+      const message = getErrorMessage(createUserError);
 
       const normalizedMessage =
         message.toLowerCase();
 
-      // Make duplicate email errors easier to understand.
       if (
-        normalizedMessage.includes(
-          "already registered",
-        ) ||
-        normalizedMessage.includes(
-          "already exists",
-        ) ||
-        normalizedMessage.includes(
-          "duplicate",
-        )
+        normalizedMessage.includes("already registered") ||
+        normalizedMessage.includes("already exists") ||
+        normalizedMessage.includes("duplicate")
       ) {
         return jsonResponse(
           {
             success: false,
+            stage,
             error:
               "A user with this email address already exists.",
           },
@@ -239,15 +284,12 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.error(
-        "auth.admin.createUser failed:",
-        createUserError,
-      );
-
       return jsonResponse(
         {
           success: false,
-          error: "Unable to create the user.",
+          stage,
+          error:
+            "Unable to create the authentication account.",
         },
         500,
       );
@@ -255,9 +297,19 @@ Deno.serve(async (req: Request) => {
 
     const newUser = createdUserData.user;
 
+    console.log(
+      "create-workspace-user Auth user created:",
+      {
+        userId: newUser.id,
+        email: newUser.email,
+      },
+    );
+
     // ----------------------------------------------------------
-    // Create profile
+    // 7. Create profile
     // ----------------------------------------------------------
+
+    stage = "create-profile";
 
     const { error: profileError } =
       await caller.adminClient
@@ -272,11 +324,10 @@ Deno.serve(async (req: Request) => {
 
     if (profileError) {
       console.error(
-        "Profile creation failed:",
-        profileError,
+        "create-workspace-user profile insert failed:",
+        getErrorDetails(profileError),
       );
 
-      // Roll back Auth user.
       await caller.adminClient.auth.admin.deleteUser(
         newUser.id,
       );
@@ -284,16 +335,28 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(
         {
           success: false,
+          stage,
           error:
-            "User account could not be initialized.",
+            "User authentication was created, but the workspace profile could not be created.",
         },
         500,
       );
     }
 
+    console.log(
+      "create-workspace-user profile created:",
+      {
+        userId: newUser.id,
+        tenantId: caller.tenantId,
+        role,
+      },
+    );
+
     // ----------------------------------------------------------
-    // Create tenant membership
+    // 8. Create tenant membership
     // ----------------------------------------------------------
+
+    stage = "create-membership";
 
     const { error: membershipError } =
       await caller.adminClient
@@ -307,8 +370,8 @@ Deno.serve(async (req: Request) => {
 
     if (membershipError) {
       console.error(
-        "Tenant membership creation failed:",
-        membershipError,
+        "create-workspace-user tenant_members insert failed:",
+        getErrorDetails(membershipError),
       );
 
       // Roll back profile.
@@ -326,53 +389,63 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(
         {
           success: false,
+          stage,
           error:
-            "User could not be added to the workspace.",
+            "User authentication and profile were created, but workspace membership could not be created.",
         },
         500,
       );
     }
 
+    console.log(
+      "create-workspace-user membership created:",
+      {
+        userId: newUser.id,
+        tenantId: caller.tenantId,
+        role,
+      },
+    );
+
     // ----------------------------------------------------------
-    // SUCCESS
-    //
-    // The temporary password is returned only here.
-    // It is NOT stored in profiles / tenant_members / DB.
+    // 9. SUCCESS
     // ----------------------------------------------------------
 
     return jsonResponse(
       {
         success: true,
-
         user: {
           id: newUser.id,
           email: newUser.email,
           role,
         },
-
         temporaryPassword,
       },
       201,
     );
   } catch (error) {
+    console.error(
+      "create-workspace-user unexpected error:",
+      {
+        stage,
+        error: getErrorDetails(error),
+      },
+    );
+
     if (error instanceof UnauthorizedError) {
       return jsonResponse(
         {
           success: false,
+          stage,
           error: error.message,
         },
         401,
       );
     }
 
-    console.error(
-      "create-workspace-user failed:",
-      error,
-    );
-
     return jsonResponse(
       {
         success: false,
+        stage,
         error: "Internal server error.",
       },
       500,
