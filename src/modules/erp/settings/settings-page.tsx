@@ -11,11 +11,11 @@ import {
   History,
   Users,
   Workflow as WorkflowIcon,
+  MonitorCog,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+
 import { usePermissions } from "@/lib/permissions/use-permissions";
-import type { Permission } from "@/lib/permissions/permissions";
-import { AuditSection } from "./audit/audit-section";
 import {
   Card,
   CardContent,
@@ -25,13 +25,16 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+import { AuditSection } from "./audit/audit-section";
 import { NumberingSettings } from "./components/numbering-settings";
+import { CountrySettings } from "./components/country-settings";
 import { DataManagementSection } from "./components/data-management-section";
 import { UsersSection } from "./components/users-section";
 import { ProfilePage } from "./profile-page";
 import { LoginActivity } from "./login-activity";
 import { UpdatesSection } from "./updates/updates-section";
-
+import { TenantSettingsPlaceholders } from "./components/tenant-settings-placeholder";
+import { UsageMonitoring } from "./components/usage-monitoring";
 type SettingsSectionId =
   | "profile"
   | "organization"
@@ -42,7 +45,9 @@ type SettingsSectionId =
   | "pricing"
   | "updates"
   | "activity-log"
-  | "login-activity";
+  | "login-activity"
+  | "usage-monitoring";
+
 interface SettingsSection {
   id: SettingsSectionId;
   label: string;
@@ -93,7 +98,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "View plans and subscription options.",
     icon: CreditCard,
   },
-    {
+  {
     id: "updates",
     label: "Updates & History",
     description: "Release notes and commit history.",
@@ -106,11 +111,17 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: Activity,
   },
   {
-  id: "login-activity",
-  label: "Login Activity",
-  description: "Recent login sessions and device activity.",
-  icon: Activity,
-},
+    id: "login-activity",
+    label: "Login Activity",
+    description: "Recent login sessions and device activity.",
+    icon: Activity,
+  },
+    {
+    id: "usage-monitoring",
+    label: "Usage & Monitoring",
+    description: "Usage, performance, storage, and system health.",
+    icon: MonitorCog,
+  },
 ];
 
 function ComingSoonSection({
@@ -139,6 +150,37 @@ function ComingSoonSection({
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+function OrganizationSection() {
+  return (
+    <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building2 className="size-4" />
+            Organization
+          </CardTitle>
+
+          <CardDescription>
+            Manage your organization profile, locale, and
+            available countries.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Organization-level settings are tenant-specific.
+          </p>
+        </CardContent>
+      </Card>
+
+      <CountrySettings />
+      <div className="mt-6">
+  <TenantSettingsPlaceholders />
+</div>
+    </div>
   );
 }
 
@@ -242,6 +284,9 @@ function SettingsSectionContent({
     case "profile":
       return <ProfilePage />;
 
+    case "organization":
+      return <OrganizationSection />;
+
     case "workflow":
       return <WorkflowSection />;
 
@@ -250,27 +295,32 @@ function SettingsSectionContent({
 
     case "pricing":
       return <PricingSection />;
-      case "login-activity":
-  return <LoginActivity />;
 
-    case "organization":
     case "users":
-  return <UsersSection />;
-      case "updates":
+      return <UsersSection />;
+
+    case "login-activity":
+      return <LoginActivity />;
+
+    case "updates":
       return <UpdatesSection />;
+
     case "billing":
-        case "activity-log":
+    case "activity-log":
       return <AuditSection />;
+      case "usage-monitoring":
+  return <UsageMonitoring />;
+
     default: {
       const section = SETTINGS_SECTIONS.find(
         (item) => item.id === sectionId,
       );
 
-      if (!section) return null;
+      if (!section) {
+        return null;
+      }
 
-      return (
-        <ComingSoonSection section={section} />
-      );
+      return <ComingSoonSection section={section} />;
     }
   }
 }
@@ -278,36 +328,27 @@ function SettingsSectionContent({
 export function SettingsPage() {
   const [searchParams, setSearchParams] =
     useSearchParams();
-const { can } = usePermissions();
 
-const visibleSections = SETTINGS_SECTIONS.filter(
-  (section) => !section.permission || can(section.permission),
-);
+  const { can } = usePermissions();
 
-const defaultSectionId: SettingsSectionId =
-  visibleSections.find((section) => section.id === "workflow")?.id ??
-  visibleSections[0]?.id ??
-  "profile";
-
-const requestedSection =
-  searchParams.get("section") as SettingsSectionId | null;
-
-const isValidSection =
-  requestedSection !== null &&
-  visibleSections.some((section) => section.id === requestedSection);
-
-const [activeSectionId, setActiveSectionId] =
-  useState<SettingsSectionId>(
-    isValidSection ? requestedSection : defaultSectionId,
+  const visibleSections = SETTINGS_SECTIONS.filter(
+    (section) =>
+      !section.permission || can(section.permission),
   );
+
+  const defaultSectionId: SettingsSectionId =
+    visibleSections.find(
+      (section) => section.id === "workflow",
+    )?.id ??
+    visibleSections[0]?.id ??
+    "profile";
+
   const requestedSection =
-    searchParams.get("section") as
-      | SettingsSectionId
-      | null;
+    searchParams.get("section") as SettingsSectionId | null;
 
   const isValidSection =
     requestedSection !== null &&
-    SETTINGS_SECTIONS.some(
+    visibleSections.some(
       (section) => section.id === requestedSection,
     );
 
@@ -315,24 +356,26 @@ const [activeSectionId, setActiveSectionId] =
     useState<SettingsSectionId>(
       isValidSection
         ? requestedSection
-        : "workflow",
+        : defaultSectionId,
     );
 
   useEffect(() => {
-    if (isValidSection) {
+    if (isValidSection && requestedSection) {
       setActiveSectionId(requestedSection);
+      return;
     }
-  }, [isValidSection, requestedSection]);
+
+    setActiveSectionId(defaultSectionId);
+  }, [
+    defaultSectionId,
+    isValidSection,
+    requestedSection,
+  ]);
 
   function selectSection(
     sectionId: SettingsSectionId,
   ) {
     setActiveSectionId(sectionId);
-
-    if (sectionId === "defaultSectionId") {
-      setSearchParams({});
-      return;
-    }
 
     setSearchParams({
       section: sectionId,
