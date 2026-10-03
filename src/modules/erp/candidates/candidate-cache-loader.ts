@@ -5,7 +5,7 @@ import {
 } from "@/lib/db/candidate-cache"
 import type { Candidate } from "./candidate-types"
 
-const CANDIDATE_SELECT = `
+export const  CANDIDATE_SELECT = `
   id,
   tenant_id,
   sl,

@@ -1,89 +1,85 @@
-import { useEffect, useRef } from "react";
-import { useRegisterSW } from "virtual:pwa-register/react";
-import { toast } from "@/components/shared/toast/toast";
+import { useEffect, useRef } from "react"
+import { useRegisterSW } from "virtual:pwa-register/react"
+import { toast } from "@/components/shared/toast/toast"
 
-// notun version check korar interval (ms)
-const CHECK_INTERVAL = 60 * 1000;
+const CHECK_INTERVAL = 5 * 60 * 1000
 
-// true korle toast na dekhiye shonge shonge update + reload hobe
-const AUTO_UPDATE = false;
+// user form likhte thakle auto reload korbo na
+function isTyping() {
+  const el = document.activeElement
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement
+}
 
 export function PwaUpdatePrompt() {
-  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+  const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
+  const toastShownRef = useRef(false)
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
-    offlineReady: [offlineReady, setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(_swUrl, registration) {
-      registrationRef.current = registration ?? null;
-
-      // registration hobar shathe shathei ekbar check koro,
-      // 60s interval er jonno wait korte hobe na
-      registration?.update().catch(() => {});
+    onRegisteredSW(_url, registration) {
+      registrationRef.current = registration ?? null
+      registration?.update().catch(() => {})
     },
     onRegisterError(error) {
-      console.error("SW registration failed:", error);
+      console.error("SW registration failed:", error)
     },
-  });
+  })
 
-  // ---- periodic + tab focus + online detection ----
+  // ---- background e notun version khuji ----
   useEffect(() => {
-    function checkForUpdate() {
-      const registration = registrationRef.current;
-      if (!registration || !navigator.onLine) return;
-      registration.update().catch(() => {});
+    const check = () => {
+      if (navigator.onLine) registrationRef.current?.update().catch(() => {})
+    }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check()
     }
 
-    const interval = window.setInterval(checkForUpdate, CHECK_INTERVAL);
-
-    function onVisible() {
-      if (document.visibilityState === "visible") checkForUpdate();
-    }
-
-    window.addEventListener("focus", checkForUpdate);
-    window.addEventListener("online", checkForUpdate);
-    document.addEventListener("visibilitychange", onVisible);
+    const id = window.setInterval(check, CHECK_INTERVAL)
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("online", check)
 
     return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", checkForUpdate);
-      window.removeEventListener("online", checkForUpdate);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
-
-  // ---- notun version pele, sathe sathe toast ----
-  useEffect(() => {
-    if (!needRefresh) return;
-
-    if (AUTO_UPDATE) {
-      updateServiceWorker(true);
-      return;
+      window.clearInterval(id)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("online", check)
     }
+  }, [])
+
+  // ---- file download shesh, toast dekhao (ekbar-i) ----
+  useEffect(() => {
+    if (!needRefresh || toastShownRef.current) return
+    toastShownRef.current = true
 
     toast.show({
-      title: "New version available",
-      description: "Update kore latest version e jan.",
+      title: "New version ready",
+      description: "Update e press korle ekhoni notun version khulbe.",
       type: "info",
-      duration: 0, // nijer thekei chole jabe na
+      duration: 0,
       action: {
         label: "Update",
         onClick: () => {
-          setNeedRefresh(false);
-          updateServiceWorker(true); // skipWaiting + auto reload
+          setNeedRefresh(false)
+          void updateServiceWorker(true) // skipWaiting + reload, file already cached
         },
       },
-    });
-  }, [needRefresh, setNeedRefresh, updateServiceWorker]);
+    })
+  }, [needRefresh, setNeedRefresh, updateServiceWorker])
 
-  // ---- prothom bar offline ready ----
+  // ---- button na chepe app theke bairey gele auto apply ----
   useEffect(() => {
-    if (!offlineReady) return;
-    toast.success("App ready", "Ekhon offline eo kaj korbe.");
-    setOfflineReady(false);
-  }, [offlineReady, setOfflineReady]);
+    if (!needRefresh) return
 
-  return null;
+    const applyWhenLeaving = () => {
+      if (document.visibilityState !== "hidden") return
+      if (isTyping()) return
+      void updateServiceWorker(true)
+    }
+
+    document.addEventListener("visibilitychange", applyWhenLeaving)
+    return () => document.removeEventListener("visibilitychange", applyWhenLeaving)
+  }, [needRefresh, updateServiceWorker])
+
+  return null
 }
