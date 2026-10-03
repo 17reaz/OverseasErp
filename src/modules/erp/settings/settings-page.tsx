@@ -13,7 +13,9 @@ import {
   Workflow as WorkflowIcon,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-
+import { usePermissions } from "@/lib/permissions/use-permissions";
+import type { Permission } from "@/lib/permissions/permissions";
+import { AuditSection } from "./audit/audit-section";
 import {
   Card,
   CardContent,
@@ -29,6 +31,7 @@ import { UsersSection } from "./components/users-section";
 import { ProfilePage } from "./profile-page";
 import { LoginActivity } from "./login-activity";
 import { UpdatesSection } from "./updates/updates-section";
+
 type SettingsSectionId =
   | "profile"
   | "organization"
@@ -256,7 +259,8 @@ function SettingsSectionContent({
       case "updates":
       return <UpdatesSection />;
     case "billing":
-    case "activity-log":
+        case "activity-log":
+      return <AuditSection />;
     default: {
       const section = SETTINGS_SECTIONS.find(
         (item) => item.id === sectionId,
@@ -274,7 +278,28 @@ function SettingsSectionContent({
 export function SettingsPage() {
   const [searchParams, setSearchParams] =
     useSearchParams();
+const { can } = usePermissions();
 
+const visibleSections = SETTINGS_SECTIONS.filter(
+  (section) => !section.permission || can(section.permission),
+);
+
+const defaultSectionId: SettingsSectionId =
+  visibleSections.find((section) => section.id === "workflow")?.id ??
+  visibleSections[0]?.id ??
+  "profile";
+
+const requestedSection =
+  searchParams.get("section") as SettingsSectionId | null;
+
+const isValidSection =
+  requestedSection !== null &&
+  visibleSections.some((section) => section.id === requestedSection);
+
+const [activeSectionId, setActiveSectionId] =
+  useState<SettingsSectionId>(
+    isValidSection ? requestedSection : defaultSectionId,
+  );
   const requestedSection =
     searchParams.get("section") as
       | SettingsSectionId
@@ -304,7 +329,7 @@ export function SettingsPage() {
   ) {
     setActiveSectionId(sectionId);
 
-    if (sectionId === "workflow") {
+    if (sectionId === "defaultSectionId") {
       setSearchParams({});
       return;
     }
@@ -345,7 +370,7 @@ export function SettingsPage() {
 
         <nav className="w-56 shrink-0 overflow-y-auto border-r p-3">
           <ul className="space-y-1">
-            {SETTINGS_SECTIONS.map((section) => {
+            {visibleSections.map((section) => {
               const Icon = section.icon;
 
               const isActive =
