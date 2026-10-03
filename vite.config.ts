@@ -48,44 +48,44 @@ export default defineConfig({
 
   runtimeCaching: [
     {
-      urlPattern: ({ request }) =>
-        request.destination === "script",
+  urlPattern: ({ request }) =>
+    request.destination === "script",
 
-      handler: "CacheFirst",
+  handler: "StaleWhileRevalidate",
 
-      options: {
-        cacheName: "oerp-js",
+  options: {
+    cacheName: "oerp-js",
 
-        expiration: {
-          maxEntries: 80,
-          maxAgeSeconds: 60 * 60 * 24 * 30,
-        },
-
-        cacheableResponse: {
-          statuses: [200],
-        },
-      },
+    expiration: {
+      maxEntries: 80,
+      maxAgeSeconds: 60 * 60 * 24 * 7,
     },
+
+    cacheableResponse: {
+      statuses: [200],
+    },
+  },
+},
 
     {
-      urlPattern: ({ request }) =>
-        request.destination === "style",
+  urlPattern: ({ request }) =>
+    request.destination === "style",
 
-      handler: "CacheFirst",
+  handler: "StaleWhileRevalidate",
 
-      options: {
-        cacheName: "oerp-css",
+  options: {
+    cacheName: "oerp-css",
 
-        expiration: {
-          maxEntries: 20,
-          maxAgeSeconds: 60 * 60 * 24 * 30,
-        },
-
-        cacheableResponse: {
-          statuses: [200],
-        },
-      },
+    expiration: {
+      maxEntries: 20,
+      maxAgeSeconds: 60 * 60 * 24 * 7,
     },
+
+    cacheableResponse: {
+      statuses: [200],
+    },
+  },
+},
 
     {
       urlPattern: ({ request }) =>
