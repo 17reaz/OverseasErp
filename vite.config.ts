@@ -3,8 +3,8 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
-import { execSync } from "child_process"
-
+import { execFileSync, execSync } from "child_process"
+import { readFileSync } from "fs"
 function getCommitHash(): string {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim()
@@ -17,11 +17,36 @@ function getCommitHash(): string {
     )
   }
 }
+const pkg = JSON.parse(readFileSync("./package.json", "utf-8")) as {
+  version: string
+}
 
+function getCommits(limit = 100) {
+  try {
+    const out = execFileSync(
+      "git",
+      ["log", "-n", String(limit), "--pretty=format:%h%x1f%an%x1f%aI%x1f%s"],
+      { encoding: "utf-8", maxBuffer: 5 * 1024 * 1024 },
+    )
+
+    return out
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [hash, author, date, subject] = line.split("\x1f")
+        return { hash, author, date, subject }
+      })
+  } catch {
+    return [] // git nei hole (jemon kono Docker build) khali thakbe
+  }
+}
 export default defineConfig({
   define: {
-    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
-  },
+  __COMMIT_HASH__: JSON.stringify(getCommitHash()),
+  __APP_VERSION__: JSON.stringify(pkg.version),
+  __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  __COMMITS__: JSON.stringify(getCommits()),
+},
 
   plugins: [
     react(),

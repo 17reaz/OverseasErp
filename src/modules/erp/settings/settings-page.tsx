@@ -8,6 +8,7 @@ import {
   Hash,
   Settings2,
   UserRound,
+  History,
   Users,
   Workflow as WorkflowIcon,
 } from "lucide-react";
@@ -27,6 +28,7 @@ import { DataManagementSection } from "./components/data-management-section";
 import { UsersSection } from "./components/users-section";
 import { ProfilePage } from "./profile-page";
 import { LoginActivity } from "./login-activity";
+import { UpdatesSection } from "./updates/updates-section";
 type SettingsSectionId =
   | "profile"
   | "organization"
@@ -35,6 +37,7 @@ type SettingsSectionId =
   | "import-export"
   | "billing"
   | "pricing"
+  | "updates"
   | "activity-log"
   | "login-activity";
 interface SettingsSection {
@@ -86,6 +89,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     label: "Pricing",
     description: "View plans and subscription options.",
     icon: CreditCard,
+  },
+    {
+    id: "updates",
+    label: "Updates & History",
+    description: "Release notes and commit history.",
+    icon: History,
   },
   {
     id: "activity-log",
@@ -244,6 +253,8 @@ function SettingsSectionContent({
     case "organization":
     case "users":
   return <UsersSection />;
+      case "updates":
+      return <UpdatesSection />;
     case "billing":
     case "activity-log":
     default: {
