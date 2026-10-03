@@ -62,8 +62,7 @@ export async function getAgencyProfile(
       .schema("finance")
       .from("parties")
       .select("id")
-      .eq("party_type", "agency")
-      .eq("party_id", String(agencyId))
+.eq("party_type", "vendor")      .eq("party_id", String(agencyId))
       .maybeSingle();
 
   if (partyError) {
