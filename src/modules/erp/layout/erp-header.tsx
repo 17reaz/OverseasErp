@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationCenter } from "@/modules/erp/notifications/notification-center";
+import { ErpBreadcrumb } from "./erp-breadcrumb";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,9 +125,8 @@ const [unreadCount,setUnreadCount] = useState(0);
        <div className="flex min-w-0 items-center gap-3">
   <SidebarTrigger className="-ml-2 shrink-0" />
 
-  <h1 className="truncate text-lg font-semibold md:text-xl">
-    {pageName}
-  </h1>
+ <h1 className="sr-only">{pageName}</h1>
+<ErpBreadcrumb />
 
   
 </div>
