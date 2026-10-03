@@ -3,11 +3,16 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import {
+  Check,
+  Clipboard,
   Loader2,
   Mail,
+  Send,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 
 import {
@@ -18,13 +23,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { Button } from "@/components/ui/button";
+
+import { Input } from "@/components/ui/input";
+
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  createTenantInvitation,
+  getTenantInvitations,
   getTenantMembers,
+  revokeTenantInvitation,
+  type InvitationRole,
+  type TenantInvitation,
   type TenantMember,
 } from "@/modules/auth/invitations/invitation-service";
 
 
-function getRoleLabel(role: TenantMember["role"]) {
+function getRoleLabel(
+  role: TenantMember["role"] | InvitationRole,
+) {
   switch (role) {
     case "OWNER":
       return "Owner";
@@ -45,7 +69,7 @@ function getRoleLabel(role: TenantMember["role"]) {
 
 
 function getRoleBadgeClass(
-  role: TenantMember["role"],
+  role: TenantMember["role"] | InvitationRole,
 ) {
   switch (role) {
     case "OWNER":
@@ -66,12 +90,43 @@ function getRoleBadgeClass(
 }
 
 
-function getMemberName(member: TenantMember) {
+function getMemberName(
+  member: TenantMember,
+) {
   return (
     member.full_name?.trim() ||
     member.email?.split("@")[0] ||
     "Unknown user"
   );
+}
+
+
+function formatDate(
+  value: string,
+) {
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  ).format(new Date(value));
+}
+
+
+function isExpired(
+  value: string,
+) {
+  return new Date(value).getTime() <= Date.now();
+}
+
+
+function getInvitationLink(
+  token: string,
+) {
+  return `${window.location.origin}/accept-invite?token=${encodeURIComponent(
+    token,
+  )}`;
 }
 
 
@@ -130,45 +185,307 @@ function MemberRow({
 }
 
 
-export function UsersSection() {
-  const [members, setMembers] = useState<TenantMember[]>(
-    [],
-  );
+function InvitationRow({
+  invitation,
+  onRevoked,
+}: {
+  invitation: TenantInvitation;
+  onRevoked: () => void;
+}) {
+  const [copying, setCopying] =
+    useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] =
+    useState(false);
 
-  const [error, setError] = useState<string | null>(
-    null,
-  );
+  const [revoking, setRevoking] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const expired =
+    isExpired(invitation.expires_at);
 
 
-  const loadMembers = useCallback(async () => {
+  const handleCopy = async () => {
     try {
-      setLoading(true);
+      setCopying(true);
       setError(null);
 
-      const data = await getTenantMembers();
+      const link =
+        getInvitationLink(
+          invitation.token,
+        );
 
-      setMembers(data);
+      await navigator.clipboard.writeText(
+        link,
+      );
+
+      setCopied(true);
+
+      window.setTimeout(() => {
+        setCopied(false);
+      }, 2000);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to load team members.",
+          : "Failed to copy invitation link.",
       );
     } finally {
-      setLoading(false);
+      setCopying(false);
     }
-  }, []);
+  };
+
+
+  const handleRevoke = async () => {
+    const confirmed =
+      window.confirm(
+        `Revoke the invitation for ${invitation.email}?`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setRevoking(true);
+      setError(null);
+
+      await revokeTenantInvitation(
+        invitation.id,
+      );
+
+      onRevoked();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to revoke invitation.",
+      );
+    } finally {
+      setRevoking(false);
+    }
+  };
+
+
+  return (
+    <div className="border-b px-4 py-4 last:border-b-0">
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <Mail className="size-4 shrink-0 text-muted-foreground" />
+
+            <p className="truncate text-sm font-medium">
+              {invitation.email}
+            </p>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
+                invitation.role,
+              )}`}
+            >
+              {getRoleLabel(
+                invitation.role,
+              )}
+            </span>
+
+            <span
+              className={
+                expired
+                  ? "text-xs text-destructive"
+                  : "text-xs text-muted-foreground"
+              }
+            >
+              {expired
+                ? "Expired"
+                : `Expires ${formatDate(
+                    invitation.expires_at,
+                  )}`}
+            </span>
+
+          </div>
+        </div>
+
+
+        <div className="flex shrink-0 items-center gap-2">
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void handleCopy();
+            }}
+            disabled={copying || revoking}
+          >
+            {copying ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : copied ? (
+              <Check className="size-4" />
+            ) : (
+              <Clipboard className="size-4" />
+            )}
+
+            {copied
+              ? "Copied"
+              : "Copy Link"}
+          </Button>
+
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void handleRevoke();
+            }}
+            disabled={revoking || copying}
+          >
+            {revoking ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <X className="size-4" />
+            )}
+
+            Revoke
+          </Button>
+
+        </div>
+
+      </div>
+
+
+      {error ? (
+        <p className="mt-2 text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+    </div>
+  );
+}
+
+
+export function UsersSection() {
+  const [members, setMembers] =
+    useState<TenantMember[]>([]);
+
+  const [invitations, setInvitations] =
+    useState<TenantInvitation[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [email, setEmail] =
+    useState("");
+
+  const [role, setRole] =
+    useState<InvitationRole>("STAFF");
+
+  const [inviting, setInviting] =
+    useState(false);
+
+  const [inviteError, setInviteError] =
+    useState<string | null>(null);
+
+  const [inviteSuccess, setInviteSuccess] =
+    useState<string | null>(null);
+
+
+  const loadData =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [
+          memberData,
+          invitationData,
+        ] = await Promise.all([
+          getTenantMembers(),
+          getTenantInvitations(),
+        ]);
+
+        setMembers(memberData);
+        setInvitations(invitationData);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load team data.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
 
   useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
+    void loadData();
+  }, [loadData]);
+
+
+  const handleInvite =
+    async () => {
+      const cleanEmail =
+        email.trim().toLowerCase();
+
+      if (!cleanEmail) {
+        setInviteError(
+          "Email is required.",
+        );
+        setInviteSuccess(null);
+        return;
+      }
+
+      setInviting(true);
+      setInviteError(null);
+      setInviteSuccess(null);
+
+      try {
+        await createTenantInvitation({
+          email: cleanEmail,
+          role,
+        });
+
+        setEmail("");
+
+        setInviteSuccess(
+          `Invitation created for ${cleanEmail}.`,
+        );
+
+        await loadData();
+      } catch (err) {
+        setInviteError(
+          err instanceof Error
+            ? err.message
+            : "Failed to create invitation.",
+        );
+      } finally {
+        setInviting(false);
+      }
+    };
+
+
+  const handleInvitationRevoked =
+    async () => {
+      await loadData();
+    };
 
 
   return (
     <div className="space-y-6">
+
       <div>
         <h2 className="text-lg font-semibold">
           Team Members
@@ -181,11 +498,193 @@ export function UsersSection() {
       </div>
 
 
+      {/* Invite User */}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Send className="size-4" />
+            Invite User
+          </CardTitle>
+
+          <CardDescription>
+            Invite a person to join this workspace.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-[1fr_180px_auto]">
+
+            <div className="space-y-2">
+              <label
+                htmlFor="invite-email"
+                className="text-sm font-medium"
+              >
+                Email
+              </label>
+
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="user@example.com"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setInviteError(null);
+                  setInviteSuccess(null);
+                }}
+                disabled={inviting}
+              />
+            </div>
+
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Role
+              </label>
+
+              <Select
+                value={role}
+                onValueChange={(value) => {
+                  setRole(
+                    value as InvitationRole,
+                  );
+                  setInviteError(null);
+                  setInviteSuccess(null);
+                }}
+                disabled={inviting}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="ADMIN">
+                    Admin
+                  </SelectItem>
+
+                  <SelectItem value="MANAGER">
+                    Manager
+                  </SelectItem>
+
+                  <SelectItem value="STAFF">
+                    Staff
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+
+            <div className="flex items-end">
+              <Button
+                type="button"
+                className="w-full md:w-auto"
+                onClick={() => {
+                  void handleInvite();
+                }}
+                disabled={
+                  inviting ||
+                  !email.trim()
+                }
+              >
+                {inviting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Inviting...
+                  </>
+                ) : (
+                  <>
+                    <Send className="size-4" />
+                    Invite User
+                  </>
+                )}
+              </Button>
+            </div>
+
+          </div>
+
+
+          {inviteError ? (
+            <p className="mt-3 text-sm text-destructive">
+              {inviteError}
+            </p>
+          ) : null}
+
+
+          {inviteSuccess ? (
+            <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
+              {inviteSuccess}
+            </p>
+          ) : null}
+
+        </CardContent>
+      </Card>
+
+
+      {/* Pending Invitations */}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="size-4" />
+            Pending Invitations
+          </CardTitle>
+
+          <CardDescription>
+            Invitations that have not been accepted
+            yet.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="p-0">
+
+          {loading ? (
+            <div className="flex min-h-32 items-center justify-center">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading invitations...
+              </div>
+            </div>
+          ) : invitations.length === 0 ? (
+            <div className="flex min-h-32 flex-col items-center justify-center px-6 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+                <Mail className="size-5 text-muted-foreground" />
+              </div>
+
+              <p className="mt-3 text-sm font-medium">
+                No pending invitations
+              </p>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                New invitations will appear here.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {invitations.map(
+                (invitation) => (
+                  <InvitationRow
+                    key={invitation.id}
+                    invitation={invitation}
+                    onRevoked={
+                      handleInvitationRevoked
+                    }
+                  />
+                ),
+              )}
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+
+      {/* Members */}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Users className="size-4" />
-
             Members
           </CardTitle>
 
@@ -195,13 +694,12 @@ export function UsersSection() {
           </CardDescription>
         </CardHeader>
 
-
         <CardContent className="p-0">
+
           {loading ? (
             <div className="flex min-h-40 items-center justify-center">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
-
                 Loading team members...
               </div>
             </div>
@@ -241,8 +739,10 @@ export function UsersSection() {
               ))}
             </div>
           )}
+
         </CardContent>
       </Card>
+
     </div>
   );
 }

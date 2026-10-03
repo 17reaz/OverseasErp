@@ -1,6 +1,9 @@
 import { supabase } from "@/lib/supabase/client";
 
-export type InvitationRole = "ADMIN" | "MANAGER" | "STAFF";
+export type InvitationRole =
+  | "ADMIN"
+  | "MANAGER"
+  | "STAFF";
 
 export type TenantMemberRole =
   | "OWNER"
@@ -14,7 +17,11 @@ export interface TenantInvitation {
   email: string;
   role: InvitationRole;
   invited_by: string;
-  status: "pending" | "accepted" | "revoked" | "expired";
+  status:
+    | "pending"
+    | "accepted"
+    | "revoked"
+    | "expired";
   token: string;
   expires_at: string;
   accepted_at: string | null;
@@ -37,10 +44,9 @@ export interface TenantMember {
 }
 
 
-/* =========================================================
-   Create invitation
-   ========================================================= */
-
+/**
+ * Create a new workspace invitation.
+ */
 export async function createTenantInvitation(
   input: CreateInvitationInput,
 ) {
@@ -66,11 +72,14 @@ export async function createTenantInvitation(
 }
 
 
-/* =========================================================
-   Get current workspace members
-   ========================================================= */
-
-export async function getTenantMembers(): Promise<TenantMember[]> {
+/**
+ * Get all active members of the current workspace.
+ *
+ * Authorization is handled by the secure database RPC.
+ */
+export async function getTenantMembers(): Promise<
+  TenantMember[]
+> {
   const { data, error } = await supabase.rpc(
     "get_tenant_members",
   );
@@ -83,17 +92,67 @@ export async function getTenantMembers(): Promise<TenantMember[]> {
 }
 
 
-/* =========================================================
-   Accept invitation
-   ========================================================= */
+/**
+ * Get pending invitations for the current workspace.
+ *
+ * Authorization is handled by the secure database RPC.
+ */
+export async function getTenantInvitations(): Promise<
+  TenantInvitation[]
+> {
+  const { data, error } = await supabase.rpc(
+    "get_tenant_invitations",
+  );
 
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as TenantInvitation[];
+}
+
+
+/**
+ * Revoke a pending workspace invitation.
+ *
+ * Authorization is handled by the secure database RPC.
+ */
+export async function revokeTenantInvitation(
+  invitationId: string,
+): Promise<void> {
+  const cleanId = invitationId.trim();
+
+  if (!cleanId) {
+    throw new Error(
+      "Invitation ID is required",
+    );
+  }
+
+  const { error } = await supabase.rpc(
+    "revoke_tenant_invitation",
+    {
+      p_invitation_id: cleanId,
+    },
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+
+/**
+ * Accept a workspace invitation.
+ */
 export async function acceptTenantInvitation(
   token: string,
 ) {
   const cleanToken = token.trim();
 
   if (!cleanToken) {
-    throw new Error("Invitation token is required");
+    throw new Error(
+      "Invitation token is required",
+    );
   }
 
   const { data, error } = await supabase.rpc(
