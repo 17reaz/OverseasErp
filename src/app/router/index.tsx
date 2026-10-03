@@ -75,7 +75,13 @@ const AgencyPage = lazy(() =>
     default: module.AgencyPage,
   })),
 );
-
+const AgencyProfilePage = lazy(() =>
+  import("@/modules/erp/agency/profile/agency-profile-page").then(
+    (module) => ({
+      default: module.AgencyProfilePage,
+    }),
+  ),
+);
 const MofaPage = lazy(() =>
   import("@/modules/erp/mofa/mofa-page").then((module) => ({
     default: module.MofaPage,
@@ -363,7 +369,10 @@ function AppRouter() {
                 path="agencies"
                 element={<AgencyPage />}
               />
-
+<Route
+  path="agencies/:agencyId"
+  element={<AgencyProfilePage />}
+/>
               {/* Files */}
               <Route
                 path="files"

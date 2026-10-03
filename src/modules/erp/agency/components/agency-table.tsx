@@ -1,12 +1,14 @@
-// src/modules/erp/agency/components/agency-table.tsx
-
 import { Building2, Mail, Pencil, Phone, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
 import type { Agency } from "../agency-service";
 
-import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/ui/data-table";
 
 interface AgencyTableProps {
   agencies: Agency[];
@@ -40,6 +42,7 @@ export function AgencyTable({
       className: "w-[70px]",
       cell: (agency, index) => agency.sl ?? index + 1,
     },
+
     {
       key: "agency",
       header: "Agency",
@@ -50,7 +53,12 @@ export function AgencyTable({
           </div>
 
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{agency.name}</p>
+            <Link
+              to={`/app/agencies/${agency.id}`}
+              className="block truncate text-sm font-medium hover:underline"
+            >
+              {agency.name}
+            </Link>
 
             {agency.address && (
               <p className="truncate text-xs text-muted-foreground">
@@ -61,13 +69,19 @@ export function AgencyTable({
         </div>
       ),
     },
+
     {
       key: "code",
       header: "Code",
       className: "w-[140px]",
       hideOnMobile: true,
-      cell: (agency) => <span className="block truncate">{agency.code}</span>,
+      cell: (agency) => (
+        <span className="block truncate">
+          {agency.code}
+        </span>
+      ),
     },
+
     {
       key: "phone",
       header: "Contact",
@@ -77,12 +91,18 @@ export function AgencyTable({
         agency.phone ? (
           <div className="flex min-w-0 items-center gap-2">
             <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">{agency.phone}</span>
+
+            <span className="truncate">
+              {agency.phone}
+            </span>
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-muted-foreground">
+            —
+          </span>
         ),
     },
+
     {
       key: "email",
       header: "Email",
@@ -92,12 +112,18 @@ export function AgencyTable({
         agency.email ? (
           <div className="flex min-w-0 items-center gap-2">
             <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">{agency.email}</span>
+
+            <span className="truncate">
+              {agency.email}
+            </span>
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-muted-foreground">
+            —
+          </span>
         ),
     },
+
     {
       key: "status",
       header: "Status",
@@ -114,6 +140,7 @@ export function AgencyTable({
         </span>
       ),
     },
+
     {
       key: "action",
       header: "Action",
@@ -128,7 +155,9 @@ export function AgencyTable({
             title="Edit agency"
           >
             <Pencil />
-            <span className="sr-only">Edit agency</span>
+            <span className="sr-only">
+              Edit agency
+            </span>
           </Button>
 
           <Button
@@ -139,7 +168,9 @@ export function AgencyTable({
             title="Delete agency"
           >
             <Trash2 />
-            <span className="sr-only">Delete agency</span>
+            <span className="sr-only">
+              Delete agency
+            </span>
           </Button>
         </div>
       ),
@@ -158,7 +189,10 @@ export function AgencyTable({
       page={page}
       onPageChange={onPageChange}
       total={total}
-      serverPagination={typeof total === "number" && total !== agencies.length}
+      serverPagination={
+        typeof total === "number" &&
+        total !== agencies.length
+      }
     />
   );
 }
