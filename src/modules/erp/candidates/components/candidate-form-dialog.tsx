@@ -69,9 +69,9 @@ function getToday() {
 }
 
 // Removes every kind of digit (English, Bangla, etc.)
-function stripNumbers(value: string) {
-  return value.replace(/\p{N}/gu, "");
-}
+// function stripNumbers(value: string) {
+//   return value.replace(/\p{N}/gu, "");
+// }
 
 export function CandidateFormDialog({
   open,
