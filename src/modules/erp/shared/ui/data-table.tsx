@@ -284,7 +284,7 @@ export function DataTable<T>({
     isUpdatedRow
       ? {
           opacity: [1, 1, 1],
-          scale: [1, 1.006, 1],
+          scale: [1, 1.008, 1],
         }
       : {
           opacity: 1,
@@ -301,7 +301,6 @@ export function DataTable<T>({
       duration: 0.38,
       ease: [0.22, 1, 0.36, 1],
     },
-
     opacity: isNewRow
       ? {
           duration: 0.22,
@@ -310,7 +309,6 @@ export function DataTable<T>({
       : {
           duration: 0.18,
         },
-
     x: isNewRow
       ? {
           duration: 0.42,
@@ -321,10 +319,9 @@ export function DataTable<T>({
           duration: 0.32,
           ease: [0.22, 1, 0.36, 1],
         },
-
     scale: isUpdatedRow
       ? {
-          duration: 0.55,
+          duration: 0.7,
           ease: [0.22, 1, 0.36, 1],
         }
       : {
@@ -333,7 +330,7 @@ export function DataTable<T>({
   }}
   className={
     isUpdatedRow
-      ? "bg-primary/[0.035]"
+      ? "bg-primary/10"
       : undefined
   }
 >
