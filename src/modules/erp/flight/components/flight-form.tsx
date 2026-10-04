@@ -154,18 +154,16 @@ export function FlightForm({
   const [error, setError] =
     useState("");
 
-  /* =======================================================
-   * DIRTY STATE
-   * ======================================================= */
-
   const [dirty, setDirty] =
     useState(false);
 
   const isEdit = Boolean(record);
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * COLLAPSIBLE SECTIONS
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   const [flightDetailsOpen, setFlightDetailsOpen] =
     useState(true);
@@ -173,9 +171,11 @@ export function FlightForm({
   const [iqamaDetailsOpen, setIqamaDetailsOpen] =
     useState(false);
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * DERIVED STATE
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   const isDeparted =
     form.status === "departed";
@@ -186,17 +186,26 @@ export function FlightForm({
   const iqamaCompleted =
     form.iqama_status === "completed";
 
+  /*
+   * Candidate can only be completed when:
+   *
+   * 1. Existing flight record
+   * 2. Flight is departed
+   * 3. Either:
+   *    - Iqama is not required
+   *    - Iqama is completed
+   */
+
   const canMarkComplete =
     isEdit &&
     isDeparted &&
-    (
-      !iqamaRequired ||
-      iqamaCompleted
-    );
+    (!iqamaRequired || iqamaCompleted);
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * LOAD FORM
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   useEffect(() => {
     if (!open) return;
@@ -258,8 +267,8 @@ export function FlightForm({
       /*
        * Existing departed flight:
        *
-       * Flight details collapsed
-       * Iqama opened if required
+       * Flight details collapsed.
+       * Iqama details opened when required.
        */
       setFlightDetailsOpen(!departed);
 
@@ -270,10 +279,12 @@ export function FlightForm({
       /*
        * New flight:
        *
-       * Flight details open
-       * Iqama details closed
+       * Flight details open.
+       * Iqama details closed.
        */
-      setForm(DEFAULT_FORM);
+      setForm({
+        ...DEFAULT_FORM,
+      });
 
       setFlightDetailsOpen(true);
       setIqamaDetailsOpen(false);
@@ -283,9 +294,11 @@ export function FlightForm({
     setDirty(false);
   }, [open, record]);
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * FIELD UPDATE
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   function updateField<K extends keyof FormState>(
     field: K,
@@ -299,9 +312,11 @@ export function FlightForm({
     setDirty(true);
   }
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * STATUS CHANGE
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   function handleStatusChange(
     value: FormState["status"],
@@ -311,8 +326,8 @@ export function FlightForm({
     /*
      * When flight becomes departed:
      *
-     * Flight details collapse
-     * Iqama opens if required
+     * Collapse flight details.
+     * Open Iqama when required.
      */
     if (value === "departed") {
       setFlightDetailsOpen(false);
@@ -322,16 +337,18 @@ export function FlightForm({
       }
     } else {
       /*
-       * Going back from departed:
+       * If user moves away from departed,
        * show flight details again.
        */
       setFlightDetailsOpen(true);
     }
   }
 
-  /* =======================================================
-   * IQAMA REQUIRED TOGGLE
-   * ======================================================= */
+  /*
+   * -------------------------------------------------------
+   * IQAMA TOGGLE
+   * -------------------------------------------------------
+   */
 
   function handleIqamaToggle(
     checked: boolean,
@@ -365,8 +382,8 @@ export function FlightForm({
     setDirty(true);
 
     /*
-     * When user enables Iqama on a departed
-     * flight, immediately open the details.
+     * If Iqama is enabled on a departed flight,
+     * immediately open the details.
      */
     if (
       checked &&
@@ -376,16 +393,18 @@ export function FlightForm({
     }
 
     /*
-     * When disabled, close details.
+     * If disabled, close Iqama details.
      */
     if (!checked) {
       setIqamaDetailsOpen(false);
     }
   }
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * MARK CANDIDATE COMPLETE
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   async function handleMarkComplete() {
     if (!form.candidate_id) {
@@ -436,32 +455,26 @@ export function FlightForm({
 
     try {
       /*
-       * IMPORTANT:
-       *
-       * Main candidate completion comes from
-       * candidate-service.
-       *
-       * We are NOT changing flight status here.
+       * Candidate main status is updated
+       * through the central candidate service.
        */
       await completeCandidate(
         form.candidate_id,
       );
 
       /*
-       * Let parent know that candidate has
-       * been completed.
+       * Notify parent.
        */
       onComplete?.(
         form.candidate_id,
       );
 
-      /*
-       * Completion is a separate candidate
-       * workflow action, so don't call
-       * onSuccess with a fake Flight record.
-       */
       setDirty(false);
 
+      /*
+       * Close the sheet after successful
+       * completion.
+       */
       onOpenChange(false);
     } catch (err) {
       setError(
@@ -474,9 +487,11 @@ export function FlightForm({
     }
   }
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * SUBMIT
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -491,8 +506,8 @@ export function FlightForm({
     }
 
     /*
-     * Iqama can only be completed
-     * after departure.
+     * Iqama cannot be completed before
+     * the flight has departed.
      */
     if (
       form.needs_iqama &&
@@ -531,9 +546,9 @@ export function FlightForm({
         status:
           form.status,
 
-        /* =================================================
+        /*
          * IQAMA
-         * ================================================= */
+         */
 
         needs_iqama:
           form.needs_iqama,
@@ -575,9 +590,9 @@ export function FlightForm({
 
       let savedRecord: Flight;
 
-      /* =================================================
+      /*
        * UPDATE
-       * ================================================= */
+       */
 
       if (record) {
         savedRecord =
@@ -587,9 +602,9 @@ export function FlightForm({
           );
       }
 
-      /* =================================================
+      /*
        * CREATE
-       * ================================================= */
+       */
 
       else {
         savedRecord =
@@ -601,17 +616,21 @@ export function FlightForm({
           });
       }
 
-      /* =================================================
+      /*
        * SUCCESS
-       * ================================================= */
+       */
 
-      onSuccess?.(savedRecord);
+      onSuccess?.(
+        savedRecord,
+      );
 
       setDirty(false);
 
       onOpenChange(false);
 
-      setForm(DEFAULT_FORM);
+      setForm({
+        ...DEFAULT_FORM,
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -623,9 +642,11 @@ export function FlightForm({
     }
   }
 
-  /* =======================================================
+  /*
+   * -------------------------------------------------------
    * RENDER
-   * ======================================================= */
+   * -------------------------------------------------------
+   */
 
   return (
     <UniversalSheet
@@ -660,7 +681,9 @@ export function FlightForm({
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleMarkComplete}
+                onClick={
+                  handleMarkComplete
+                }
                 disabled={
                   saving ||
                   completing
@@ -709,7 +732,6 @@ export function FlightForm({
       }
     >
       <div className="flex flex-col gap-5">
-
         {/* =================================================
          * CANDIDATE
          * ================================================= */}
@@ -747,7 +769,9 @@ export function FlightForm({
                       return candidate ? (
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="truncate">
-                            {candidate.name}
+                            {
+                              candidate.name
+                            }
                           </span>
 
                           <span className="shrink-0 text-xs text-muted-foreground">
@@ -788,11 +812,15 @@ export function FlightForm({
                     {candidates.map(
                       (candidate) => (
                         <CommandItem
-                          key={candidate.id}
+                          key={
+                            candidate.id
+                          }
                           value={`${candidate.name} ${candidate.passport_no}`}
                           onSelect={() => {
                             setForm(
-                              (previous) => ({
+                              (
+                                previous,
+                              ) => ({
                                 ...previous,
                                 candidate_id:
                                   candidate.id,
@@ -840,7 +868,9 @@ export function FlightForm({
          * ================================================= */}
 
         <Collapsible
-          open={flightDetailsOpen}
+          open={
+            flightDetailsOpen
+          }
           onOpenChange={
             setFlightDetailsOpen
           }
@@ -871,7 +901,9 @@ export function FlightForm({
 
                           {form.airline && (
                             <>
-                              <span>•</span>
+                              <span>
+                                •
+                              </span>
 
                               <span>
                                 {
@@ -884,13 +916,15 @@ export function FlightForm({
                           {form.departure_city &&
                             form.arrival_city && (
                               <>
-                                <span>•</span>
+                                <span>
+                                  •
+                                </span>
 
                                 <span>
                                   {
                                     form.departure_city
                                   }{" "}
-                                  →{" "}
+                                  →
                                   {
                                     form.arrival_city
                                   }
@@ -914,7 +948,6 @@ export function FlightForm({
 
             <CollapsibleContent>
               <div className="space-y-5 border-t p-4">
-
                 {/* FLIGHT NO + AIRLINE */}
 
                 <div className="grid grid-cols-2 gap-4">
@@ -928,10 +961,13 @@ export function FlightForm({
                       value={
                         form.flight_no
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "flight_no",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       placeholder="e.g. BG-012"
@@ -952,10 +988,13 @@ export function FlightForm({
                       value={
                         form.airline
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "airline",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       placeholder="e.g. Biman Bangladesh"
@@ -981,10 +1020,13 @@ export function FlightForm({
                       value={
                         form.flight_date
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "flight_date",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       disabled={
@@ -1049,10 +1091,13 @@ export function FlightForm({
                       value={
                         form.departure_city
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "departure_city",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       placeholder="e.g. Dhaka"
@@ -1073,10 +1118,13 @@ export function FlightForm({
                       value={
                         form.arrival_city
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "arrival_city",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       placeholder="e.g. Riyadh"
@@ -1100,10 +1148,13 @@ export function FlightForm({
                     value={
                       form.visa_id
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event,
+                    ) =>
                       updateField(
                         "visa_id",
-                        event.target.value,
+                        event.target
+                          .value,
                       )
                     }
                     disabled={
@@ -1122,15 +1173,23 @@ export function FlightForm({
                           visa.candidate_id ===
                           form.candidate_id,
                       )
-                      .map((visa) => (
-                        <option
-                          key={visa.id}
-                          value={visa.id}
-                        >
-                          Visa:{" "}
-                          {visa.visa_no}
-                        </option>
-                      ))}
+                      .map(
+                        (visa) => (
+                          <option
+                            key={
+                              visa.id
+                            }
+                            value={
+                              visa.id
+                            }
+                          >
+                            Visa:{" "}
+                            {
+                              visa.visa_no
+                            }
+                          </option>
+                        ),
+                      )}
                   </select>
                 </div>
 
@@ -1144,9 +1203,12 @@ export function FlightForm({
                       checked={
                         form.needs_iqama
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         handleIqamaToggle(
-                          event.target.checked,
+                          event.target
+                            .checked,
                         )
                       }
                       disabled={
@@ -1165,8 +1227,9 @@ export function FlightForm({
                       </Label>
 
                       <p className="text-xs text-muted-foreground">
-                        Enable this if the
-                        candidate needs Iqama
+                        Enable this if
+                        the candidate
+                        needs Iqama
                         after departure.
                       </p>
                     </div>
@@ -1183,13 +1246,14 @@ export function FlightForm({
 
         {form.needs_iqama && (
           <Collapsible
-            open={iqamaDetailsOpen}
+            open={
+              iqamaDetailsOpen
+            }
             onOpenChange={
               setIqamaDetailsOpen
             }
           >
             <div className="rounded-lg border bg-muted/20">
-
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
@@ -1229,7 +1293,6 @@ export function FlightForm({
 
               <CollapsibleContent>
                 <div className="space-y-4 border-t p-4">
-
                   {/* IQAMA NUMBER + DATE */}
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1243,10 +1306,13 @@ export function FlightForm({
                         value={
                           form.iqama_number
                         }
-                        onChange={(event) =>
+                        onChange={(
+                          event,
+                        ) =>
                           updateField(
                             "iqama_number",
-                            event.target.value,
+                            event.target
+                              .value,
                           )
                         }
                         placeholder="Enter Iqama number"
@@ -1268,10 +1334,13 @@ export function FlightForm({
                         value={
                           form.iqama_date
                         }
-                        onChange={(event) =>
+                        onChange={(
+                          event,
+                        ) =>
                           updateField(
                             "iqama_date",
-                            event.target.value,
+                            event.target
+                              .value,
                           )
                         }
                         disabled={
@@ -1295,10 +1364,13 @@ export function FlightForm({
                       value={
                         form.iqama_expiry_date
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "iqama_expiry_date",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       disabled={
@@ -1386,10 +1458,13 @@ export function FlightForm({
                       value={
                         form.iqama_remarks
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateField(
                           "iqama_remarks",
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       placeholder="Add Iqama remarks..."
@@ -1401,27 +1476,31 @@ export function FlightForm({
                     />
                   </div>
 
-                  {/* Iqama pending notice */}
+                  {/* IQAMA PENDING */}
 
                   {isDeparted &&
                     form.iqama_status !==
                       "completed" && (
                       <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-                        Complete the Iqama
-                        before marking the
-                        candidate as complete.
+                        Complete the
+                        Iqama before
+                        marking the
+                        candidate as
+                        complete.
                       </div>
                     )}
 
-                  {/* Iqama completed notice */}
+                  {/* IQAMA COMPLETED */}
 
                   {isDeparted &&
                     form.iqama_status ===
                       "completed" && (
                       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
                         Iqama completed.
-                        You can now mark the
-                        candidate as complete.
+                        You can now
+                        mark the
+                        candidate as
+                        complete.
                       </div>
                     )}
                 </div>
