@@ -1519,33 +1519,28 @@ function handleManageServices(candidate: Candidate) {
           DELETE
       ================================================= */}
 
-      <CandidateDeleteDialog
+     <CandidateDeleteDialog
+  open={deleteOpen}
+  candidate={deletingCandidate}
+  onOpenChange={setDeleteOpen}
+  onSuccess={() => {
+    const deletedId = deletingCandidate?.id;
 
-        open={
-          deleteOpen
-        }
+    setDeleteOpen(false);
+    setDeletingCandidate(null);
 
-        candidate={
-          deletingCandidate
-        }
+    if (!deletedId) {
+      return;
+    }
 
-        onOpenChange={
-          setDeleteOpen
-        }
-
-        onSuccess={
-          () => {
-
-            setDeletingCandidate(
-              null,
-            );
-
-            loadCandidates();
-
-          }
-        }
-
-      />
+    setCandidates((current) =>
+      current.filter(
+        (candidate) =>
+          candidate.id !== deletedId,
+      ),
+    );
+  }}
+/>
 
         <CandidateStageSheet
   candidate={managingServicesCandidate}

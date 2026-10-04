@@ -1,7 +1,12 @@
 // src/modules/erp/shared/ui/data-table.tsx
 
 import * as React from "react";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  AnimatePresence,
+  motion,
+} from "motion/react";
 
 import {
   Table,
@@ -13,7 +18,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { motion } from "motion/react";
+
+/* =========================================================
+ * MOTION TABLE ROW
+ * ========================================================= */
+
+const MotionTableRow = motion.create(TableRow);
+
 /* =========================================================
  * COLUMN DEFINITION
  * ========================================================= */
@@ -21,12 +32,16 @@ import { motion } from "motion/react";
 export interface DataTableColumn<T> {
   /** Unique key for the column (used as React key + width class target) */
   key: string;
+
   /** Header label */
   header: React.ReactNode;
+
   /** Cell renderer — receives the row and its index within the current page */
   cell: (row: T, index: number) => React.ReactNode;
+
   /** Applied to both <th> and <td> — widths, alignment, truncation etc. */
   className?: string;
+
   /** Hide this column on small screens */
   hideOnMobile?: boolean;
 }
@@ -43,12 +58,15 @@ interface DataTableProps<T> {
    * SERVER mode (see `serverPagination`).
    */
   data: T[];
+
   newRowKeys?: Set<string | number>;
+
   getRowKey: (row: T, index: number) => string | number;
 
   loading?: boolean;
 
   emptyTitle?: string;
+
   emptyDescription?: string;
 
   /* -----------------------------------------------------
@@ -64,10 +82,15 @@ interface DataTableProps<T> {
    * ----------------------------------------------------- */
 
   pageSize?: number;
+
   page?: number;
+
   onPageChange?: (page: number) => void;
+
   total?: number;
+
   serverPagination?: boolean;
+
   /** Set false to hide the pagination footer entirely (still shows row count). */
   paginate?: boolean;
 
@@ -95,7 +118,8 @@ export function DataTable<T>({
   paginate = true,
   className,
 }: DataTableProps<T>) {
-  const [internalPage, setInternalPage] = React.useState(1);
+  const [internalPage, setInternalPage] =
+    React.useState(1);
 
   const page = controlledPage ?? internalPage;
 
@@ -112,24 +136,48 @@ export function DataTable<T>({
   React.useEffect(() => {
     if (serverPagination) return;
 
-    const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(data.length / pageSize),
+    );
 
     if (page > totalPages) {
       goToPage(1);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.length, pageSize, serverPagination]);
 
-  const totalItems = serverPagination ? (total ?? data.length) : data.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const currentPage = Math.min(page, totalPages);
+  const totalItems = serverPagination
+    ? (total ?? data.length)
+    : data.length;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalItems / pageSize),
+  );
+
+  const currentPage = Math.min(
+    page,
+    totalPages,
+  );
 
   const rows = serverPagination
     ? data
-    : data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    : data.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize,
+      );
 
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
+  const startItem =
+    totalItems === 0
+      ? 0
+      : (currentPage - 1) * pageSize + 1;
+
+  const endItem = Math.min(
+    currentPage * pageSize,
+    totalItems,
+  );
 
   return (
     <div
@@ -150,7 +198,9 @@ export function DataTable<T>({
                 <TableHead
                   key={column.key}
                   className={[
-                    column.hideOnMobile ? "hidden sm:table-cell" : "",
+                    column.hideOnMobile
+                      ? "hidden sm:table-cell"
+                      : "",
                     column.className ?? "",
                   ]
                     .filter(Boolean)
@@ -164,76 +214,140 @@ export function DataTable<T>({
 
           <TableBody>
             {loading ? (
-              Array.from({ length: Math.min(pageSize, 6) }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
-                  {columns.map((column) => (
-                    <TableCell
-                      key={column.key}
-                      className={
-                        column.hideOnMobile ? "hidden sm:table-cell" : ""
-                      }
-                    >
-                      <Skeleton className="h-4 w-full max-w-[160px]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              Array.from({ length: pageSize }).map(
+                (_, index) => (
+                  <TableRow
+                    key={`skeleton-${index}`}
+                  >
+                    {columns.map((column) => (
+                      <TableCell
+                        key={column.key}
+                        className={[
+                          column.hideOnMobile
+                            ? "hidden sm:table-cell"
+                            : "",
+                          column.className ?? "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ),
+              )
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-32 text-center"
+                  className="h-24 text-center"
                 >
-                  <p className="text-sm font-medium">{emptyTitle}</p>
+                  <div className="text-sm text-muted-foreground">
+                    {emptyTitle}
+                  </div>
 
                   {emptyDescription && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <div className="mt-1 text-xs text-muted-foreground">
                       {emptyDescription}
-                    </p>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row, index) => {
-  const rowKey = getRowKey(row, index);
-  const isNewRow = newRowKeys.has(rowKey);
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
+              >
+                {rows.map((row, index) => {
+                  const rowKey =
+                    getRowKey(row, index);
 
-  return (
-    <motion.tr
-      key={rowKey}
-      initial={
-        isNewRow
-          ? {
-              opacity: 0,
-              y: -8,
-            }
-          : false
-      }
-      animate={{
-        opacity: 1,
-        y: 0,
-      }}
-      transition={{
-        duration: 0.25,
-        ease: "easeOut",
-      }}
-    >
-      {columns.map((column) => (
-        <TableCell
-          key={column.key}
-          className={[
-            column.hideOnMobile ? "hidden sm:table-cell" : "",
-            column.className ?? "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          {column.cell(row, index)}
-        </TableCell>
-      ))}
-    </motion.tr>
-  );
-})
+                  const isNewRow =
+                    newRowKeys.has(rowKey);
+
+                  return (
+                    <MotionTableRow
+                      key={rowKey}
+                      layout="position"
+                      initial={
+                        isNewRow
+                          ? {
+                              opacity: 0,
+                              x: 100,
+                            }
+                          : false
+                      }
+                      animate={{
+                        opacity: 1,
+                        x: 0,
+                      }}
+                      exit={{
+                        opacity: 0,
+                        x: 100,
+                      }}
+                      transition={{
+                        layout: {
+                          duration: 0.38,
+                          ease: [
+                            0.22,
+                            1,
+                            0.36,
+                            1,
+                          ],
+                        },
+                        opacity: isNewRow
+                          ? {
+                              duration: 0.22,
+                              delay: 0.08,
+                            }
+                          : {
+                              duration: 0.18,
+                            },
+                        x: isNewRow
+                          ? {
+                              duration: 0.42,
+                              delay: 0.08,
+                              ease: [
+                                0.22,
+                                1,
+                                0.36,
+                                1,
+                              ],
+                            }
+                          : {
+                              duration: 0.32,
+                              ease: [
+                                0.22,
+                                1,
+                                0.36,
+                                1,
+                              ],
+                            },
+                      }}
+                    >
+                      {columns.map((column) => (
+                        <TableCell
+                          key={column.key}
+                          className={[
+                            column.hideOnMobile
+                              ? "hidden sm:table-cell"
+                              : "",
+                            column.className ?? "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {column.cell(
+                            row,
+                            index,
+                          )}
+                        </TableCell>
+                      ))}
+                    </MotionTableRow>
+                  );
+                })}
+              </AnimatePresence>
             )}
           </TableBody>
         </Table>
@@ -258,11 +372,19 @@ export function DataTable<T>({
               variant="outline"
               size="icon"
               type="button"
-              disabled={currentPage <= 1 || loading}
-              onClick={() => goToPage(currentPage - 1)}
+              disabled={
+                currentPage <= 1 ||
+                loading
+              }
+              onClick={() =>
+                goToPage(currentPage - 1)
+              }
             >
               <ChevronLeft />
-              <span className="sr-only">Previous page</span>
+
+              <span className="sr-only">
+                Previous page
+              </span>
             </Button>
 
             <div className="px-3 text-sm">
@@ -273,11 +395,19 @@ export function DataTable<T>({
               variant="outline"
               size="icon"
               type="button"
-              disabled={currentPage >= totalPages || loading}
-              onClick={() => goToPage(currentPage + 1)}
+              disabled={
+                currentPage >= totalPages ||
+                loading
+              }
+              onClick={() =>
+                goToPage(currentPage + 1)
+              }
             >
               <ChevronRight />
-              <span className="sr-only">Next page</span>
+
+              <span className="sr-only">
+                Next page
+              </span>
             </Button>
           </div>
         )}
