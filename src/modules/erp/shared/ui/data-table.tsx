@@ -26,6 +26,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 const MotionTableRow = motion.create(TableRow);
 
 /* =========================================================
+ * MOTION TABLE CELL CONTENT
+ * ========================================================= */
+
+const MotionCellContent = motion.div;
+
+/* =========================================================
  * COLUMN DEFINITION
  * ========================================================= */
 
@@ -127,7 +133,8 @@ export function DataTable<T>({
   const [internalPage, setInternalPage] =
     React.useState(1);
 
-  const page = controlledPage ?? internalPage;
+  const page =
+    controlledPage ?? internalPage;
 
   function goToPage(next: number) {
     if (onPageChange) {
@@ -144,7 +151,9 @@ export function DataTable<T>({
 
     const totalPages = Math.max(
       1,
-      Math.ceil(data.length / pageSize),
+      Math.ceil(
+        data.length / pageSize,
+      ),
     );
 
     if (page > totalPages) {
@@ -152,38 +161,54 @@ export function DataTable<T>({
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.length, pageSize, serverPagination]);
+  }, [
+    data.length,
+    pageSize,
+    serverPagination,
+  ]);
 
-  const totalItems = serverPagination
-    ? (total ?? data.length)
-    : data.length;
+  const totalItems =
+    serverPagination
+      ? (total ?? data.length)
+      : data.length;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(totalItems / pageSize),
-  );
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        totalItems / pageSize,
+      ),
+    );
 
-  const currentPage = Math.min(
-    page,
-    totalPages,
-  );
+  const currentPage =
+    Math.min(
+      page,
+      totalPages,
+    );
 
-  const rows = serverPagination
-    ? data
-    : data.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize,
-      );
+  const rows =
+    serverPagination
+      ? data
+      : data.slice(
+          (currentPage - 1) *
+            pageSize,
+          currentPage *
+            pageSize,
+        );
 
   const startItem =
     totalItems === 0
       ? 0
-      : (currentPage - 1) * pageSize + 1;
+      : (currentPage - 1) *
+          pageSize +
+        1;
 
-  const endItem = Math.min(
-    currentPage * pageSize,
-    totalItems,
-  );
+  const endItem =
+    Math.min(
+      currentPage *
+        pageSize,
+      totalItems,
+    );
 
   return (
     <div
@@ -200,62 +225,92 @@ export function DataTable<T>({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  className={[
-                    column.hideOnMobile
-                      ? "hidden sm:table-cell"
-                      : "",
-                    column.className ?? "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {column.header}
-                </TableHead>
-              ))}
+              {columns.map(
+                (column) => (
+                  <TableHead
+                    key={
+                      column.key
+                    }
+                    className={[
+                      column.hideOnMobile
+                        ? "hidden sm:table-cell"
+                        : "",
+                      column.className ??
+                        "",
+                    ]
+                      .filter(
+                        Boolean,
+                      )
+                      .join(" ")}
+                  >
+                    {
+                      column.header
+                    }
+                  </TableHead>
+                ),
+              )}
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {loading ? (
-              Array.from({ length: pageSize }).map(
+              Array.from({
+                length:
+                  pageSize,
+              }).map(
                 (_, index) => (
                   <TableRow
                     key={`skeleton-${index}`}
                   >
-                    {columns.map((column) => (
-                      <TableCell
-                        key={column.key}
-                        className={[
-                          column.hideOnMobile
-                            ? "hidden sm:table-cell"
-                            : "",
-                          column.className ?? "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    ))}
+                    {columns.map(
+                      (
+                        column,
+                      ) => (
+                        <TableCell
+                          key={
+                            column.key
+                          }
+                          className={[
+                            column.hideOnMobile
+                              ? "hidden sm:table-cell"
+                              : "",
+                            column.className ??
+                              "",
+                          ]
+                            .filter(
+                              Boolean,
+                            )
+                            .join(
+                              " ",
+                            )}
+                        >
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ),
+                    )}
                   </TableRow>
                 ),
               )
-            ) : rows.length === 0 ? (
+            ) : rows.length ===
+              0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={
+                    columns.length
+                  }
                   className="h-24 text-center"
                 >
                   <div className="text-sm text-muted-foreground">
-                    {emptyTitle}
+                    {
+                      emptyTitle
+                    }
                   </div>
 
                   {emptyDescription && (
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {emptyDescription}
+                      {
+                        emptyDescription
+                      }
                     </div>
                   )}
                 </TableCell>
@@ -265,141 +320,220 @@ export function DataTable<T>({
                 initial={false}
                 mode="popLayout"
               >
-                {rows.map((row, index) => {
-                  const rowKey =
-                    getRowKey(row, index);
+                {rows.map(
+                  (
+                    row,
+                    index,
+                  ) => {
+                    const rowKey =
+                      getRowKey(
+                        row,
+                        index,
+                      );
 
-                  const isNewRow =
-                    newRowKeys.has(rowKey);
+                    const isNewRow =
+                      newRowKeys.has(
+                        rowKey,
+                      );
 
-                  const isUpdatedRow =
-                    updatedRowKeys.has(rowKey);
+                    const isUpdatedRow =
+                      updatedRowKeys.has(
+                        rowKey,
+                      );
 
-                  const changedFields =
-                    updatedFieldKeys.get(
-                      String(rowKey),
+                    const changedFields =
+                      updatedFieldKeys.get(
+                        String(
+                          rowKey,
+                        ),
+                      );
+
+                    return (
+                      <MotionTableRow
+                        key={
+                          rowKey
+                        }
+                        layout="position"
+                        initial={
+                          isNewRow
+                            ? {
+                                opacity: 0,
+                                x: 100,
+                              }
+                            : false
+                        }
+                        animate={
+                          isUpdatedRow
+                            ? {
+                                opacity:
+                                  [
+                                    1,
+                                    1,
+                                    1,
+                                  ],
+                                scale:
+                                  [
+                                    1,
+                                    1.008,
+                                    1,
+                                  ],
+                              }
+                            : {
+                                opacity: 1,
+                                x: 0,
+                                scale: 1,
+                              }
+                        }
+                        exit={{
+                          opacity: 0,
+                          x: 100,
+                        }}
+                        transition={{
+                          layout: {
+                            duration: 0.38,
+                            ease: [
+                              0.22,
+                              1,
+                              0.36,
+                              1,
+                            ],
+                          },
+                          opacity:
+                            isNewRow
+                              ? {
+                                  duration: 0.22,
+                                  delay: 0.08,
+                                }
+                              : {
+                                  duration: 0.18,
+                                },
+                          x: isNewRow
+                            ? {
+                                duration: 0.42,
+                                delay: 0.08,
+                                ease: [
+                                  0.22,
+                                  1,
+                                  0.36,
+                                  1,
+                                ],
+                              }
+                            : {
+                                duration: 0.32,
+                                ease: [
+                                  0.22,
+                                  1,
+                                  0.36,
+                                  1,
+                                ],
+                              },
+                          scale:
+                            isUpdatedRow
+                              ? {
+                                  duration: 0.7,
+                                  ease: [
+                                    0.22,
+                                    1,
+                                    0.36,
+                                    1,
+                                  ],
+                                }
+                              : {
+                                  duration: 0.2,
+                                },
+                        }}
+                        className={
+                          isUpdatedRow
+                            ? "bg-primary/10"
+                            : undefined
+                        }
+                      >
+                        {columns.map(
+                          (
+                            column,
+                          ) => {
+                            const isFieldUpdated =
+                              Boolean(
+                                column.fieldKey &&
+                                  changedFields?.has(
+                                    column.fieldKey,
+                                  ),
+                              );
+
+                            return (
+                              <TableCell
+                                key={
+                                  column.key
+                                }
+                                className={[
+                                  column.hideOnMobile
+                                    ? "hidden sm:table-cell"
+                                    : "",
+                                  column.className ??
+                                    "",
+                                ]
+                                  .filter(
+                                    Boolean,
+                                  )
+                                  .join(
+                                    " ",
+                                  )}
+                              >
+                                <MotionCellContent
+                                  animate={
+                                    isFieldUpdated
+                                      ? {
+                                          opacity:
+                                            [
+                                              0.55,
+                                              1,
+                                            ],
+                                          scale:
+                                            [
+                                              0.98,
+                                              1.02,
+                                              1,
+                                            ],
+                                        }
+                                      : {
+                                          opacity: 1,
+                                          scale: 1,
+                                        }
+                                  }
+                                  transition={
+                                    isFieldUpdated
+                                      ? {
+                                          duration: 0.55,
+                                          ease: [
+                                            0.22,
+                                            1,
+                                            0.36,
+                                            1,
+                                          ],
+                                        }
+                                      : {
+                                          duration: 0.15,
+                                        }
+                                  }
+                                  className={
+                                    isFieldUpdated
+                                      ? "font-medium text-primary"
+                                      : undefined
+                                  }
+                                >
+                                  {column.cell(
+                                    row,
+                                    index,
+                                  )}
+                                </MotionCellContent>
+                              </TableCell>
+                            );
+                          },
+                        )}
+                      </MotionTableRow>
                     );
-
-                  return (
-                    <MotionTableRow
-                      key={rowKey}
-                      layout="position"
-                      initial={
-                        isNewRow
-                          ? {
-                              opacity: 0,
-                              x: 100,
-                            }
-                          : false
-                      }
-                      animate={
-                        isUpdatedRow
-                          ? {
-                              opacity: [1, 1, 1],
-                              scale: [1, 1.008, 1],
-                            }
-                          : {
-                              opacity: 1,
-                              x: 0,
-                              scale: 1,
-                            }
-                      }
-                      exit={{
-                        opacity: 0,
-                        x: 100,
-                      }}
-                      transition={{
-                        layout: {
-                          duration: 0.38,
-                          ease: [
-                            0.22,
-                            1,
-                            0.36,
-                            1,
-                          ],
-                        },
-                        opacity: isNewRow
-                          ? {
-                              duration: 0.22,
-                              delay: 0.08,
-                            }
-                          : {
-                              duration: 0.18,
-                            },
-                        x: isNewRow
-                          ? {
-                              duration: 0.42,
-                              delay: 0.08,
-                              ease: [
-                                0.22,
-                                1,
-                                0.36,
-                                1,
-                              ],
-                            }
-                          : {
-                              duration: 0.32,
-                              ease: [
-                                0.22,
-                                1,
-                                0.36,
-                                1,
-                              ],
-                            },
-                        scale: isUpdatedRow
-                          ? {
-                              duration: 0.7,
-                              ease: [
-                                0.22,
-                                1,
-                                0.36,
-                                1,
-                              ],
-                            }
-                          : {
-                              duration: 0.2,
-                            },
-                      }}
-                      className={
-                        isUpdatedRow
-                          ? "bg-primary/10"
-                          : undefined
-                      }
-                    >
-                      {columns.map((column) => {
-                        const isFieldUpdated =
-                          Boolean(
-                            column.fieldKey &&
-                              changedFields?.has(
-                                column.fieldKey,
-                              ),
-                          );
-
-                        return (
-                          <TableCell
-                            key={column.key}
-                            className={[
-                              column.hideOnMobile
-                                ? "hidden sm:table-cell"
-                                : "",
-                              column.className ?? "",
-                              isFieldUpdated
-                                ? "bg-primary/15 text-primary transition-all duration-500"
-                                : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            {column.cell(
-                              row,
-                              index,
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </MotionTableRow>
-                  );
-                })}
+                  },
+                )}
               </AnimatePresence>
             )}
           </TableBody>
@@ -419,51 +553,67 @@ export function DataTable<T>({
               : `${startItem}-${endItem} of ${totalItems}`}
         </p>
 
-        {paginate && totalItems > 0 && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              type="button"
-              disabled={
-                currentPage <= 1 ||
-                loading
-              }
-              onClick={() =>
-                goToPage(currentPage - 1)
-              }
-            >
-              <ChevronLeft />
+        {paginate &&
+          totalItems > 0 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                disabled={
+                  currentPage <=
+                    1 ||
+                  loading
+                }
+                onClick={() =>
+                  goToPage(
+                    currentPage -
+                      1,
+                  )
+                }
+              >
+                <ChevronLeft />
 
-              <span className="sr-only">
-                Previous page
-              </span>
-            </Button>
+                <span className="sr-only">
+                  Previous page
+                </span>
+              </Button>
 
-            <div className="px-3 text-sm">
-              Page {currentPage} of {totalPages}
+              <div className="px-3 text-sm">
+                Page{" "}
+                {
+                  currentPage
+                }{" "}
+                of{" "}
+                {
+                  totalPages
+                }
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                disabled={
+                  currentPage >=
+                    totalPages ||
+                  loading
+                }
+                onClick={() =>
+                  goToPage(
+                    currentPage +
+                      1,
+                  )
+                }
+              >
+                <ChevronRight />
+
+                <span className="sr-only">
+                  Next page
+                </span>
+              </Button>
             </div>
-
-            <Button
-              variant="outline"
-              size="icon"
-              type="button"
-              disabled={
-                currentPage >= totalPages ||
-                loading
-              }
-              onClick={() =>
-                goToPage(currentPage + 1)
-              }
-            >
-              <ChevronRight />
-
-              <span className="sr-only">
-                Next page
-              </span>
-            </Button>
-          </div>
-        )}
+          )}
       </div>
     </div>
   );
