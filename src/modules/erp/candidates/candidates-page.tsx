@@ -73,6 +73,8 @@ export function CandidatesPage() {
   const [newCandidateIds, setNewCandidateIds] = useState<Set<string>>(
   new Set(),
 );
+const [updatedCandidateIds, setUpdatedCandidateIds] =
+  useState<Set<string>>(new Set());
   const [
     candidates,
     setCandidates,
@@ -1158,9 +1160,25 @@ function handleManageServices(candidate: Candidate) {
   function handleCandidateUpdated(updatedCandidate: Candidate) {
   setCandidates((current) =>
     current.map((candidate) =>
-      candidate.id === updatedCandidate.id ? updatedCandidate : candidate,
+      candidate.id === updatedCandidate.id
+        ? updatedCandidate
+        : candidate,
     ),
   );
+
+  setUpdatedCandidateIds((current) => {
+    const next = new Set(current);
+    next.add(updatedCandidate.id);
+    return next;
+  });
+
+  window.setTimeout(() => {
+    setUpdatedCandidateIds((current) => {
+      const next = new Set(current);
+      next.delete(updatedCandidate.id);
+      return next;
+    });
+  }, 900);
 }
   /* =======================================================
      CANCEL SUCCESS
@@ -1401,6 +1419,7 @@ function handleManageServices(candidate: Candidate) {
           }
           onCandidateUpdated={handleCandidateUpdated}
           newCandidateIds={newCandidateIds}
+          updatedCandidateIds={updatedCandidateIds}
         />
 
       ) : (
@@ -1487,10 +1506,31 @@ function handleManageServices(candidate: Candidate) {
     setFormOpen(false);
 
     if (editingCandidate) {
-      // Existing candidate edit
-      loadCandidates();
-      return;
-    }
+  setCandidates((current) =>
+    current.map((candidate) =>
+      candidate.id === newCandidate.id
+        ? newCandidate
+        : candidate,
+    ),
+  );
+
+  setUpdatedCandidateIds((current) => {
+    const next = new Set(current);
+    next.add(newCandidate.id);
+    return next;
+  });
+
+  window.setTimeout(() => {
+    setUpdatedCandidateIds((current) => {
+      const next = new Set(current);
+      next.delete(newCandidate.id);
+      return next;
+    });
+  }, 900);
+
+  setEditingCandidate(null);
+  return;
+}
 
     // New candidate: পুরো list reload নয়
     setCandidates((current) => [

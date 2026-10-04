@@ -53,6 +53,7 @@ import { CandidateStageBadge } from "./candidate-stage-badge";
 interface CandidatesTableProps {
   candidates: Candidate[];
   newCandidateIds?: Set<string>;
+  updatedCandidateIds?: Set<string>;
   loading?: boolean;
 
   page?: number;
@@ -103,6 +104,7 @@ export function CandidatesTable({
   candidates,
   loading = false,
   newCandidateIds = new Set(),
+  updatedCandidateIds = new Set(),
   page,
   pageSize = 10,
   total,
@@ -792,11 +794,11 @@ const handleCopyPassport = async (
         columns={columns}
 
         data={candidates}
-        // getRowKey={(candidate) => candidate.id}
         getRowKey={(candidate) =>
           candidate.id
         }
         newRowKeys={newCandidateIds}
+        updatedRowKeys={updatedCandidateIds}
         loading={loading}
 
         emptyTitle="No candidates found"
