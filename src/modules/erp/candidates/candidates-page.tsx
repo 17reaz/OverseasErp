@@ -1222,7 +1222,7 @@ export function CandidatesPage() {
   ======================================================= */
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       {/* =================================================
           TOOLBAR
       ================================================= */}
@@ -1363,6 +1363,7 @@ export function CandidatesPage() {
           }
         />
       ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
         <CandidatesGrid
           candidates={
             filteredCandidates
@@ -1389,6 +1390,7 @@ export function CandidatesPage() {
             handleReactivate
           }
         />
+        </div>
       )}
 
       {/* =================================================
@@ -1605,6 +1607,7 @@ export function CandidatesPage() {
       <div
         className="
           flex
+          shrink-0
           flex-wrap
           items-center
           justify-between

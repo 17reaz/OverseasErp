@@ -779,7 +779,7 @@ export function CandidatesTable({
         onPageChange={
           onPageChange
         }
-         className="flex h-[calc(100vh-190px)] min-h-[400px] flex-col overflow-hidden rounded-lg border bg-background"
+  className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background"
         total={total}
         serverPagination={
           typeof total === "number" &&
