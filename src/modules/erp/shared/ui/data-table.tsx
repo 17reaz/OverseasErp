@@ -133,15 +133,38 @@ export function DataTable<T>({
   const [internalPage, setInternalPage] =
     React.useState(1);
 
+  /* =======================================================
+   * PAGINATION ANIMATION DIRECTION
+   * ======================================================= */
+
+  const [
+    pageTransitionDirection,
+    setPageTransitionDirection,
+  ] = React.useState<
+    "next" | "previous" | null
+  >(null);
+
   const page =
     controlledPage ?? internalPage;
 
   function goToPage(next: number) {
+    setPageTransitionDirection(
+      next > page
+        ? "next"
+        : "previous",
+    );
+
     if (onPageChange) {
       onPageChange(next);
     } else {
       setInternalPage(next);
     }
+
+    window.setTimeout(() => {
+      setPageTransitionDirection(
+        null,
+      );
+    }, 350);
   }
 
   // Reset to page 1 whenever the underlying dataset shrinks below the
@@ -222,7 +245,7 @@ export function DataTable<T>({
           =================================================== */}
 
       <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:thin] [&>[data-slot=table-container]]:overflow-visible">
-  <Table>
+        <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               {columns.map(
@@ -348,11 +371,14 @@ export function DataTable<T>({
                         ),
                       );
 
+                    const isPageTransition =
+                      Boolean(
+                        pageTransitionDirection,
+                      );
+
                     return (
                       <MotionTableRow
-                        key={
-                          rowKey
-                        }
+                        key={`${currentPage}-${rowKey}`}
                         layout="position"
                         initial={
                           isNewRow
@@ -360,23 +386,30 @@ export function DataTable<T>({
                                 opacity: 0,
                                 x: 24,
                               }
-                            : false
+                            : isPageTransition
+                              ? {
+                                  opacity: 0,
+                                  x:
+                                    pageTransitionDirection ===
+                                    "next"
+                                      ? 12
+                                      : -12,
+                                }
+                              : false
                         }
                         animate={
                           isUpdatedRow
                             ? {
-                                opacity:
-                                  [
-                                    1,
-                                    1,
-                                    1,
-                                  ],
-                                scale:
-                                  [
-                                    1,
-                                    1.008,
-                                    1,
-                                  ],
+                                opacity: [
+                                  1,
+                                  1,
+                                  1,
+                                ],
+                                scale: [
+                                  1,
+                                  1.008,
+                                  1,
+                                ],
                               }
                             : {
                                 opacity: 1,
@@ -384,10 +417,21 @@ export function DataTable<T>({
                                 scale: 1,
                               }
                         }
-                        exit={{
-                          opacity: 0,
-                          x: 24,
-                        }}
+                        exit={
+                          isPageTransition
+                            ? {
+                                opacity: 0,
+                                x:
+                                  pageTransitionDirection ===
+                                  "next"
+                                    ? -12
+                                    : 12,
+                              }
+                            : {
+                                opacity: 0,
+                                x: 24,
+                              }
+                        }
                         transition={{
                           layout: {
                             duration: 0.38,
@@ -399,18 +443,27 @@ export function DataTable<T>({
                             ],
                           },
                           opacity:
-                            isNewRow
+                            isPageTransition
                               ? {
-                                  duration: 0.22,
-                                  delay: 0.08,
+                                  duration: 0.26,
+                                  ease: [
+                                    0.22,
+                                    1,
+                                    0.36,
+                                    1,
+                                  ],
                                 }
-                              : {
-                                  duration: 0.18,
-                                },
-                          x: isNewRow
+                              : isNewRow
+                                ? {
+                                    duration: 0.22,
+                                    delay: 0.08,
+                                  }
+                                : {
+                                    duration: 0.18,
+                                  },
+                          x: isPageTransition
                             ? {
-                                duration: 0.42,
-                                delay: 0.08,
+                                duration: 0.28,
                                 ease: [
                                   0.22,
                                   1,
@@ -418,15 +471,26 @@ export function DataTable<T>({
                                   1,
                                 ],
                               }
-                            : {
-                                duration: 0.32,
-                                ease: [
-                                  0.22,
-                                  1,
-                                  0.36,
-                                  1,
-                                ],
-                              },
+                            : isNewRow
+                              ? {
+                                  duration: 0.42,
+                                  delay: 0.08,
+                                  ease: [
+                                    0.22,
+                                    1,
+                                    0.36,
+                                    1,
+                                  ],
+                                }
+                              : {
+                                  duration: 0.32,
+                                  ease: [
+                                    0.22,
+                                    1,
+                                    0.36,
+                                    1,
+                                  ],
+                                },
                           scale:
                             isUpdatedRow
                               ? {
