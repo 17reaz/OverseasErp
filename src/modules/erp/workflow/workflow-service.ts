@@ -10,11 +10,7 @@ import type {
 
    Medical = 60 days (own window, before MOFA starts)
    Medical→MOFA cascade = 60 + 30 = 90 days
-     (once MOFA has started, the deadline extends from the
-     medical date by mofaDays instead of expiring on its
-     own 60-day clock)
-   Visa    = 90 days (independent — counted from visa's own
-     date/expiry, not cascaded from medical/mofa)
+   Visa    = 90 days (independent)
    Flight  → Iqama = 90 days
 ========================================================= */
 
@@ -29,15 +25,10 @@ export const WORKFLOW_VALIDITY = {
    DATE HELPERS
 ========================================================= */
 
-function addDays(
-  dateString: string,
-  days: number,
-): Date {
+function addDays(dateString: string, days: number): Date {
   const date = new Date(dateString);
 
-  date.setDate(
-    date.getDate() + days,
-  );
+  date.setDate(date.getDate() + days);
 
   return date;
 }
@@ -55,6 +46,19 @@ function isExpired(
 }
 
 /* =========================================================
+   NORMALIZE HELPERS
+========================================================= */
+
+function normalizeValue(
+  value: string | null | undefined,
+): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+/* =========================================================
    MAIN CANDIDATE STATUS
 ========================================================= */
 
@@ -68,15 +72,11 @@ export function getMainCandidateStatus(
     return "return";
   }
 
-  if (
-    candidate.final_status === "complete"
-  ) {
+  if (candidate.final_status === "complete") {
     return "complete";
   }
 
-  if (
-    candidate.final_status === "cancelled"
-  ) {
+  if (candidate.final_status === "cancelled") {
     return "cancel";
   }
 
@@ -112,28 +112,39 @@ interface WorkflowInput {
 /* =========================================================
    CALCULATE WORKFLOW STATE
 
-   BUSINESS RULE:
+   IMPORTANT PIPELINE PRIORITY
 
-   New candidate
+   Candidate
       ↓
-   ACTIVE + HOLD
+   Medical
       ↓
-   RECEIVED
+   MOFA
       ↓
-   Medical completed
+   Visa
       ↓
-   PROCESSING
+   Flight
+      ↓
+   Iqama
 
-   Then validity controls HOLD automatically, with the
-   medical→MOFA window cascading (see below) and visa
-   tracked independently on its own date.
+   SPECIAL LIVE RULES:
+
+   Flight exists + not departed
+      → Flight
+
+   Flight departed + Iqama incomplete
+      → Iqama
+
+   Flight departed + 90 days passed
+      → Iqama + Hold
+
+   These live flight rules have priority over stale
+   candidates.current_stage values.
 ========================================================= */
 
 export function calculateWorkflowState(
   input: WorkflowInput,
 ): CandidateWorkflowState {
-  const mainStatus =
-    getMainCandidateStatus(input);
+  const mainStatus = getMainCandidateStatus(input);
 
   /* -------------------------------------------------------
      COMPLETE / RETURN / CANCEL
@@ -143,42 +154,56 @@ export function calculateWorkflowState(
     return {
       mainStatus,
       workflowState: "processing",
-      currentStage:
-        input.current_stage ?? null,
+      currentStage: input.current_stage ?? null,
       holdReason: null,
     };
   }
+
   /* -------------------------------------------------------
-   EXPLICIT VISA STAGE
-
-   If the candidate has already been moved to the
-   Visa stage, the pipeline stage is authoritative.
-
-   Do NOT send the candidate back to "Received/Hold"
-   just because the medical record is missing/stale.
-
-   Visa expiration is still handled below.
-------------------------------------------------------- */
-
-const currentStage =
-  String(input.current_stage ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-      /* -------------------------------------------------------
-     FLIGHT DEPARTED → IQAMA
-
-     Once the candidate has actually departed, the next
-     workflow stage is Iqama — even if current_stage is
-     still "visa" or "flight".
+     NORMALIZED VALUES
   ------------------------------------------------------- */
 
- if (
-  String(input.flightStatus ?? "")
-    .trim()
-    .toLowerCase() === "departed" &&
-  input.iqamaCompleted !== true
-) {
+  const currentStage = normalizeValue(
+    input.current_stage,
+  );
+
+  const flightStatus = normalizeValue(
+    input.flightStatus,
+  );
+
+  const visaStatus = normalizeValue(
+    input.visaStatus,
+  );
+
+  /* =======================================================
+     FLIGHT DEPARTED → IQAMA
+
+     THIS MUST COME BEFORE VISA.
+
+     Example:
+
+       candidates.current_stage = "visa"
+       flights.status = "departed"
+
+     Result:
+
+       currentStage = "iqama"
+   ======================================================= */
+
+  if (
+    flightStatus === "departed" &&
+    input.iqamaCompleted !== true
+  ) {
+    /* -----------------------------------------------------
+       IQAMA OVERDUE
+
+       Flight departed
+       +
+       Iqama incomplete
+       +
+       90 days passed
+     ----------------------------------------------------- */
+
     if (
       input.flightDate &&
       isExpired(
@@ -194,6 +219,10 @@ const currentStage =
       };
     }
 
+    /* -----------------------------------------------------
+       FLIGHT DEPARTED BUT IQAMA STILL PROCESSING
+     ----------------------------------------------------- */
+
     return {
       mainStatus: "active",
       workflowState: "processing",
@@ -202,76 +231,104 @@ const currentStage =
     };
   }
 
-if (currentStage === "visa") {
-  const visaIsExpired =
-    String(input.visaStatus ?? "")
-      .trim()
-      .toLowerCase() === "expired" ||
-    Boolean(
-      input.visaExpiryDate &&
-        new Date(
-          input.visaExpiryDate,
-        ).getTime() < Date.now(),
-    ) ||
-    Boolean(
-      !input.visaExpiryDate &&
-        input.visaDate &&
-        isExpired(
-          input.visaDate,
-          WORKFLOW_VALIDITY.visaDays,
-        ),
-    );
+  /* =======================================================
+     FLIGHT EXISTS → FLIGHT
 
-  if (visaIsExpired) {
-    return {
-      mainStatus: "active",
-      workflowState: "hold",
-      currentStage: "visa",
-      holdReason: "visa_expired",
-    };
-  }
+     Any active flight record means the candidate has
+     progressed beyond Visa.
 
-  return {
-    mainStatus: "active",
-    workflowState: "processing",
-    currentStage: "visa",
-    holdReason: null,
-  };
-}
-  /* -------------------------------------------------------
-     MEDICAL NOT STARTED
-     
-     No medical record/status means:
-     
-       ACTIVE
-       + HOLD
-       + RECEIVED
-     
-     This is the default state for a new candidate.
-  ------------------------------------------------------- */
+     This prevents:
+
+       current_stage = visa
+       flight.status = scheduled
+
+     from continuing to display Visa.
+
+     Cancelled flights are ignored.
+   ======================================================= */
 
   if (
-    !input.medicalStatus
+    flightStatus &&
+    flightStatus !== "cancelled"
   ) {
     return {
       mainStatus: "active",
+      workflowState: "processing",
+      currentStage: "flight",
+      holdReason: null,
+    };
+  }
+
+  /* =======================================================
+     EXPLICIT VISA STAGE
+
+     If candidate has already reached Visa and there is
+     no active Flight, Visa becomes authoritative.
+
+     Visa expiration is still checked here.
+   ======================================================= */
+
+  if (currentStage === "visa") {
+    const visaIsExpired =
+      visaStatus === "expired" ||
+      Boolean(
+        input.visaExpiryDate &&
+          new Date(
+            input.visaExpiryDate,
+          ).getTime() < Date.now(),
+      ) ||
+      Boolean(
+        !input.visaExpiryDate &&
+          input.visaDate &&
+          isExpired(
+            input.visaDate,
+            WORKFLOW_VALIDITY.visaDays,
+          ),
+      );
+
+    if (visaIsExpired) {
+      return {
+        mainStatus: "active",
+        workflowState: "hold",
+        currentStage: "visa",
+        holdReason: "visa_expired",
+      };
+    }
+
+    return {
+      mainStatus: "active",
+      workflowState: "processing",
+      currentStage: "visa",
+      holdReason: null,
+    };
+  }
+
+  /* =======================================================
+     MEDICAL NOT STARTED
+
+     No medical record/status means:
+
+       ACTIVE
+       +
+       HOLD
+       +
+       RECEIVED
+   ======================================================= */
+
+  if (!input.medicalStatus) {
+    return {
+      mainStatus: "active",
       workflowState: "hold",
-      currentStage:
-        input.current_stage ?? null,
+      currentStage: input.current_stage ?? null,
       holdReason: "received",
     };
   }
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MEDICAL PENDING
+   ======================================================= */
 
-     If medical record exists but is still "new",
-     candidate remains Received/Hold.
-  ------------------------------------------------------- */
-
-  if (
-    input.medicalStatus === "new"
-  ) {
+  if (input.medicalStatus === "new") {
     return {
       mainStatus: "active",
       workflowState: "hold",
@@ -281,19 +338,11 @@ if (currentStage === "visa") {
     };
   }
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MEDICAL UNFIT
+   ======================================================= */
 
-     This is a failed medical result.
-     It should NOT be treated as Received.
-
-     Keep it out of Processing.
-     We use hold until a dedicated failure state exists.
-  ------------------------------------------------------- */
-
-  if (
-    input.medicalStatus === "unfit"
-  ) {
+  if (input.medicalStatus === "unfit") {
     return {
       mainStatus: "active",
       workflowState: "hold",
@@ -303,42 +352,29 @@ if (currentStage === "visa") {
     };
   }
 
-  /* -------------------------------------------------------
-     VISA ISSUED → cascade stops here
+  /* =======================================================
+     VISA ISSUED → MEDICAL/MOFA CASCADE STOPS
 
-     Once a visa is issued/approved, it takes over as the
-     controlling deadline (own date, see VISA block below).
-     Medical/MOFA no longer matter at that point — they've
-     already served their purpose in getting here.
-  ------------------------------------------------------- */
+     Once Visa is issued/approved, Visa controls the
+     validity independently.
+   ======================================================= */
 
   const visaIsIssued = Boolean(
     input.visaStatus &&
       ["issued", "approved"].includes(
-        input.visaStatus,
+        normalizeValue(input.visaStatus),
       ),
   );
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MEDICAL FIT → MOFA CASCADE
 
-     Medical alone is valid 60 days from its own date.
+     Medical:
+       60 days
 
-     Once MOFA has started (a mofaDate exists), the
-     deadline cascades: instead of expiring independently
-     on medical's own 60-day clock (or MOFA's own date),
-     the combined window becomes:
-
-         medicalDate + medicalDays + mofaDays
-       = medicalDate + 60 + 30
-       = medicalDate + 90 days
-
-     This means starting MOFA buys 30 extra days measured
-     from the *medical* date, not from MOFA's own date.
-     The candidate stays in Processing throughout, as long
-     as they're within this combined window (or until visa
-     is issued, which takes over above).
-  ------------------------------------------------------- */
+     Medical + MOFA started:
+       60 + 30 = 90 days
+   ======================================================= */
 
   if (
     !visaIsIssued &&
@@ -365,7 +401,9 @@ if (currentStage === "visa") {
         workflowState: "hold",
         currentStage:
           input.current_stage ??
-          (mofaStarted ? "mofa" : "medical"),
+          (mofaStarted
+            ? "mofa"
+            : "medical"),
         holdReason: mofaStarted
           ? "mofa_expired"
           : "medical_expired",
@@ -373,18 +411,14 @@ if (currentStage === "visa") {
     }
   }
 
-  /* -------------------------------------------------------
-     VISA
+  /* =======================================================
+     VISA ISSUED / APPROVED
 
-     Issued/approved visa:
-       expiry_date is authoritative.
+     expiry_date is authoritative.
 
-     If expiry_date is unavailable:
-       visa_date + 90 days.
-
-     This is independent of the medical/MOFA cascade above —
-     visa runs on its own clock from its own date.
-  ------------------------------------------------------- */
+     If expiry_date doesn't exist:
+       visa_date + 90 days
+   ======================================================= */
 
   if (visaIsIssued) {
     if (input.visaExpiryDate) {
@@ -419,45 +453,9 @@ if (currentStage === "visa") {
     }
   }
 
-  /* -------------------------------------------------------
-     IQAMA
-
-     Flight departed
-        +
-     Iqama not completed
-        +
-     90 days passed
-        =
-     IQAMA OVERDUE
-  ------------------------------------------------------- */
-
-  if (
-    input.flightStatus === "departed" &&
-    input.flightDate &&
-    input.iqamaCompleted !== true
-  ) {
-    if (
-      isExpired(
-        input.flightDate,
-        WORKFLOW_VALIDITY.iqamaDays,
-      )
-    ) {
-      return {
-        mainStatus: "active",
-        workflowState: "hold",
-        currentStage:
-          input.current_stage ?? "flight",
-        holdReason: "iqama_overdue",
-      };
-    }
-  }
-
-  /* -------------------------------------------------------
+  /* =======================================================
      DEFAULT ACTIVE WORKING STATE
-
-     If Medical is completed and no validity
-     has expired, candidate is Processing.
-  ------------------------------------------------------- */
+   ======================================================= */
 
   return {
     mainStatus: "active",
@@ -484,6 +482,7 @@ export async function saveWorkflowState(
 
       hold_reason:
         state.holdReason,
+
       current_stage:
         state.currentStage,
 
@@ -659,37 +658,25 @@ export async function getCandidateWorkflow(
       flight?.status ?? null,
 
     /*
-     * Iqama is not yet fetched from a dedicated table
-     * in the current implementation.
+     * Iqama is not yet fetched from a dedicated table.
+     * Until the Iqama module exists, departed candidates
+     * are considered incomplete.
      */
     iqamaCompleted: false,
   });
 }
 
 /* =========================================================
-   SYNC ONE CANDIDATE'S WORKFLOW STATE
-   ---------------------------------------------------------
-   Recalculates workflow_state/hold_reason from the
-   candidate's current medical/mofa/visa/flight data and
-   persists it.
-
-   IMPORTANT:
-   This is the missing "trigger point". calculateWorkflowState()
-   and saveWorkflowState() already existed but nothing ever
-   called them together. Call this after any save that can
-   change a candidate's processing/hold state (medical, mofa,
-   visa, flight create/update, and candidate reactivation).
-
-   Callers should wrap this in try/catch and NOT let a sync
-   failure block the actual save — same pattern already used
-   for updateCandidateStage() in medical-service.ts.
+   SYNC ONE CANDIDATE WORKFLOW STATE
 ========================================================= */
 
 export async function syncCandidateWorkflowState(
   candidateId: string,
 ): Promise<void> {
   const state =
-    await getCandidateWorkflow(candidateId);
+    await getCandidateWorkflow(
+      candidateId,
+    );
 
   await saveWorkflowState(
     candidateId,
@@ -698,23 +685,12 @@ export async function syncCandidateWorkflowState(
 }
 
 /* =========================================================
-   LIVE WORKFLOW STATES (BATCH, NON-PERSISTING)
+   LIVE WORKFLOW STATES
    ---------------------------------------------------------
-   Dashboard/candidate-list load হওয়ার সময় ব্যবহারের জন্য।
+   Batch/non-persisting calculation for dashboard and
+   candidate list.
 
-   getCandidateWorkflow() একটা candidate-এর জন্য ৫টা query
-   করে — অনেকগুলো candidate-এর জন্য একসাথে সেটা করলে N+1
-   হয়ে যাবে।
-
-   এই ফাংশন medical/mofa/visa/flight-এর "candidate_id IN (...)"
-   একটাই batch query করে, প্রতিটা candidate-এর latest record
-   বের করে, তারপর calculateWorkflowState() দিয়ে হিসাব করে।
-
-   IMPORTANT:
-   এটা কিছুই DB-তে write করে না। শুধু display-এর জন্য
-   real-time recalculation — যাতে কেউ কোনো record edit না
-   করলেও (শুধু সময় পার হয়ে validity expire হয়ে গেলেও)
-   dashboard/list-এ সঠিক Processing/Hold দেখা যায়।
+   Avoids N+1 queries.
 ========================================================= */
 
 export interface WorkflowCandidateInput {
@@ -725,40 +701,52 @@ export interface WorkflowCandidateInput {
 }
 
 function latestRowsByCandidate<
-  T extends { candidate_id: string },
+  T extends {
+    candidate_id: string;
+  },
 >(
   rows: T[] | null | undefined,
 ): Map<string, T> {
+  const map =
+    new Map<string, T>();
 
-  const map = new Map<string, T>();
-
-  // rows আসে created_at descending order-এ,
-  // তাই প্রতি candidate_id-র প্রথম row-টাই latest।
+  /*
+   * Queries are ordered by created_at DESC,
+   * therefore the first row for each candidate
+   * is the latest record.
+   */
   for (const row of rows ?? []) {
-
     if (!map.has(row.candidate_id)) {
-      map.set(row.candidate_id, row);
+      map.set(
+        row.candidate_id,
+        row,
+      );
     }
-
   }
 
   return map;
-
 }
 
 export async function getLiveWorkflowStates(
   candidates: WorkflowCandidateInput[],
-): Promise<Map<string, CandidateWorkflowState>> {
-
+): Promise<
+  Map<string, CandidateWorkflowState>
+> {
   const result =
-    new Map<string, CandidateWorkflowState>();
+    new Map<
+      string,
+      CandidateWorkflowState
+    >();
 
   if (candidates.length === 0) {
     return result;
   }
 
   const candidateIds =
-    candidates.map((c) => c.id);
+    candidates.map(
+      (candidate) =>
+        candidate.id,
+    );
 
   const [
     medicalsResult,
@@ -771,110 +759,202 @@ export async function getLiveWorkflowStates(
       .select(
         "candidate_id, medical_date, fit_date, status, created_at",
       )
-      .in("candidate_id", candidateIds)
-      .order("created_at", { ascending: false }),
+      .in(
+        "candidate_id",
+        candidateIds,
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
 
     supabase
       .from("mofas")
       .select(
         "candidate_id, application_date, stage, created_at",
       )
-      .in("candidate_id", candidateIds)
-      .order("created_at", { ascending: false }),
+      .in(
+        "candidate_id",
+        candidateIds,
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
 
     supabase
       .from("visas")
       .select(
         "candidate_id, visa_date, expiry_date, status, created_at",
       )
-      .in("candidate_id", candidateIds)
-      .order("created_at", { ascending: false }),
+      .in(
+        "candidate_id",
+        candidateIds,
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
 
     supabase
       .from("flights")
       .select(
         "candidate_id, flight_date, status, created_at",
       )
-      .in("candidate_id", candidateIds)
-      .order("created_at", { ascending: false }),
+      .in(
+        "candidate_id",
+        candidateIds,
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        },
+      ),
   ]);
 
-  if (medicalsResult.error) throw medicalsResult.error;
-  if (mofasResult.error) throw mofasResult.error;
-  if (visasResult.error) throw visasResult.error;
-  if (flightsResult.error) throw flightsResult.error;
+  if (medicalsResult.error) {
+    throw medicalsResult.error;
+  }
+
+  if (mofasResult.error) {
+    throw mofasResult.error;
+  }
+
+  if (visasResult.error) {
+    throw visasResult.error;
+  }
+
+  if (flightsResult.error) {
+    throw flightsResult.error;
+  }
 
   const latestMedical =
     latestRowsByCandidate(
       medicalsResult.data as
-        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | ({
+            candidate_id: string;
+          } & Record<
+            string,
+            unknown
+          >)[]
         | null,
     );
 
   const latestMofa =
     latestRowsByCandidate(
       mofasResult.data as
-        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | ({
+            candidate_id: string;
+          } & Record<
+            string,
+            unknown
+          >)[]
         | null,
     );
 
   const latestVisa =
     latestRowsByCandidate(
       visasResult.data as
-        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | ({
+            candidate_id: string;
+          } & Record<
+            string,
+            unknown
+          >)[]
         | null,
     );
 
   const latestFlight =
     latestRowsByCandidate(
       flightsResult.data as
-        | ({ candidate_id: string } & Record<string, unknown>)[]
+        | ({
+            candidate_id: string;
+          } & Record<
+            string,
+            unknown
+          >)[]
         | null,
     );
 
   for (const candidate of candidates) {
-
     const medical =
-      latestMedical.get(candidate.id) as
+      latestMedical.get(
+        candidate.id,
+      ) as
         | {
-            medical_date: string | null;
-            fit_date: string | null;
-            status: string | null;
+            medical_date:
+              | string
+              | null;
+            fit_date:
+              | string
+              | null;
+            status:
+              | string
+              | null;
           }
         | undefined;
 
     const mofa =
-      latestMofa.get(candidate.id) as
+      latestMofa.get(
+        candidate.id,
+      ) as
         | {
-            application_date: string | null;
-            stage: string | null;
+            application_date:
+              | string
+              | null;
+            stage:
+              | string
+              | null;
           }
         | undefined;
 
     const visa =
-      latestVisa.get(candidate.id) as
+      latestVisa.get(
+        candidate.id,
+      ) as
         | {
-            visa_date: string | null;
-            expiry_date: string | null;
-            status: string | null;
+            visa_date:
+              | string
+              | null;
+            expiry_date:
+              | string
+              | null;
+            status:
+              | string
+              | null;
           }
         | undefined;
 
     const flight =
-      latestFlight.get(candidate.id) as
+      latestFlight.get(
+        candidate.id,
+      ) as
         | {
-            flight_date: string | null;
-            status: string | null;
+            flight_date:
+              | string
+              | null;
+            status:
+              | string
+              | null;
           }
         | undefined;
 
     const state =
       calculateWorkflowState({
         is_returned:
-          candidate.is_returned ?? false,
+          candidate.is_returned ??
+          false,
 
         final_status:
-          candidate.final_status ?? null,
+          candidate.final_status ??
+          null,
 
         current_stage:
           candidate.current_stage,
@@ -885,36 +965,49 @@ export async function getLiveWorkflowStates(
           null,
 
         medicalStatus:
-          medical?.status ?? null,
+          medical?.status ??
+          null,
 
         mofaDate:
-          mofa?.application_date ?? null,
+          mofa?.application_date ??
+          null,
 
         mofaStage:
-          mofa?.stage ?? null,
+          mofa?.stage ??
+          null,
 
         visaDate:
-          visa?.visa_date ?? null,
+          visa?.visa_date ??
+          null,
 
         visaExpiryDate:
-          visa?.expiry_date ?? null,
+          visa?.expiry_date ??
+          null,
 
         visaStatus:
-          visa?.status ?? null,
+          visa?.status ??
+          null,
 
         flightDate:
-          flight?.flight_date ?? null,
+          flight?.flight_date ??
+          null,
 
         flightStatus:
-          flight?.status ?? null,
+          flight?.status ??
+          null,
 
+        /*
+         * Iqama is not yet fetched from a
+         * dedicated table.
+         */
         iqamaCompleted: false,
       });
 
-    result.set(candidate.id, state);
-
+    result.set(
+      candidate.id,
+      state,
+    );
   }
 
   return result;
-
 }
