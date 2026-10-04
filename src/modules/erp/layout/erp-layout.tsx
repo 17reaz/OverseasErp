@@ -51,15 +51,7 @@ export function ErpLayout() {
             overflow-x-hidden
           "
         >
-                    <div
-            className="
-              flex
-              h-full
-              min-h-0
-              flex-col
-              p-6
-            "
-          >
+                    <div className="flex h-full min-h-0 flex-col px-6 pt-6 pb-3">
 <PermissionGuard>
   <Outlet />
 </PermissionGuard>          </div>
