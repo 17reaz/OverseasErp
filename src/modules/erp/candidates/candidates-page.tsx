@@ -45,7 +45,7 @@ import {
 import {
   CandidateReturnDialog,
 } from "./components/candidate-return-dialog";
-
+import { useCandidatesLive } from "./candidate-sync";
 import {
   getCandidateOverallStatus,
 } from "./candidate-selectors";
@@ -104,7 +104,12 @@ export function CandidatesPage() {
     candidates,
     setCandidates,
   ] = useState<Candidate[]>([]);
-
+const liveCandidates =
+  useCandidatesLive();
+  console.log(
+  "DEXIE CANDIDATES:",
+  liveCandidates,
+);
   /* =======================================================
      SEARCH
   ======================================================= */
