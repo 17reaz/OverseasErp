@@ -391,7 +391,7 @@ const visibleNavigation = erpNavigation.filter((item) =>
                 {/* =================================================
                     TRASH
                     ================================================= */}
-
+{can("trash.view") && (
                 <SidebarMenuItem>
 
                   <SidebarMenuButton
@@ -430,7 +430,7 @@ const visibleNavigation = erpNavigation.filter((item) =>
                   </SidebarMenuButton>
 
                 </SidebarMenuItem>
-
+    )}
               </SidebarMenu>
 
             </SidebarGroupContent>

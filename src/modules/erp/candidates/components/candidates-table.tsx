@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-
 import {
   Tooltip,
   TooltipContent,
@@ -53,7 +52,7 @@ import { CandidateStageBadge } from "./candidate-stage-badge";
 
 interface CandidatesTableProps {
   candidates: Candidate[];
-
+  newCandidateIds?: Set<string>;
   loading?: boolean;
 
   page?: number;
@@ -103,7 +102,7 @@ interface CandidatesTableProps {
 export function CandidatesTable({
   candidates,
   loading = false,
-
+  newCandidateIds = new Set(),
   page,
   pageSize = 10,
   total,
@@ -793,11 +792,11 @@ const handleCopyPassport = async (
         columns={columns}
 
         data={candidates}
-
+        // getRowKey={(candidate) => candidate.id}
         getRowKey={(candidate) =>
           candidate.id
         }
-
+        newRowKeys={newCandidateIds}
         loading={loading}
 
         emptyTitle="No candidates found"

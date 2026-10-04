@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
+import { motion } from "motion/react";
 /* =========================================================
  * COLUMN DEFINITION
  * ========================================================= */
@@ -43,7 +43,7 @@ interface DataTableProps<T> {
    * SERVER mode (see `serverPagination`).
    */
   data: T[];
-
+  newRowKeys?: Set<string | number>;
   getRowKey: (row: T, index: number) => string | number;
 
   loading?: boolean;
@@ -83,6 +83,7 @@ export function DataTable<T>({
   columns,
   data,
   getRowKey,
+  newRowKeys = new Set(),
   loading = false,
   emptyTitle = "No records found",
   emptyDescription,
@@ -193,23 +194,46 @@ export function DataTable<T>({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row, index) => (
-                <TableRow key={getRowKey(row, index)}>
-                  {columns.map((column) => (
-                    <TableCell
-                      key={column.key}
-                      className={[
-                        column.hideOnMobile ? "hidden sm:table-cell" : "",
-                        column.className ?? "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      {column.cell(row, index)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              rows.map((row, index) => {
+  const rowKey = getRowKey(row, index);
+  const isNewRow = newRowKeys.has(rowKey);
+
+  return (
+    <motion.tr
+      key={rowKey}
+      initial={
+        isNewRow
+          ? {
+              opacity: 0,
+              y: -8,
+            }
+          : false
+      }
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        duration: 0.25,
+        ease: "easeOut",
+      }}
+    >
+      {columns.map((column) => (
+        <TableCell
+          key={column.key}
+          className={[
+            column.hideOnMobile ? "hidden sm:table-cell" : "",
+            column.className ?? "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {column.cell(row, index)}
+        </TableCell>
+      ))}
+    </motion.tr>
+  );
+})
             )}
           </TableBody>
         </Table>

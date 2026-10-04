@@ -4,7 +4,6 @@ import {
   useMemo,
   useState,
 } from "react";
-
 import {
   CandidatesGrid,
 } from "./components/candidates-grid";
@@ -71,7 +70,9 @@ export function CandidatesPage() {
   /* =======================================================
      CANDIDATES
   ======================================================= */
-
+  const [newCandidateIds, setNewCandidateIds] = useState<Set<string>>(
+  new Set(),
+);
   const [
     candidates,
     setCandidates,
@@ -228,16 +229,12 @@ export function CandidatesPage() {
           const data =
             // await getCandidates();
              await getCachedCandidatesFirst();
-            void refreshCandidatesCache()
-            .then((freshCandidates) => {
-             setCandidates(freshCandidates)
-              })
-           .catch((error) => {
-             console.error(
-             "Failed to refresh candidates cache:",
-             error,
-             )
-            })
+            void refreshCandidatesCache().catch((error) => {
+  console.error(
+    "Failed to refresh candidates cache:",
+    error,
+  );
+});
           /* -------------------------------------------------
              LIVE WORKFLOW RECALCULATION
 
@@ -1403,6 +1400,7 @@ function handleManageServices(candidate: Candidate) {
             handleReactivate
           }
           onCandidateUpdated={handleCandidateUpdated}
+          newCandidateIds={newCandidateIds}
         />
 
       ) : (
@@ -1482,28 +1480,39 @@ function handleManageServices(candidate: Candidate) {
       ================================================= */}
 
       <CandidateFormDialog
+  open={formOpen}
+  candidate={editingCandidate}
+  onOpenChange={setFormOpen}
+  onSuccess={(newCandidate) => {
+    setFormOpen(false);
 
-        open={
-          formOpen
-        }
+    if (editingCandidate) {
+      // Existing candidate edit
+      loadCandidates();
+      return;
+    }
 
-        candidate={
-          editingCandidate
-        }
+    // New candidate: পুরো list reload নয়
+    setCandidates((current) => [
+      newCandidate,
+      ...current,
+    ]);
 
-        onOpenChange={
-          setFormOpen
-        }
+    setNewCandidateIds((current) => {
+      const next = new Set(current);
+      next.add(newCandidate.id);
+      return next;
+    });
 
-        onSuccess={
-          () => {
-
-            loadCandidates();
-
-          }
-        }
-
-      />
+    window.setTimeout(() => {
+      setNewCandidateIds((current) => {
+        const next = new Set(current);
+        next.delete(newCandidate.id);
+        return next;
+      });
+    }, 1800);
+  }}
+/>
 
 
       {/* =================================================
