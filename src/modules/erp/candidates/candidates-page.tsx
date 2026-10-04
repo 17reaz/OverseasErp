@@ -1,70 +1,38 @@
 // src/modules/erp/candidates/candidates-page.tsx
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+/* =========================================================
+   IMPORTS
+========================================================= */
 
-import {
-  CandidatesGrid,
-} from "./components/candidates-grid";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  CandidateStageSheet,
-} from "./components/candidate-stage";
-
-import {
-  CandidateCancelDialog,
-} from "./components/candidate-cancel-dialog";
-
-import {
-  CandidatePassportDialog,
-} from "./components/candidate-passport-dialog";
-
+// ---- UI components (list / grid / dialogs / toolbar) ----
+import { CandidatesGrid } from "./components/candidates-grid";
+import { CandidateStageSheet } from "./components/candidate-stage";
+import { CandidateCancelDialog } from "./components/candidate-cancel-dialog";
+import { CandidatePassportDialog } from "./components/candidate-passport-dialog";
 import {
   CandidateToolbar,
   type CandidateFilterState,
   type CandidateSortState,
   type ViewMode,
 } from "./components/candidate-toolbar";
+import { CandidatesTable } from "./components/candidates-table";
+import { CandidateFormDialog } from "./components/candidate-form-dialog";
+import { CandidateDeleteDialog } from "./components/candidate-delete-dialog";
+import { CandidateReturnDialog } from "./components/candidate-return-dialog";
 
-import {
-  CandidatesTable,
-} from "./components/candidates-table";
-
-import {
-  CandidateFormDialog,
-} from "./components/candidate-form-dialog";
-
-import {
-  CandidateDeleteDialog,
-} from "./components/candidate-delete-dialog";
-
-import {
-  CandidateReturnDialog,
-} from "./components/candidate-return-dialog";
+// ---- Data / logic helpers ----
 import { useCandidatesLive } from "./candidate-sync";
-import {
-  getCandidateOverallStatus,
-} from "./candidate-selectors";
-
+import { getCandidateOverallStatus } from "./candidate-selectors";
 import {
   restoreReturnedCandidate,
   reactivateCandidate,
   getCandidateById,
   type Candidate,
 } from "./candidate-service";
-
-import {
-  getLiveWorkflowStates,
-} from "../workflow/workflow-service";
-
-import type {
-  CandidateStage,
-} from "./stage-service";
-
+import { getLiveWorkflowStates } from "../workflow/workflow-service";
+import type { CandidateStage } from "./stage-service";
 import {
   getCachedCandidatesFirst,
   refreshCandidatesCache,
@@ -72,335 +40,239 @@ import {
 
 /* =========================================================
    PAGE
+   Candidates-er main page: list/grid, filter, search, sort
+   ebong shob dialog (create, edit, delete, return, cancel)
+   ekhane manage hoy.
 ========================================================= */
 
 export function CandidatesPage() {
   /* =======================================================
-     CANDIDATES
+     STATE: CANDIDATES DATA
   ======================================================= */
 
-  const [
-    newCandidateIds,
-    setNewCandidateIds,
-  ] = useState<Set<string>>(
+  // Notun add howa candidate-der id (highlight animation-er jonno)
+  const [newCandidateIds, setNewCandidateIds] = useState<Set<string>>(
     new Set(),
   );
 
-  const [
-    updatedCandidateIds,
-    setUpdatedCandidateIds,
-  ] = useState<Set<string>>(
+  // Update howa candidate-der id (highlight animation-er jonno)
+  const [updatedCandidateIds, setUpdatedCandidateIds] = useState<Set<string>>(
     new Set(),
   );
 
-  const [
-    updatedCandidateFields,
-    setUpdatedCandidateFields,
-  ] = useState<
+  // Kon candidate-er kon kon field change hoyeche (field-level highlight)
+  // Map: candidateId -> changed field name-er Set
+  const [updatedCandidateFields, setUpdatedCandidateFields] = useState<
     Map<string, Set<string>>
   >(new Map());
 
-  const [
-    candidates,
-    setCandidates,
-  ] = useState<Candidate[]>([]);
-const liveCandidates =
-  useCandidatesLive();
-  console.log(
-  "DEXIE CANDIDATES:",
-  liveCandidates,
-);
+  // Main candidates list (screen-e ja dekha jay tar source)
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+
+  // Dexie (local DB) theke live candidates
+  const liveCandidates = useCandidatesLive();
+  console.log("DEXIE CANDIDATES:", liveCandidates);
+
   /* =======================================================
-     SEARCH
+     STATE: SEARCH
   ======================================================= */
 
-  const [
-    search,
-    setSearch,
-  ] = useState("");
+  const [search, setSearch] = useState("");
 
-  const [
-    passportCandidate,
-    setPassportCandidate,
-  ] = useState<Candidate | null>(
+  // Passport dialog-e kon candidate dekhano hobe
+  const [passportCandidate, setPassportCandidate] = useState<Candidate | null>(
     null,
   );
 
   /* =======================================================
-     FILTER
+     STATE: FILTER
   ======================================================= */
 
-  const [
-    candidateFilter,
-    setCandidateFilter,
-  ] =
-    useState<CandidateFilterState>({
+  const [candidateFilter, setCandidateFilter] = useState<CandidateFilterState>(
+    {
       status: "all",
       agentId: "all",
       stage: "all",
       month: "all",
-    });
+    },
+  );
 
   /* =======================================================
-     SORT
+     STATE: SORT
   ======================================================= */
 
-  const [
-    candidateSort,
-    setCandidateSort,
-  ] =
-    useState<CandidateSortState>({
-      mode: "custom",
-      field: "created_at",
-    });
+  const [candidateSort, setCandidateSort] = useState<CandidateSortState>({
+    mode: "custom",
+    field: "created_at",
+  });
 
   /* =======================================================
-     VIEW
+     STATE: VIEW MODE (list / grid)
   ======================================================= */
 
-  const [
-    viewMode,
-    setViewMode,
-  ] = useState<ViewMode>("list");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   /* =======================================================
-     LOADING / ERROR
+     STATE: LOADING / ERROR
   ======================================================= */
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [
-    error,
-    setError,
-  ] = useState<string | null>(null);
+  /* =======================================================
+     STATE: MANAGE SERVICES (stage sheet)
+  ======================================================= */
 
-  const [
-    servicesOpen,
-    setServicesOpen,
-  ] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [managingServicesCandidate, setManagingServicesCandidate] =
+    useState<Candidate | null>(null);
 
-  const [
-    managingServicesCandidate,
-    setManagingServicesCandidate,
-  ] = useState<Candidate | null>(
+  /* =======================================================
+     STATE: CREATE / EDIT DIALOG
+  ======================================================= */
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(
     null,
   );
 
   /* =======================================================
-     CREATE / EDIT
+     STATE: CANCEL DIALOG
   ======================================================= */
 
-  const [
-    formOpen,
-    setFormOpen,
-  ] = useState(false);
-
-  const [
-    editingCandidate,
-    setEditingCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancellingCandidate, setCancellingCandidate] =
+    useState<Candidate | null>(null);
 
   /* =======================================================
-     CANCEL
+     STATE: DELETE DIALOG
   ======================================================= */
 
-  const [
-    cancelOpen,
-    setCancelOpen,
-  ] = useState(false);
-
-  const [
-    cancellingCandidate,
-    setCancellingCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingCandidate, setDeletingCandidate] =
+    useState<Candidate | null>(null);
 
   /* =======================================================
-     DELETE
+     STATE: RETURN DIALOG
   ======================================================= */
 
-  const [
-    deleteOpen,
-    setDeleteOpen,
-  ] = useState(false);
-
-  const [
-    deletingCandidate,
-    setDeletingCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
-
-  /* =======================================================
-     RETURN
-  ======================================================= */
-
-  const [
-    returnOpen,
-    setReturnOpen,
-  ] = useState(false);
-
-  const [
-    returningCandidate,
-    setReturningCandidate,
-  ] = useState<Candidate | null>(
-    null,
-  );
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returningCandidate, setReturningCandidate] =
+    useState<Candidate | null>(null);
 
   /* =======================================================
      LOAD CANDIDATES
+     1) Age cache theke data dekhay (fast)
+     2) Background-e cache refresh kore
+     3) Active candidate-der live workflow state hishab kore
   ======================================================= */
 
-  const loadCandidates =
-    useCallback(
-      async () => {
-        setLoading(true);
+  const loadCandidates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-        setError(null);
+    try {
+      // Cache theke age data nei (screen taratari dekhanor jonno)
+      const data = await getCachedCandidatesFirst();
 
-        try {
-          const data =
-            await getCachedCandidatesFirst();
+      // Background-e cache refresh (result-er jonno wait kora hoy na)
+      void refreshCandidatesCache().catch((error) => {
+        console.error("Failed to refresh candidates cache:", error);
+      });
 
-          void refreshCandidatesCache().catch(
-            (error) => {
-              console.error(
-                "Failed to refresh candidates cache:",
-                error,
-              );
-            },
-          );
+      /* -------------------------------------------------
+         LIVE WORKFLOW RECALCULATION
 
-          /* -------------------------------------------------
-             LIVE WORKFLOW RECALCULATION
+         DB-এর workflow_state stale হতে পারে (কেউ কোনো
+         record edit না করলেও validity সময়ের সাথে expire
+         হয়ে যায়)। তাই list load হওয়ার সময় active
+         candidate-দের জন্য live হিসাব করে overwrite করা
+         হচ্ছে — DB-তে কিছু persist হচ্ছে না, শুধু display।
+      ------------------------------------------------- */
 
-             DB-এর workflow_state stale হতে পারে (কেউ কোনো
-             record edit না করলেও validity সময়ের সাথে expire
-             হয়ে যায়)। তাই list load হওয়ার সময় active
-             candidate-দের জন্য live হিসাব করে overwrite করা
-             হচ্ছে — DB-তে কিছু persist হচ্ছে না, শুধু display।
-          ------------------------------------------------- */
+      // Shudhu active candidate (final_status nai + return hoyni)
+      const liveTargets = data.filter(
+        (candidate) =>
+          candidate.final_status === null && !candidate.is_returned,
+      );
 
-          const liveTargets =
-            data.filter(
-              (candidate) =>
-                candidate.final_status ===
-                  null &&
-                !candidate.is_returned,
-            );
+      // Default: live hishab fail korle original data-i thakbe
+      let mergedData = data;
 
-          let mergedData = data;
+      try {
+        const liveStates = await getLiveWorkflowStates(
+          liveTargets.map((candidate) => ({
+            id: candidate.id,
+            current_stage: candidate.current_stage,
+            is_returned: candidate.is_returned,
+            final_status: candidate.final_status,
+          })),
+        );
 
-          try {
-            const liveStates =
-              await getLiveWorkflowStates(
-                liveTargets.map(
-                  (candidate) => ({
-                    id: candidate.id,
-                    current_stage:
-                      candidate.current_stage,
-                    is_returned:
-                      candidate.is_returned,
-                    final_status:
-                      candidate.final_status,
-                  }),
-                ),
-              );
+        // Live state thakle candidate-er workflow_state & hold_reason overwrite
+        mergedData = data.map((candidate) => {
+          const live = liveStates.get(candidate.id);
 
-            mergedData =
-              data.map((candidate) => {
-                const live =
-                  liveStates.get(
-                    candidate.id,
-                  );
-
-                if (!live) {
-                  return candidate;
-                }
-
-                return {
-                  ...candidate,
-                  workflow_state:
-                    live.workflowState,
-                  hold_reason:
-                    live.holdReason,
-                };
-              });
-          } catch (liveError) {
-            console.error(
-              "Failed to compute live workflow states:",
-              liveError,
-            );
+          if (!live) {
+            return candidate;
           }
 
-          setCandidates(
-            mergedData,
-          );
-        } catch (error) {
-          console.error(
-            "Failed to load candidates:",
-            error,
-          );
+          return {
+            ...candidate,
+            workflow_state: live.workflowState,
+            hold_reason: live.holdReason,
+          };
+        });
+      } catch (liveError) {
+        console.error("Failed to compute live workflow states:", liveError);
+      }
 
-          setCandidates([]);
+      setCandidates(mergedData);
+    } catch (error) {
+      console.error("Failed to load candidates:", error);
 
-          setError(
-            "Failed to load candidates. Please try again.",
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+      setCandidates([]);
+      setError("Failed to load candidates. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   /* =======================================================
      INITIAL LOAD
+     Page open hole ekbar candidates load hobe.
   ======================================================= */
 
   useEffect(() => {
     loadCandidates();
-  }, [
-    loadCandidates,
-  ]);
+  }, [loadCandidates]);
 
   /* =======================================================
      DERIVED OVERALL STATUS
+     Candidate-er final display status (active/hold/returned/
+     complete/cancelled) ber kore.
   ======================================================= */
 
-  function getDisplayStatus(
-    candidate: Candidate,
-  ) {
-    return getCandidateOverallStatus(
-      candidate,
-      {
-        moduleStatus:
-          candidate.workflow_state ??
-          null,
-      },
-    );
+  function getDisplayStatus(candidate: Candidate) {
+    return getCandidateOverallStatus(candidate, {
+      moduleStatus: candidate.workflow_state ?? null,
+    });
   }
 
   /* =======================================================
      CHANGED CANDIDATE FIELDS
+     Purono ar notun candidate compare kore kon field change
+     hoyeche tar Set return kore (highlight-er jonno).
   ======================================================= */
 
   function getChangedCandidateFields(
     previous: Candidate,
     updated: Candidate,
   ): Set<string> {
-    const fields =
-      new Set<string>();
+    const fields = new Set<string>();
 
-    const keys: Array<
-      keyof Candidate
-    > = [
+    // Ei field gulo compare kora hobe
+    const keys: Array<keyof Candidate> = [
       "sl",
       "passport_no",
       "name",
@@ -419,13 +291,8 @@ const liveCandidates =
     ];
 
     for (const key of keys) {
-      if (
-        previous[key] !==
-        updated[key]
-      ) {
-        fields.add(
-          String(key),
-        );
+      if (previous[key] !== updated[key]) {
+        fields.add(String(key));
       }
     }
 
@@ -434,581 +301,369 @@ const liveCandidates =
 
   /* =======================================================
      MANAGE SERVICES
+     Stage sheet open kore.
   ======================================================= */
 
-  function handleManageServices(
-    candidate: Candidate,
-  ) {
-    setManagingServicesCandidate(
-      candidate,
-    );
-
+  function handleManageServices(candidate: Candidate) {
+    setManagingServicesCandidate(candidate);
     setServicesOpen(true);
   }
 
   /* =======================================================
      STATUS COUNTS
+     Page-er niche summary-r jonno status onujayi count.
   ======================================================= */
 
-  const statusCounts =
-    useMemo(() => {
-      let active = 0;
+  const statusCounts = useMemo(() => {
+    let active = 0;
+    let hold = 0;
+    let returned = 0;
+    let complete = 0;
+    let cancelled = 0;
 
-      let hold = 0;
+    candidates.forEach((candidate) => {
+      const status = getDisplayStatus(candidate);
 
-      let returned = 0;
+      switch (status) {
+        case "active":
+          active++;
+          break;
 
-      let complete = 0;
+        case "hold":
+          hold++;
+          break;
 
-      let cancelled = 0;
+        case "returned":
+          returned++;
+          break;
 
-      candidates.forEach(
-        (candidate) => {
-          const status =
-            getDisplayStatus(
-              candidate,
-            );
+        case "complete":
+          complete++;
+          break;
 
-          switch (status) {
-            case "active":
-              active++;
-              break;
+        case "cancelled":
+          cancelled++;
+          break;
+      }
+    });
 
-            case "hold":
-              hold++;
-              break;
-
-            case "returned":
-              returned++;
-              break;
-
-            case "complete":
-              complete++;
-              break;
-
-            case "cancelled":
-              cancelled++;
-              break;
-          }
-        },
-      );
-
-      return {
-        active,
-        hold,
-        returned,
-        complete,
-        cancelled,
-      };
-    }, [
-      candidates,
-    ]);
+    return {
+      active,
+      hold,
+      returned,
+      complete,
+      cancelled,
+    };
+  }, [candidates]);
 
   /* =======================================================
      AGENT OPTIONS
+     Candidates theke unique agent-er list (filter dropdown-er jonno).
   ======================================================= */
 
-  const agentOptions =
-    useMemo(() => {
-      const agents =
-        new Map<
-          string,
-          string
-        >();
+  const agentOptions = useMemo(() => {
+    // id -> name (Map use korle duplicate agent auto remove hoy)
+    const agents = new Map<string, string>();
 
-      candidates.forEach(
-        (candidate) => {
-          const agent =
-            (
-              candidate as Candidate & {
-                agent?: {
-                  id?: string;
-                  name?: string | null;
-                } | null;
-              }
-            ).agent;
+    candidates.forEach((candidate) => {
+      const agent = (
+        candidate as Candidate & {
+          agent?: {
+            id?: string;
+            name?: string | null;
+          } | null;
+        }
+      ).agent;
 
-          if (
-            agent?.id
-          ) {
-            agents.set(
-              String(agent.id),
-              agent.name ||
-                "Unknown agent",
-            );
-          }
-        },
-      );
+      if (agent?.id) {
+        agents.set(String(agent.id), agent.name || "Unknown agent");
+      }
+    });
 
-      return Array.from(
-        agents.entries(),
-      )
-        .map(
-          ([
-            value,
-            label,
-          ]) => ({
-            value,
-            label,
-          }),
-        )
-        .sort(
-          (a, b) =>
-            a.label.localeCompare(
-              b.label,
-            ),
-        );
-    }, [
-      candidates,
-    ]);
+    return Array.from(agents.entries())
+      .map(([value, label]) => ({
+        value,
+        label,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label)); // naam onujayi A-Z
+  }, [candidates]);
 
   /* =======================================================
      STAGE OPTIONS
+     Candidates-er unique current_stage list (filter dropdown).
   ======================================================= */
 
-  const stageOptions =
-    useMemo(() => {
-      return Array.from(
-        new Set(
-          candidates
-            .map(
-              (candidate) =>
-                candidate.current_stage,
-            )
-            .filter(
-              (
-                stage,
-              ): stage is CandidateStage =>
-                Boolean(stage),
-            ),
-        ),
-      ).sort(
-        (a, b) =>
-          a.localeCompare(b),
-      );
-    }, [
-      candidates,
-    ]);
+  const stageOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        candidates
+          .map((candidate) => candidate.current_stage)
+          .filter((stage): stage is CandidateStage => Boolean(stage)),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [candidates]);
 
   /* =======================================================
      MONTH OPTIONS
+     created_at theke unique month list (newest age).
+     value = "YYYY-MM", label = "Month YYYY".
   ======================================================= */
 
-  const monthOptions =
-    useMemo(() => {
-      const months =
-        new Map<
-          string,
-          string
-        >();
+  const monthOptions = useMemo(() => {
+    const months = new Map<string, string>();
 
-      candidates.forEach(
-        (candidate) => {
-          const rawDate =
-            candidate.created_at;
+    candidates.forEach((candidate) => {
+      const rawDate = candidate.created_at;
 
-          if (!rawDate) {
-            return;
-          }
+      // Date na thakle skip
+      if (!rawDate) {
+        return;
+      }
 
-          const date =
-            new Date(rawDate);
+      const date = new Date(rawDate);
 
-          if (
-            Number.isNaN(
-              date.getTime(),
-            )
-          ) {
-            return;
-          }
+      // Invalid date hole skip
+      if (Number.isNaN(date.getTime())) {
+        return;
+      }
 
-          const value =
-            `${date.getFullYear()}-${String(
-              date.getMonth() + 1,
-            ).padStart(2, "0")}`;
+      const value = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}`;
 
-          const label =
-            date.toLocaleDateString(
-              undefined,
-              {
-                year: "numeric",
-                month: "long",
-              },
-            );
+      const label = date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+      });
 
-          months.set(
-            value,
-            label,
-          );
-        },
-      );
+      months.set(value, label);
+    });
 
-      return Array.from(
-        months.entries(),
-      )
-        .sort(
-          (
-            a,
-            b,
-          ) =>
-            b[0].localeCompare(
-              a[0],
-            ),
-        )
-        .map(
-          ([
-            value,
-            label,
-          ]) => ({
-            value,
-            label,
-          }),
-        );
-    }, [
-      candidates,
-    ]);
+    return Array.from(months.entries())
+      .sort((a, b) => b[0].localeCompare(a[0])) // newest month age
+      .map(([value, label]) => ({
+        value,
+        label,
+      }));
+  }, [candidates]);
 
   /* =======================================================
      FILTER + SEARCH + SORT
+     Final list jeta table/grid-e dekhano hoy.
   ======================================================= */
 
-  const filteredCandidates =
-    useMemo(() => {
-      const query =
-        search
-          .trim()
-          .toLowerCase();
+  const filteredCandidates = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-      const result =
-        candidates.filter(
-          (candidate) => {
-            /* ---------------------------------------------
-               STATUS
-            --------------------------------------------- */
+    const result = candidates.filter((candidate) => {
+      /* ---------------------------------------------
+         STATUS FILTER
+      --------------------------------------------- */
 
-            const status =
-              getDisplayStatus(
-                candidate,
-              );
+      const status = getDisplayStatus(candidate);
 
-            if (
-              candidateFilter.status !==
-              "all"
-            ) {
-              if (
-                status !==
-                candidateFilter.status
-              ) {
-                return false;
-              }
-            }
+      if (candidateFilter.status !== "all") {
+        if (status !== candidateFilter.status) {
+          return false;
+        }
+      }
 
-            /* ---------------------------------------------
-               AGENT
-            --------------------------------------------- */
+      /* ---------------------------------------------
+         AGENT FILTER
+      --------------------------------------------- */
 
-            if (
-              candidateFilter.agentId !==
-              "all"
-            ) {
-              const agentId =
-                (
-                  candidate as Candidate & {
-                    agent?: {
-                      id?: string;
-                    } | null;
-                  }
-                ).agent?.id;
-
-              if (
-                String(agentId) !==
-                candidateFilter.agentId
-              ) {
-                return false;
-              }
-            }
-
-            /* ---------------------------------------------
-               STAGE
-            --------------------------------------------- */
-
-            if (
-              candidateFilter.stage !==
-              "all"
-            ) {
-              if (
-                candidate.current_stage !==
-                candidateFilter.stage
-              ) {
-                return false;
-              }
-            }
-
-            /* ---------------------------------------------
-               MONTH
-            --------------------------------------------- */
-
-            if (
-              candidateFilter.month !==
-              "all"
-            ) {
-              const rawDate =
-                candidate.created_at;
-
-              if (!rawDate) {
-                return false;
-              }
-
-              const date =
-                new Date(rawDate);
-
-              if (
-                Number.isNaN(
-                  date.getTime(),
-                )
-              ) {
-                return false;
-              }
-
-              const candidateMonth =
-                `${date.getFullYear()}-${String(
-                  date.getMonth() + 1,
-                ).padStart(2, "0")}`;
-
-              if (
-                candidateMonth !==
-                candidateFilter.month
-              ) {
-                return false;
-              }
-            }
-
-            /* ---------------------------------------------
-               SEARCH
-            --------------------------------------------- */
-
-            if (!query) {
-              return true;
-            }
-
-            return (
-              candidate.name
-                ?.toLowerCase()
-                .includes(query) ||
-              candidate.passport_no
-                ?.toLowerCase()
-                .includes(query) ||
-              candidate.country
-                ?.toLowerCase()
-                .includes(query) ||
-              candidate.current_stage
-                ?.toLowerCase()
-                .includes(query)
-            );
-          },
-        );
-
-      /* ===================================================
-         SORT
-      =================================================== */
-
-      result.sort(
-        (
-          a,
-          b,
-        ) => {
-          const getValue =
-            (
-              candidate: Candidate,
-            ): string | number => {
-              switch (
-                candidateSort.field
-              ) {
-                case "name":
-                  return (
-                    candidate.name ||
-                    ""
-                  ).toLowerCase();
-
-                case "passport_no":
-                  return (
-                    candidate.passport_no ||
-                    ""
-                  ).toLowerCase();
-
-                case "created_at":
-                  return new Date(
-                    candidate.created_at ||
-                      0,
-                  ).getTime();
-
-                case "updated_at":
-                  return new Date(
-                    candidate.updated_at ||
-                      0,
-                  ).getTime();
-
-                default:
-                  return 0;
-              }
-            };
-
-          const first =
-            getValue(a);
-
-          const second =
-            getValue(b);
-
-          let comparison = 0;
-
-          if (
-            typeof first ===
-              "number" &&
-            typeof second ===
-              "number"
-          ) {
-            comparison =
-              first - second;
-          } else {
-            comparison =
-              String(
-                first,
-              ).localeCompare(
-                String(second),
-              );
+      if (candidateFilter.agentId !== "all") {
+        const agentId = (
+          candidate as Candidate & {
+            agent?: {
+              id?: string;
+            } | null;
           }
+        ).agent?.id;
 
-          if (
-            candidateSort.mode ===
-            "descending"
-          ) {
-            return -comparison;
-          }
+        if (String(agentId) !== candidateFilter.agentId) {
+          return false;
+        }
+      }
 
-          if (
-            candidateSort.mode ===
-            "ascending"
-          ) {
-            return comparison;
-          }
+      /* ---------------------------------------------
+         STAGE FILTER
+      --------------------------------------------- */
 
-          /* ---------------------------------------------
-             CUSTOM
+      if (candidateFilter.stage !== "all") {
+        if (candidate.current_stage !== candidateFilter.stage) {
+          return false;
+        }
+      }
 
-             Existing behaviour:
-             newest first.
-          --------------------------------------------- */
+      /* ---------------------------------------------
+         MONTH FILTER
+      --------------------------------------------- */
 
-          return (
-            new Date(
-              b.created_at ||
-                0,
-            ).getTime() -
-            new Date(
-              a.created_at ||
-                0,
-            ).getTime()
-          );
-        },
+      if (candidateFilter.month !== "all") {
+        const rawDate = candidate.created_at;
+
+        if (!rawDate) {
+          return false;
+        }
+
+        const date = new Date(rawDate);
+
+        if (Number.isNaN(date.getTime())) {
+          return false;
+        }
+
+        const candidateMonth = `${date.getFullYear()}-${String(
+          date.getMonth() + 1,
+        ).padStart(2, "0")}`;
+
+        if (candidateMonth !== candidateFilter.month) {
+          return false;
+        }
+      }
+
+      /* ---------------------------------------------
+         SEARCH
+         name / passport / country / stage-e khoje.
+      --------------------------------------------- */
+
+      // Search khali hole sob candidate dekhao
+      if (!query) {
+        return true;
+      }
+
+      return (
+        candidate.name?.toLowerCase().includes(query) ||
+        candidate.passport_no?.toLowerCase().includes(query) ||
+        candidate.country?.toLowerCase().includes(query) ||
+        candidate.current_stage?.toLowerCase().includes(query)
       );
+    });
 
-      return result;
-    }, [
-      candidates,
-      search,
-      candidateFilter,
-      candidateSort,
-    ]);
+    /* ===================================================
+       SORT
+    =================================================== */
+
+    result.sort((a, b) => {
+      // Sort field onujayi compare-er value ber kore
+      const getValue = (candidate: Candidate): string | number => {
+        switch (candidateSort.field) {
+          case "name":
+            return (candidate.name || "").toLowerCase();
+
+          case "passport_no":
+            return (candidate.passport_no || "").toLowerCase();
+
+          case "created_at":
+            return new Date(candidate.created_at || 0).getTime();
+
+          case "updated_at":
+            return new Date(candidate.updated_at || 0).getTime();
+
+          default:
+            return 0;
+        }
+      };
+
+      const first = getValue(a);
+      const second = getValue(b);
+
+      let comparison = 0;
+
+      if (typeof first === "number" && typeof second === "number") {
+        // Number hole subtract
+        comparison = first - second;
+      } else {
+        // Text hole localeCompare
+        comparison = String(first).localeCompare(String(second));
+      }
+
+      // Descending: ulta
+      if (candidateSort.mode === "descending") {
+        return -comparison;
+      }
+
+      // Ascending: shoja
+      if (candidateSort.mode === "ascending") {
+        return comparison;
+      }
+
+      /* ---------------------------------------------
+         CUSTOM
+
+         Existing behaviour:
+         newest first.
+      --------------------------------------------- */
+
+      return (
+        new Date(b.created_at || 0).getTime() -
+        new Date(a.created_at || 0).getTime()
+      );
+    });
+
+    return result;
+  }, [candidates, search, candidateFilter, candidateSort]);
 
   /* =======================================================
-     CREATE
+     HANDLER: CREATE
+     Form dialog notun candidate-er jonno open kore.
   ======================================================= */
 
   function handleCreate() {
-    setEditingCandidate(
-      null,
-    );
-
-    setFormOpen(
-      true,
-    );
+    setEditingCandidate(null);
+    setFormOpen(true);
   }
 
   /* =======================================================
-     EDIT
+     HANDLER: EDIT
+     Form dialog existing candidate edit-er jonno open kore.
   ======================================================= */
 
-  function handleEdit(
-    candidate: Candidate,
-  ) {
-    setEditingCandidate(
-      candidate,
-    );
-
-    setFormOpen(
-      true,
-    );
+  function handleEdit(candidate: Candidate) {
+    setEditingCandidate(candidate);
+    setFormOpen(true);
   }
 
   /* =======================================================
-     DELETE
+     HANDLER: DELETE
+     Delete confirm dialog open kore.
   ======================================================= */
 
-  function handleDelete(
-    candidate: Candidate,
-  ) {
-    setDeletingCandidate(
-      candidate,
-    );
-
-    setDeleteOpen(
-      true,
-    );
+  function handleDelete(candidate: Candidate) {
+    setDeletingCandidate(candidate);
+    setDeleteOpen(true);
   }
 
   /* =======================================================
-     RETURN
+     HANDLER: RETURN
+     Return dialog open kore.
   ======================================================= */
 
-  function handleReturn(
-    candidate: Candidate,
-  ) {
-    setReturningCandidate(
-      candidate,
-    );
-
-    setReturnOpen(
-      true,
-    );
+  function handleReturn(candidate: Candidate) {
+    setReturningCandidate(candidate);
+    setReturnOpen(true);
   }
 
   /* =======================================================
-     CANCEL
+     HANDLER: CANCEL
+     Cancel dialog open kore.
   ======================================================= */
 
-  function handleCancel(
-    candidate: Candidate,
-  ) {
-    setCancellingCandidate(
-      candidate,
-    );
-
-    setCancelOpen(
-      true,
-    );
+  function handleCancel(candidate: Candidate) {
+    setCancellingCandidate(candidate);
+    setCancelOpen(true);
   }
 
   /* =======================================================
-     RESTORE RETURNED
+     HANDLER: RESTORE RETURNED
+     Return howa candidate-ke abar active kore.
   ======================================================= */
 
-  async function handleRestore(
-    candidate: Candidate,
-  ) {
-    const confirmed =
-      window.confirm(
-        `Restore ${candidate.name} and mark the candidate as active?`,
-      );
+  async function handleRestore(candidate: Candidate) {
+    // User-er confirmation chai
+    const confirmed = window.confirm(
+      `Restore ${candidate.name} and mark the candidate as active?`,
+    );
 
     if (!confirmed) {
       return;
@@ -1016,39 +671,28 @@ const liveCandidates =
 
     try {
       setLoading(true);
-
       setError(null);
 
-      await restoreReturnedCandidate(
-        candidate.id,
-      );
+      await restoreReturnedCandidate(candidate.id);
 
+      // Restore-er pore list abar load
       await loadCandidates();
     } catch (error) {
-      console.error(
-        "Failed to restore candidate:",
-        error,
-      );
+      console.error("Failed to restore candidate:", error);
 
-      setError(
-        "Failed to restore candidate. Please try again.",
-      );
+      setError("Failed to restore candidate. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   /* =======================================================
-     REACTIVATE CANCELLED
+     HANDLER: REACTIVATE CANCELLED
+     Cancel howa candidate-ke abar active kore.
   ======================================================= */
 
-  async function handleReactivate(
-    candidate: Candidate,
-  ) {
-    const confirmed =
-      window.confirm(
-        `Reactivate ${candidate.name}?`,
-      );
+  async function handleReactivate(candidate: Candidate) {
+    const confirmed = window.confirm(`Reactivate ${candidate.name}?`);
 
     if (!confirmed) {
       return;
@@ -1056,138 +700,102 @@ const liveCandidates =
 
     try {
       setLoading(true);
-
       setError(null);
 
-      await reactivateCandidate(
-        candidate.id,
-      );
+      await reactivateCandidate(candidate.id);
 
+      // Reactivate-er pore list abar load
       await loadCandidates();
     } catch (error) {
-      console.error(
-        "Failed to reactivate candidate:",
-        error,
-      );
+      console.error("Failed to reactivate candidate:", error);
 
-      setError(
-        "Failed to reactivate candidate. Please try again.",
-      );
+      setError("Failed to reactivate candidate. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   /* =======================================================
-     CANDIDATE UPDATED
+     HANDLER: CANDIDATE UPDATED
+     Candidate update hole:
+       1) Kon field change hoyeche ta ber kore
+       2) List-e candidate replace kore
+       3) Highlight dekhay, 1.4 second pore tule nei
   ======================================================= */
 
-  function handleCandidateUpdated(
-    updatedCandidate: Candidate,
-  ) {
-    const previousCandidate =
-      candidates.find(
-        (candidate) =>
-          candidate.id ===
-          updatedCandidate.id,
-      );
+  function handleCandidateUpdated(updatedCandidate: Candidate) {
+    // Update-er age candidate-er purono version
+    const previousCandidate = candidates.find(
+      (candidate) => candidate.id === updatedCandidate.id,
+    );
 
+    // Purono version thakle changed field gulo save kori
     if (previousCandidate) {
-      const changedFields =
-        getChangedCandidateFields(
-          previousCandidate,
-          updatedCandidate,
-        );
-
-      setUpdatedCandidateFields(
-        (current) => {
-          const next =
-            new Map(current);
-
-          next.set(
-            updatedCandidate.id,
-            changedFields,
-          );
-
-          return next;
-        },
+      const changedFields = getChangedCandidateFields(
+        previousCandidate,
+        updatedCandidate,
       );
-    }
 
-    setCandidates(
-      (current) =>
-        current.map(
-          (candidate) =>
-            candidate.id ===
-            updatedCandidate.id
-              ? updatedCandidate
-              : candidate,
-        ),
-    );
+      setUpdatedCandidateFields((current) => {
+        const next = new Map(current);
 
-    setUpdatedCandidateIds(
-      (current) => {
-        const next =
-          new Set(current);
-
-        next.add(
-          updatedCandidate.id,
-        );
+        next.set(updatedCandidate.id, changedFields);
 
         return next;
-      },
+      });
+    }
+
+    // List-e updated candidate bosiye dei
+    setCandidates((current) =>
+      current.map((candidate) =>
+        candidate.id === updatedCandidate.id ? updatedCandidate : candidate,
+      ),
     );
 
+    // Row highlight on
+    setUpdatedCandidateIds((current) => {
+      const next = new Set(current);
+
+      next.add(updatedCandidate.id);
+
+      return next;
+    });
+
+    // 1.4 second pore highlight off
     window.setTimeout(() => {
-      setUpdatedCandidateIds(
-        (current) => {
-          const next =
-            new Set(current);
+      setUpdatedCandidateIds((current) => {
+        const next = new Set(current);
 
-          next.delete(
-            updatedCandidate.id,
-          );
+        next.delete(updatedCandidate.id);
 
-          return next;
-        },
-      );
+        return next;
+      });
 
-      setUpdatedCandidateFields(
-        (current) => {
-          const next =
-            new Map(current);
+      setUpdatedCandidateFields((current) => {
+        const next = new Map(current);
 
-          next.delete(
-            updatedCandidate.id,
-          );
+        next.delete(updatedCandidate.id);
 
-          return next;
-        },
-      );
+        return next;
+      });
     }, 1400);
   }
 
   /* =======================================================
-     CANCEL SUCCESS
+     HANDLER: CANCEL SUCCESS
+     Cancel hoye gele list update kore, tarpor DB theke
+     fresh data niye abar update kore.
   ======================================================= */
 
-  async function handleCancelSuccess(
-    updatedCandidate: Candidate,
-  ) {
-    setCandidates(
-      (current) =>
-        current.map(
-          (candidate) =>
-            candidate.id ===
-            updatedCandidate.id
-              ? updatedCandidate
-              : candidate,
-        ),
+  async function handleCancelSuccess(updatedCandidate: Candidate) {
+    // Sathe sathe list-e updated candidate dekhai
+    setCandidates((current) =>
+      current.map((candidate) =>
+        candidate.id === updatedCandidate.id ? updatedCandidate : candidate,
+      ),
     );
 
-    setCancellingCandidate(
-      null,
-    );
+    setCancellingCandidate(null);
 
     /*
      * Safety refresh:
@@ -1197,28 +805,17 @@ const liveCandidates =
      */
 
     try {
-      const freshCandidate =
-        await getCandidateById(
-          updatedCandidate.id,
-        );
+      const freshCandidate = await getCandidateById(updatedCandidate.id);
 
       if (freshCandidate) {
-        setCandidates(
-          (current) =>
-            current.map(
-              (candidate) =>
-                candidate.id ===
-                freshCandidate.id
-                  ? freshCandidate
-                  : candidate,
-            ),
+        setCandidates((current) =>
+          current.map((candidate) =>
+            candidate.id === freshCandidate.id ? freshCandidate : candidate,
+          ),
         );
       }
     } catch (error) {
-      console.error(
-        "Failed to refresh cancelled candidate:",
-        error,
-      );
+      console.error("Failed to refresh cancelled candidate:", error);
     }
   }
 
@@ -1229,55 +826,29 @@ const liveCandidates =
   return (
     <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       {/* =================================================
-          TOOLBAR
+          TOOLBAR (search, filter, sort, view, refresh, create)
       ================================================= */}
 
       <CandidateToolbar
         search={search}
         searchPlaceholder="Search name, passport..."
-        onSearchChange={
-          setSearch
-        }
-        filter={
-          candidateFilter
-        }
-        onFilterChange={
-          setCandidateFilter
-        }
-        agentOptions={
-          agentOptions
-        }
-        stageOptions={
-          stageOptions
-        }
-        monthOptions={
-          monthOptions
-        }
-        sort={
-          candidateSort
-        }
-        onSortChange={
-          setCandidateSort
-        }
-        viewMode={
-          viewMode
-        }
-        onViewModeChange={
-          setViewMode
-        }
-        onRefresh={
-          loadCandidates
-        }
-        onCreate={
-          handleCreate
-        }
-        refreshing={
-          loading
-        }
+        onSearchChange={setSearch}
+        filter={candidateFilter}
+        onFilterChange={setCandidateFilter}
+        agentOptions={agentOptions}
+        stageOptions={stageOptions}
+        monthOptions={monthOptions}
+        sort={candidateSort}
+        onSortChange={setCandidateSort}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onRefresh={loadCandidates}
+        onCreate={handleCreate}
+        refreshing={loading}
       />
 
       {/* =================================================
-          ERROR
+          ERROR MESSAGE
       ================================================= */}
 
       {error && (
@@ -1304,9 +875,7 @@ const liveCandidates =
 
           <button
             type="button"
-            onClick={
-              loadCandidates
-            }
+            onClick={loadCandidates}
             className="
               text-sm
               font-medium
@@ -1319,231 +888,138 @@ const liveCandidates =
       )}
 
       {/* =================================================
-          CANDIDATE VIEW
+          CANDIDATE VIEW (list = table, otherwise grid)
       ================================================= */}
 
       {viewMode === "list" ? (
         <CandidatesTable
-          candidates={
-            filteredCandidates
-          }
-          loading={
-            loading
-          }
-          onPassportAction={
-            setPassportCandidate
-          }
-          onEdit={
-            handleEdit
-          }
-          onDelete={
-            handleDelete
-          }
-          onReturn={
-            handleReturn
-          }
-          onCancel={
-            handleCancel
-          }
-          onRestore={
-            handleRestore
-          }
-          onManageServices={
-            handleManageServices
-          }
-          onReactivate={
-            handleReactivate
-          }
-          onCandidateUpdated={
-            handleCandidateUpdated
-          }
-          newCandidateIds={
-            newCandidateIds
-          }
-          updatedCandidateIds={
-            updatedCandidateIds
-          }
-          updatedCandidateFields={
-            updatedCandidateFields
-          }
+          candidates={filteredCandidates}
+          loading={loading}
+          onPassportAction={setPassportCandidate}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onReturn={handleReturn}
+          onCancel={handleCancel}
+          onRestore={handleRestore}
+          onManageServices={handleManageServices}
+          onReactivate={handleReactivate}
+          onCandidateUpdated={handleCandidateUpdated}
+          newCandidateIds={newCandidateIds}
+          updatedCandidateIds={updatedCandidateIds}
+          updatedCandidateFields={updatedCandidateFields}
         />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-        <CandidatesGrid
-          candidates={
-            filteredCandidates
-          }
-          loading={
-            loading
-          }
-          onEdit={
-            handleEdit
-          }
-          onDelete={
-            handleDelete
-          }
-          onReturn={
-            handleReturn
-          }
-          onRestore={
-            handleRestore
-          }
-          onCancel={
-            handleCancel
-          }
-          onReactivate={
-            handleReactivate
-          }
-        />
+          <CandidatesGrid
+            candidates={filteredCandidates}
+            loading={loading}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onReturn={handleReturn}
+            onRestore={handleRestore}
+            onCancel={handleCancel}
+            onReactivate={handleReactivate}
+          />
         </div>
       )}
 
       {/* =================================================
-          PASSPORT
+          PASSPORT DIALOG
       ================================================= */}
 
       <CandidatePassportDialog
-        candidate={
-          passportCandidate
-        }
-        open={
-          !!passportCandidate
-        }
-        onOpenChange={
-          (open) => {
-            if (!open) {
-              setPassportCandidate(
-                null,
-              );
-            }
+        candidate={passportCandidate}
+        open={!!passportCandidate}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPassportCandidate(null);
           }
-        }
+        }}
       />
 
       {/* =================================================
-          CREATE / EDIT
+          CREATE / EDIT DIALOG
       ================================================= */}
 
       <CandidateFormDialog
         open={formOpen}
-        candidate={
-          editingCandidate
-        }
-        onOpenChange={
-          setFormOpen
-        }
+        candidate={editingCandidate}
+        onOpenChange={setFormOpen}
         onSuccess={(newCandidate) => {
           setFormOpen(false);
 
+          // Edit korle: update handler call kore ber hoye jai
           if (editingCandidate) {
-            handleCandidateUpdated(
-              newCandidate,
-            );
+            handleCandidateUpdated(newCandidate);
 
-            setEditingCandidate(
-              null,
-            );
+            setEditingCandidate(null);
 
             return;
           }
 
-          // New candidate: পুরো list reload নয়
-          setCandidates(
-            (current) => [
-              newCandidate,
-              ...current,
-            ],
-          );
+          // New candidate: পুরো list reload নয়
+          setCandidates((current) => [newCandidate, ...current]);
 
-          setNewCandidateIds(
-            (current) => {
-              const next =
-                new Set(current);
+          // Notun row highlight on
+          setNewCandidateIds((current) => {
+            const next = new Set(current);
 
-              next.add(
-                newCandidate.id,
-              );
+            next.add(newCandidate.id);
+
+            return next;
+          });
+
+          // 1.8 second pore highlight off
+          window.setTimeout(() => {
+            setNewCandidateIds((current) => {
+              const next = new Set(current);
+
+              next.delete(newCandidate.id);
 
               return next;
-            },
-          );
-
-          window.setTimeout(() => {
-            setNewCandidateIds(
-              (current) => {
-                const next =
-                  new Set(current);
-
-                next.delete(
-                  newCandidate.id,
-                );
-
-                return next;
-              },
-            );
+            });
           }, 1800);
         }}
       />
 
       {/* =================================================
-          DELETE
+          DELETE DIALOG
       ================================================= */}
 
       <CandidateDeleteDialog
         open={deleteOpen}
-        candidate={
-          deletingCandidate
-        }
-        onOpenChange={
-          setDeleteOpen
-        }
+        candidate={deletingCandidate}
+        onOpenChange={setDeleteOpen}
         onSuccess={() => {
-          const deletedId =
-            deletingCandidate?.id;
+          const deletedId = deletingCandidate?.id;
 
-          setDeleteOpen(
-            false,
-          );
-
-          setDeletingCandidate(
-            null,
-          );
+          setDeleteOpen(false);
+          setDeletingCandidate(null);
 
           if (!deletedId) {
             return;
           }
 
-          setCandidates(
-            (current) =>
-              current.filter(
-                (candidate) =>
-                  candidate.id !==
-                  deletedId,
-              ),
+          // List theke deleted candidate bad dei
+          setCandidates((current) =>
+            current.filter((candidate) => candidate.id !== deletedId),
           );
         }}
       />
 
       {/* =================================================
-          MANAGE SERVICES / STAGE
+          MANAGE SERVICES / STAGE SHEET
       ================================================= */}
 
       <CandidateStageSheet
-        candidate={
-          managingServicesCandidate
-        }
-        open={
-          servicesOpen
-        }
+        candidate={managingServicesCandidate}
+        open={servicesOpen}
         onOpenChange={(open) => {
-          setServicesOpen(
-            open,
-          );
+          setServicesOpen(open);
 
+          // Sheet bondho hole candidate clear kore list reload
           if (!open) {
-            setManagingServicesCandidate(
-              null,
-            );
+            setManagingServicesCandidate(null);
 
             loadCandidates();
           }
@@ -1554,59 +1030,39 @@ const liveCandidates =
       />
 
       {/* =================================================
-          RETURN
+          RETURN DIALOG
       ================================================= */}
 
       <CandidateReturnDialog
-        open={
-          returnOpen
-        }
-        candidate={
-          returningCandidate
-        }
-        onOpenChange={
-          setReturnOpen
-        }
+        open={returnOpen}
+        candidate={returningCandidate}
+        onOpenChange={setReturnOpen}
         onSuccess={() => {
-          setReturningCandidate(
-            null,
-          );
+          setReturningCandidate(null);
 
           loadCandidates();
         }}
       />
 
       {/* =================================================
-          CANCEL
+          CANCEL DIALOG
       ================================================= */}
 
       <CandidateCancelDialog
-        open={
-          cancelOpen
-        }
-        candidate={
-          cancellingCandidate
-        }
-        onOpenChange={
-          (open) => {
-            setCancelOpen(
-              open,
-            );
+        open={cancelOpen}
+        candidate={cancellingCandidate}
+        onOpenChange={(open) => {
+          setCancelOpen(open);
 
-            if (!open) {
-              setCancellingCandidate(
-                null,
-              );
-            }
+          if (!open) {
+            setCancellingCandidate(null);
           }
-        }
-        onSuccess={
-          handleCancelSuccess
-        }
+        }}
+        onSuccess={handleCancelSuccess}
       />
 
       {/* =================================================
-          RESULT SUMMARY
+          RESULT SUMMARY (total count + status wise count)
       ================================================= */}
 
       <div
@@ -1625,10 +1081,7 @@ const liveCandidates =
             text-muted-foreground
           "
         >
-          {
-            filteredCandidates.length
-          }{" "}
-          candidates
+          {filteredCandidates.length} candidates
         </p>
 
         <p
@@ -1637,38 +1090,15 @@ const liveCandidates =
             text-muted-foreground
           "
         >
-          Active{" "}
-          {
-            statusCounts.active
-          }
-
+          Active {statusCounts.active}
           {" · "}
-
-          Hold{" "}
-          {
-            statusCounts.hold
-          }
-
+          Hold {statusCounts.hold}
           {" · "}
-
-          Returned{" "}
-          {
-            statusCounts.returned
-          }
-
+          Returned {statusCounts.returned}
           {" · "}
-
-          Complete{" "}
-          {
-            statusCounts.complete
-          }
-
+          Complete {statusCounts.complete}
           {" · "}
-
-          Cancelled{" "}
-          {
-            statusCounts.cancelled
-          }
+          Cancelled {statusCounts.cancelled}
         </p>
       </div>
     </div>
