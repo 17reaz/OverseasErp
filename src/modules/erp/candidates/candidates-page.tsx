@@ -1,13 +1,19 @@
+// src/modules/erp/candidates/candidates-page.tsx
+
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
+
 import {
   CandidatesGrid,
 } from "./components/candidates-grid";
-import { CandidateStageSheet } from "./components/candidate-stage";
+
+import {
+  CandidateStageSheet,
+} from "./components/candidate-stage";
 
 import {
   CandidateCancelDialog,
@@ -45,7 +51,6 @@ import {
 } from "./candidate-selectors";
 
 import {
-  // getCandidates,
   restoreReturnedCandidate,
   reactivateCandidate,
   getCandidateById,
@@ -60,26 +65,45 @@ import type {
   CandidateStage,
 } from "./stage-service";
 
-import { getCachedCandidatesFirst,refreshCandidatesCache } from "./candidate-cache-loader"
+import {
+  getCachedCandidatesFirst,
+  refreshCandidatesCache,
+} from "./candidate-cache-loader";
+
 /* =========================================================
    PAGE
 ========================================================= */
 
 export function CandidatesPage() {
-
   /* =======================================================
      CANDIDATES
   ======================================================= */
-  const [newCandidateIds, setNewCandidateIds] = useState<Set<string>>(
-  new Set(),
-);
-const [updatedCandidateIds, setUpdatedCandidateIds] =
-  useState<Set<string>>(new Set());
+
+  const [
+    newCandidateIds,
+    setNewCandidateIds,
+  ] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const [
+    updatedCandidateIds,
+    setUpdatedCandidateIds,
+  ] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const [
+    updatedCandidateFields,
+    setUpdatedCandidateFields,
+  ] = useState<
+    Map<string, Set<string>>
+  >(new Map());
+
   const [
     candidates,
     setCandidates,
   ] = useState<Candidate[]>([]);
-
 
   /* =======================================================
      SEARCH
@@ -93,8 +117,9 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   const [
     passportCandidate,
     setPassportCandidate,
-  ] = useState<Candidate | null>(null);
-
+  ] = useState<Candidate | null>(
+    null,
+  );
 
   /* =======================================================
      FILTER
@@ -111,7 +136,6 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
       month: "all",
     });
 
-
   /* =======================================================
      SORT
   ======================================================= */
@@ -125,7 +149,6 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
       field: "created_at",
     });
 
-
   /* =======================================================
      VIEW
   ======================================================= */
@@ -134,7 +157,6 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
     viewMode,
     setViewMode,
   ] = useState<ViewMode>("list");
-
 
   /* =======================================================
      LOADING / ERROR
@@ -149,9 +171,18 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
     error,
     setError,
   ] = useState<string | null>(null);
-  const [servicesOpen, setServicesOpen] = useState(false);
-  const [managingServicesCandidate, setManagingServicesCandidate] = useState<Candidate | null>(null);
 
+  const [
+    servicesOpen,
+    setServicesOpen,
+  ] = useState(false);
+
+  const [
+    managingServicesCandidate,
+    setManagingServicesCandidate,
+  ] = useState<Candidate | null>(
+    null,
+  );
 
   /* =======================================================
      CREATE / EDIT
@@ -165,8 +196,9 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   const [
     editingCandidate,
     setEditingCandidate,
-  ] = useState<Candidate | null>(null);
-
+  ] = useState<Candidate | null>(
+    null,
+  );
 
   /* =======================================================
      CANCEL
@@ -180,8 +212,9 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   const [
     cancellingCandidate,
     setCancellingCandidate,
-  ] = useState<Candidate | null>(null);
-
+  ] = useState<Candidate | null>(
+    null,
+  );
 
   /* =======================================================
      DELETE
@@ -195,8 +228,9 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   const [
     deletingCandidate,
     setDeletingCandidate,
-  ] = useState<Candidate | null>(null);
-
+  ] = useState<Candidate | null>(
+    null,
+  );
 
   /* =======================================================
      RETURN
@@ -210,8 +244,9 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   const [
     returningCandidate,
     setReturningCandidate,
-  ] = useState<Candidate | null>(null);
-
+  ] = useState<Candidate | null>(
+    null,
+  );
 
   /* =======================================================
      LOAD CANDIDATES
@@ -220,23 +255,23 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   const loadCandidates =
     useCallback(
       async () => {
-
         setLoading(true);
 
         setError(null);
 
-
         try {
-
           const data =
-            // await getCandidates();
-             await getCachedCandidatesFirst();
-            void refreshCandidatesCache().catch((error) => {
-  console.error(
-    "Failed to refresh candidates cache:",
-    error,
-  );
-});
+            await getCachedCandidatesFirst();
+
+          void refreshCandidatesCache().catch(
+            (error) => {
+              console.error(
+                "Failed to refresh candidates cache:",
+                error,
+              );
+            },
+          );
+
           /* -------------------------------------------------
              LIVE WORKFLOW RECALCULATION
 
@@ -250,31 +285,35 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
           const liveTargets =
             data.filter(
               (candidate) =>
-                candidate.final_status === null &&
+                candidate.final_status ===
+                  null &&
                 !candidate.is_returned,
             );
 
           let mergedData = data;
 
           try {
-
             const liveStates =
               await getLiveWorkflowStates(
                 liveTargets.map(
                   (candidate) => ({
                     id: candidate.id,
-                    current_stage: candidate.current_stage,
-                    is_returned: candidate.is_returned,
-                    final_status: candidate.final_status,
+                    current_stage:
+                      candidate.current_stage,
+                    is_returned:
+                      candidate.is_returned,
+                    final_status:
+                      candidate.final_status,
                   }),
                 ),
               );
 
             mergedData =
               data.map((candidate) => {
-
                 const live =
-                  liveStates.get(candidate.id);
+                  liveStates.get(
+                    candidate.id,
+                  );
 
                 if (!live) {
                   return candidate;
@@ -282,27 +321,23 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
 
                 return {
                   ...candidate,
-                  workflow_state: live.workflowState,
-                  hold_reason: live.holdReason,
+                  workflow_state:
+                    live.workflowState,
+                  hold_reason:
+                    live.holdReason,
                 };
-
               });
-
           } catch (liveError) {
-
             console.error(
               "Failed to compute live workflow states:",
               liveError,
             );
-
           }
 
           setCandidates(
             mergedData,
           );
-
         } catch (error) {
-
           console.error(
             "Failed to load candidates:",
             error,
@@ -313,30 +348,22 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
           setError(
             "Failed to load candidates. Please try again.",
           );
-
         } finally {
-
           setLoading(false);
-
         }
-
       },
       [],
     );
-
 
   /* =======================================================
      INITIAL LOAD
   ======================================================= */
 
   useEffect(() => {
-
     loadCandidates();
-
   }, [
     loadCandidates,
   ]);
-
 
   /* =======================================================
      DERIVED OVERALL STATUS
@@ -345,28 +372,81 @@ const [updatedCandidateIds, setUpdatedCandidateIds] =
   function getDisplayStatus(
     candidate: Candidate,
   ) {
-
     return getCandidateOverallStatus(
       candidate,
       {
         moduleStatus:
-          candidate.workflow_state ?? null,
+          candidate.workflow_state ??
+          null,
       },
     );
-
   }
 
-function handleManageServices(candidate: Candidate) {
-  setManagingServicesCandidate(candidate);
-  setServicesOpen(true);
-}
+  /* =======================================================
+     CHANGED CANDIDATE FIELDS
+  ======================================================= */
+
+  function getChangedCandidateFields(
+    previous: Candidate,
+    updated: Candidate,
+  ): Set<string> {
+    const fields =
+      new Set<string>();
+
+    const keys: Array<
+      keyof Candidate
+    > = [
+      "sl",
+      "passport_no",
+      "name",
+      "received_date",
+      "country",
+      "agent_id",
+      "current_stage",
+      "workflow_state",
+      "hold_reason",
+      "is_returned",
+      "returned_date",
+      "returned_reason",
+      "final_status",
+      "final_reason",
+      "is_deleted",
+    ];
+
+    for (const key of keys) {
+      if (
+        previous[key] !==
+        updated[key]
+      ) {
+        fields.add(
+          String(key),
+        );
+      }
+    }
+
+    return fields;
+  }
+
+  /* =======================================================
+     MANAGE SERVICES
+  ======================================================= */
+
+  function handleManageServices(
+    candidate: Candidate,
+  ) {
+    setManagingServicesCandidate(
+      candidate,
+    );
+
+    setServicesOpen(true);
+  }
+
   /* =======================================================
      STATUS COUNTS
   ======================================================= */
 
   const statusCounts =
     useMemo(() => {
-
       let active = 0;
 
       let hold = 0;
@@ -377,18 +457,14 @@ function handleManageServices(candidate: Candidate) {
 
       let cancelled = 0;
 
-
       candidates.forEach(
         (candidate) => {
-
           const status =
             getDisplayStatus(
               candidate,
             );
 
-
           switch (status) {
-
             case "active":
               active++;
               break;
@@ -408,12 +484,9 @@ function handleManageServices(candidate: Candidate) {
             case "cancelled":
               cancelled++;
               break;
-
           }
-
         },
       );
-
 
       return {
         active,
@@ -422,11 +495,9 @@ function handleManageServices(candidate: Candidate) {
         complete,
         cancelled,
       };
-
     }, [
       candidates,
     ]);
-
 
   /* =======================================================
      AGENT OPTIONS
@@ -434,17 +505,14 @@ function handleManageServices(candidate: Candidate) {
 
   const agentOptions =
     useMemo(() => {
-
       const agents =
         new Map<
           string,
           string
         >();
 
-
       candidates.forEach(
         (candidate) => {
-
           const agent =
             (
               candidate as Candidate & {
@@ -455,22 +523,17 @@ function handleManageServices(candidate: Candidate) {
               }
             ).agent;
 
-
           if (
             agent?.id
           ) {
-
             agents.set(
               String(agent.id),
               agent.name ||
                 "Unknown agent",
             );
-
           }
-
         },
       );
-
 
       return Array.from(
         agents.entries(),
@@ -490,11 +553,9 @@ function handleManageServices(candidate: Candidate) {
               b.label,
             ),
         );
-
     }, [
       candidates,
     ]);
-
 
   /* =======================================================
      STAGE OPTIONS
@@ -502,7 +563,6 @@ function handleManageServices(candidate: Candidate) {
 
   const stageOptions =
     useMemo(() => {
-
       return Array.from(
         new Set(
           candidates
@@ -521,11 +581,9 @@ function handleManageServices(candidate: Candidate) {
         (a, b) =>
           a.localeCompare(b),
       );
-
     }, [
       candidates,
     ]);
-
 
   /* =======================================================
      MONTH OPTIONS
@@ -533,29 +591,23 @@ function handleManageServices(candidate: Candidate) {
 
   const monthOptions =
     useMemo(() => {
-
       const months =
         new Map<
           string,
           string
         >();
 
-
       candidates.forEach(
         (candidate) => {
-
           const rawDate =
             candidate.created_at;
-
 
           if (!rawDate) {
             return;
           }
 
-
           const date =
             new Date(rawDate);
-
 
           if (
             Number.isNaN(
@@ -565,12 +617,10 @@ function handleManageServices(candidate: Candidate) {
             return;
           }
 
-
           const value =
             `${date.getFullYear()}-${String(
               date.getMonth() + 1,
             ).padStart(2, "0")}`;
-
 
           const label =
             date.toLocaleDateString(
@@ -581,15 +631,12 @@ function handleManageServices(candidate: Candidate) {
               },
             );
 
-
           months.set(
             value,
             label,
           );
-
         },
       );
-
 
       return Array.from(
         months.entries(),
@@ -612,11 +659,9 @@ function handleManageServices(candidate: Candidate) {
             label,
           }),
         );
-
     }, [
       candidates,
     ]);
-
 
   /* =======================================================
      FILTER + SEARCH + SORT
@@ -624,17 +669,14 @@ function handleManageServices(candidate: Candidate) {
 
   const filteredCandidates =
     useMemo(() => {
-
       const query =
         search
           .trim()
           .toLowerCase();
 
-
       const result =
         candidates.filter(
           (candidate) => {
-
             /* ---------------------------------------------
                STATUS
             --------------------------------------------- */
@@ -644,23 +686,17 @@ function handleManageServices(candidate: Candidate) {
                 candidate,
               );
 
-
             if (
               candidateFilter.status !==
               "all"
             ) {
-
               if (
                 status !==
                 candidateFilter.status
               ) {
-
                 return false;
-
               }
-
             }
-
 
             /* ---------------------------------------------
                AGENT
@@ -670,7 +706,6 @@ function handleManageServices(candidate: Candidate) {
               candidateFilter.agentId !==
               "all"
             ) {
-
               const agentId =
                 (
                   candidate as Candidate & {
@@ -680,18 +715,13 @@ function handleManageServices(candidate: Candidate) {
                   }
                 ).agent?.id;
 
-
               if (
                 String(agentId) !==
                 candidateFilter.agentId
               ) {
-
                 return false;
-
               }
-
             }
-
 
             /* ---------------------------------------------
                STAGE
@@ -701,18 +731,13 @@ function handleManageServices(candidate: Candidate) {
               candidateFilter.stage !==
               "all"
             ) {
-
               if (
                 candidate.current_stage !==
                 candidateFilter.stage
               ) {
-
                 return false;
-
               }
-
             }
-
 
             /* ---------------------------------------------
                MONTH
@@ -722,48 +747,36 @@ function handleManageServices(candidate: Candidate) {
               candidateFilter.month !==
               "all"
             ) {
-
               const rawDate =
                 candidate.created_at;
-
 
               if (!rawDate) {
                 return false;
               }
 
-
               const date =
                 new Date(rawDate);
-
 
               if (
                 Number.isNaN(
                   date.getTime(),
                 )
               ) {
-
                 return false;
-
               }
-
 
               const candidateMonth =
                 `${date.getFullYear()}-${String(
                   date.getMonth() + 1,
                 ).padStart(2, "0")}`;
 
-
               if (
                 candidateMonth !==
                 candidateFilter.month
               ) {
-
                 return false;
-
               }
-
             }
-
 
             /* ---------------------------------------------
                SEARCH
@@ -773,34 +786,22 @@ function handleManageServices(candidate: Candidate) {
               return true;
             }
 
-
             return (
               candidate.name
                 ?.toLowerCase()
-                .includes(query)
-
-              ||
-
+                .includes(query) ||
               candidate.passport_no
                 ?.toLowerCase()
-                .includes(query)
-
-              ||
-
+                .includes(query) ||
               candidate.country
                 ?.toLowerCase()
-                .includes(query)
-
-              ||
-
+                .includes(query) ||
               candidate.current_stage
                 ?.toLowerCase()
                 .includes(query)
             );
-
           },
         );
-
 
       /* ===================================================
          SORT
@@ -811,56 +812,41 @@ function handleManageServices(candidate: Candidate) {
           a,
           b,
         ) => {
-
           const getValue =
             (
               candidate: Candidate,
             ): string | number => {
-
               switch (
                 candidateSort.field
               ) {
-
                 case "name":
-
                   return (
                     candidate.name ||
                     ""
                   ).toLowerCase();
 
-
                 case "passport_no":
-
                   return (
                     candidate.passport_no ||
                     ""
                   ).toLowerCase();
 
-
                 case "created_at":
-
                   return new Date(
                     candidate.created_at ||
                       0,
                   ).getTime();
 
-
                 case "updated_at":
-
                   return new Date(
                     candidate.updated_at ||
                       0,
                   ).getTime();
 
-
                 default:
-
                   return 0;
-
               }
-
             };
-
 
           const first =
             getValue(a);
@@ -868,9 +854,7 @@ function handleManageServices(candidate: Candidate) {
           const second =
             getValue(b);
 
-
           let comparison = 0;
-
 
           if (
             typeof first ===
@@ -878,39 +862,30 @@ function handleManageServices(candidate: Candidate) {
             typeof second ===
               "number"
           ) {
-
             comparison =
               first - second;
-
           } else {
-
             comparison =
-              String(first).localeCompare(
+              String(
+                first,
+              ).localeCompare(
                 String(second),
               );
-
           }
-
 
           if (
             candidateSort.mode ===
             "descending"
           ) {
-
             return -comparison;
-
           }
-
 
           if (
             candidateSort.mode ===
             "ascending"
           ) {
-
             return comparison;
-
           }
-
 
           /* ---------------------------------------------
              CUSTOM
@@ -923,20 +898,16 @@ function handleManageServices(candidate: Candidate) {
             new Date(
               b.created_at ||
                 0,
-            ).getTime()
-            -
+            ).getTime() -
             new Date(
               a.created_at ||
                 0,
             ).getTime()
           );
-
         },
       );
 
-
       return result;
-
     }, [
       candidates,
       search,
@@ -944,13 +915,11 @@ function handleManageServices(candidate: Candidate) {
       candidateSort,
     ]);
 
-
   /* =======================================================
      CREATE
   ======================================================= */
 
   function handleCreate() {
-
     setEditingCandidate(
       null,
     );
@@ -958,9 +927,7 @@ function handleManageServices(candidate: Candidate) {
     setFormOpen(
       true,
     );
-
   }
-
 
   /* =======================================================
      EDIT
@@ -969,7 +936,6 @@ function handleManageServices(candidate: Candidate) {
   function handleEdit(
     candidate: Candidate,
   ) {
-
     setEditingCandidate(
       candidate,
     );
@@ -977,9 +943,7 @@ function handleManageServices(candidate: Candidate) {
     setFormOpen(
       true,
     );
-
   }
-
 
   /* =======================================================
      DELETE
@@ -988,7 +952,6 @@ function handleManageServices(candidate: Candidate) {
   function handleDelete(
     candidate: Candidate,
   ) {
-
     setDeletingCandidate(
       candidate,
     );
@@ -996,9 +959,7 @@ function handleManageServices(candidate: Candidate) {
     setDeleteOpen(
       true,
     );
-
   }
-
 
   /* =======================================================
      RETURN
@@ -1007,7 +968,6 @@ function handleManageServices(candidate: Candidate) {
   function handleReturn(
     candidate: Candidate,
   ) {
-
     setReturningCandidate(
       candidate,
     );
@@ -1015,9 +975,7 @@ function handleManageServices(candidate: Candidate) {
     setReturnOpen(
       true,
     );
-
   }
-
 
   /* =======================================================
      CANCEL
@@ -1026,7 +984,6 @@ function handleManageServices(candidate: Candidate) {
   function handleCancel(
     candidate: Candidate,
   ) {
-
     setCancellingCandidate(
       candidate,
     );
@@ -1034,9 +991,7 @@ function handleManageServices(candidate: Candidate) {
     setCancelOpen(
       true,
     );
-
   }
-
 
   /* =======================================================
      RESTORE RETURNED
@@ -1045,58 +1000,38 @@ function handleManageServices(candidate: Candidate) {
   async function handleRestore(
     candidate: Candidate,
   ) {
-
     const confirmed =
       window.confirm(
         `Restore ${candidate.name} and mark the candidate as active?`,
       );
 
-
     if (!confirmed) {
       return;
     }
 
-
     try {
+      setLoading(true);
 
-      setLoading(
-        true,
-      );
-
-      setError(
-        null,
-      );
-
+      setError(null);
 
       await restoreReturnedCandidate(
         candidate.id,
       );
 
-
       await loadCandidates();
-
     } catch (error) {
-
       console.error(
         "Failed to restore candidate:",
         error,
       );
 
-
       setError(
         "Failed to restore candidate. Please try again.",
       );
-
     } finally {
-
-      setLoading(
-        false,
-      );
-
+      setLoading(false);
     }
-
   }
-
 
   /* =======================================================
      REACTIVATE CANCELLED
@@ -1105,88 +1040,74 @@ function handleManageServices(candidate: Candidate) {
   async function handleReactivate(
     candidate: Candidate,
   ) {
-
     const confirmed =
       window.confirm(
         `Reactivate ${candidate.name}?`,
       );
 
-
     if (!confirmed) {
       return;
     }
 
-
     try {
+      setLoading(true);
 
-      setLoading(
-        true,
-      );
-
-      setError(
-        null,
-      );
-
+      setError(null);
 
       await reactivateCandidate(
         candidate.id,
       );
 
-
       await loadCandidates();
-
     } catch (error) {
-
       console.error(
         "Failed to reactivate candidate:",
         error,
       );
 
-
       setError(
         "Failed to reactivate candidate. Please try again.",
       );
-
     } finally {
-
-      setLoading(
-        false,
-      );
-
+      setLoading(false);
     }
-
   }
 
-  function handleCandidateUpdated(updatedCandidate: Candidate) {
-  setCandidates((current) =>
-    current.map((candidate) =>
-      candidate.id === updatedCandidate.id
-        ? updatedCandidate
-        : candidate,
-    ),
-  );
-
-  setUpdatedCandidateIds((current) => {
-    const next = new Set(current);
-    next.add(updatedCandidate.id);
-    return next;
-  });
-
-  window.setTimeout(() => {
-    setUpdatedCandidateIds((current) => {
-      const next = new Set(current);
-      next.delete(updatedCandidate.id);
-      return next;
-    });
-  }, 900);
-}
   /* =======================================================
-     CANCEL SUCCESS
+     CANDIDATE UPDATED
   ======================================================= */
 
-  async function handleCancelSuccess(
+  function handleCandidateUpdated(
     updatedCandidate: Candidate,
   ) {
+    const previousCandidate =
+      candidates.find(
+        (candidate) =>
+          candidate.id ===
+          updatedCandidate.id,
+      );
+
+    if (previousCandidate) {
+      const changedFields =
+        getChangedCandidateFields(
+          previousCandidate,
+          updatedCandidate,
+        );
+
+      setUpdatedCandidateFields(
+        (current) => {
+          const next =
+            new Map(current);
+
+          next.set(
+            updatedCandidate.id,
+            changedFields,
+          );
+
+          return next;
+        },
+      );
+    }
 
     setCandidates(
       (current) =>
@@ -1199,11 +1120,69 @@ function handleManageServices(candidate: Candidate) {
         ),
     );
 
+    setUpdatedCandidateIds(
+      (current) => {
+        const next =
+          new Set(current);
+
+        next.add(
+          updatedCandidate.id,
+        );
+
+        return next;
+      },
+    );
+
+    window.setTimeout(() => {
+      setUpdatedCandidateIds(
+        (current) => {
+          const next =
+            new Set(current);
+
+          next.delete(
+            updatedCandidate.id,
+          );
+
+          return next;
+        },
+      );
+
+      setUpdatedCandidateFields(
+        (current) => {
+          const next =
+            new Map(current);
+
+          next.delete(
+            updatedCandidate.id,
+          );
+
+          return next;
+        },
+      );
+    }, 1400);
+  }
+
+  /* =======================================================
+     CANCEL SUCCESS
+  ======================================================= */
+
+  async function handleCancelSuccess(
+    updatedCandidate: Candidate,
+  ) {
+    setCandidates(
+      (current) =>
+        current.map(
+          (candidate) =>
+            candidate.id ===
+            updatedCandidate.id
+              ? updatedCandidate
+              : candidate,
+        ),
+    );
 
     setCancellingCandidate(
       null,
     );
-
 
     /*
      * Safety refresh:
@@ -1213,15 +1192,12 @@ function handleManageServices(candidate: Candidate) {
      */
 
     try {
-
       const freshCandidate =
         await getCandidateById(
           updatedCandidate.id,
         );
 
-
       if (freshCandidate) {
-
         setCandidates(
           (current) =>
             current.map(
@@ -1232,106 +1208,74 @@ function handleManageServices(candidate: Candidate) {
                   : candidate,
             ),
         );
-
       }
-
     } catch (error) {
-
       console.error(
         "Failed to refresh cancelled candidate:",
         error,
       );
-
     }
-
   }
-
 
   /* =======================================================
      RENDER
   ======================================================= */
 
   return (
-
-    <div
-      className="
-        space-y-6
-      "
-    >
-
+    <div className="space-y-6">
       {/* =================================================
           TOOLBAR
       ================================================= */}
 
       <CandidateToolbar
-
-        search={
-          search
-        }
-
+        search={search}
         searchPlaceholder="Search name, passport..."
-
         onSearchChange={
           setSearch
         }
-
         filter={
           candidateFilter
         }
-
         onFilterChange={
           setCandidateFilter
         }
-
         agentOptions={
           agentOptions
         }
-
         stageOptions={
           stageOptions
         }
-
         monthOptions={
           monthOptions
         }
-
         sort={
           candidateSort
         }
-
         onSortChange={
           setCandidateSort
         }
-
         viewMode={
           viewMode
         }
-
         onViewModeChange={
           setViewMode
         }
-
         onRefresh={
           loadCandidates
         }
-
         onCreate={
           handleCreate
         }
-
         refreshing={
           loading
         }
-
       />
-
 
       {/* =================================================
           ERROR
       ================================================= */}
 
       {error && (
-
         <div
           className="
             flex
@@ -1344,7 +1288,6 @@ function handleManageServices(candidate: Candidate) {
             p-4
           "
         >
-
           <p
             className="
               text-sm
@@ -1353,7 +1296,6 @@ function handleManageServices(candidate: Candidate) {
           >
             {error}
           </p>
-
 
           <button
             type="button"
@@ -1368,305 +1310,293 @@ function handleManageServices(candidate: Candidate) {
           >
             Try again
           </button>
-
         </div>
-
       )}
-
 
       {/* =================================================
           CANDIDATE VIEW
       ================================================= */}
 
       {viewMode === "list" ? (
-
         <CandidatesTable
-
           candidates={
             filteredCandidates
           }
-
           loading={
             loading
           }
-
           onPassportAction={
             setPassportCandidate
           }
-
           onEdit={
             handleEdit
           }
-
           onDelete={
             handleDelete
           }
-
           onReturn={
             handleReturn
           }
-
           onCancel={
             handleCancel
           }
-
           onRestore={
             handleRestore
           }
-          onManageServices={handleManageServices}
+          onManageServices={
+            handleManageServices
+          }
           onReactivate={
             handleReactivate
           }
-          onCandidateUpdated={handleCandidateUpdated}
-          newCandidateIds={newCandidateIds}
-          updatedCandidateIds={updatedCandidateIds}
+          onCandidateUpdated={
+            handleCandidateUpdated
+          }
+          newCandidateIds={
+            newCandidateIds
+          }
+          updatedCandidateIds={
+            updatedCandidateIds
+          }
+          updatedCandidateFields={
+            updatedCandidateFields
+          }
         />
-
       ) : (
-
         <CandidatesGrid
-
           candidates={
             filteredCandidates
           }
-
           loading={
             loading
           }
-
           onEdit={
             handleEdit
           }
-
           onDelete={
             handleDelete
           }
-
           onReturn={
             handleReturn
           }
-
           onRestore={
             handleRestore
           }
-
           onCancel={
             handleCancel
           }
-
           onReactivate={
             handleReactivate
           }
-
         />
-
       )}
-
 
       {/* =================================================
           PASSPORT
       ================================================= */}
 
       <CandidatePassportDialog
-
         candidate={
           passportCandidate
         }
-
         open={
           !!passportCandidate
         }
-
         onOpenChange={
           (open) => {
-
             if (!open) {
-
               setPassportCandidate(
                 null,
               );
-
             }
-
           }
         }
-
       />
-
 
       {/* =================================================
           CREATE / EDIT
       ================================================= */}
 
       <CandidateFormDialog
-  open={formOpen}
-  candidate={editingCandidate}
-  onOpenChange={setFormOpen}
-  onSuccess={(newCandidate) => {
-    setFormOpen(false);
+        open={formOpen}
+        candidate={
+          editingCandidate
+        }
+        onOpenChange={
+          setFormOpen
+        }
+        onSuccess={(newCandidate) => {
+          setFormOpen(false);
 
-    if (editingCandidate) {
-  setCandidates((current) =>
-    current.map((candidate) =>
-      candidate.id === newCandidate.id
-        ? newCandidate
-        : candidate,
-    ),
-  );
+          if (editingCandidate) {
+            handleCandidateUpdated(
+              newCandidate,
+            );
 
-  setUpdatedCandidateIds((current) => {
-    const next = new Set(current);
-    next.add(newCandidate.id);
-    return next;
-  });
+            setEditingCandidate(
+              null,
+            );
 
-  window.setTimeout(() => {
-    setUpdatedCandidateIds((current) => {
-      const next = new Set(current);
-      next.delete(newCandidate.id);
-      return next;
-    });
-  }, 900);
+            return;
+          }
 
-  setEditingCandidate(null);
-  return;
-}
+          // New candidate: পুরো list reload নয়
+          setCandidates(
+            (current) => [
+              newCandidate,
+              ...current,
+            ],
+          );
 
-    // New candidate: পুরো list reload নয়
-    setCandidates((current) => [
-      newCandidate,
-      ...current,
-    ]);
+          setNewCandidateIds(
+            (current) => {
+              const next =
+                new Set(current);
 
-    setNewCandidateIds((current) => {
-      const next = new Set(current);
-      next.add(newCandidate.id);
-      return next;
-    });
+              next.add(
+                newCandidate.id,
+              );
 
-    window.setTimeout(() => {
-      setNewCandidateIds((current) => {
-        const next = new Set(current);
-        next.delete(newCandidate.id);
-        return next;
-      });
-    }, 1800);
-  }}
-/>
+              return next;
+            },
+          );
 
+          window.setTimeout(() => {
+            setNewCandidateIds(
+              (current) => {
+                const next =
+                  new Set(current);
+
+                next.delete(
+                  newCandidate.id,
+                );
+
+                return next;
+              },
+            );
+          }, 1800);
+        }}
+      />
 
       {/* =================================================
           DELETE
       ================================================= */}
 
-     <CandidateDeleteDialog
-  open={deleteOpen}
-  candidate={deletingCandidate}
-  onOpenChange={setDeleteOpen}
-  onSuccess={() => {
-    const deletedId = deletingCandidate?.id;
+      <CandidateDeleteDialog
+        open={deleteOpen}
+        candidate={
+          deletingCandidate
+        }
+        onOpenChange={
+          setDeleteOpen
+        }
+        onSuccess={() => {
+          const deletedId =
+            deletingCandidate?.id;
 
-    setDeleteOpen(false);
-    setDeletingCandidate(null);
+          setDeleteOpen(
+            false,
+          );
 
-    if (!deletedId) {
-      return;
-    }
+          setDeletingCandidate(
+            null,
+          );
 
-    setCandidates((current) =>
-      current.filter(
-        (candidate) =>
-          candidate.id !== deletedId,
-      ),
-    );
-  }}
-/>
+          if (!deletedId) {
+            return;
+          }
 
-        <CandidateStageSheet
-  candidate={managingServicesCandidate}
-  open={servicesOpen}
-  onOpenChange={(open) => {
-    setServicesOpen(open);
-    if (!open) {
-      setManagingServicesCandidate(null);
-      loadCandidates();
-    }
-  }}
-  onSuccess={() => {
-    loadCandidates();
-  }}
-/>
+          setCandidates(
+            (current) =>
+              current.filter(
+                (candidate) =>
+                  candidate.id !==
+                  deletedId,
+              ),
+          );
+        }}
+      />
+
+      {/* =================================================
+          MANAGE SERVICES / STAGE
+      ================================================= */}
+
+      <CandidateStageSheet
+        candidate={
+          managingServicesCandidate
+        }
+        open={
+          servicesOpen
+        }
+        onOpenChange={(open) => {
+          setServicesOpen(
+            open,
+          );
+
+          if (!open) {
+            setManagingServicesCandidate(
+              null,
+            );
+
+            loadCandidates();
+          }
+        }}
+        onSuccess={() => {
+          loadCandidates();
+        }}
+      />
+
       {/* =================================================
           RETURN
       ================================================= */}
 
       <CandidateReturnDialog
-
         open={
           returnOpen
         }
-
         candidate={
           returningCandidate
         }
-
         onOpenChange={
           setReturnOpen
         }
+        onSuccess={() => {
+          setReturningCandidate(
+            null,
+          );
 
-        onSuccess={
-          () => {
-
-            setReturningCandidate(
-              null,
-            );
-
-            loadCandidates();
-
-          }
-        }
-
+          loadCandidates();
+        }}
       />
-
 
       {/* =================================================
           CANCEL
       ================================================= */}
 
       <CandidateCancelDialog
-
         open={
           cancelOpen
         }
-
         candidate={
           cancellingCandidate
         }
-
         onOpenChange={
           (open) => {
-
             setCancelOpen(
               open,
             );
 
             if (!open) {
-
               setCancellingCandidate(
                 null,
               );
-
             }
-
           }
         }
-
         onSuccess={
           handleCancelSuccess
         }
-
       />
-
 
       {/* =================================================
           RESULT SUMMARY
@@ -1681,16 +1611,17 @@ function handleManageServices(candidate: Candidate) {
           gap-2
         "
       >
-
         <p
           className="
             text-sm
             text-muted-foreground
           "
         >
-          {filteredCandidates.length} candidates
+          {
+            filteredCandidates.length
+          }{" "}
+          candidates
         </p>
-
 
         <p
           className="
@@ -1698,31 +1629,40 @@ function handleManageServices(candidate: Candidate) {
             text-muted-foreground
           "
         >
-
-          Active {statusCounts.active}
-
-          {" · "}
-
-          Hold {statusCounts.hold}
+          Active{" "}
+          {
+            statusCounts.active
+          }
 
           {" · "}
 
-          Returned {statusCounts.returned}
+          Hold{" "}
+          {
+            statusCounts.hold
+          }
 
           {" · "}
 
-          Complete {statusCounts.complete}
+          Returned{" "}
+          {
+            statusCounts.returned
+          }
 
           {" · "}
 
-          Cancelled {statusCounts.cancelled}
+          Complete{" "}
+          {
+            statusCounts.complete
+          }
 
+          {" · "}
+
+          Cancelled{" "}
+          {
+            statusCounts.cancelled
+          }
         </p>
-
       </div>
-
     </div>
-
   );
-
 }

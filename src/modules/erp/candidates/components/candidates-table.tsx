@@ -1,4 +1,3 @@
-
 import {
   FileText,
   MoreHorizontal,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+
 import {
   Tooltip,
   TooltipContent,
@@ -41,10 +41,8 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/ui/data-table";
-// import type { Candidate } from "../candidate-types";
-// import { getCandidateOverallStatus } from "../candidate-selectors";
-import { CandidateStageBadge } from "./candidate-stage-badge";
 
+import { CandidateStageBadge } from "./candidate-stage-badge";
 
 /* =========================================================
  * PROPS
@@ -52,12 +50,22 @@ import { CandidateStageBadge } from "./candidate-stage-badge";
 
 interface CandidatesTableProps {
   candidates: Candidate[];
+
   newCandidateIds?: Set<string>;
+
   updatedCandidateIds?: Set<string>;
+
+  updatedCandidateFields?: Map<
+    string,
+    Set<string>
+  >;
+
   loading?: boolean;
 
   page?: number;
+
   pageSize?: number;
+
   total?: number;
 
   onPageChange?: (
@@ -67,7 +75,10 @@ interface CandidatesTableProps {
   onPassportAction?: (
     candidate: Candidate,
   ) => void;
-  onManageServices?: (candidate: Candidate) => void;
+
+  onManageServices?: (
+    candidate: Candidate,
+  ) => void;
 
   onEdit?: (
     candidate: Candidate,
@@ -92,9 +103,11 @@ interface CandidatesTableProps {
   onReactivate?: (
     candidate: Candidate,
   ) => void;
-  onCandidateUpdated?: (candidate: Candidate) => void;
-}
 
+  onCandidateUpdated?: (
+    candidate: Candidate,
+  ) => void;
+}
 
 /* =========================================================
  * COMPONENT
@@ -105,6 +118,7 @@ export function CandidatesTable({
   loading = false,
   newCandidateIds = new Set(),
   updatedCandidateIds = new Set(),
+  updatedCandidateFields = new Map(),
   page,
   pageSize = 10,
   total,
@@ -120,709 +134,658 @@ export function CandidatesTable({
 
   onCancel,
   onReactivate,
-  onCandidateUpdated, 
+  onCandidateUpdated,
 }: CandidatesTableProps) {
+  const [
+    copiedPassportId,
+    setCopiedPassportId,
+  ] = useState<string | null>(null);
 
-  const [copiedPassportId, setCopiedPassportId] = useState<string | null>(
-  null,
-);
+  const handleCopyPassport = async (
+    candidate: Candidate,
+  ) => {
+    const passport =
+      candidate.passport_no?.trim();
 
-const handleCopyPassport = async (
-  candidate: Candidate,
-) => {
-  const passport = candidate.passport_no?.trim();
+    if (!passport) return;
 
-  if (!passport) return;
-
-  try {
-    await navigator.clipboard.writeText(passport);
-
-    setCopiedPassportId(candidate.id);
-
-    window.setTimeout(() => {
-      setCopiedPassportId((current) =>
-        current === candidate.id ? null : current,
+    try {
+      await navigator.clipboard.writeText(
+        passport,
       );
-    }, 1200);
-  } catch {
-    // Clipboard API unavailable — do nothing.
-  }
-};
+
+      setCopiedPassportId(
+        candidate.id,
+      );
+
+      window.setTimeout(() => {
+        setCopiedPassportId(
+          (current) =>
+            current === candidate.id
+              ? null
+              : current,
+        );
+      }, 1200);
+    } catch {
+      // Clipboard API unavailable — do nothing.
+    }
+  };
+
   /* =======================================================
      COLUMNS
   ======================================================= */
 
-  const columns: DataTableColumn<Candidate>[] = [
+  const columns: DataTableColumn<Candidate>[] =
+    [
 
-    /* -----------------------------------------------------
-       SL
-    ----------------------------------------------------- */
+      /* -----------------------------------------------------
+         SL
+      ----------------------------------------------------- */
 
-    {
-      key: "sl",
+      {
+        key: "sl",
 
-      header: "SL",
+        header: "SL",
 
-      className: "w-[70px]",
+        className: "w-[70px]",
 
-      cell: (candidate) =>
-        candidate.sl ?? "—",
-    },
+        cell: (candidate) =>
+          candidate.sl ?? "—",
+      },
 
+      /* -----------------------------------------------------
+         CANDIDATE
+      ----------------------------------------------------- */
 
-    /* -----------------------------------------------------
-       CANDIDATE
-    ----------------------------------------------------- */
+      {
+        key: "candidate",
 
-    {
-      key: "candidate",
+        fieldKey: "name",
 
-      header: "Candidate",
+        header: "Candidate",
 
-      cell: (candidate) => (
-
-        <Link
-          to={`/app/candidates/${candidate.id}`}
-          className="
-            block
-            truncate
-            text-sm
-            font-medium
-            hover:underline
-          "
-        >
-          {candidate.name}
-        </Link>
-
-      ),
-    },
-
-
-    /* -----------------------------------------------------
-       PASSPORT
-    ----------------------------------------------------- */
-
-    {
-  key: "passport",
-
-  header: "Passport",
-
-  hideOnMobile: true,
-
-  cell: (candidate) => {
-    const isCopied =
-      copiedPassportId === candidate.id;
-
-    return (
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          void handleCopyPassport(candidate);
-        }}
-        disabled={!candidate.passport_no}
-        className={`
-          group flex max-w-full items-center gap-1.5
-          rounded-sm text-left
-          transition-all duration-200
-          focus:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-ring
-          disabled:cursor-default
-          disabled:opacity-50
-          ${isCopied ? "animate-pulse" : ""}
-        `}
-        title={
-          isCopied
-            ? "Copied"
-            : "Copy passport number"
-        }
-      >
-        <span
-          className={`
-            block truncate
-            transition-all duration-200
-            ${
-              isCopied
-                ? "font-medium opacity-70"
-                : ""
-            }
-          `}
-        >
-          {candidate.passport_no ?? "—"}
-        </span>
-
-        {candidate.passport_no && (
-          <span
-            className={`
-              shrink-0 transition-all duration-200
-              ${
-                isCopied
-                  ? "text-green-600"
-                  : "text-muted-foreground opacity-0 group-hover:opacity-100"
-              }
-            `}
+        cell: (candidate) => (
+          <Link
+            to={`/app/candidates/${candidate.id}`}
+            className="
+              block
+              truncate
+              text-sm
+              font-medium
+              hover:underline
+            "
           >
-            {isCopied ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-          </span>
-        )}
-      </button>
-    );
-  },
-},
-
-
-    /* -----------------------------------------------------
-       COUNTRY
-    ----------------------------------------------------- */
-
-    {
-      key: "country",
-
-      header: "Country",
-
-      hideOnMobile: true,
-
-      cell: (candidate) => (
-
-        <span className="block truncate">
-          {candidate.country ?? "—"}
-        </span>
-
-      ),
-    },
-
-
-    /* -----------------------------------------------------
-       STAGE
-       -----------------------------------------------------
-       Global Candidate stage.
-
-       Example:
-         Candidate
-         Medical
-         MOFA
-         Visa
-         Flight
-
-    ----------------------------------------------------- */
-
-   {
-      key: "stage",
-      header: "Stage",
-      cell: (candidate) => (
-        <CandidateStageBadge
-          candidate={candidate}
-          onOpenManageService={() => onManageServices?.(candidate)}
-          onCandidateUpdated={(updated) => onCandidateUpdated?.(updated)}
-        />
-        /* Current stage-এ click করলে সরাসরি সেই module-এর sheet
-           খোলে (Manage Service-এর ভেতর দিয়ে না) — nothing-started
-           বা frozen candidate হলে Manage Service-এ fallback করে।
-           Hover-এ tooltip current module-এর live status দেখায়। */
-      ),
-    },
-
-    /* -----------------------------------------------------
-       RECEIVED
-    ----------------------------------------------------- */
-
-    {
-      key: "received",
-
-      header: "Received",
-
-      hideOnMobile: true,
-
-      cell: (candidate) =>
-        candidate.received_date ?? "—",
-    },
-
-
-    /* -----------------------------------------------------
-       AGENT
-    ----------------------------------------------------- */
-
-    {
-      key: "agent",
-
-      header: "Agent",
-
-      className: "w-[180px]",
-
-      hideOnMobile: true,
-
-      cell: (candidate) =>
-
-        candidate.agent ? (
-
-          <div className="flex min-w-0 flex-col">
-
-            <span className="truncate font-medium">
-              {candidate.agent.name ??
-                "Unnamed Agent"}
-            </span>
-
-            
-
-          </div>
-
-        ) : (
-
-          <span className="text-muted-foreground">
-            —
-          </span>
-
+            {candidate.name}
+          </Link>
         ),
-    },
+      },
 
+      /* -----------------------------------------------------
+         PASSPORT
+      ----------------------------------------------------- */
 
-    /* =====================================================
-       STATUS
-       ===================================================== */
+      {
+        key: "passport",
 
-    {
-      key: "status",
+        fieldKey: "passport_no",
 
-      header: "Status",
+        header: "Passport",
 
-      className: "w-[120px]",
+        hideOnMobile: true,
 
-      cell: (candidate) => {
-
-        const status =
-          getCandidateOverallStatus(
-            candidate,
-            {
-              moduleStatus:
-                candidate.workflow_state ?? null,
-            },
-          );
-
-
-        /* -----------------------------------------------
-           RETURNED
-        ----------------------------------------------- */
-
-        if (
-          status === "returned"
-        ) {
+        cell: (candidate) => {
+          const isCopied =
+            copiedPassportId ===
+            candidate.id;
 
           return (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
 
-            <Tooltip>
+                void handleCopyPassport(
+                  candidate,
+                );
+              }}
+              disabled={
+                !candidate.passport_no
+              }
+              className={`
+                group flex max-w-full items-center gap-1.5
+                rounded-sm text-left
+                transition-all duration-200
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-ring
+                disabled:cursor-default
+                disabled:opacity-50
+                ${
+                  isCopied
+                    ? "animate-pulse"
+                    : ""
+                }
+              `}
+              title={
+                isCopied
+                  ? "Copied"
+                  : "Copy passport number"
+              }
+            >
+              <span
+                className={`
+                  block truncate
+                  transition-all duration-200
+                  ${
+                    isCopied
+                      ? "font-medium opacity-70"
+                      : ""
+                  }
+                `}
+              >
+                {candidate.passport_no ??
+                  "—"}
+              </span>
 
-              <TooltipTrigger asChild>
-
-                <Badge
-                  variant="destructive"
-                  className="cursor-help"
+              {candidate.passport_no && (
+                <span
+                  className={`
+                    shrink-0 transition-all duration-200
+                    ${
+                      isCopied
+                        ? "text-green-600"
+                        : "text-muted-foreground opacity-0 group-hover:opacity-100"
+                    }
+                  `}
                 >
-                  Returned
-                </Badge>
-
-              </TooltipTrigger>
-
-
-              <TooltipContent>
-
-                <p>
-
-                  Returned date:{" "}
-
-                  {candidate.returned_date
-
-                    ? new Date(
-                        candidate.returned_date,
-                      ).toLocaleDateString(
-                        "en-GB",
-                        {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        },
-                      )
-
-                    : "Not available"}
-
-                </p>
-
-
-                {candidate.returned_reason && (
-
-                  <p className="mt-1">
-
-                    Reason:{" "}
-                    {candidate.returned_reason}
-
-                  </p>
-
-                )}
-
-              </TooltipContent>
-
-            </Tooltip>
-
+                  {isCopied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </span>
+              )}
+            </button>
           );
-        }
+        },
+      },
 
+      /* -----------------------------------------------------
+         COUNTRY
+      ----------------------------------------------------- */
 
-        /* -----------------------------------------------
-           CANCELLED
-        ----------------------------------------------- */
+      {
+        key: "country",
 
-        if (
-          status === "cancelled"
-        ) {
+        fieldKey: "country",
 
-          return (
+        header: "Country",
 
-            <Tooltip>
+        hideOnMobile: true,
 
-              <TooltipTrigger asChild>
+        cell: (candidate) => (
+          <span className="block truncate">
+            {candidate.country ?? "—"}
+          </span>
+        ),
+      },
 
-                <Badge
-                  variant="secondary"
-                  className="cursor-help"
-                >
-                  Cancelled
-                </Badge>
+      /* -----------------------------------------------------
+         STAGE
 
-              </TooltipTrigger>
+         Global Candidate stage.
 
+         Example:
+           Candidate
+           Medical
+           MOFA
+           Visa
+           Flight
 
-              {candidate.final_reason && (
+      ----------------------------------------------------- */
+
+      {
+        key: "stage",
+
+        fieldKey: "current_stage",
+
+        header: "Stage",
+
+        cell: (candidate) => (
+          <CandidateStageBadge
+            candidate={candidate}
+            onOpenManageService={() =>
+              onManageServices?.(
+                candidate,
+              )
+            }
+            onCandidateUpdated={(
+              updated,
+            ) =>
+              onCandidateUpdated?.(
+                updated,
+              )
+            }
+          />
+          /* Current stage-এ click করলে সরাসরি সেই module-এর sheet
+             খোলে (Manage Service-এর ভেতর দিয়ে না) — nothing-started
+             বা frozen candidate হলে Manage Service-এ fallback করে।
+             Hover-এ tooltip current module-এর live status দেখায়. */
+        ),
+      },
+
+      /* -----------------------------------------------------
+         RECEIVED
+      ----------------------------------------------------- */
+
+      {
+        key: "received",
+
+        fieldKey: "received_date",
+
+        header: "Received",
+
+        hideOnMobile: true,
+
+        cell: (candidate) =>
+          candidate.received_date ??
+          "—",
+      },
+
+      /* -----------------------------------------------------
+         AGENT
+      ----------------------------------------------------- */
+
+      {
+        key: "agent",
+
+        fieldKey: "agent_id",
+
+        header: "Agent",
+
+        className: "w-[180px]",
+
+        hideOnMobile: true,
+
+        cell: (candidate) =>
+          candidate.agent ? (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate font-medium">
+                {candidate.agent.name ??
+                  "Unnamed Agent"}
+              </span>
+            </div>
+          ) : (
+            <span className="text-muted-foreground">
+              —
+            </span>
+          ),
+      },
+
+      /* =====================================================
+         STATUS
+      ===================================================== */
+
+      {
+        key: "status",
+
+        header: "Status",
+
+        className: "w-[120px]",
+
+        cell: (candidate) => {
+          const status =
+            getCandidateOverallStatus(
+              candidate,
+              {
+                moduleStatus:
+                  candidate.workflow_state ??
+                  null,
+              },
+            );
+
+          /* -----------------------------------------------
+             RETURNED
+          ----------------------------------------------- */
+
+          if (
+            status === "returned"
+          ) {
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="destructive"
+                    className="cursor-help"
+                  >
+                    Returned
+                  </Badge>
+                </TooltipTrigger>
 
                 <TooltipContent>
-
                   <p>
-                    Reason:{" "}
-                    {candidate.final_reason}
+                    Returned date:{" "}
+                    {candidate.returned_date
+                      ? new Date(
+                          candidate.returned_date,
+                        ).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )
+                      : "Not available"}
                   </p>
 
+                  {candidate.returned_reason && (
+                    <p className="mt-1">
+                      Reason:{" "}
+                      {
+                        candidate.returned_reason
+                      }
+                    </p>
+                  )}
                 </TooltipContent>
+              </Tooltip>
+            );
+          }
 
-              )}
+          /* -----------------------------------------------
+             CANCELLED
+          ----------------------------------------------- */
 
-            </Tooltip>
+          if (
+            status === "cancelled"
+          ) {
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="secondary"
+                    className="cursor-help"
+                  >
+                    Cancelled
+                  </Badge>
+                </TooltipTrigger>
 
-          );
-        }
+                {candidate.final_reason && (
+                  <TooltipContent>
+                    <p>
+                      Reason:{" "}
+                      {
+                        candidate.final_reason
+                      }
+                    </p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            );
+          }
 
+          /* -----------------------------------------------
+             COMPLETE
+          ----------------------------------------------- */
 
-        /* -----------------------------------------------
-           COMPLETE
-        ----------------------------------------------- */
+          if (
+            status === "complete"
+          ) {
+            return (
+              <Badge variant="outline">
+                Complete
+              </Badge>
+            );
+          }
 
-        if (
-          status === "complete"
-        ) {
+          /* -----------------------------------------------
+             ACTIVE
+          ----------------------------------------------- */
 
           return (
-
-            <Badge variant="outline">
-              Complete
+            <Badge variant="default">
+              Active
             </Badge>
-
           );
-        }
-
-
-        /* -----------------------------------------------
-           ACTIVE
-        ----------------------------------------------- */
-
-        return (
-
-          <Badge variant="default">
-            Active
-          </Badge>
-
-        );
+        },
       },
-    },
 
+      /* =====================================================
+         ACTION
+      ===================================================== */
 
-    /* =====================================================
-       ACTION
-       ===================================================== */
+      {
+        key: "action",
 
-    {
-      key: "action",
+        header: "Action",
 
-      header: "Action",
+        className:
+          "w-[70px] text-right",
 
-      className:
-        "w-[70px] text-right",
+        cell: (candidate) => {
+          const status =
+            getCandidateOverallStatus(
+              candidate,
+              {
+                moduleStatus:
+                  candidate.workflow_state ??
+                  null,
+              },
+            );
 
-      cell: (candidate) => {
+          const isReturned =
+            status === "returned";
 
-        const status =
-          getCandidateOverallStatus(
-            candidate,
-            {
-              moduleStatus:
-                candidate.workflow_state ?? null,
-            },
-          );
+          const isCancelled =
+            status === "cancelled";
 
+          const isComplete =
+            status === "complete";
 
-        const isReturned =
-          status === "returned";
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                >
+                  <MoreHorizontal />
 
-        const isCancelled =
-          status === "cancelled";
+                  <span className="sr-only">
+                    Open candidate actions
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
 
-        const isComplete =
-          status === "complete";
+              <DropdownMenuContent align="end">
 
-
-        return (
-
-          <DropdownMenu>
-
-            <DropdownMenuTrigger asChild>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-              >
-
-                <MoreHorizontal />
-
-                <span className="sr-only">
-                  Open candidate actions
-                </span>
-
-              </Button>
-
-            </DropdownMenuTrigger>
-
-
-            <DropdownMenuContent align="end">
-
-              {/* =========================================
-                  PASSPORT
-              ========================================= */}
-
-              <DropdownMenuItem
-                onClick={() =>
-                  onPassportAction?.(
-                    candidate,
-                  )
-                }
-              >
-
-                <FileText />
-
-                Passport
-
-              </DropdownMenuItem>
-
-
-              {/* =========================================
-                  EDIT
-              ========================================= */}
-
-              {!isComplete && (
+                {/* =========================================
+                    PASSPORT
+                ========================================= */}
 
                 <DropdownMenuItem
                   onClick={() =>
-                    onEdit?.(
+                    onPassportAction?.(
                       candidate,
                     )
                   }
                 >
+                  <FileText />
 
-                  <Pencil />
-
-                  Edit
-
+                  Passport
                 </DropdownMenuItem>
 
-              )}
-              {!isComplete && (
-             <DropdownMenuItem onClick={() => onManageServices?.(candidate)}>
-                  <ListChecks />
-                  Manage Services
-                </DropdownMenuItem>
-              )}
+                {/* =========================================
+                    EDIT
+                ========================================= */}
 
-              {/* =========================================
-                  RETURN
-              ========================================= */}
-
-              {!isReturned &&
-                !isCancelled &&
-                !isComplete && (
-
+                {!isComplete && (
                   <DropdownMenuItem
                     onClick={() =>
-                      onReturn?.(
+                      onEdit?.(
                         candidate,
                       )
                     }
                   >
+                    <Pencil />
 
+                    Edit
+                  </DropdownMenuItem>
+                )}
+
+                {!isComplete && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      onManageServices?.(
+                        candidate,
+                      )
+                    }
+                  >
+                    <ListChecks />
+
+                    Manage Services
+                  </DropdownMenuItem>
+                )}
+
+                {/* =========================================
+                    RETURN
+                ========================================= */}
+
+                {!isReturned &&
+                  !isCancelled &&
+                  !isComplete && (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onReturn?.(
+                          candidate,
+                        )
+                      }
+                    >
+                      <RotateCcw />
+
+                      Mark as Returned
+                    </DropdownMenuItem>
+                  )}
+
+                {/* =========================================
+                    RESTORE RETURNED
+                ========================================= */}
+
+                {isReturned && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      onRestore?.(
+                        candidate,
+                      )
+                    }
+                  >
                     <RotateCcw />
 
-                    Mark as Returned
-
+                    Restore Candidate
                   </DropdownMenuItem>
-
                 )}
 
+                {/* =========================================
+                    CANCEL
+                ========================================= */}
 
-              {/* =========================================
-                  RESTORE RETURNED
-              ========================================= */}
+                {!isReturned &&
+                  !isCancelled &&
+                  !isComplete && (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onCancel?.(
+                          candidate,
+                        )
+                      }
+                    >
+                      <Ban />
 
-              {isReturned && (
+                      Cancel Candidate
+                    </DropdownMenuItem>
+                  )}
 
-                <DropdownMenuItem
-                  onClick={() =>
-                    onRestore?.(
-                      candidate,
-                    )
-                  }
-                >
+                {/* =========================================
+                    REACTIVATE
+                ========================================= */}
 
-                  <RotateCcw />
-
-                  Restore Candidate
-
-                </DropdownMenuItem>
-
-              )}
-
-
-              {/* =========================================
-                  CANCEL
-              ========================================= */}
-
-              {!isReturned &&
-                !isCancelled &&
-                !isComplete && (
-
+                {isCancelled && (
                   <DropdownMenuItem
                     onClick={() =>
-                      onCancel?.(
+                      onReactivate?.(
                         candidate,
                       )
                     }
                   >
+                    <PlayCircle />
 
-                    <Ban />
-
-                    Cancel Candidate
-
+                    Reactivate Candidate
                   </DropdownMenuItem>
-
                 )}
 
+                {/* =========================================
+                    DELETE
+                ========================================= */}
 
-              {/* =========================================
-                  REACTIVATE
-              ========================================= */}
-
-              {isCancelled && (
+                <DropdownMenuSeparator />
 
                 <DropdownMenuItem
+                  variant="destructive"
                   onClick={() =>
-                    onReactivate?.(
+                    onDelete?.(
                       candidate,
                     )
                   }
                 >
+                  <Trash2 />
 
-                  <PlayCircle />
-
-                  Reactivate Candidate
-
+                  Delete
                 </DropdownMenuItem>
 
-              )}
-
-
-              {/* =========================================
-                  DELETE
-              ========================================= */}
-
-              <DropdownMenuSeparator />
-
-
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() =>
-                  onDelete?.(
-                    candidate,
-                  )
-                }
-              >
-
-                <Trash2 />
-
-                Delete
-
-              </DropdownMenuItem>
-
-            </DropdownMenuContent>
-
-          </DropdownMenu>
-
-        );
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
       },
-    },
-  ];
-
+    ];
 
   /* =======================================================
      TABLE
   ======================================================= */
 
   return (
-
     <TooltipProvider>
-
       <DataTable
-
         columns={columns}
-
         data={candidates}
         getRowKey={(candidate) =>
           candidate.id
         }
-        newRowKeys={newCandidateIds}
-        updatedRowKeys={updatedCandidateIds}
+        newRowKeys={
+          newCandidateIds
+        }
+        updatedRowKeys={
+          updatedCandidateIds
+        }
+        updatedFieldKeys={
+          updatedCandidateFields
+        }
         loading={loading}
-
         emptyTitle="No candidates found"
-
         emptyDescription="Try changing your search."
-
         pageSize={pageSize}
-
         page={page}
-
         onPageChange={
           onPageChange
         }
-
         total={total}
-
         serverPagination={
           typeof total === "number" &&
-          total !== candidates.length
+          total !==
+            candidates.length
         }
-
       />
-
     </TooltipProvider>
-
   );
 }

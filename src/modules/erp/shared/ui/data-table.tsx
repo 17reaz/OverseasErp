@@ -33,6 +33,9 @@ export interface DataTableColumn<T> {
   /** Unique key for the column (used as React key + width class target) */
   key: string;
 
+  /** Field name used for update highlighting */
+  fieldKey?: string;
+
   /** Header label */
   header: React.ReactNode;
 
@@ -61,6 +64,7 @@ interface DataTableProps<T> {
 
   newRowKeys?: Set<string | number>;
   updatedRowKeys?: Set<string | number>;
+  updatedFieldKeys?: Map<string, Set<string>>;
   getRowKey: (row: T, index: number) => string | number;
 
   loading?: boolean;
@@ -108,6 +112,7 @@ export function DataTable<T>({
   getRowKey,
   newRowKeys = new Set(),
   updatedRowKeys = new Set(),
+  updatedFieldKeys = new Map(),
   loading = false,
   emptyTitle = "No records found",
   emptyDescription,
@@ -266,92 +271,132 @@ export function DataTable<T>({
 
                   const isNewRow =
                     newRowKeys.has(rowKey);
+
                   const isUpdatedRow =
-  updatedRowKeys.has(rowKey);
+                    updatedRowKeys.has(rowKey);
+
+                  const changedFields =
+                    updatedFieldKeys.get(
+                      String(rowKey),
+                    );
+
                   return (
                     <MotionTableRow
-  key={rowKey}
-  layout="position"
-  initial={
-    isNewRow
-      ? {
-          opacity: 0,
-          x: 100,
-        }
-      : false
-  }
-  animate={
-    isUpdatedRow
-      ? {
-          opacity: [1, 1, 1],
-          scale: [1, 1.008, 1],
-        }
-      : {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-        }
-  }
-  exit={{
-    opacity: 0,
-    x: 100,
-  }}
-  transition={{
-    layout: {
-      duration: 0.38,
-      ease: [0.22, 1, 0.36, 1],
-    },
-    opacity: isNewRow
-      ? {
-          duration: 0.22,
-          delay: 0.08,
-        }
-      : {
-          duration: 0.18,
-        },
-    x: isNewRow
-      ? {
-          duration: 0.42,
-          delay: 0.08,
-          ease: [0.22, 1, 0.36, 1],
-        }
-      : {
-          duration: 0.32,
-          ease: [0.22, 1, 0.36, 1],
-        },
-    scale: isUpdatedRow
-      ? {
-          duration: 0.7,
-          ease: [0.22, 1, 0.36, 1],
-        }
-      : {
-          duration: 0.2,
-        },
-  }}
-  className={
-    isUpdatedRow
-      ? "bg-primary/10"
-      : undefined
-  }
->
-                      {columns.map((column) => (
-                        <TableCell
-                          key={column.key}
-                          className={[
-                            column.hideOnMobile
-                              ? "hidden sm:table-cell"
-                              : "",
-                            column.className ?? "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        >
-                          {column.cell(
-                            row,
-                            index,
-                          )}
-                        </TableCell>
-                      ))}
+                      key={rowKey}
+                      layout="position"
+                      initial={
+                        isNewRow
+                          ? {
+                              opacity: 0,
+                              x: 100,
+                            }
+                          : false
+                      }
+                      animate={
+                        isUpdatedRow
+                          ? {
+                              opacity: [1, 1, 1],
+                              scale: [1, 1.008, 1],
+                            }
+                          : {
+                              opacity: 1,
+                              x: 0,
+                              scale: 1,
+                            }
+                      }
+                      exit={{
+                        opacity: 0,
+                        x: 100,
+                      }}
+                      transition={{
+                        layout: {
+                          duration: 0.38,
+                          ease: [
+                            0.22,
+                            1,
+                            0.36,
+                            1,
+                          ],
+                        },
+                        opacity: isNewRow
+                          ? {
+                              duration: 0.22,
+                              delay: 0.08,
+                            }
+                          : {
+                              duration: 0.18,
+                            },
+                        x: isNewRow
+                          ? {
+                              duration: 0.42,
+                              delay: 0.08,
+                              ease: [
+                                0.22,
+                                1,
+                                0.36,
+                                1,
+                              ],
+                            }
+                          : {
+                              duration: 0.32,
+                              ease: [
+                                0.22,
+                                1,
+                                0.36,
+                                1,
+                              ],
+                            },
+                        scale: isUpdatedRow
+                          ? {
+                              duration: 0.7,
+                              ease: [
+                                0.22,
+                                1,
+                                0.36,
+                                1,
+                              ],
+                            }
+                          : {
+                              duration: 0.2,
+                            },
+                      }}
+                      className={
+                        isUpdatedRow
+                          ? "bg-primary/10"
+                          : undefined
+                      }
+                    >
+                      {columns.map((column) => {
+                        const isFieldUpdated =
+                          Boolean(
+                            column.fieldKey &&
+                              changedFields?.has(
+                                column.fieldKey,
+                              ),
+                          );
+
+                        return (
+                          <TableCell
+                            key={column.key}
+                            className={[
+                              column.hideOnMobile
+                                ? "hidden sm:table-cell"
+                                : "",
+                              column.className ?? "",
+                              isFieldUpdated
+                                ? "bg-primary/15 text-primary transition-all duration-500"
+                                : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          >
+                            {column.cell(
+                              row,
+                              index,
+                            )}
+                          </TableCell>
+                        );
+                      })}
                     </MotionTableRow>
                   );
                 })}
