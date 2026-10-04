@@ -6,16 +6,15 @@ import {
   Building2,
   CreditCard,
   Hash,
+  History,
+  MonitorCog,
   Settings2,
   UserRound,
-  History,
   Users,
   Workflow as WorkflowIcon,
-  MonitorCog,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { usePermissions } from "@/lib/permissions/use-permissions";
 import {
   Card,
   CardContent,
@@ -23,18 +22,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { usePermissions } from "@/lib/permissions/use-permissions";
 import { cn } from "@/lib/utils";
 
 import { AuditSection } from "./audit/audit-section";
-import { NumberingSettings } from "./components/numbering-settings";
 import { CountrySettings } from "./components/country-settings";
 import { DataManagementSection } from "./components/data-management-section";
-import { UsersSection } from "./components/users-section";
-import { ProfilePage } from "./profile-page";
-import { LoginActivity } from "./login-activity";
-import { UpdatesSection } from "./updates/updates-section";
+import { NumberingSettings } from "./components/numbering-settings";
 import { TenantSettingsPlaceholders } from "./components/tenant-settings-placeholder";
 import { UsageMonitoring } from "./components/usage-monitoring";
+import { UsersSection } from "./components/users-section";
+import { LoginActivity } from "./login-activity";
+import { ProfilePage } from "./profile-page";
+import { UpdatesSection } from "./updates/updates-section";
+
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
 type SettingsSectionId =
   | "profile"
   | "organization"
@@ -48,12 +53,19 @@ type SettingsSectionId =
   | "login-activity"
   | "usage-monitoring";
 
+type Permission = Parameters<ReturnType<typeof usePermissions>["can"]>[0];
+
 interface SettingsSection {
   id: SettingsSectionId;
   label: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
+  permission?: Permission;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Static data                                                                */
+/* -------------------------------------------------------------------------- */
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   {
@@ -116,7 +128,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Recent login sessions and device activity.",
     icon: Activity,
   },
-    {
+  {
     id: "usage-monitoring",
     label: "Usage & Monitoring",
     description: "Usage, performance, storage, and system health.",
@@ -124,11 +136,29 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   },
 ];
 
-function ComingSoonSection({
-  section,
-}: {
-  section: SettingsSection;
-}) {
+const PRICING_PLANS = [
+  {
+    name: "Starter",
+    price: "BDT 2,500",
+    description: "For small agencies getting started.",
+  },
+  {
+    name: "Professional",
+    price: "BDT 5,000",
+    description: "For growing recruitment agencies.",
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    description: "For larger teams and multi-branch operations.",
+  },
+];
+
+/* -------------------------------------------------------------------------- */
+/* Section components                                                         */
+/* -------------------------------------------------------------------------- */
+
+function ComingSoonSection({ section }: { section: SettingsSection }) {
   const Icon = section.icon;
 
   return (
@@ -138,10 +168,7 @@ function ComingSoonSection({
           <Icon className="size-4" />
           {section.label}
         </CardTitle>
-
-        <CardDescription>
-          {section.description}
-        </CardDescription>
+        <CardDescription>{section.description}</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -162,10 +189,9 @@ function OrganizationSection() {
             <Building2 className="size-4" />
             Organization
           </CardTitle>
-
           <CardDescription>
-            Manage your organization profile, locale, and
-            available countries.
+            Manage your organization profile, locale, and available
+            countries.
           </CardDescription>
         </CardHeader>
 
@@ -177,9 +203,10 @@ function OrganizationSection() {
       </Card>
 
       <CountrySettings />
+
       <div className="mt-6">
-  <TenantSettingsPlaceholders />
-</div>
+        <TenantSettingsPlaceholders />
+      </div>
     </div>
   );
 }
@@ -193,17 +220,16 @@ function WorkflowSection() {
             <Hash className="size-4" />
             Numbering
           </CardTitle>
-
           <CardDescription>
-            Configure and monitor serial numbering used across
-            your ERP modules.
+            Configure and monitor serial numbering used across your ERP
+            modules.
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Numbering settings are tenant-specific. Existing
-            records are never renumbered automatically.
+            Numbering settings are tenant-specific. Existing records are
+            never renumbered automatically.
           </p>
         </CardContent>
       </Card>
@@ -214,49 +240,21 @@ function WorkflowSection() {
 }
 
 function PricingSection() {
-  const plans = [
-    {
-      name: "Starter",
-      price: "BDT 2,500",
-      description:
-        "For small agencies getting started.",
-    },
-    {
-      name: "Professional",
-      price: "BDT 5,000",
-      description:
-        "For growing recruitment agencies.",
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      description:
-        "For larger teams and multi-branch operations.",
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">
-          Pricing
-        </h2>
-
+        <h2 className="text-lg font-semibold">Pricing</h2>
         <p className="text-sm text-muted-foreground">
           Choose the plan that fits your agency.
         </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {plans.map((plan) => (
+        {PRICING_PLANS.map((plan) => (
           <Card key={plan.name}>
             <CardHeader>
               <CardTitle>{plan.name}</CardTitle>
-
-              <CardDescription>
-                {plan.description}
-              </CardDescription>
-
+              <CardDescription>{plan.description}</CardDescription>
               <div className="pt-2 text-2xl font-semibold">
                 {plan.price}
               </div>
@@ -264,8 +262,8 @@ function PricingSection() {
 
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Plan details and subscription management will
-                be available here.
+                Plan details and subscription management will be
+                available here.
               </p>
             </CardContent>
           </Card>
@@ -308,55 +306,48 @@ function SettingsSectionContent({
     case "billing":
     case "activity-log":
       return <AuditSection />;
-      case "usage-monitoring":
-  return <UsageMonitoring />;
+
+    case "usage-monitoring":
+      return <UsageMonitoring />;
 
     default: {
       const section = SETTINGS_SECTIONS.find(
         (item) => item.id === sectionId,
       );
 
-      if (!section) {
-        return null;
-      }
-
-      return <ComingSoonSection section={section} />;
+      return section ? <ComingSoonSection section={section} /> : null;
     }
   }
 }
 
-export function SettingsPage() {
-  const [searchParams, setSearchParams] =
-    useSearchParams();
+/* -------------------------------------------------------------------------- */
+/* Page                                                                       */
+/* -------------------------------------------------------------------------- */
 
+export function SettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { can } = usePermissions();
 
   const visibleSections = SETTINGS_SECTIONS.filter(
-    (section) =>
-      !section.permission || can(section.permission),
+    (section) => !section.permission || can(section.permission),
   );
 
   const defaultSectionId: SettingsSectionId =
-    visibleSections.find(
-      (section) => section.id === "workflow",
-    )?.id ??
+    visibleSections.find((section) => section.id === "workflow")?.id ??
     visibleSections[0]?.id ??
     "profile";
 
-  const requestedSection =
-    searchParams.get("section") as SettingsSectionId | null;
+  const requestedSection = searchParams.get(
+    "section",
+  ) as SettingsSectionId | null;
 
   const isValidSection =
     requestedSection !== null &&
-    visibleSections.some(
-      (section) => section.id === requestedSection,
-    );
+    visibleSections.some((section) => section.id === requestedSection);
 
   const [activeSectionId, setActiveSectionId] =
     useState<SettingsSectionId>(
-      isValidSection
-        ? requestedSection
-        : defaultSectionId,
+      isValidSection ? requestedSection : defaultSectionId,
     );
 
   useEffect(() => {
@@ -366,26 +357,16 @@ export function SettingsPage() {
     }
 
     setActiveSectionId(defaultSectionId);
-  }, [
-    defaultSectionId,
-    isValidSection,
-    requestedSection,
-  ]);
+  }, [defaultSectionId, isValidSection, requestedSection]);
 
-  function selectSection(
-    sectionId: SettingsSectionId,
-  ) {
+  function selectSection(sectionId: SettingsSectionId) {
     setActiveSectionId(sectionId);
-
-    setSearchParams({
-      section: sectionId,
-    });
+    setSearchParams({ section: sectionId });
   }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* HEADER */}
-
+      {/* Header */}
       <div className="border-b">
         <div className="px-6 py-5">
           <div className="flex items-center gap-3">
@@ -394,10 +375,7 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <h1 className="text-xl font-semibold">
-                Settings
-              </h1>
-
+              <h1 className="text-xl font-semibold">Settings</h1>
               <p className="text-sm text-muted-foreground">
                 Manage your ERP configuration.
               </p>
@@ -406,26 +384,20 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* BODY */}
-
+      {/* Body */}
       <div className="flex min-h-0 flex-1">
-        {/* LEFT NAV */}
-
+        {/* Left nav */}
         <nav className="w-56 shrink-0 overflow-y-auto border-r p-3">
           <ul className="space-y-1">
             {visibleSections.map((section) => {
               const Icon = section.icon;
-
-              const isActive =
-                section.id === activeSectionId;
+              const isActive = section.id === activeSectionId;
 
               return (
                 <li key={section.id}>
                   <button
                     type="button"
-                    onClick={() =>
-                      selectSection(section.id)
-                    }
+                    onClick={() => selectSection(section.id)}
                     className={cn(
                       "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
                       isActive
@@ -434,10 +406,7 @@ export function SettingsPage() {
                     )}
                   >
                     <Icon className="size-4 shrink-0" />
-
-                    <span className="truncate">
-                      {section.label}
-                    </span>
+                    <span className="truncate">{section.label}</span>
                   </button>
                 </li>
               );
@@ -445,13 +414,10 @@ export function SettingsPage() {
           </ul>
         </nav>
 
-        {/* CONTENT */}
-
+        {/* Content */}
         <div className="min-h-0 flex-1 overflow-auto">
           <div className="mx-auto w-full max-w-5xl space-y-8 p-6">
-            <SettingsSectionContent
-              sectionId={activeSectionId}
-            />
+            <SettingsSectionContent sectionId={activeSectionId} />
           </div>
         </div>
       </div>
