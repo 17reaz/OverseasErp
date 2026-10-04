@@ -318,10 +318,14 @@ export function CandidateFormDialog({
             <Input
               id="candidate_name"
               value={draft.name}
-              onChange={(event) => {
-                setDraft("name", stripNumbers(event.target.value));
-                setError(null);
-              }}
+              onChange={(event) =>
+  setDraft(
+    "name",
+    event.target.value
+      .replace(/\p{N}/gu, "")
+      .toUpperCase(),
+  )
+}
               placeholder="Full name"
               autoComplete="off"
               disabled={loading}
