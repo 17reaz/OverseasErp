@@ -55,7 +55,7 @@ import { usePermissions } from "@/lib/permissions/use-permissions";
 };
 export function ErpSidebar() {
   const { tenant } = useAuth();
-  const { canAccessPath } = usePermissions();
+  const {can, canAccessPath } = usePermissions();
 const visibleNavigation = erpNavigation.filter((item) =>
   canAccessPath(item.url),
 );
