@@ -55,7 +55,7 @@ import { usePermissions } from "@/lib/permissions/use-permissions";
 };
 export function ErpSidebar() {
   const { tenant } = useAuth();
-  const { can, canAccessPath } = usePermissions();
+  const { canAccessPath } = usePermissions();
 const visibleNavigation = erpNavigation.filter((item) =>
   canAccessPath(item.url),
 );
@@ -216,7 +216,7 @@ const visibleNavigation = erpNavigation.filter((item) =>
                 group-data-[collapsible=icon]:hidden
               "
             >
-              ERP Modules
+              ERP Module
             </SidebarGroupLabel>
 
 
