@@ -221,8 +221,8 @@ export function DataTable<T>({
           BODY
           =================================================== */}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto">
-        <Table>
+      <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:thin] [&>[data-slot=table-container]]:overflow-visible">
+  <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               {columns.map(
@@ -358,7 +358,7 @@ export function DataTable<T>({
                           isNewRow
                             ? {
                                 opacity: 0,
-                                x: 100,
+                                x: 24,
                               }
                             : false
                         }
@@ -386,7 +386,7 @@ export function DataTable<T>({
                         }
                         exit={{
                           opacity: 0,
-                          x: 100,
+                          x: 24,
                         }}
                         transition={{
                           layout: {
