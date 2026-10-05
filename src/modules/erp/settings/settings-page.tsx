@@ -7,6 +7,7 @@ import {
   CreditCard,
   Hash,
   History,
+  Phone,
   MonitorCog,
   Globe2,
   Settings2,
@@ -37,7 +38,7 @@ import { LoginActivity } from "./login-activity";
 import { ProfilePage } from "./profile-page";
 import { UpdatesSection } from "./updates/updates-section";
 import { CountrySettings1 } from "./components/country1-settings";
-
+import { SupportPage } from "./support-page";
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -48,6 +49,7 @@ type SettingsSectionId =
    | "country-configuration"
   | "users"
   | "workflow"
+  | "support"
   | "import-export"
   | "billing"
   | "pricing"
@@ -102,6 +104,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Numbering and process configuration.",
     icon: WorkflowIcon,
   },
+  {
+  id: "support",
+  label: "Support",
+  description: "Get help and contact our support team.",
+  icon: Phone,
+},
   {
     id: "import-export",
     label: "Import / Export",
@@ -319,7 +327,8 @@ function SettingsSectionContent({
 
     case "updates":
       return <UpdatesSection />;
-
+case "support":
+  return <SupportPage />;
     case "billing":
     case "activity-log":
       return <AuditSection />;
