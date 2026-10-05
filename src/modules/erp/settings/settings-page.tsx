@@ -27,7 +27,7 @@ import { usePermissions } from "@/lib/permissions/use-permissions";
 import { cn } from "@/lib/utils";
 
 import { AuditSection } from "./audit/audit-section";
-import { CountrySettings } from "./components/country-settings";
+// import { CountrySettings } from "./components/country-settings";
 import { DataManagementSection } from "./components/data-management-section";
 import { NumberingSettings } from "./components/numbering-settings";
 import { TenantSettingsPlaceholders } from "./components/tenant-settings-placeholder";
