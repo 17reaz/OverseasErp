@@ -98,31 +98,30 @@ function MedicalGridEmpty() {
     </Card>
   );
 }
-
 export function MedicalGrid({
   items,
   loading = false,
   onOpen,
 }: MedicalGridProps) {
-  if (loading) {
-    return <MedicalGridSkeleton />;
-  }
-
-  const validItems = items.filter(isMedicalValid);
-
-  if (!validItems.length) {
-    return <MedicalGridEmpty />;
-  }
+  const validItems = loading ? [] : items.filter(isMedicalValid);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {validItems.map((item) => (
-        <MedicalPipelineCard
-          key={item.medical.id}
-          item={item}
-          onOpen={onOpen}
-        />
-      ))}
+    <div className="max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
+      {loading ? (
+        <MedicalGridSkeleton />
+      ) : !validItems.length ? (
+        <MedicalGridEmpty />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {validItems.map((item) => (
+            <MedicalPipelineCard
+              key={item.medical.id}
+              item={item}
+              onOpen={onOpen}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
