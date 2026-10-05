@@ -8,6 +8,7 @@ import {
 } from "@/modules/auth/components/auth-provider";
 import { Trash2,Settings,Phone, ChevronDown,
   Check } from "lucide-react";
+import { motion } from "motion/react";
 import {
   Sidebar,
   SidebarContent,
@@ -422,32 +423,47 @@ const [
                 </span>
 
                 {badge > 0 && (
-                  <span
-                    className="
-                      ml-auto
-                      flex
-                      h-5
-                      min-w-5
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-foreground
-                      px-1.5
-                      text-[10px]
-                      font-semibold
-                      leading-none
-                      text-background
-                      group-data-[collapsible=icon]:absolute
-                      group-data-[collapsible=icon]:right-1
-                      group-data-[collapsible=icon]:top-1/2
-                      group-data-[collapsible=icon]:-translate-y-1/2
-                    "
-                    aria-label={`${badge} pending actions`}
-                  >
-                    {badge > 99 ? "99+" : badge}
-                  </span>
-                )}
+  <motion.span
+    key={badge}
+    initial={{
+      scale: 0.65,
+      opacity: 0,
+    }}
+    animate={{
+      scale: 1,
+      opacity: 1,
+    }}
+    transition={{
+      type: "spring",
+      stiffness: 500,
+      damping: 24,
+      mass: 0.6,
+    }}
+    className="
+      ml-auto
+      flex
+      h-5
+      min-w-5
+      shrink-0
+      items-center
+      justify-center
+      rounded-full
+      bg-foreground
+      px-1.5
+      text-[10px]
+      font-semibold
+      leading-none
+      text-background
+      group-data-[collapsible=icon]:absolute
+      group-data-[collapsible=icon]:right-1
+      group-data-[collapsible=icon]:top-1/2
+      group-data-[collapsible=icon]:-translate-y-1/2
+    "
+    aria-label={`${badge} pending actions`}
+  >
+    {badge > 99 ? "99+" : badge}
+  </motion.span>
+)}
               </>
             )}
           </NavLink>
