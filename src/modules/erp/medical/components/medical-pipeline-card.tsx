@@ -1,10 +1,10 @@
 import {
   ArrowRight,
   Check,
-  Circle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -54,6 +54,10 @@ interface MedicalPipelineCardProps {
   onOpen?: (candidateId: string) => void;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              LOGIC (unchanged)                             */
+/* -------------------------------------------------------------------------- */
+
 function formatDate(value: string | null | undefined) {
   if (!value) {
     return "—";
@@ -82,6 +86,65 @@ function addDays(dateValue: string, days: number) {
   date.setDate(date.getDate() + days);
 
   return date.toISOString();
+}
+
+function getDaysSinceFit(
+  fitDate: string | null | undefined,
+) {
+  if (!fitDate) {
+    return null;
+  }
+
+  const fit = new Date(fitDate);
+
+  if (Number.isNaN(fit.getTime())) {
+    return null;
+  }
+
+  const now = new Date();
+
+  const fitDay = new Date(
+    fit.getFullYear(),
+    fit.getMonth(),
+    fit.getDate(),
+  );
+
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+
+  const diffMs =
+    today.getTime() - fitDay.getTime();
+
+  const days = Math.floor(
+    diffMs / (1000 * 60 * 60 * 24),
+  );
+
+  if (days < 0) {
+    return null;
+  }
+
+  return days;
+}
+
+function getFitAgeLabel(
+  fitDate: string | null | undefined,
+) {
+  const days = getDaysSinceFit(fitDate);
+
+  if (days === null) {
+    return undefined;
+  }
+
+  if (days === 0) {
+    return "Fit today";
+  }
+
+  return `Fit ${days} ${
+    days === 1 ? "day" : "days"
+  } ago`;
 }
 
 function getMedicalValidUntil(
@@ -178,34 +241,9 @@ function getMofaVariant(
   return "secondary" as const;
 }
 
-function StageConnector() {
-  return (
-    <div className="ml-[9px] h-3 border-l border-border" />
-  );
-}
-
-function StageIcon({
-  completed,
-}: {
-  completed: boolean;
-}) {
-  if (completed) {
-    return (
-      <span className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground ring-4 ring-background">
-        <Check
-          className="size-3"
-          strokeWidth={2.5}
-        />
-      </span>
-    );
-  }
-
-  return (
-    <span className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground ring-4 ring-background">
-      <Circle className="size-2 fill-current" />
-    </span>
-  );
-}
+/* -------------------------------------------------------------------------- */
+/*                                 UI PARTS                                   */
+/* -------------------------------------------------------------------------- */
 
 function StageRow({
   title,
@@ -226,13 +264,31 @@ function StageRow({
   date?: string;
   secondary?: string;
 }) {
+  const meta = [date, secondary].filter(Boolean).join("  ·  ");
+
   return (
     <div className="flex items-start gap-3">
-      <StageIcon completed={completed} />
+      <span
+        className={
+          completed
+            ? "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            : "mt-0.5 size-4 shrink-0 rounded-full border border-dashed border-muted-foreground/40"
+        }
+      >
+        {completed && (
+          <Check className="size-2.5" strokeWidth={3} />
+        )}
+      </span>
 
-      <div className="min-w-0 flex-1 pb-0.5">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium">
+          <span
+            className={
+              completed
+                ? "text-sm font-medium"
+                : "text-sm text-muted-foreground"
+            }
+          >
             {title}
           </span>
 
@@ -241,33 +297,25 @@ function StageRow({
               variant ??
               (completed ? "default" : "outline")
             }
-            className="h-5 shrink-0 px-1.5 text-[10px] font-medium"
+            className="shrink-0 text-[11px] font-normal"
           >
             {status}
           </Badge>
         </div>
 
-        {(date || secondary) && (
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-            {date && <span>{date}</span>}
-
-            {secondary && (
-              <>
-                {date && (
-                  <span className="text-muted-foreground/40">
-                    ·
-                  </span>
-                )}
-
-                <span>{secondary}</span>
-              </>
-            )}
-          </div>
+        {meta && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {meta}
+          </p>
         )}
       </div>
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   CARD                                     */
+/* -------------------------------------------------------------------------- */
 
 export function MedicalPipelineCard({
   item,
@@ -295,6 +343,11 @@ export function MedicalPipelineCard({
   const mofaCompleted =
     mofa?.stage === "approved";
 
+  const fitAgeLabel =
+    medicalCompleted
+      ? getFitAgeLabel(medical.fit_date)
+      : undefined;
+
   const candidateStatus =
     medicalCompleted
       ? "Processing"
@@ -304,149 +357,128 @@ export function MedicalPipelineCard({
           ? "Expired"
           : "New";
 
+  const agentName =
+    candidate.agent?.name ||
+    candidate.agent?.code ||
+    "No agent";
+
   return (
-    <Card className="h-full min-w-0 gap-0 overflow-hidden rounded-xl shadow-sm transition-shadow hover:shadow-md">
+    <Card className="h-full min-w-0 gap-0 py-0 shadow-none">
       {/* HEADER */}
-      <CardHeader className="gap-3 border-b px-4 py-3.5">
+      <CardHeader className="gap-0 space-y-0 px-4 pb-3 pt-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-2">
-              <span className="text-[11px] font-medium text-muted-foreground">
-                #{candidate.sl ?? "—"}
-              </span>
-
-              <span className="size-1 rounded-full bg-muted-foreground/40" />
-
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Medical
-              </span>
-            </div>
-
             <h3
-              className="truncate text-sm font-semibold leading-5 tracking-tight"
+              className="truncate text-sm font-semibold leading-5"
               title={candidate.name}
             >
               {candidate.name}
             </h3>
 
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-              {candidate.passport_no}
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              #{candidate.sl ?? "—"}
+              {candidate.passport_no
+                ? ` · ${candidate.passport_no}`
+                : ""}
               {candidate.country
                 ? ` · ${candidate.country}`
                 : ""}
             </p>
           </div>
 
-          <Badge
-            variant={
-              candidateStatus === "Unfit" ||
-              candidateStatus === "Expired"
-                ? "destructive"
-                : "secondary"
-            }
-            className="h-5 shrink-0 px-1.5 text-[10px]"
-          >
-            {candidateStatus}
-          </Badge>
+          {medicalCompleted && fitAgeLabel ? (
+            <span className="shrink-0 text-xs font-medium">
+              {fitAgeLabel}
+            </span>
+          ) : (
+            <Badge
+              variant={
+                candidateStatus === "Unfit" ||
+                candidateStatus === "Expired"
+                  ? "destructive"
+                  : "secondary"
+              }
+              className="shrink-0 text-[11px] font-normal"
+            >
+              {candidateStatus}
+            </Badge>
+          )}
         </div>
       </CardHeader>
 
       {/* PIPELINE */}
-      <CardContent className="px-4 py-4">
-        <div className="relative">
-          <StageRow
-            title="Medical"
-            completed={medicalCompleted}
-            status={
-              medical.status === "fit"
-                ? "Fit"
-                : medical.status
-            }
-            date={formatDate(
-              medical.fit_date ||
-                medical.medical_date,
-            )}
-            secondary={
-              medicalValidUntil
-                ? `Valid ${formatDate(
-                    medicalValidUntil,
-                  )}`
-                : undefined
-            }
-          />
+      <CardContent className="flex-1 space-y-4 px-4 pb-4">
+        <StageRow
+          title="Medical"
+          completed={medicalCompleted}
+          status={
+            medical.status === "fit"
+              ? "Fit"
+              : medical.status
+          }
+          date={formatDate(
+            medical.fit_date ||
+              medical.medical_date,
+          )}
+          secondary={
+            medicalValidUntil
+              ? `Valid until ${formatDate(
+                  medicalValidUntil,
+                )}`
+              : undefined
+          }
+        />
 
-          <StageConnector />
+        <StageRow
+          title="MOFA"
+          completed={mofaCompleted}
+          status={getMofaLabel(mofa)}
+          variant={getMofaVariant(mofa)}
+          date={
+            mofa
+              ? formatDate(mofa.application_date)
+              : undefined
+          }
+        />
 
-          <StageRow
-            title="MOFA"
-            completed={mofaCompleted}
-            status={getMofaLabel(mofa)}
-            variant={getMofaVariant(mofa)}
-            date={
-              mofa
-                ? formatDate(
-                    mofa.application_date,
-                  )
-                : undefined
-            }
-          />
-
-          <StageConnector />
-
-          <StageRow
-            title="Visa"
-            completed={visaIssued}
-            status={
-              visaIssued
-                ? "Issued"
-                : "Pending"
-            }
-            date={
-              visaIssued && visa?.visa_date
-                ? formatDate(
-                    visa.visa_date,
-                  )
-                : undefined
-            }
-          />
-        </div>
+        <StageRow
+          title="Visa"
+          completed={visaIssued}
+          status={
+            visaIssued ? "Issued" : "Pending"
+          }
+          date={
+            visaIssued && visa?.visa_date
+              ? formatDate(visa.visa_date)
+              : undefined
+          }
+        />
       </CardContent>
 
       {/* FOOTER */}
-      <CardFooter className="border-t bg-muted/20 px-4 py-2.5">
-        <div className="flex w-full items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Agent
-            </p>
+      <CardFooter className="justify-between gap-3 border-t px-4 py-2.5">
+        <p
+          className="min-w-0 truncate text-xs text-muted-foreground"
+          title={agentName}
+        >
+          Agent:{" "}
+          <span className="font-medium text-foreground">
+            {agentName}
+          </span>
+        </p>
 
-            <p
-              className="truncate text-[11px] font-medium"
-              title={
-                candidate.agent?.name ||
-                candidate.agent?.code ||
-                "No agent"
-              }
-            >
-              {candidate.agent?.name ||
-                candidate.agent?.code ||
-                "No agent"}
-            </p>
-          </div>
-
-          {onOpen && (
-            <button
-              type="button"
-              onClick={() =>
-                onOpen(candidate.id)
-              }
-              className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border bg-background px-2.5 text-[11px] font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              Open
-              <ArrowRight className="size-3" />
-            </button>
-          )}
-        </div>
+        {onOpen && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="-mr-2 h-7 shrink-0 px-2 text-xs"
+            onClick={() => onOpen(candidate.id)}
+          >
+            Open
+            <ArrowRight className="size-3.5" />
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

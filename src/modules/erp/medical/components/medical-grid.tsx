@@ -16,6 +16,37 @@ interface MedicalGridProps {
   onOpen?: (candidateId: string) => void;
 }
 
+const MEDICAL_VALIDITY_DAYS = 90;
+
+function isMedicalValid(item: MedicalPipelineItem) {
+  const fitDate = item.medical.fit_date;
+
+  if (!fitDate) {
+    return false;
+  }
+
+  const fitTime = new Date(fitDate).getTime();
+  const nowTime = Date.now();
+
+  if (Number.isNaN(fitTime)) {
+    return false;
+  }
+
+  // Future fit date is not considered valid
+  if (fitTime > nowTime) {
+    return false;
+  }
+
+  const validityTime =
+    MEDICAL_VALIDITY_DAYS *
+    24 *
+    60 *
+    60 *
+    1000;
+
+  return nowTime - fitTime < validityTime;
+}
+
 function MedicalGridSkeleton() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -60,8 +91,8 @@ function MedicalGridEmpty() {
         </h3>
 
         <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-          There are no medical records matching
-          the current filters.
+          There are no valid medical records
+          within the last 90 days.
         </p>
       </CardContent>
     </Card>
@@ -77,13 +108,15 @@ export function MedicalGrid({
     return <MedicalGridSkeleton />;
   }
 
-  if (!items.length) {
+  const validItems = items.filter(isMedicalValid);
+
+  if (!validItems.length) {
     return <MedicalGridEmpty />;
   }
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {items.map((item) => (
+      {validItems.map((item) => (
         <MedicalPipelineCard
           key={item.medical.id}
           item={item}
