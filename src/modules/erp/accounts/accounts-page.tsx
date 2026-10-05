@@ -17,7 +17,10 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-
+import { AccountRequestsPage } from "./requests/finance-requests-page";
+// import {
+//   AccountRequestsPage,
+// } from "./requests/account-requests-page";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -248,7 +251,28 @@ function AccountsPage() {
                 </Card>
               </div>
             </section>
+              {/* =====================================================
+    ACCOUNTING REQUESTS
+===================================================== */}
+<section>
+  <div className="mb-3 flex items-end justify-between">
+    <div>
+      <h2 className="text-sm font-semibold">
+        Accounting Requests
+      </h2>
 
+      <p className="text-xs text-muted-foreground">
+        Review financial requests submitted by ERP modules.
+      </p>
+    </div>
+  </div>
+
+  <Card className="overflow-hidden">
+    <CardContent className="p-0">
+      <AccountRequestsPage />
+    </CardContent>
+  </Card>
+</section>
             {/* =====================================================
                 FINANCE OPERATIONS
             ===================================================== */}
