@@ -14,7 +14,7 @@ import {
   Workflow as WorkflowIcon,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-
+import { NumberDisplaySettings } from "./components/number-display-settings";
 import {
   Card,
   CardContent,
@@ -51,7 +51,8 @@ type SettingsSectionId =
   | "updates"
   | "activity-log"
   | "login-activity"
-  | "usage-monitoring";
+  | "usage-monitoring"
+  | "number-display";
 
 type Permission = Parameters<ReturnType<typeof usePermissions>["can"]>[0];
 
@@ -134,6 +135,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Usage, performance, storage, and system health.",
     icon: MonitorCog,
   },
+  {
+  id: "number-display",
+  label: "Number Display",
+  description: "Control how numbers are displayed across the ERP.",
+  icon: Hash,
+},
 ];
 
 const PRICING_PLANS = [
@@ -309,7 +316,8 @@ function SettingsSectionContent({
 
     case "usage-monitoring":
       return <UsageMonitoring />;
-
+case "number-display":
+  return <NumberDisplaySettings />;
     default: {
       const section = SETTINGS_SECTIONS.find(
         (item) => item.id === sectionId,
