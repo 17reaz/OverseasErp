@@ -17,10 +17,6 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { AccountRequestsPage } from "./requests/finance-requests-page";
-// import {
-//   AccountRequestsPage,
-// } from "./requests/account-requests-page";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -254,25 +250,30 @@ function AccountsPage() {
               {/* =====================================================
     ACCOUNTING REQUESTS
 ===================================================== */}
-<section>
-  <div className="mb-3 flex items-end justify-between">
-    <div>
-      <h2 className="text-sm font-semibold">
-        Accounting Requests
-      </h2>
-
-      <p className="text-xs text-muted-foreground">
-        Review financial requests submitted by ERP modules.
-      </p>
+{/* Accounting Requests */}
+<button
+  type="button"
+  onClick={() =>
+    navigate("/app/accounts/requests")
+  }
+  className="group rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50"
+>
+  <div className="flex items-start justify-between">
+    <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+      <ReceiptText className="size-4" />
     </div>
+
+    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
   </div>
 
-  <Card className="overflow-hidden">
-    <CardContent className="p-0">
-      <AccountRequestsPage />
-    </CardContent>
-  </Card>
-</section>
+  <p className="mt-3 font-medium">
+    Accounting Requests
+  </p>
+
+  <p className="mt-1 text-xs text-muted-foreground">
+    Review and approve financial requests from ERP modules.
+  </p>
+</button>
             {/* =====================================================
                 FINANCE OPERATIONS
             ===================================================== */}

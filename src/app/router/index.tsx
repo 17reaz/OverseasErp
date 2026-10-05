@@ -175,7 +175,13 @@ const TransactionsPage = lazy(() =>
     default: module.TransactionsPage,
   })),
 );
-
+const AccountRequestsPage = lazy(() =>
+  import(
+    "@/modules/erp/accounts/requests/finance-requests-page"
+  ).then((module) => ({
+    default: module.AccountRequestsPage,
+  })),
+);
 const PayrollPage = lazy(() =>
   import("@/modules/erp/accounts/payroll/payroll-page").then((module) => ({
     default: module.PayrollPage,
@@ -455,7 +461,10 @@ function AppRouter() {
                 path="accounts"
                 element={<AccountsPage />}
               />
-
+<Route
+  path="accounts/requests"
+  element={<AccountRequestsPage />}
+/>
               <Route
                 path="accounts/sales"
                 element={<SalesPage />}
