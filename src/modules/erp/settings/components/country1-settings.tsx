@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -237,15 +237,7 @@ export function CountrySettings1() {
    * SELECTED COUNTRY
    * ------------------------------------------------------- */
 
-  const selectedCountry = useMemo(
-    () =>
-      countries.find(
-        (country) =>
-          country.id === selectedCountryId,
-      ) ?? null,
-    [countries, selectedCountryId],
-  );
-
+ 
   /* -------------------------------------------------------
    * COUNTRY FORM
    * ------------------------------------------------------- */
