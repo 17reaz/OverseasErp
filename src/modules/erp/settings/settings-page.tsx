@@ -8,6 +8,7 @@ import {
   Hash,
   History,
   MonitorCog,
+  Globe2,
   Settings2,
   UserRound,
   Users,
@@ -35,6 +36,7 @@ import { UsersSection } from "./components/users-section";
 import { LoginActivity } from "./login-activity";
 import { ProfilePage } from "./profile-page";
 import { UpdatesSection } from "./updates/updates-section";
+import { CountrySettings1 } from "./components/country1-settings";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -43,6 +45,7 @@ import { UpdatesSection } from "./updates/updates-section";
 type SettingsSectionId =
   | "profile"
   | "organization"
+   | "country-configuration"
   | "users"
   | "workflow"
   | "import-export"
@@ -80,6 +83,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     label: "Organization",
     description: "Company profile, branding, and locale.",
     icon: Building2,
+  },
+    {
+    id: "country-configuration",
+    label: "Country Configuration",
+    description: "Configure countries and their available ERP modules.",
+    icon: Globe2,
   },
   {
     id: "users",
@@ -209,7 +218,7 @@ function OrganizationSection() {
         </CardContent>
       </Card>
 
-      <CountrySettings />
+      <CountrySettings1 />
 
       <div className="mt-6">
         <TenantSettingsPlaceholders />
@@ -303,7 +312,8 @@ function SettingsSectionContent({
 
     case "users":
       return <UsersSection />;
-
+    case "country-configuration":
+  return <CountrySettings1 />;
     case "login-activity":
       return <LoginActivity />;
 
