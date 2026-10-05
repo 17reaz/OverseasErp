@@ -6,7 +6,8 @@ import {
 import {
   useAuth,
 } from "@/modules/auth/components/auth-provider";
-import { Trash2,Settings,Phone } from "lucide-react";
+import { Trash2,Settings,Phone, ChevronDown,
+  Check } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -53,6 +54,26 @@ import { usePermissions } from "@/lib/permissions/use-permissions";
   lifetime: "Lifetime",
   free_trial: "Free Trial",
 };
+const workspaces = [
+  {
+    id: "saudi-arabia",
+    name: "Saudi Arabia",
+    shortName: "KSA",
+    flag: "🇸🇦",
+  },
+  {
+    id: "malaysia",
+    name: "Malaysia",
+    shortName: "Malaysia",
+    flag: "🇲🇾",
+  },
+  {
+    id: "lebanon",
+    name: "Lebanon",
+    shortName: "Lebanon",
+    flag: "🇱🇧",
+  },
+];
 export function ErpSidebar() {
   const { tenant } = useAuth();
   const {can, canAccessPath } = usePermissions();
@@ -82,7 +103,15 @@ const visibleNavigation = erpNavigation.filter((item) =>
     },
     [],
   );
+const [
+  activeWorkspace,
+  setActiveWorkspace,
+] = useState(workspaces[0]);
 
+const [
+  workspaceOpen,
+  setWorkspaceOpen,
+] = useState(false);
   useEffect(() => {
     let mounted = true;
 
@@ -195,7 +224,140 @@ const visibleNavigation = erpNavigation.filter((item) =>
             </div>
 
           </div>
+{/* =================================================
+    WORKSPACE SELECTOR
+    ================================================= */}
 
+{/* =================================================
+    WORKSPACE SELECTOR
+    ================================================= */}
+
+<div className="px-2 pb-2">
+
+  <div className="relative">
+
+    <button
+      type="button"
+      onClick={() =>
+        setWorkspaceOpen((open) => !open)
+      }
+      className="
+        flex
+        h-9
+        w-full
+        items-center
+        gap-2
+        rounded-md
+        px-2
+        text-left
+        text-sm
+        transition-colors
+        hover:bg-muted
+        group-data-[collapsible=icon]:justify-center
+      "
+    >
+
+      <span
+        className="
+          flex
+          h-6
+          w-6
+          shrink-0
+          items-center
+          justify-center
+          text-base
+        "
+      >
+        {activeWorkspace.flag}
+      </span>
+
+      <span
+        className="
+          min-w-0
+          flex-1
+          truncate
+          font-medium
+          group-data-[collapsible=icon]:hidden
+        "
+      >
+        {activeWorkspace.name}
+      </span>
+
+      <ChevronDown
+        className="
+          h-3.5
+          w-3.5
+          shrink-0
+          text-muted-foreground
+          group-data-[collapsible=icon]:hidden
+        "
+      />
+
+    </button>
+
+    {workspaceOpen && (
+      <div
+        className="
+          absolute
+          left-0
+          right-0
+          top-full
+          z-50
+          mt-1
+          rounded-md
+          border
+          bg-popover
+          p-1
+          shadow-md
+          group-data-[collapsible=icon]:left-10
+          group-data-[collapsible=icon]:right-auto
+          group-data-[collapsible=icon]:w-48
+        "
+      >
+
+        {workspaces.map((workspace) => (
+          <button
+            key={workspace.id}
+            type="button"
+            onClick={() => {
+              setActiveWorkspace(workspace);
+              setWorkspaceOpen(false);
+            }}
+            className="
+              flex
+              h-8
+              w-full
+              items-center
+              gap-2
+              rounded-sm
+              px-2
+              text-left
+              text-sm
+              hover:bg-muted
+            "
+          >
+
+            <span className="text-base">
+              {workspace.flag}
+            </span>
+
+            <span className="min-w-0 flex-1 truncate">
+              {workspace.name}
+            </span>
+
+            {activeWorkspace.id === workspace.id && (
+              <Check className="h-3.5 w-3.5 shrink-0" />
+            )}
+
+          </button>
+        ))}
+
+      </div>
+    )}
+
+  </div>
+
+</div>
         </SidebarHeader>
 
 
