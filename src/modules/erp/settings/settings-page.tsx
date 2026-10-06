@@ -10,7 +10,6 @@ import {
   MonitorCog,
   Phone,
   Receipt,
-  Settings2,
   ShieldCheck,
   UserRound,
   Users,
