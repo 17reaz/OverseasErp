@@ -64,21 +64,16 @@ interface DashboardActivityProps {
   activity: DashboardData["activity"];
 }
 
-export function DashboardActivity({
-  activity,
-}: DashboardActivityProps) {
-  const [period, setPeriod] =
-    useState<ActivityPeriod>("today");
+export function DashboardActivity({ activity }: DashboardActivityProps) {
+  const [period, setPeriod] = useState<ActivityPeriod>("today");
 
   const data: ActivityData =
-    period === "today"
-      ? activity.today
-      : activity.week;
+    period === "today" ? activity.today : activity.week;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col gap-1.5">
       {/* HEADER */}
-      <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <p className="truncate text-[11px] text-muted-foreground">
           {period === "today"
             ? "Today's operational activity"
@@ -104,34 +99,29 @@ export function DashboardActivity({
         </div>
       </div>
 
-      {/* GRID */}
-      <div className="grid min-h-0 flex-1 grid-cols-3 content-start gap-1.5 overflow-auto">
+      {/* ONE ROW */}
+      <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
         {ACTIVITY_CONFIG.map((item) => {
           const Icon = item.icon;
 
           return (
             <div
               key={item.key}
-              className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md border px-1.5 py-2"
+              title={item.label}
+              className="flex min-w-0 flex-col items-center rounded-md border px-1 py-1"
             >
-              <Icon className="size-3.5 text-muted-foreground" />
-
-              <span className="text-lg font-semibold leading-none">
+              <span className="flex items-center gap-1 text-sm font-semibold leading-tight">
+                <Icon className="size-3 shrink-0 text-muted-foreground" />
                 {data[item.key]}
               </span>
 
-              <span className="truncate text-[10px] text-muted-foreground">
+              <span className="max-w-full truncate text-[9px] text-muted-foreground">
                 {item.label}
               </span>
             </div>
           );
         })}
       </div>
-
-      {/* FOOTER */}
-      <p className="mt-1.5 shrink-0 text-right text-[10px] text-muted-foreground">
-        Updated just now
-      </p>
     </div>
   );
 }
