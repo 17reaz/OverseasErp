@@ -19,7 +19,10 @@ import {
   type DashboardFiltersState,
 } from "./components/dashboard-filters";
 import { DashboardGreeting } from "./components/dashboard-greeting";
-
+import {
+  DashboardVisaMonitor,
+} from "./components/dashboard-visa-monitor";
+import { DashboardActivity } from "./components/dashboard-activity";
 /* =======================================================
    MODULE LEVEL CACHE
    Dashboard theke ber hoye fire ashle ager data, filters
@@ -239,6 +242,9 @@ export function DashboardPage() {
         />
 
         {/* Column 2 */}
+        <div className="flex min-h-0 flex-col gap-3">
+        <DashboardActivity />
+        <div className="min-h-0 flex-1">
         <TabPanel
           id="col2"
           tabs={[
@@ -267,8 +273,15 @@ export function DashboardPage() {
             },
           ]}
         />
+        </div>
+        </div>
 
         {/* Column 3 */}
+        <div className="flex min-h-0 flex-col gap-3">
+  {/* VISA MONITOR */}
+  <div className="shrink-0">
+    <DashboardVisaMonitor />
+  </div>
         <TabPanel
           id="col3"
           tabs={[
@@ -296,6 +309,8 @@ export function DashboardPage() {
             },
           ]}
         />
+        </div>
+        {/* <DashboardVisaMonitor /> */}
       </div>
     </div>
   );
