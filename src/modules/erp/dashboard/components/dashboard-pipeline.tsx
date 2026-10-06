@@ -144,14 +144,7 @@ export function DashboardPipeline({ data }: Props) {
                   </span>
                 </div>
 
-                <div className="h-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{
-                      width: `${Math.min(percentage, 100)}%`,
-                    }}
-                  />
-                </div>
+                
               </div>
             );
           })}

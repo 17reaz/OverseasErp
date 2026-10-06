@@ -5,7 +5,7 @@ import {
 } from "./dashboard-service";
 import { ActionCenter } from "@/modules/erp/action-center";
 import { DashboardHoldStages } from "./components/dashboard-hold-stages";
-import { DashboardStats } from "./components/dashboard-stats";
+import { DashboardStats,DashboardStatsSkeleton } from "./components/dashboard-stats";
 import { DashboardTable } from "./components/dashboard-table";
 import { DashboardCharts } from "./components/dashboard-charts";
 import { DashboardDocumentAlerts } from "./components/document-alerts";
@@ -133,14 +133,7 @@ export function DashboardPage() {
       <div className="space-y-3">
         <div className="h-12 animate-pulse rounded-xl border bg-muted/40" />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-20 animate-pulse rounded-lg border bg-muted/40"
-            />
-          ))}
-        </div>
+        <DashboardStatsSkeleton />
 
         <div className="grid gap-3 lg:grid-cols-3">
           <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />
