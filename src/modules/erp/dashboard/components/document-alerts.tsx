@@ -6,150 +6,106 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
-
-import type {
-  DashboardData,
-} from "../dashboard-service";
-
+import type { DashboardData } from "../dashboard-service";
 
 interface Props {
   alerts: DashboardData["documentAlerts"];
 }
 
-
-export function DashboardDocumentAlerts({
-  alerts,
-}: Props) {
-  const criticalCount =
-    alerts
-      .filter(
-        (item) =>
-          item.level ===
-          "critical",
-      )
-      .reduce(
-        (total, item) =>
-          total + item.count,
-        0,
-      );
-
+export function DashboardDocumentAlerts({ alerts }: Props) {
+  const criticalCount = alerts
+    .filter((item) => item.level === "critical")
+    .reduce((total, item) => total + item.count, 0);
 
   return (
-    <Card className="gap-0 overflow-hidden py-0">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* HEADER */}
+      <div className="mb-2 flex shrink-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <FileWarning className="size-4 text-muted-foreground" />
 
-      <CardHeader className="border-b px-5 py-4">
-        <div className="flex items-start justify-between">
-
-          <div>
-            <div className="flex items-center gap-2">
-              <FileWarning className="h-4 w-4 text-muted-foreground" />
-
-              <h2 className="font-semibold">
-                Document Alerts
-              </h2>
-            </div>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Documents currently blocking processing.
-            </p>
+            <h2 className="text-sm font-semibold">Document Alerts</h2>
           </div>
 
-          <div className="text-right">
-            <div className="flex items-center justify-end gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-destructive" />
-
-              <span className="text-lg font-semibold text-destructive">
-                {criticalCount}
-              </span>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              critical
-            </p>
-          </div>
-
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            Documents currently blocking processing.
+          </p>
         </div>
-      </CardHeader>
 
+        <div className="shrink-0 text-right leading-tight">
+          <div className="flex items-center justify-end gap-1">
+            <ShieldAlert className="size-4 text-destructive" />
 
-      <CardContent className="p-0">
+            <span className="text-base font-semibold text-destructive">
+              {criticalCount}
+            </span>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">critical</p>
+        </div>
+      </div>
+
+      {/* LIST */}
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border">
         {alerts.map((item) => {
           const Icon =
-            item.level ===
-            "critical"
+            item.level === "critical"
               ? ShieldAlert
-              : item.level ===
-                  "warning"
+              : item.level === "warning"
                 ? AlertCircle
                 : FileWarning;
-
 
           return (
             <button
               key={item.title}
               type="button"
-              className="group flex w-full items-center gap-3 border-b px-5 py-4 text-left transition-colors hover:bg-muted/50 last:border-b-0"
+              className="group flex w-full items-center gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-muted/50"
             >
-
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/30">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/30">
                 <Icon
                   className={
-                    item.level ===
-                    "critical"
-                      ? "h-4 w-4 text-destructive"
-                      : "h-4 w-4 text-muted-foreground"
+                    item.level === "critical"
+                      ? "size-4 text-destructive"
+                      : "size-4 text-muted-foreground"
                   }
                 />
               </div>
 
-
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">
-                  {item.title}
-                </p>
+                <p className="truncate text-sm font-medium">{item.title}</p>
 
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {item.description}
                 </p>
               </div>
 
-
-              <div className="flex items-center gap-3">
-                <span className="inline-flex min-w-8 items-center justify-center rounded-md border px-2 py-1 text-xs font-semibold">
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="inline-flex min-w-7 items-center justify-center rounded-md border px-2 py-0.5 text-xs font-semibold">
                   {item.count}
                 </span>
 
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </div>
-
             </button>
           );
         })}
-      </CardContent>
+      </div>
 
-
-      <div className="flex items-center justify-between border-t px-5 py-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-
-          <span>
-            Document monitoring active
-          </span>
-        </div>
+      {/* FOOTER */}
+      <div className="mt-2 flex shrink-0 items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CheckCircle2 className="size-3.5" />
+          Document monitoring active
+        </span>
 
         <button
           type="button"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground"
         >
           View all
         </button>
       </div>
-
-    </Card>
+    </div>
   );
 }
