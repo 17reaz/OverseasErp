@@ -3,38 +3,20 @@ import {
   ArrowRight,
   CalendarClock,
   CheckCircle2,
-  Clock3,
   FileWarning,
   Plane,
+  RefreshCw,
   Stethoscope,
   UserRound,
 } from "lucide-react";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import {
-  Button,
-} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-import {
-  cn,
-} from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 import {
   getActionItems,
@@ -42,15 +24,9 @@ import {
   deduplicateActionItems,
 } from "./action-service";
 
-import {
-  resolveActionTarget,
-} from "./action-resolver";
+import { resolveActionTarget } from "./action-resolver";
 
-import type {
-  ActionItem,
-  ActionPriority,
-} from "./action-types";
-
+import type { ActionItem, ActionPriority } from "./action-types";
 
 /**
  * =========================================================
@@ -58,68 +34,35 @@ import type {
  * =========================================================
  */
 
-function ActionIcon({
-  action,
-}: {
-  action: ActionItem;
-}) {
+function ActionIcon({ action }: { action: ActionItem }) {
   switch (action.type) {
     case "medical_pending":
     case "medical_expiring":
     case "medical_unfit":
-      return (
-        <Stethoscope
-          className="size-4"
-        />
-      );
+      return <Stethoscope className="size-3.5" />;
 
     case "flight_pending":
-      return (
-        <Plane
-          className="size-4"
-        />
-      );
+      return <Plane className="size-3.5" />;
 
     case "document_missing":
-      return (
-        <FileWarning
-          className="size-4"
-        />
-      );
+      return <FileWarning className="size-3.5" />;
 
     case "candidate_incomplete":
     case "candidate_on_hold":
-      return (
-        <UserRound
-          className="size-4"
-        />
-      );
+      return <UserRound className="size-3.5" />;
 
     case "mofa_pending":
     case "mofa_expiring":
-      return (
-        <CalendarClock
-          className="size-4"
-        />
-      );
+      return <CalendarClock className="size-3.5" />;
 
     case "visa_pending":
     case "visa_expiring":
-      return (
-        <CheckCircle2
-          className="size-4"
-        />
-      );
+      return <CheckCircle2 className="size-3.5" />;
 
     default:
-      return (
-        <AlertCircle
-          className="size-4"
-        />
-      );
+      return <AlertCircle className="size-3.5" />;
   }
 }
-
 
 /**
  * =========================================================
@@ -127,9 +70,7 @@ function ActionIcon({
  * =========================================================
  */
 
-function getPriorityClass(
-  priority: ActionPriority,
-) {
+function getPriorityClass(priority: ActionPriority) {
   switch (priority) {
     case "critical":
       return "border-destructive/30 bg-destructive/5 text-destructive";
@@ -146,7 +87,6 @@ function getPriorityClass(
   }
 }
 
-
 /**
  * =========================================================
  * ACTION ITEM
@@ -159,23 +99,18 @@ function ActionCenterItem({
 }: {
   action: ActionItem;
 
-  onOpen: (
-    action: ActionItem,
-  ) => void;
+  onOpen: (action: ActionItem) => void;
 }) {
-  const candidate =
-    action.candidate;
+  const candidate = action.candidate;
 
   return (
     <button
       type="button"
-      onClick={() =>
-        onOpen(action)
-      }
+      onClick={() => onOpen(action)}
+      title={action.description || undefined}
       className={cn(
-        "group flex w-full items-center gap-3",
-        "rounded-lg border bg-background",
-        "p-3 text-left",
+        "group flex w-full items-center gap-2.5",
+        "rounded-md px-1.5 py-1.5 text-left",
         "transition-colors",
         "hover:bg-muted/50",
         "focus-visible:outline-none",
@@ -187,73 +122,54 @@ function ActionCenterItem({
 
       <div
         className={cn(
-          "flex size-9 shrink-0",
+          "flex size-7 shrink-0",
           "items-center justify-center",
           "rounded-full border",
-          getPriorityClass(
-            action.priority,
-          ),
+          getPriorityClass(action.priority),
         )}
       >
-        <ActionIcon
-          action={action}
-        />
+        <ActionIcon action={action} />
       </div>
 
       {/* CONTENT */}
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">
-            {action.title}
-          </p>
-
-          <span
-            className={cn(
-              "hidden shrink-0 rounded-full",
-              "border px-1.5 py-0.5",
-              "text-[10px] font-medium uppercase",
-              "sm:inline-flex",
-              getPriorityClass(
-                action.priority,
-              ),
-            )}
-          >
-            {action.priority}
-          </span>
-        </div>
+        <p className="truncate text-xs font-medium leading-tight">
+          {action.title}
+        </p>
 
         {candidate && (
-          <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-            <span className="truncate">
-              {candidate.name ||
-                "Unknown candidate"}
-            </span>
-
+          <p className="truncate text-[11px] text-muted-foreground">
+            {candidate.name || "Unknown candidate"}
             {candidate.passportNo && (
               <>
-                <span>•</span>
-
-                <span className="shrink-0">
-                  {candidate.passportNo}
-                </span>
+                {" • "}
+                <span className="font-mono">{candidate.passportNo}</span>
               </>
             )}
-          </div>
-        )}
-
-        {action.description && (
-          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-            {action.description}
           </p>
         )}
       </div>
+
+      {/* PRIORITY */}
+
+      <span
+        className={cn(
+          "hidden shrink-0 rounded-full",
+          "border px-1.5 py-px",
+          "text-[9px] font-medium uppercase",
+          "sm:inline-flex",
+          getPriorityClass(action.priority),
+        )}
+      >
+        {action.priority}
+      </span>
 
       {/* ARROW */}
 
       <ArrowRight
         className={cn(
-          "size-4 shrink-0",
+          "size-3.5 shrink-0",
           "text-muted-foreground",
           "transition-transform",
           "group-hover:translate-x-0.5",
@@ -263,7 +179,6 @@ function ActionCenterItem({
   );
 }
 
-
 /**
  * =========================================================
  * MAIN ACTION CENTER
@@ -271,28 +186,13 @@ function ActionCenterItem({
  */
 
 export function ActionCenter() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const [
-    actions,
-    setActions,
-  ] = useState<ActionItem[]>(
-    [],
-  );
+  const [actions, setActions] = useState<ActionItem[]>([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    error,
-    setError,
-  ] = useState<string | null>(
-    null,
-  );
-
+  const [error, setError] = useState<string | null>(null);
 
   /**
    * -------------------------------------------------------
@@ -300,54 +200,32 @@ export function ActionCenter() {
    * -------------------------------------------------------
    */
 
-  const loadActions =
-    useCallback(
-      async () => {
-        try {
-          setLoading(true);
-          setError(null);
+  const loadActions = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-          const data =
-            await getActionItems();
+      const data = await getActionItems();
 
-          const unique =
-            deduplicateActionItems(
-              data,
-            );
+      const unique = deduplicateActionItems(data);
 
-          const sorted =
-            sortActionItems(
-              unique,
-            );
+      const sorted = sortActionItems(unique);
 
-          setActions(
-            sorted,
-          );
-        } catch (error) {
-          console.error(
-            "Failed to load action center:",
-            error,
-          );
+      setActions(sorted);
+    } catch (error) {
+      console.error("Failed to load action center:", error);
 
-          setActions([]);
+      setActions([]);
 
-          setError(
-            "Failed to load actions.",
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
-
+      setError("Failed to load actions.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadActions();
-  }, [
-    loadActions,
-  ]);
-
+  }, [loadActions]);
 
   /**
    * -------------------------------------------------------
@@ -355,80 +233,50 @@ export function ActionCenter() {
    * -------------------------------------------------------
    */
 
-  const handleOpen =
-    useCallback(
-      (
-        action: ActionItem,
-      ) => {
-        const target =
-          resolveActionTarget(
-            action,
-          );
+  const handleOpen = useCallback(
+    (action: ActionItem) => {
+      const target = resolveActionTarget(action);
 
-        if (!target) {
-          return;
+      if (!target) {
+        return;
+      }
+
+      /**
+       * Candidate profile:
+       *
+       * /app/candidates/:candidateId
+       *
+       * Module:
+       *
+       * /app/medical?candidate=xxx
+       */
+
+      if (target.route) {
+        const params = new URLSearchParams();
+
+        if (target.screen) {
+          params.set("screen", target.screen);
+        }
+
+        if (target.recordId) {
+          params.set("record", target.recordId);
         }
 
         /**
-         * Candidate profile:
-         *
-         * /app/candidates/:candidateId
-         *
-         * Module:
-         *
-         * /app/medical?candidate=xxx
+         * target.route may already
+         * contain ?candidate=xxx
          */
+        const separator = target.route.includes("?") ? "&" : "?";
 
-        if (
-          target.route
-        ) {
-          const params =
-            new URLSearchParams();
+        const finalRoute = params.toString()
+          ? `${target.route}${separator}${params.toString()}`
+          : target.route;
 
-          if (
-            target.screen
-          ) {
-            params.set(
-              "screen",
-              target.screen,
-            );
-          }
-
-          if (
-            target.recordId
-          ) {
-            params.set(
-              "record",
-              target.recordId,
-            );
-          }
-
-          /**
-           * target.route may already
-           * contain ?candidate=xxx
-           */
-          const separator =
-            target.route.includes(
-              "?",
-            )
-              ? "&"
-              : "?";
-
-          const finalRoute =
-            params.toString()
-              ? `${target.route}${separator}${params.toString()}`
-              : target.route;
-
-          navigate(
-            finalRoute,
-          );
-        }
-      },
-      [
-        navigate,
-      ],
-    );
-
+        navigate(finalRoute);
+      }
+    },
+    [navigate],
+  );
 
   /**
    * -------------------------------------------------------
@@ -436,18 +284,7 @@ export function ActionCenter() {
    * -------------------------------------------------------
    */
 
-  const visibleActions =
-    useMemo(
-      () =>
-        actions.slice(
-          0,
-          6,
-        ),
-      [
-        actions,
-      ],
-    );
-
+  const visibleActions = useMemo(() => actions.slice(0, 6), [actions]);
 
   /**
    * -------------------------------------------------------
@@ -456,130 +293,99 @@ export function ActionCenter() {
    */
 
   return (
-    <Card>
-      <CardHeader
-        className="flex flex-row items-center justify-between"
-      >
-        <div>
-          <CardTitle className="text-base">
-            Action Center
-          </CardTitle>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* HEADER */}
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Items that need your attention
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {actions.length >
-            0 && (
-            <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium">
+      <div className="mb-1 flex shrink-0 items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          Items that need your attention
+          {actions.length > 0 && (
+            <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-foreground">
               {actions.length}
             </span>
           )}
+        </p>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              void loadActions()
-            }
-            disabled={loading}
-          >
-            <Clock3 className="mr-1.5 size-3.5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          title="Refresh"
+          onClick={() => void loadActions()}
+          disabled={loading}
+        >
+          <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+        </Button>
+      </div>
 
-            Refresh
-          </Button>
-        </div>
-      </CardHeader>
+      {/* BODY */}
 
-      <CardContent>
+      <div className="min-h-0 flex-1 overflow-auto">
         {loading ? (
-          <div className="space-y-2">
-            {Array.from({
-              length: 4,
-            }).map(
-              (_, index) => (
-                <div
-                  key={index}
-                  className="h-14 animate-pulse rounded-lg bg-muted"
-                />
-              ),
-            )}
+          <div className="space-y-1.5">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-10 animate-pulse rounded-md bg-muted"
+              />
+            ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertCircle className="mb-2 size-5 text-destructive" />
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <AlertCircle className="mb-1.5 size-4 text-destructive" />
 
-            <p className="text-sm font-medium">
-              Unable to load actions
-            </p>
+            <p className="text-xs font-medium">Unable to load actions</p>
 
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Please try again.
             </p>
 
             <Button
-              className="mt-3"
+              className="mt-2 h-7 text-xs"
               size="sm"
               variant="outline"
-              onClick={() =>
-                void loadActions()
-              }
+              onClick={() => void loadActions()}
             >
               Try again
             </Button>
           </div>
-        ) : visibleActions.length ===
-          0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
-              <CheckCircle2 className="size-5 text-muted-foreground" />
+        ) : visibleActions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <div className="mb-2 flex size-8 items-center justify-center rounded-full bg-muted">
+              <CheckCircle2 className="size-4 text-muted-foreground" />
             </div>
 
-            <p className="text-sm font-medium">
-              All caught up
-            </p>
+            <p className="text-xs font-medium">All caught up</p>
 
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               No actions need your attention right now.
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {visibleActions.map(
-              (
-                action,
-              ) => (
-                <ActionCenterItem
-                  key={action.id}
-                  action={action}
-                  onOpen={
-                    handleOpen
-                  }
-                />
-              ),
-            )}
+          <div className="divide-y divide-border/50">
+            {visibleActions.map((action) => (
+              <ActionCenterItem
+                key={action.id}
+                action={action}
+                onOpen={handleOpen}
+              />
+            ))}
           </div>
         )}
+      </div>
 
-        {!loading &&
-          actions.length >
-            6 && (
-            <Button
-              variant="ghost"
-              className="mt-3 w-full"
-              onClick={() =>
-                navigate(
-                  "/app/todo",
-                )
-              }
-            >
-              View all actions
-              <ArrowRight className="ml-1.5 size-4" />
-            </Button>
-          )}
-      </CardContent>
-    </Card>
+      {/* FOOTER */}
+
+      {!loading && actions.length > 6 && (
+        <Button
+          variant="ghost"
+          className="mt-1 h-7 w-full shrink-0 text-xs"
+          onClick={() => navigate("/app/todo")}
+        >
+          View all actions
+          <ArrowRight className="ml-1.5 size-3.5" />
+        </Button>
+      )}
+    </div>
   );
 }
