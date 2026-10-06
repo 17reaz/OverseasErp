@@ -13,14 +13,29 @@ import { DashboardShortcuts } from "./components/dashboard-shortcuts";
 import { DashboardPipeline } from "./components/dashboard-pipeline";
 import { DashboardCountryPassports } from "./components/dashboard-country-passports";
 import { DashboardUpcomingDeadlines } from "./components/dashboard-upcoming-deadlines";
-import {
-  DashboardLiveTrace,
-} from "./components/dashboard-live-trace";
+import { DashboardLiveTrace } from "./components/dashboard-live-trace";
 import {
   DashboardFilters,
   type DashboardFiltersState,
 } from "./components/dashboard-filters";
 import { DashboardGreeting } from "./components/dashboard-greeting";
+
+/* =======================================================
+   MODULE LEVEL CACHE
+   Dashboard theke ber hoye fire ashle ager data, filters
+   ar tab selection sathe sathe dekhabe.
+======================================================= */
+
+const DEFAULT_FILTERS: DashboardFiltersState = {
+  dateRange: "all",
+  country: "all",
+  status: "all",
+  stage: "all",
+};
+
+let cachedDashboard: DashboardData | null = null;
+let cachedFilters: DashboardFiltersState = DEFAULT_FILTERS;
+const cachedTabs: Record<string, string> = {};
 
 /* =======================================================
    SMALL TAB PANEL (no extra dependency)
@@ -32,9 +47,14 @@ type TabItem = {
   content: ReactNode;
 };
 
-function TabPanel({ tabs }: { tabs: TabItem[] }) {
-  const [active, setActive] = useState(tabs[0].key);
+function TabPanel({ id, tabs }: { id: string; tabs: TabItem[] }) {
+  const [active, setActive] = useState(cachedTabs[id] ?? tabs[0].key);
   const current = tabs.find((t) => t.key === active) ?? tabs[0];
+
+  function select(key: string) {
+    cachedTabs[id] = key;
+    setActive(key);
+  }
 
   return (
     <div className="flex min-h-0 flex-col rounded-lg border bg-background">
@@ -43,7 +63,7 @@ function TabPanel({ tabs }: { tabs: TabItem[] }) {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActive(tab.key)}
+            onClick={() => select(tab.key)}
             className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               tab.key === current.key
                 ? "bg-muted text-foreground"
@@ -56,68 +76,54 @@ function TabPanel({ tabs }: { tabs: TabItem[] }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
-  <div className="h-full min-h-[320px]">{current.content}</div>
-</div>
+        <div className="h-full min-h-[320px]">{current.content}</div>
+      </div>
     </div>
   );
 }
 
 export function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(cachedDashboard);
+  const [loading, setLoading] = useState(cachedDashboard === null);
   const [error, setError] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<DashboardFiltersState>({
-    dateRange: "all",
-    country: "all",
-    status: "all",
-    stage: "all",
-  });
+  const [filters, setFiltersState] =
+    useState<DashboardFiltersState>(cachedFilters);
 
-  async function loadDashboard() {
+  function setFilters(next: DashboardFiltersState) {
+    cachedFilters = next;
+    setFiltersState(next);
+  }
+
+  async function loadDashboard(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
 
       const result = await getDashboardData();
 
+      cachedDashboard = result;
       setData(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load dashboard",
-      );
+      // silent refresh fail korle ager data dekhaite thako
+      if (!silent) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load dashboard",
+        );
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadDashboard();
+    // cache thakle silent refresh, na thakle normal load
+    void loadDashboard(cachedDashboard !== null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Country list: data.countries na thakle countryPassports theke ber kore.
-  // Tomar countryPassports er item e country name er field er nam
-  // `country` na hole niche ta mil kore nio.
-  const countries = useMemo<string[]>(() => {
-    if (!data) return [];
-
-    const anyData = data as unknown as { countries?: string[] };
-    if (Array.isArray(anyData.countries)) return anyData.countries;
-
-    const list = data.countryPassports as unknown as
-      | Array<{ country?: string }>
-      | undefined;
-
-    if (!Array.isArray(list)) return [];
-
-    return Array.from(
-      new Set(
-        list
-          .map((item) => item.country)
-          .filter((c): c is string => Boolean(c)),
-      ),
-    );
-  }, [data]);
+  // dashboard-service ekhon countries nijei dey
+  const countries = useMemo<string[]>(() => data?.countries ?? [], [data]);
 
   /* ======================= LOADING ======================= */
 
@@ -202,6 +208,7 @@ export function DashboardPage() {
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
         {/* Column 1 */}
         <TabPanel
+          id="col1"
           tabs={[
             {
               key: "charts",
@@ -233,6 +240,7 @@ export function DashboardPage() {
 
         {/* Column 2 */}
         <TabPanel
+          id="col2"
           tabs={[
             {
               key: "candidates",
@@ -262,6 +270,7 @@ export function DashboardPage() {
 
         {/* Column 3 */}
         <TabPanel
+          id="col3"
           tabs={[
             {
               key: "actions",
@@ -287,7 +296,6 @@ export function DashboardPage() {
             },
           ]}
         />
-        
       </div>
     </div>
   );
