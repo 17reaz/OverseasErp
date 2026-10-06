@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   getDashboardData,
   type DashboardData,
@@ -13,6 +13,11 @@ import { DashboardShortcuts } from "./components/dashboard-shortcuts";
 import { DashboardPipeline } from "./components/dashboard-pipeline";
 import { DashboardCountryPassports } from "./components/dashboard-country-passports";
 import { DashboardUpcomingDeadlines } from "./components/dashboard-upcoming-deadlines";
+import {
+  DashboardFilters,
+  type DashboardFiltersState,
+} from "./components/dashboard-filters";
+import { DashboardGreeting } from "./components/dashboard-greeting";
 
 /* =======================================================
    SMALL TAB PANEL (no extra dependency)
@@ -59,6 +64,13 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [filters, setFilters] = useState<DashboardFiltersState>({
+    dateRange: "all",
+    country: "all",
+    status: "all",
+    stage: "all",
+  });
+
   async function loadDashboard() {
     try {
       setLoading(true);
@@ -80,13 +92,39 @@ export function DashboardPage() {
     void loadDashboard();
   }, []);
 
+  // Country list: data.countries na thakle countryPassports theke ber kore.
+  // Tomar countryPassports er item e country name er field er nam
+  // `country` na hole niche ta mil kore nio.
+  const countries = useMemo<string[]>(() => {
+    if (!data) return [];
+
+    const anyData = data as unknown as { countries?: string[] };
+    if (Array.isArray(anyData.countries)) return anyData.countries;
+
+    const list = data.countryPassports as unknown as
+      | Array<{ country?: string }>
+      | undefined;
+
+    if (!Array.isArray(list)) return [];
+
+    return Array.from(
+      new Set(
+        list
+          .map((item) => item.country)
+          .filter((c): c is string => Boolean(c)),
+      ),
+    );
+  }, [data]);
+
   /* ======================= LOADING ======================= */
 
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
+        <div className="h-12 animate-pulse rounded-xl border bg-muted/40" />
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
             <div
               key={index}
               className="h-20 animate-pulse rounded-lg border bg-muted/40"
@@ -141,6 +179,17 @@ export function DashboardPage() {
     // lg e screen height lock: page scroll hobe na.
     // Header/padding onujayi 7rem ta adjust korte paro.
     <div className="flex flex-col gap-3 lg:h-[calc(100vh-7rem)] lg:overflow-hidden">
+      {/* GREETING + FILTERS (ek line) */}
+      <div className="flex shrink-0 flex-col gap-2 xl:flex-row xl:items-stretch">
+        <DashboardGreeting />
+
+        <DashboardFilters
+          filters={filters}
+          countries={countries}
+          onChange={setFilters}
+        />
+      </div>
+
       {/* KPI STATS */}
       <div className="shrink-0">
         <DashboardStats stats={data.stats} />

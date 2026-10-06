@@ -88,7 +88,7 @@ export interface DashboardData {
   }[];
 
   countryPassports: DashboardCountryPassport[];
-
+  countries: string[];
   trend: {
     month: string;
     candidates: number;
@@ -190,6 +190,13 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const upcomingDeadlines =
     await getDashboardUpcomingDeadlines(30);
+  const countries = [
+  ...new Set(
+    countryPassports.map(
+      (item) => item.country,
+    ),
+  ),
+].sort();
   /*
    * =====================================================
    * 5. FINAL DASHBOARD DATA
@@ -200,7 +207,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     stats,
 
     pipeline,
-
+      countries,
     countryPassports,
 
     trend:
