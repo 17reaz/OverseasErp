@@ -5,7 +5,6 @@ import {
   Building2,
   CreditCard,
   Globe2,
-  Hash,
   History,
   MonitorCog,
   Phone,
