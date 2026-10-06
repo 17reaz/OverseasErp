@@ -1,18 +1,11 @@
 import { useState } from "react";
 import {
-  CalendarDays,
   CheckCircle2,
   CreditCard,
   FileCheck2,
   Plane,
   UserPlus,
 } from "lucide-react";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
 
 type ActivityKey =
   | "candidates"
@@ -91,104 +84,67 @@ const ACTIVITY_CONFIG: ActivityConfig[] = [
 ];
 
 export function DashboardActivity() {
-  const [period, setPeriod] =
-    useState<ActivityPeriod>("today");
+  const [period, setPeriod] = useState<ActivityPeriod>("today");
 
-  const data =
-    period === "today"
-      ? TODAY
-      : THIS_WEEK;
+  const data = period === "today" ? TODAY : THIS_WEEK;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="px-3 py-2 pb-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-semibold">
-                Activity
-              </h3>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* HEADER */}
+      <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+        <p className="truncate text-[11px] text-muted-foreground">
+          {period === "today"
+            ? "Today's operational activity"
+            : "Activity from the last 7 days"}
+        </p>
 
-              <span className="flex size-5 items-center justify-center rounded-full bg-muted">
-                <CalendarDays className="size-3 text-muted-foreground" />
+        <div className="flex shrink-0 rounded-md border bg-muted/30 p-0.5">
+          {(["today", "week"] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setPeriod(key)}
+              className={[
+                "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                period === key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {key === "today" ? "Today" : "Week"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* GRID */}
+      <div className="grid min-h-0 flex-1 grid-cols-3 content-start gap-1.5 overflow-auto">
+        {ACTIVITY_CONFIG.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div
+              key={item.key}
+              className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md border px-1.5 py-2"
+            >
+              <Icon className="size-3.5 text-muted-foreground" />
+
+              <span className="text-lg font-semibold leading-none">
+                {data[item.key]}
+              </span>
+
+              <span className="truncate text-[10px] text-muted-foreground">
+                {item.label}
               </span>
             </div>
+          );
+        })}
+      </div>
 
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {period === "today"
-                ? "Today's operational activity"
-                : "Activity from the last 7 days"}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 rounded-md border bg-muted/30 p-0.5">
-            <button
-              type="button"
-              onClick={() => setPeriod("today")}
-              className={[
-                "rounded px-2 py-1 text-[9px] font-medium transition-colors",
-                period === "today"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              Today
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPeriod("week")}
-              className={[
-                "rounded px-2 py-1 text-[9px] font-medium transition-colors",
-                period === "week"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              Week
-            </button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-3 pb-2.5 pt-1.5">
-        <div className="grid grid-cols-3 divide-x rounded-md border">
-          {ACTIVITY_CONFIG.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <div
-                key={item.key}
-                className="flex min-w-0 flex-col items-center justify-center px-1.5 py-2"
-              >
-                <div className="mb-1 flex size-6 items-center justify-center rounded-full bg-muted">
-                  <Icon className="size-3 text-muted-foreground" />
-                </div>
-
-                <span className="text-base font-semibold leading-none">
-                  {data[item.key]}
-                </span>
-
-                <span className="mt-1 truncate text-[9px] text-muted-foreground">
-                  {item.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-2 flex items-center justify-between border-t pt-1.5">
-          <span className="text-[9px] text-muted-foreground">
-            {period === "today"
-              ? "Today"
-              : "This week"}
-          </span>
-
-          <span className="text-[9px] font-medium text-muted-foreground">
-            Updated just now
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+      {/* FOOTER */}
+      <p className="mt-1.5 shrink-0 text-right text-[10px] text-muted-foreground">
+        Updated just now
+      </p>
+    </div>
   );
 }

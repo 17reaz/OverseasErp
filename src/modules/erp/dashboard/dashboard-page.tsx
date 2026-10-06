@@ -243,38 +243,39 @@ export function DashboardPage() {
 
         {/* Column 2 */}
         <div className="flex min-h-0 flex-col gap-3">
-        <DashboardActivity />
-        <div className="min-h-0 flex-1">
-        <TabPanel
-          id="col2"
-          tabs={[
-            {
-              key: "candidates",
-              label: "Recent Candidates",
-              content: (
-                <DashboardTable candidates={data.recentCandidates} />
-              ),
-            },
-            {
-              key: "passports",
-              label: "Country Passports",
-              content: (
-                <DashboardCountryPassports data={data.countryPassports} />
-              ),
-            },
-            {
-              key: "deadlines",
-              label: "Deadlines",
-              content: (
-                <DashboardUpcomingDeadlines
-                  deadlines={data.upcomingDeadlines}
-                />
-              ),
-            },
-          ]}
-        />
-        </div>
-        </div>
+  {/* Activity: nijer height nibe, shrink hobe na */}
+  <div className="shrink-0 rounded-lg border bg-background p-2">
+    <DashboardActivity />
+  </div>
+
+  {/* TabPanel: baki sob height nibe */}
+  <div className="flex min-h-0 flex-1 flex-col">
+    <TabPanel
+      id="col2"
+      tabs={[
+        {
+          key: "candidates",
+          label: "Recent Candidates",
+          content: <DashboardTable candidates={data.recentCandidates} />,
+        },
+        {
+          key: "passports",
+          label: "Country Passports",
+          content: (
+            <DashboardCountryPassports data={data.countryPassports} />
+          ),
+        },
+        {
+          key: "deadlines",
+          label: "Deadlines",
+          content: (
+            <DashboardUpcomingDeadlines deadlines={data.upcomingDeadlines} />
+          ),
+        },
+      ]}
+    />
+  </div>
+</div>
 
         {/* Column 3 */}
         <div className="flex min-h-0 flex-col gap-3">
