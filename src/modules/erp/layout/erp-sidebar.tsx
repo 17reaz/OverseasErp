@@ -374,15 +374,6 @@ const [
 
           <SidebarGroup>
 
-            <SidebarGroupLabel
-              className="
-                group-data-[collapsible=icon]:hidden
-              "
-            >
-              ERP Module
-            </SidebarGroupLabel>
-
-
             <SidebarGroupContent>
 
               <SidebarMenu>
