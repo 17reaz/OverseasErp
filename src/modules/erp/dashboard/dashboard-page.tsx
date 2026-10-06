@@ -53,8 +53,8 @@ function TabPanel({ tabs }: { tabs: TabItem[] }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
-        {current.content}
-      </div>
+  <div className="h-full min-h-[320px]">{current.content}</div>
+</div>
     </div>
   );
 }
