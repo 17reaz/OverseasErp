@@ -19,9 +19,9 @@ export interface DashboardActivityData {
   };
 }
 
-interface CountResult {
-  count: number | null;
-}
+// interface CountResult {
+//   count: number | null;
+// }
 
 function getDhakaDateRange() {
   const now = new Date();
