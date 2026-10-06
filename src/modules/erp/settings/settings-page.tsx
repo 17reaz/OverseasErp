@@ -271,25 +271,6 @@ function OrganizationSection() {
 function WorkflowSection() {
   return (
     <div className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Hash className="size-4" />
-            Numbering
-          </CardTitle>
-          <CardDescription>
-            Configure and monitor serial numbering used across your ERP
-            modules.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Numbering settings are tenant-specific. Existing records are never
-            renumbered automatically.
-          </p>
-        </CardContent>
-      </Card>
-
       <NumberingSettings />
     </div>
   );
