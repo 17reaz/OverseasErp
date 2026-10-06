@@ -1,15 +1,25 @@
 import { useEffect, useState } from "react";
 import {
-  Check,
   ChevronDown,
-  ChevronUp,
   Globe2,
+  Info,
+  MoreHorizontal,
   Pencil,
   Plus,
-  Power,
   Trash2,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,11 +28,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 import { toast } from "@/components/shared/toast/toast";
 
@@ -136,13 +161,9 @@ const DEFAULT_COUNTRIES: CountryConfig[] = [
     enabled: true,
     modules: DEFAULT_MODULES.map((module) => ({
       ...module,
-      enabled: [
-        "candidates",
-        "medical",
-        "visa",
-        "flight",
-        "iqama",
-      ].includes(module.id),
+      enabled: ["candidates", "medical", "visa", "flight", "iqama"].includes(
+        module.id,
+      ),
     })),
   },
 ];
@@ -157,8 +178,7 @@ function createCountryId(name: string) {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") ||
-    `country-${Date.now()}`
+      .replace(/^-+|-+$/g, "") || `country-${Date.now()}`
   );
 }
 
@@ -194,50 +214,36 @@ function loadCountries(): CountryConfig[] {
  * ========================================================= */
 
 export function CountrySettings1() {
-  const [countries, setCountries] =
-    useState<CountryConfig[]>(loadCountries);
+  const [countries, setCountries] = useState<CountryConfig[]>(loadCountries);
 
-  const [selectedCountryId, setSelectedCountryId] =
-    useState<string | null>(
-      countries[0]?.id ?? null,
-    );
+  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(
+    countries[0]?.id ?? null,
+  );
 
-  const [isAdding, setIsAdding] =
-    useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingCountryId, setEditingCountryId] = useState<string | null>(null);
 
-  const [editingCountryId, setEditingCountryId] =
-    useState<string | null>(null);
+  const [countryName, setCountryName] = useState("");
+  const [countryCode, setCountryCode] = useState("");
+  const [countryFlag, setCountryFlag] = useState("");
 
-  const [countryName, setCountryName] =
-    useState("");
+  const [expandedCountryId, setExpandedCountryId] = useState<string | null>(
+    countries[0]?.id ?? null,
+  );
 
-  const [countryCode, setCountryCode] =
-    useState("");
-
-  const [countryFlag, setCountryFlag] =
-    useState("");
-
-  const [expandedCountryId, setExpandedCountryId] =
-    useState<string | null>(
-      countries[0]?.id ?? null,
-    );
+  // UI only: which country is waiting for delete confirmation
+  const [countryToDelete, setCountryToDelete] = useState<CountryConfig | null>(
+    null,
+  );
 
   /* -------------------------------------------------------
    * PERSIST
    * ------------------------------------------------------- */
 
   useEffect(() => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(countries),
-    );
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(countries));
   }, [countries]);
 
-  /* -------------------------------------------------------
-   * SELECTED COUNTRY
-   * ------------------------------------------------------- */
-
- 
   /* -------------------------------------------------------
    * COUNTRY FORM
    * ------------------------------------------------------- */
@@ -255,9 +261,7 @@ export function CountrySettings1() {
     setIsAdding(true);
   }
 
-  function startEditCountry(
-    country: CountryConfig,
-  ) {
+  function startEditCountry(country: CountryConfig) {
     setCountryName(country.name);
     setCountryCode(country.code);
     setCountryFlag(country.flag);
@@ -271,18 +275,12 @@ export function CountrySettings1() {
     const flag = countryFlag.trim();
 
     if (!name) {
-      toast.error(
-        "Country name is required.",
-        "Please enter a country name.",
-      );
+      toast.error("Country name is required.", "Please enter a country name.");
       return;
     }
 
     if (!code) {
-      toast.error(
-        "Country code is required.",
-        "Please enter a country code.",
-      );
+      toast.error("Country code is required.", "Please enter a country code.");
       return;
     }
 
@@ -306,9 +304,7 @@ export function CountrySettings1() {
       );
     } else {
       const duplicate = countries.some(
-        (country) =>
-          country.code.toLowerCase() ===
-          code.toLowerCase(),
+        (country) => country.code.toLowerCase() === code.toLowerCase(),
       );
 
       if (duplicate) {
@@ -328,10 +324,7 @@ export function CountrySettings1() {
         modules: createModules(),
       };
 
-      setCountries((current) => [
-        ...current,
-        newCountry,
-      ]);
+      setCountries((current) => [...current, newCountry]);
 
       setSelectedCountryId(newCountry.id);
       setExpandedCountryId(newCountry.id);
@@ -349,10 +342,7 @@ export function CountrySettings1() {
    * COUNTRY STATUS
    * ------------------------------------------------------- */
 
-  function toggleCountry(
-    countryId: string,
-    enabled: boolean,
-  ) {
+  function toggleCountry(countryId: string, enabled: boolean) {
     setCountries((current) =>
       current.map((country) =>
         country.id === countryId
@@ -364,57 +354,33 @@ export function CountrySettings1() {
       ),
     );
 
-    const country = countries.find(
-      (item) => item.id === countryId,
-    );
+    const country = countries.find((item) => item.id === countryId);
 
     if (country) {
       toast.success(
-        enabled
-          ? "Country enabled."
-          : "Country disabled.",
+        enabled ? "Country enabled." : "Country disabled.",
         country.name,
       );
     }
   }
 
   /* -------------------------------------------------------
-   * DELETE COUNTRY
+   * DELETE COUNTRY (confirmation is now an AlertDialog)
    * ------------------------------------------------------- */
 
-  function deleteCountry(
-    countryId: string,
-  ) {
-    const country = countries.find(
-      (item) => item.id === countryId,
-    );
+  function deleteCountry(countryId: string) {
+    const country = countries.find((item) => item.id === countryId);
 
     if (!country) {
       return;
     }
 
-    if (
-      !window.confirm(
-        `Delete ${country.name} country configuration?`,
-      )
-    ) {
-      return;
-    }
-
-    setCountries((current) =>
-      current.filter(
-        (item) => item.id !== countryId,
-      ),
-    );
+    setCountries((current) => current.filter((item) => item.id !== countryId));
 
     if (selectedCountryId === countryId) {
-      const remaining = countries.filter(
-        (item) => item.id !== countryId,
-      );
+      const remaining = countries.filter((item) => item.id !== countryId);
 
-      setSelectedCountryId(
-        remaining[0]?.id ?? null,
-      );
+      setSelectedCountryId(remaining[0]?.id ?? null);
     }
 
     if (expandedCountryId === countryId) {
@@ -444,14 +410,13 @@ export function CountrySettings1() {
 
         return {
           ...country,
-          modules: country.modules.map(
-            (module) =>
-              module.id === moduleId
-                ? {
-                    ...module,
-                    enabled,
-                  }
-                : module,
+          modules: country.modules.map((module) =>
+            module.id === moduleId
+              ? {
+                  ...module,
+                  enabled,
+                }
+              : module,
           ),
         };
       }),
@@ -462,12 +427,8 @@ export function CountrySettings1() {
    * COUNTS
    * ------------------------------------------------------- */
 
-  function getEnabledModuleCount(
-    country: CountryConfig,
-  ) {
-    return country.modules.filter(
-      (module) => module.enabled,
-    ).length;
+  function getEnabledModuleCount(country: CountryConfig) {
+    return country.modules.filter((module) => module.enabled).length;
   }
 
   /* -------------------------------------------------------
@@ -477,125 +438,22 @@ export function CountrySettings1() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Globe2 className="size-5 text-primary" />
-
-            <h2 className="text-lg font-semibold">
-              Country Configuration
-            </h2>
-          </div>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Configure which countries your organization operates
-            in and which ERP modules are available for each country.
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Country configuration
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Choose the countries you operate in and the ERP modules available
+            for each one.
           </p>
         </div>
 
-        <Button
-          type="button"
-          onClick={startAddCountry}
-        >
-          <Plus className="mr-2 size-4" />
-          Add Country
+        <Button type="button" onClick={startAddCountry}>
+          <Plus className="size-4" />
+          Add country
         </Button>
       </div>
-
-      {/* Add / Edit */}
-      {isAdding && (
-        <Card className="border-primary/20 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {editingCountryId
-                ? "Edit Country"
-                : "Add Country"}
-            </CardTitle>
-
-            <CardDescription>
-              Configure the basic country information.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="country-name">
-                  Country Name
-                </Label>
-
-                <Input
-                  id="country-name"
-                  value={countryName}
-                  onChange={(event) =>
-                    setCountryName(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="e.g. Saudi Arabia"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country-code">
-                  Country Code
-                </Label>
-
-                <Input
-                  id="country-code"
-                  maxLength={3}
-                  value={countryCode}
-                  onChange={(event) =>
-                    setCountryCode(
-                      event.target.value
-                        .toUpperCase(),
-                    )
-                  }
-                  placeholder="SA"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country-flag">
-                  Flag
-                </Label>
-
-                <Input
-                  id="country-flag"
-                  maxLength={4}
-                  value={countryFlag}
-                  onChange={(event) =>
-                    setCountryFlag(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="🇸🇦"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={resetForm}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="button"
-                onClick={saveCountry}
-              >
-                <Check className="mr-2 size-4" />
-                {editingCountryId
-                  ? "Save Changes"
-                  : "Add Country"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Country list */}
       {countries.length === 0 ? (
@@ -605,59 +463,41 @@ export function CountrySettings1() {
               <Globe2 className="size-5 text-muted-foreground" />
             </div>
 
-            <h3 className="font-medium">
-              No countries configured
-            </h3>
+            <h3 className="font-medium">No countries configured</h3>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add your first operating country to configure
-              country-specific ERP modules.
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Add your first operating country to set up its ERP modules.
             </p>
 
-            <Button
-              type="button"
-              className="mt-4"
-              onClick={startAddCountry}
-            >
-              <Plus className="mr-2 size-4" />
-              Add Country
+            <Button type="button" className="mt-4" onClick={startAddCountry}>
+              <Plus className="size-4" />
+              Add country
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {countries.map((country) => {
-            const isExpanded =
-              expandedCountryId ===
-              country.id;
-
-            const enabledModuleCount =
-              getEnabledModuleCount(country);
+            const isExpanded = expandedCountryId === country.id;
+            const enabledModuleCount = getEnabledModuleCount(country);
 
             return (
-              <Card
-                key={country.id}
-                className={
-                  country.enabled
-                    ? undefined
-                    : "opacity-70"
-                }
-              >
+              <Card key={country.id}>
                 {/* Country header */}
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-4">
+                <CardHeader className="p-4">
+                  <div className="flex items-center justify-between gap-3">
                     <button
                       type="button"
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      aria-expanded={isExpanded}
+                      className={cn(
+                        "flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        !country.enabled && "opacity-60",
+                      )}
                       onClick={() =>
-                        setExpandedCountryId(
-                          isExpanded
-                            ? null
-                            : country.id,
-                        )
+                        setExpandedCountryId(isExpanded ? null : country.id)
                       }
                     >
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted/50 text-2xl">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-2xl">
                         {country.flag}
                       </div>
 
@@ -667,102 +507,75 @@ export function CountrySettings1() {
                             {country.name}
                           </CardTitle>
 
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px]"
-                          >
-                            {country.code}
-                          </Badge>
+                          <Badge variant="secondary">{country.code}</Badge>
 
                           {!country.enabled && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px]"
-                            >
-                              Disabled
-                            </Badge>
+                            <Badge variant="outline">Disabled</Badge>
                           )}
                         </div>
 
                         <CardDescription className="mt-1">
-                          {enabledModuleCount} of{" "}
-                          {country.modules.length}{" "}
+                          {enabledModuleCount} of {country.modules.length}{" "}
                           modules enabled
                         </CardDescription>
                       </div>
                     </button>
 
                     <div className="flex shrink-0 items-center gap-1">
-                      <div className="mr-2 hidden items-center gap-2 sm:flex">
-                        <Power className="size-3.5 text-muted-foreground" />
+                      <Switch
+                        checked={country.enabled}
+                        onCheckedChange={(checked) =>
+                          toggleCountry(country.id, checked)
+                        }
+                        aria-label={`Enable ${country.name}`}
+                        className="mr-1"
+                      />
 
-                        <Switch
-                          checked={country.enabled}
-                          onCheckedChange={(checked) =>
-                            toggleCountry(
-                              country.id,
-                              checked,
-                            )
-                          }
-                          aria-label={`Enable ${country.name}`}
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon">
+                            <MoreHorizontal className="size-4" />
+                            <span className="sr-only">
+                              Actions for {country.name}
+                            </span>
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() => startEditCountry(country)}
+                          >
+                            <Pencil className="size-4" />
+                            Edit
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => setCountryToDelete(country)}
+                          >
+                            <Trash2 className="size-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setExpandedCountryId(isExpanded ? null : country.id)
+                        }
+                      >
+                        <ChevronDown
+                          className={cn(
+                            "size-4 transition-transform",
+                            isExpanded && "rotate-180",
+                          )}
                         />
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          startEditCountry(
-                            country,
-                          )
-                        }
-                      >
-                        <Pencil className="size-4" />
-
-                        <span className="sr-only">
-                          Edit {country.name}
-                        </span>
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          deleteCountry(
-                            country.id,
-                          )
-                        }
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-
-                        <span className="sr-only">
-                          Delete {country.name}
-                        </span>
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setExpandedCountryId(
-                            isExpanded
-                              ? null
-                              : country.id,
-                          )
-                        }
-                      >
-                        {isExpanded ? (
-                          <ChevronUp className="size-4" />
-                        ) : (
-                          <ChevronDown className="size-4" />
-                        )}
-
-                        <span className="sr-only">
-                          Toggle modules
-                        </span>
+                        <span className="sr-only">Toggle modules</span>
                       </Button>
                     </div>
                   </div>
@@ -770,58 +583,38 @@ export function CountrySettings1() {
 
                 {/* Modules */}
                 {isExpanded && (
-                  <CardContent className="pt-0">
+                  <CardContent className="px-4 pb-4 pt-0">
                     <Separator className="mb-4" />
 
                     <div className="grid gap-2 md:grid-cols-2">
-                      {country.modules.map(
-                        (module) => (
-                          <div
-                            key={module.id}
-                            className={`
-                              flex items-center justify-between gap-4
-                              rounded-lg border p-3
-                              transition-colors
-                              ${
-                                module.enabled
-                                  ? "bg-background"
-                                  : "bg-muted/30"
-                              }
-                            `}
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium">
-                                {module.label}
-                              </p>
+                      {country.modules.map((module) => (
+                        <div
+                          key={module.id}
+                          className={cn(
+                            "flex items-center justify-between gap-4 rounded-lg border p-3 transition-colors",
+                            module.enabled ? "bg-background" : "bg-muted/30",
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              {module.label}
+                            </p>
 
-                              <p className="mt-0.5 text-xs text-muted-foreground">
-                                {
-                                  module.description
-                                }
-                              </p>
-                            </div>
-
-                            <Switch
-                              checked={
-                                module.enabled
-                              }
-                              disabled={
-                                !country.enabled
-                              }
-                              onCheckedChange={(
-                                checked,
-                              ) =>
-                                toggleModule(
-                                  country.id,
-                                  module.id,
-                                  checked,
-                                )
-                              }
-                              aria-label={`${module.label} for ${country.name}`}
-                            />
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {module.description}
+                            </p>
                           </div>
-                        ),
-                      )}
+
+                          <Switch
+                            checked={module.enabled}
+                            disabled={!country.enabled}
+                            onCheckedChange={(checked) =>
+                              toggleModule(country.id, module.id, checked)
+                            }
+                            aria-label={`${module.label} for ${country.name}`}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 )}
@@ -831,24 +624,120 @@ export function CountrySettings1() {
         </div>
       )}
 
-      {/* Info */}
-      <Card className="border-dashed bg-muted/20">
-        <CardContent className="flex gap-3 p-4">
-          <Globe2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      {/* Note */}
+      <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+        <Info className="mt-0.5 size-3.5 shrink-0" />
+        These settings control which modules each country can use. ERP
+        navigation and business logic will be connected to this configuration
+        later.
+      </p>
 
-          <div>
-            <p className="text-sm font-medium">
-              Country-specific modules
-            </p>
+      {/* Add / edit dialog */}
+      <Dialog
+        open={isAdding}
+        onOpenChange={(open) => {
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <form
+            className="space-y-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveCountry();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {editingCountryId ? "Edit country" : "Add country"}
+              </DialogTitle>
+              <DialogDescription>
+                Set the country name, code, and flag.
+              </DialogDescription>
+            </DialogHeader>
 
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              These settings control the module configuration for
-              each operating country. ERP navigation and business
-              logic will be connected to this configuration later.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="country-name">Country name</Label>
+                <Input
+                  id="country-name"
+                  autoFocus
+                  value={countryName}
+                  onChange={(event) => setCountryName(event.target.value)}
+                  placeholder="e.g. Saudi Arabia"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="country-code">Country code</Label>
+                <Input
+                  id="country-code"
+                  maxLength={3}
+                  value={countryCode}
+                  onChange={(event) =>
+                    setCountryCode(event.target.value.toUpperCase())
+                  }
+                  placeholder="SA"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="country-flag">Flag</Label>
+                <Input
+                  id="country-flag"
+                  maxLength={4}
+                  value={countryFlag}
+                  onChange={(event) => setCountryFlag(event.target.value)}
+                  placeholder="🇸🇦"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={resetForm}>
+                Cancel
+              </Button>
+
+              <Button type="submit">
+                {editingCountryId ? "Save changes" : "Add country"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog
+        open={countryToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setCountryToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {countryToDelete?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the country and its module configuration. This
+              can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                if (countryToDelete) deleteCountry(countryToDelete.id);
+                setCountryToDelete(null);
+              }}
+            >
+              Delete country
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

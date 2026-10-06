@@ -1,22 +1,25 @@
-import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import {
   Activity,
   ArrowLeftRight,
   Building2,
   CreditCard,
+  Globe2,
   Hash,
   History,
-  Phone,
   MonitorCog,
-  Globe2,
+  Phone,
+  Receipt,
   Settings2,
+  ShieldCheck,
   UserRound,
   Users,
   Workflow as WorkflowIcon,
+  Binary,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { NumberDisplaySettings } from "./components/number-display-settings";
+
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -24,21 +27,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/permissions/use-permissions";
 import { cn } from "@/lib/utils";
 
 import { AuditSection } from "./audit/audit-section";
-// import { CountrySettings } from "./components/country-settings";
+import { CountrySettings1 } from "./components/country1-settings";
 import { DataManagementSection } from "./components/data-management-section";
+import { NumberDisplaySettings } from "./components/number-display-settings";
 import { NumberingSettings } from "./components/numbering-settings";
 import { TenantSettingsPlaceholders } from "./components/tenant-settings-placeholder";
 import { UsageMonitoring } from "./components/usage-monitoring";
 import { UsersSection } from "./components/users-section";
 import { LoginActivity } from "./login-activity";
 import { ProfilePage } from "./profile-page";
-import { UpdatesSection } from "./updates/updates-section";
-import { CountrySettings1 } from "./components/country1-settings";
 import { SupportPage } from "./support-page";
+import { UpdatesSection } from "./updates/updates-section";
+
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -46,9 +52,10 @@ import { SupportPage } from "./support-page";
 type SettingsSectionId =
   | "profile"
   | "organization"
-   | "country-configuration"
+  | "country-configuration"
   | "users"
   | "workflow"
+  | "number-display"
   | "support"
   | "import-export"
   | "billing"
@@ -56,8 +63,7 @@ type SettingsSectionId =
   | "updates"
   | "activity-log"
   | "login-activity"
-  | "usage-monitoring"
-  | "number-display";
+  | "usage-monitoring";
 
 type Permission = Parameters<ReturnType<typeof usePermissions>["can"]>[0];
 
@@ -69,95 +75,130 @@ interface SettingsSection {
   permission?: Permission;
 }
 
+interface SettingsGroup {
+  label: string;
+  sections: SettingsSection[];
+}
+
 /* -------------------------------------------------------------------------- */
 /* Static data                                                                */
 /* -------------------------------------------------------------------------- */
 
-const SETTINGS_SECTIONS: SettingsSection[] = [
+const SETTINGS_GROUPS: SettingsGroup[] = [
   {
-    id: "profile",
-    label: "Profile",
-    description: "Your account information and access details.",
-    icon: UserRound,
+    label: "Account",
+    sections: [
+      {
+        id: "profile",
+        label: "Profile",
+        description: "Your account information and access details.",
+        icon: UserRound,
+      },
+      {
+        id: "support",
+        label: "Support",
+        description: "Get help and contact our support team.",
+        icon: Phone,
+      },
+    ],
   },
   {
-    id: "organization",
-    label: "Organization",
-    description: "Company profile, branding, and locale.",
-    icon: Building2,
-  },
-    {
-    id: "country-configuration",
-    label: "Country Configuration",
-    description: "Configure countries and their available ERP modules.",
-    icon: Globe2,
-  },
-  {
-    id: "users",
-    label: "Users",
-    description: "Team members, roles, and access.",
-    icon: Users,
-  },
-  {
-    id: "workflow",
-    label: "Workflow",
-    description: "Numbering and process configuration.",
-    icon: WorkflowIcon,
-  },
-  {
-  id: "support",
-  label: "Support",
-  description: "Get help and contact our support team.",
-  icon: Phone,
-},
-  {
-    id: "import-export",
-    label: "Import / Export",
-    description: "Backups, bulk import, and data export.",
-    icon: ArrowLeftRight,
+    label: "Workspace",
+    sections: [
+      {
+        id: "organization",
+        label: "Organization",
+        description: "Company profile, branding, and locale.",
+        icon: Building2,
+      },
+      {
+        id: "country-configuration",
+        label: "Countries",
+        description: "Configure countries and their available ERP modules.",
+        icon: Globe2,
+      },
+      {
+        id: "users",
+        label: "Users",
+        description: "Team members, roles, and access.",
+        icon: Users,
+      },
+    ],
   },
   {
-    id: "billing",
-    label: "Billing",
-    description: "Plan, invoices, and payment method.",
-    icon: CreditCard,
+    label: "Configuration",
+    sections: [
+      {
+        id: "workflow",
+        label: "Workflow",
+        description: "Numbering and process configuration.",
+        icon: WorkflowIcon,
+      },
+      {
+        id: "number-display",
+        label: "Number display",
+        description: "Control how numbers are displayed across the ERP.",
+        icon: Binary,
+      },
+      {
+        id: "import-export",
+        label: "Import / Export",
+        description: "Backups, bulk import, and data export.",
+        icon: ArrowLeftRight,
+      },
+    ],
   },
   {
-    id: "pricing",
-    label: "Pricing",
-    description: "View plans and subscription options.",
-    icon: CreditCard,
+    label: "Plan & billing",
+    sections: [
+      {
+        id: "billing",
+        label: "Billing",
+        description: "Plan, invoices, and payment method.",
+        icon: Receipt,
+      },
+      {
+        id: "pricing",
+        label: "Pricing",
+        description: "View plans and subscription options.",
+        icon: CreditCard,
+      },
+    ],
   },
   {
-    id: "updates",
-    label: "Updates & History",
-    description: "Release notes and commit history.",
-    icon: History,
+    label: "Security & monitoring",
+    sections: [
+      {
+        id: "activity-log",
+        label: "Activity log",
+        description: "Audit trail of changes across your tenant.",
+        icon: ShieldCheck,
+      },
+      {
+        id: "login-activity",
+        label: "Login activity",
+        description: "Recent login sessions and device activity.",
+        icon: Activity,
+      },
+      {
+        id: "usage-monitoring",
+        label: "Usage & monitoring",
+        description: "Usage, performance, storage, and system health.",
+        icon: MonitorCog,
+      },
+    ],
   },
   {
-    id: "activity-log",
-    label: "Activity Log",
-    description: "Audit trail of changes across your tenant.",
-    icon: Activity,
+    label: "Product",
+    sections: [
+      {
+        id: "updates",
+        label: "Updates & history",
+        description: "Release notes and commit history.",
+        icon: History,
+      },
+    ],
   },
-  {
-    id: "login-activity",
-    label: "Login Activity",
-    description: "Recent login sessions and device activity.",
-    icon: Activity,
-  },
-  {
-    id: "usage-monitoring",
-    label: "Usage & Monitoring",
-    description: "Usage, performance, storage, and system health.",
-    icon: MonitorCog,
-  },
-  {
-  id: "number-display",
-  label: "Number Display",
-  description: "Control how numbers are displayed across the ERP.",
-  icon: Hash,
-},
 ];
 
 const PRICING_PLANS = [
@@ -179,7 +220,7 @@ const PRICING_PLANS = [
 ];
 
 /* -------------------------------------------------------------------------- */
-/* Section components                                                         */
+/* Section components (unchanged behaviour)                                   */
 /* -------------------------------------------------------------------------- */
 
 function ComingSoonSection({ section }: { section: SettingsSection }) {
@@ -194,7 +235,6 @@ function ComingSoonSection({ section }: { section: SettingsSection }) {
         </CardTitle>
         <CardDescription>{section.description}</CardDescription>
       </CardHeader>
-
       <CardContent>
         <p className="text-sm text-muted-foreground">
           This section is coming soon.
@@ -214,20 +254,15 @@ function OrganizationSection() {
             Organization
           </CardTitle>
           <CardDescription>
-            Manage your organization profile, locale, and available
-            countries.
+            Manage your organization profile, locale, and available countries.
           </CardDescription>
         </CardHeader>
-
         <CardContent>
           <p className="text-sm text-muted-foreground">
             Organization-level settings are tenant-specific.
           </p>
         </CardContent>
       </Card>
-
-      <CountrySettings1 />
-
       <div className="mt-6">
         <TenantSettingsPlaceholders />
       </div>
@@ -249,11 +284,10 @@ function WorkflowSection() {
             modules.
           </CardDescription>
         </CardHeader>
-
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Numbering settings are tenant-specific. Existing records are
-            never renumbered automatically.
+            Numbering settings are tenant-specific. Existing records are never
+            renumbered automatically.
           </p>
         </CardContent>
       </Card>
@@ -279,15 +313,12 @@ function PricingSection() {
             <CardHeader>
               <CardTitle>{plan.name}</CardTitle>
               <CardDescription>{plan.description}</CardDescription>
-              <div className="pt-2 text-2xl font-semibold">
-                {plan.price}
-              </div>
+              <div className="pt-2 text-2xl font-semibold">{plan.price}</div>
             </CardHeader>
-
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Plan details and subscription management will be
-                available here.
+                Plan details and subscription management will be available
+                here.
               </p>
             </CardContent>
           </Card>
@@ -298,53 +329,127 @@ function PricingSection() {
 }
 
 function SettingsSectionContent({
-  sectionId,
+  section,
 }: {
-  sectionId: SettingsSectionId;
+  section: SettingsSection;
 }) {
-  switch (sectionId) {
+  switch (section.id) {
     case "profile":
       return <ProfilePage />;
-
     case "organization":
       return <OrganizationSection />;
-
-    case "workflow":
-      return <WorkflowSection />;
-
-    case "import-export":
-      return <DataManagementSection />;
-
-    case "pricing":
-      return <PricingSection />;
-
+    case "country-configuration":
+      return <CountrySettings1 />;
     case "users":
       return <UsersSection />;
-    case "country-configuration":
-  return <CountrySettings1 />;
-    case "login-activity":
-      return <LoginActivity />;
-
+    case "workflow":
+      return <WorkflowSection />;
+    case "number-display":
+      return <NumberDisplaySettings />;
+    case "support":
+      return <SupportPage />;
+    case "import-export":
+      return <DataManagementSection />;
+    case "pricing":
+      return <PricingSection />;
     case "updates":
       return <UpdatesSection />;
-case "support":
-  return <SupportPage />;
-    case "billing":
     case "activity-log":
       return <AuditSection />;
-
+    case "login-activity":
+      return <LoginActivity />;
     case "usage-monitoring":
       return <UsageMonitoring />;
-case "number-display":
-  return <NumberDisplaySettings />;
-    default: {
-      const section = SETTINGS_SECTIONS.find(
-        (item) => item.id === sectionId,
-      );
-
-      return section ? <ComingSoonSection section={section} /> : null;
-    }
+    default:
+      return <ComingSoonSection section={section} />;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Second sidebar                                                             */
+/* -------------------------------------------------------------------------- */
+
+interface SettingsNavProps {
+  groups: SettingsGroup[];
+  activeId: SettingsSectionId;
+  onSelect: (id: SettingsSectionId) => void;
+}
+
+function SettingsSidebar({ groups, activeId, onSelect }: SettingsNavProps) {
+  return (
+    <aside className="hidden w-64 shrink-0 border-r bg-muted/30 md:block">
+      <ScrollArea className="h-full">
+        <nav aria-label="Settings" className="space-y-5 p-3">
+          {groups.map((group) => (
+            <div key={group.label} className="space-y-1">
+              <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">
+                {group.label}
+              </p>
+
+              {group.sections.map((section) => {
+                const Icon = section.icon;
+                const isActive = section.id === activeId;
+
+                return (
+                  <Button
+                    key={section.id}
+                    type="button"
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="sm"
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => onSelect(section.id)}
+                    className={cn(
+                      "w-full justify-start gap-2 px-3 font-normal",
+                      isActive
+                        ? "font-medium"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    <span className="truncate">{section.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+      </ScrollArea>
+    </aside>
+  );
+}
+
+/** Mobile fallback: horizontal scrollable pills */
+function SettingsTopNav({ groups, activeId, onSelect }: SettingsNavProps) {
+  const sections = groups.flatMap((group) => group.sections);
+
+  return (
+    <div className="border-b md:hidden">
+      <ScrollArea className="w-full">
+        <nav aria-label="Settings" className="flex gap-1 p-2">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            const isActive = section.id === activeId;
+
+            return (
+              <Button
+                key={section.id}
+                type="button"
+                size="sm"
+                variant={isActive ? "secondary" : "ghost"}
+                aria-current={isActive ? "page" : undefined}
+                onClick={() => onSelect(section.id)}
+                className="shrink-0 gap-2"
+              >
+                <Icon className="size-4" />
+                {section.label}
+              </Button>
+            );
+          })}
+        </nav>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -355,98 +460,56 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { can } = usePermissions();
 
-  const visibleSections = SETTINGS_SECTIONS.filter(
-    (section) => !section.permission || can(section.permission),
-  );
+  const visibleGroups = SETTINGS_GROUPS.map((group) => ({
+    ...group,
+    sections: group.sections.filter(
+      (section) => !section.permission || can(section.permission),
+    ),
+  })).filter((group) => group.sections.length > 0);
+
+  const visibleSections = visibleGroups.flatMap((group) => group.sections);
 
   const defaultSectionId: SettingsSectionId =
     visibleSections.find((section) => section.id === "workflow")?.id ??
     visibleSections[0]?.id ??
     "profile";
 
-  const requestedSection = searchParams.get(
-    "section",
-  ) as SettingsSectionId | null;
-
-  const isValidSection =
-    requestedSection !== null &&
-    visibleSections.some((section) => section.id === requestedSection);
-
-  const [activeSectionId, setActiveSectionId] =
-    useState<SettingsSectionId>(
-      isValidSection ? requestedSection : defaultSectionId,
-    );
-
-  useEffect(() => {
-    if (isValidSection && requestedSection) {
-      setActiveSectionId(requestedSection);
-      return;
-    }
-
-    setActiveSectionId(defaultSectionId);
-  }, [defaultSectionId, isValidSection, requestedSection]);
+  // The URL is the single source of truth — no extra state or effect needed.
+  const requestedSection = searchParams.get("section");
+  const activeSection =
+    visibleSections.find((section) => section.id === requestedSection) ??
+    visibleSections.find((section) => section.id === defaultSectionId) ??
+    visibleSections[0];
 
   function selectSection(sectionId: SettingsSectionId) {
-    setActiveSectionId(sectionId);
     setSearchParams({ section: sectionId });
   }
 
+  if (!activeSection) return null;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Header */}
-      <div className="border-b">
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-md border bg-muted">
-              <Settings2 className="size-4" />
-            </div>
+     
 
-            <div>
-              <h1 className="text-xl font-semibold">Settings</h1>
-              <p className="text-sm text-muted-foreground">
-                Manage your ERP configuration. reaz 
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SettingsTopNav
+        groups={visibleGroups}
+        activeId={activeSection.id}
+        onSelect={selectSection}
+      />
 
       {/* Body */}
       <div className="flex min-h-0 flex-1">
-        {/* Left nav */}
-        <nav className="w-56 shrink-0 overflow-y-auto border-r p-3">
-          <ul className="space-y-1">
-            {visibleSections.map((section) => {
-              const Icon = section.icon;
-              const isActive = section.id === activeSectionId;
+        <SettingsSidebar
+          groups={visibleGroups}
+          activeId={activeSection.id}
+          onSelect={selectSection}
+        />
 
-              return (
-                <li key={section.id}>
-                  <button
-                    type="button"
-                    onClick={() => selectSection(section.id)}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                      isActive
-                        ? "bg-muted font-medium text-foreground"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" />
-                    <span className="truncate">{section.label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        {/* Content */}
-        <div className="min-h-0 flex-1 overflow-auto">
+        <main className="min-h-0 flex-1 overflow-auto">
           <div className="mx-auto w-full max-w-5xl space-y-8 p-6">
-            <SettingsSectionContent sectionId={activeSectionId} />
+            <SettingsSectionContent section={activeSection} />
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

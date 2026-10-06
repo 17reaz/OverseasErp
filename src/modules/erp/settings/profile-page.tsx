@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Mail, UserRound } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
+import { Mail, Phone, UserRound } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
 
 interface ProfileData {
@@ -12,6 +14,73 @@ interface ProfileData {
   phone: string;
   avatar_url: string;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Small presentational pieces                                                */
+/* -------------------------------------------------------------------------- */
+
+function PageHeading() {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold">Profile</h2>
+      <p className="text-sm text-muted-foreground">
+        Manage your personal account information.
+      </p>
+    </div>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-1 px-6 py-4 sm:grid-cols-3 sm:items-center sm:gap-4">
+      <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="size-4" />
+        {label}
+      </dt>
+      <dd className="min-w-0 truncate text-sm font-medium sm:col-span-2">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="space-y-6">
+      <PageHeading />
+
+      <Card>
+        <CardHeader className="flex-row items-center gap-4">
+          <Skeleton className="size-16 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-52" />
+          </div>
+        </CardHeader>
+
+        <Separator />
+
+        <CardContent className="space-y-5 p-6">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Page                                                                       */
+/* -------------------------------------------------------------------------- */
 
 export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData>({
@@ -23,6 +92,7 @@ export function ProfilePage() {
 
   const [loading, setLoading] = useState(true);
 
+  /* ---- data loading: unchanged ------------------------------------------ */
   useEffect(() => {
     let mounted = true;
 
@@ -52,10 +122,7 @@ export function ProfilePage() {
           "",
         email: user.email ?? "",
         phone: data?.phone ?? "",
-        avatar_url:
-          data?.avatar_url ??
-          user.user_metadata?.avatar_url ??
-          "",
+        avatar_url: data?.avatar_url ?? user.user_metadata?.avatar_url ?? "",
       });
 
       setLoading(false);
@@ -68,13 +135,8 @@ export function ProfilePage() {
     };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="text-sm text-muted-foreground">
-        Loading profile...
-      </div>
-    );
-  }
+  /* ---- UI ---------------------------------------------------------------- */
+  if (loading) return <ProfileSkeleton />;
 
   const initials =
     profile.full_name
@@ -84,86 +146,56 @@ export function ProfilePage() {
       .map((name) => name[0]?.toUpperCase())
       .join("") || "U";
 
+  const notAdded = (
+    <span className="font-normal text-muted-foreground">Not added</span>
+  );
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Profile</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage your personal account information.
-        </p>
-      </div>
+      <PageHeading />
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Personal information
-          </CardTitle>
+        {/* Identity */}
+        <CardHeader className="flex-row items-center gap-4">
+          <Avatar className="size-16 border">
+            {profile.avatar_url ? (
+              <AvatarImage
+                src={profile.avatar_url}
+                alt={profile.full_name || "Profile"}
+              />
+            ) : null}
+            <AvatarFallback className="text-lg font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold">
+              {profile.full_name || "Your profile"}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              {profile.email || "Account profile"}
+            </p>
+          </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="flex size-16 items-center justify-center overflow-hidden rounded-full border bg-muted text-lg font-semibold">
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.full_name || "Profile"}
-                  className="size-full object-cover"
-                />
-              ) : (
-                initials
-              )}
-            </div>
+        <Separator />
 
-            <div>
-              <p className="font-medium">
-                {profile.full_name || "Your profile"}
-              </p>
+        {/* Details */}
+        <CardContent className="p-0">
+          <dl className="divide-y">
+            <DetailRow icon={UserRound} label="Full name">
+              {profile.full_name || notAdded}
+            </DetailRow>
 
-              <p className="text-sm text-muted-foreground">
-                Account profile
-              </p>
-            </div>
-          </div>
+            <DetailRow icon={Mail} label="Email">
+              {profile.email || notAdded}
+            </DetailRow>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Full name</Label>
-
-              <div className="relative">
-                <UserRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                <Input
-                  value={profile.full_name}
-                  readOnly
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Email</Label>
-
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                <Input
-                  value={profile.email}
-                  readOnly
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Phone</Label>
-
-              <Input
-                value={profile.phone}
-                readOnly
-                placeholder="Not added"
-              />
-            </div>
-          </div>
+            <DetailRow icon={Phone} label="Phone">
+              {profile.phone || notAdded}
+            </DetailRow>
+          </dl>
         </CardContent>
       </Card>
     </div>
