@@ -225,14 +225,7 @@ function NumberingRow({
 export function NumberingSettings() {
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <h2 className="text-lg font-semibold">Numbering</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage serial number sequences used across your ERP.
-        </p>
-      </div>
-
+     
       <Card className="divide-y overflow-hidden">
         <NumberingRow
           title="Candidate SL"
