@@ -28,7 +28,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/permissions/use-permissions";
 import { cn } from "@/lib/utils";
 
