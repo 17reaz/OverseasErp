@@ -14,6 +14,9 @@ import { DashboardPipeline } from "./components/dashboard-pipeline";
 import { DashboardCountryPassports } from "./components/dashboard-country-passports";
 import { DashboardUpcomingDeadlines } from "./components/dashboard-upcoming-deadlines";
 import {
+  DashboardLiveTrace,
+} from "./components/dashboard-live-trace";
+import {
   DashboardFilters,
   type DashboardFiltersState,
 } from "./components/dashboard-filters";
@@ -277,8 +280,14 @@ export function DashboardPage() {
               label: "Shortcuts",
               content: <DashboardShortcuts />,
             },
+            {
+              key: "trace",
+              label: "Live Trace",
+              content: <DashboardLiveTrace />,
+            },
           ]}
         />
+        
       </div>
     </div>
   );

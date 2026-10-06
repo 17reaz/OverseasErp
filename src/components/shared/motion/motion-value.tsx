@@ -9,6 +9,10 @@ import {
   ArrowUp,
 } from "lucide-react";
 
+import {
+  MOTION_TEST,
+} from "./motion-config";
+
 interface MotionValueProps {
   value: number;
   duration?: number;
@@ -22,11 +26,16 @@ export function MotionValue({
   className,
   showChange = true,
 }: MotionValueProps) {
+  const targetValue =
+    MOTION_TEST.enabled
+      ? value - MOTION_TEST.offset
+      : value;
+
   const previousValue =
-    useRef(value);
+    useRef(targetValue);
 
   const [displayValue, setDisplayValue] =
-    useState(value);
+    useState(targetValue);
 
   const [change, setChange] =
     useState<number | null>(null);
@@ -38,14 +47,19 @@ export function MotionValue({
     const previous =
       previousValue.current;
 
-    if (previous === value) {
+    if (previous === targetValue) {
       return;
     }
 
     const difference =
-      value - previous;
+      targetValue - previous;
 
-    setChange(difference);
+    setChange(
+      MOTION_TEST.enabled
+        ? difference
+        : difference,
+    );
+
     setChanged(true);
 
     const timer =
@@ -54,23 +68,23 @@ export function MotionValue({
       }, 900);
 
     previousValue.current =
-      value;
+      targetValue;
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [value]);
+  }, [targetValue]);
 
   useEffect(() => {
     const startValue =
       displayValue;
 
-    if (startValue === value) {
+    if (startValue === targetValue) {
       return;
     }
 
     const difference =
-      value - startValue;
+      targetValue - startValue;
 
     const startTime =
       performance.now();
@@ -120,7 +134,7 @@ export function MotionValue({
       cancelAnimationFrame(frame);
     };
   }, [
-    value,
+    targetValue,
     duration,
     displayValue,
   ]);
