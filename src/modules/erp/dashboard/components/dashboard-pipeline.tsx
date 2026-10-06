@@ -70,72 +70,91 @@ export function DashboardPipeline({ data }: Props) {
   });
 
   return (
-    <div className="flex items-stretch gap-3 rounded-lg border bg-background px-3 py-2">
-      {/* LEFT: processing total */}
-      <div className="flex shrink-0 items-center gap-2 border-r pr-3">
-        <Activity className="size-4 text-muted-foreground" />
+    <div className="flex flex-col gap-2 rounded-lg border bg-background p-2 sm:flex-row sm:items-stretch sm:gap-3">
+      {/* LEFT: processing total (highlight) */}
+      <div className="flex shrink-0 items-center gap-2.5 rounded-md bg-primary px-3 py-2 text-primary-foreground sm:min-w-[110px]">
+        <Activity className="size-5 shrink-0" />
 
         <div className="leading-tight">
-          <p className="text-[10px] text-muted-foreground">Processing</p>
+          <p className="text-[10px] font-medium uppercase tracking-wide opacity-80">
+            Processing
+          </p>
 
-          <p className="text-base font-semibold tracking-tight">
+          <p className="text-2xl font-bold tracking-tight">
             {processingCount}
           </p>
         </div>
       </div>
 
-      {/* RIGHT: stages in one line */}
+      {/* RIGHT: stages (no scrollbar, wraps responsively) */}
       {processingCount === 0 ? (
-        <p className="flex min-w-0 flex-1 items-center truncate text-xs text-muted-foreground">
+        <p className="flex min-w-0 flex-1 items-center text-xs text-muted-foreground">
           No candidates in processing. Hold candidates are excluded from the
           pipeline.
         </p>
       ) : (
-        <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex min-w-max items-stretch gap-2 lg:min-w-0">
-            {pipelineData.map((item) => {
-              const Icon =
-                stageIcons[item.label as keyof typeof stageIcons] ?? Activity;
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1.5 md:grid-cols-5 xl:grid-cols-9">
+          {pipelineData.map((item) => {
+            const Icon =
+              stageIcons[item.label as keyof typeof stageIcons] ?? Activity;
 
-              const percentage =
-                processingCount > 0
-                  ? Math.round((item.value / processingCount) * 100)
-                  : 0;
+            const percentage =
+              processingCount > 0
+                ? Math.round((item.value / processingCount) * 100)
+                : 0;
 
-              return (
-                <div
-                  key={item.label}
-                  title={`${item.label}: ${item.value} (${percentage}%)`}
-                  className="flex min-w-[84px] flex-1 flex-col justify-center gap-1"
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
-                      <Icon className="size-3 shrink-0" />
+            const hasValue = item.value > 0;
 
-                      <span className="truncate text-[10px] font-medium">
-                        {item.label === "Police Clearance"
-                          ? "PCC"
-                          : item.label}
-                      </span>
-                    </div>
+            return (
+              <div
+                key={item.label}
+                title={`${item.label}: ${item.value} (${percentage}%)`}
+                className={[
+                  "flex min-w-0 flex-col justify-center gap-1 rounded-md border px-2 py-1.5 transition-colors",
+                  hasValue
+                    ? "border-primary/30 bg-primary/5"
+                    : "bg-muted/20",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Icon
+                    className={[
+                      "size-3 shrink-0",
+                      hasValue ? "text-primary" : "",
+                    ].join(" ")}
+                  />
 
-                    <span className="shrink-0 text-sm font-semibold leading-none">
-                      {item.value}
-                    </span>
-                  </div>
-
-                  <div className="h-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{
-                        width: `${Math.min(percentage, 100)}%`,
-                      }}
-                    />
-                  </div>
+                  <span className="truncate text-[10px] font-medium">
+                    {item.label === "Police Clearance" ? "PCC" : item.label}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                <div className="flex items-baseline justify-between gap-1">
+                  <span
+                    className={[
+                      "text-lg font-bold leading-none tracking-tight",
+                      hasValue ? "text-foreground" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {item.value}
+                  </span>
+
+                  <span className="text-[9px] text-muted-foreground">
+                    {percentage}%
+                  </span>
+                </div>
+
+                <div className="h-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{
+                      width: `${Math.min(percentage, 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
