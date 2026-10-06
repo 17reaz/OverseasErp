@@ -9,7 +9,7 @@ import {
 import { Card } from "@/components/ui/card";
 
 import type { DashboardData } from "../dashboard-service";
-
+import { MotionValue } from "@/components/shared/motion";
 interface DashboardStatsProps {
   stats: DashboardData["stats"];
 }
@@ -71,8 +71,10 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
             </div>
 
             <div className="text-xl font-semibold leading-tight tracking-tight">
-              {item.value}
-            </div>
+  <MotionValue
+    value={item.value}
+  />
+</div>
 
             <p className="truncate text-xs text-muted-foreground">
               {item.description}
