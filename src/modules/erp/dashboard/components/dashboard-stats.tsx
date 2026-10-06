@@ -6,24 +6,15 @@ import {
   XCircle,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
-import type {
-  DashboardData,
-} from "../dashboard-service";
+import type { DashboardData } from "../dashboard-service";
 
 interface DashboardStatsProps {
   stats: DashboardData["stats"];
 }
 
-export function DashboardStats({
-  stats,
-}: DashboardStatsProps) {
+export function DashboardStats({ stats }: DashboardStatsProps) {
   const items = [
     {
       title: "Total",
@@ -62,29 +53,30 @@ export function DashboardStats({
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {items.map((item) => {
         const Icon = item.icon;
 
         return (
-          <Card key={item.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+          <Card
+            key={item.title}
+            className="gap-1 px-4 py-3"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">
                 {item.title}
-              </CardTitle>
+              </span>
 
               <Icon className="size-4 text-muted-foreground" />
-            </CardHeader>
+            </div>
 
-            <CardContent>
-              <div className="text-2xl font-semibold tracking-tight">
-                {item.value}
-              </div>
+            <div className="text-xl font-semibold leading-tight tracking-tight">
+              {item.value}
+            </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                {item.description}
-              </p>
-            </CardContent>
+            <p className="truncate text-xs text-muted-foreground">
+              {item.description}
+            </p>
           </Card>
         );
       })}

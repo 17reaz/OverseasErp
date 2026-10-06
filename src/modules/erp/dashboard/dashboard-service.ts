@@ -13,6 +13,10 @@ import {
   getDashboardCountryPassportData,
   type DashboardCountryPassport,
 } from "./services/dashboard-country-service";
+import {
+  getDashboardUpcomingDeadlines,
+  type DashboardDeadline,
+} from "./services/dashboard-deadlines-service";
 export type {
   DashboardWorkflowState,
   DashboardHoldReason,
@@ -43,7 +47,6 @@ export interface DashboardData {
     completeCandidates: number;
     returnedCandidates: number;
     cancelledCandidates: number;
-
     processingCandidates: number;
     holdCandidates: number;
 
@@ -83,7 +86,9 @@ export interface DashboardData {
     label: string;
     value: number;
   }[];
-   countryPassports: DashboardCountryPassport[];
+
+  countryPassports: DashboardCountryPassport[];
+
   trend: {
     month: string;
     candidates: number;
@@ -95,6 +100,8 @@ export interface DashboardData {
   }[];
 
   recentCandidates: DashboardCandidate[];
+
+  upcomingDeadlines: DashboardDeadline[];
 
   documentAlerts: {
     title: string;
@@ -170,32 +177,39 @@ export async function getDashboardData(): Promise<DashboardData> {
    * =====================================================
    */
 
-  const support =
+    const support =
     await getDashboardSupportData(
       context.activeCandidateIds,
       stats.medicalPending,
       stats.mofaPending,
       stats.holdCandidates,
     );
-    const countryPassports =
-  await getDashboardCountryPassportData();
+
+  const countryPassports =
+    await getDashboardCountryPassportData();
+
+  const upcomingDeadlines =
+    await getDashboardUpcomingDeadlines(30);
   /*
    * =====================================================
    * 5. FINAL DASHBOARD DATA
    * =====================================================
    */
 
-  return {
+    return {
     stats,
 
     pipeline,
-      countryPassports,
+
+    countryPassports,
 
     trend:
       support.trend,
 
     aging:
       support.aging,
+
+    upcomingDeadlines,
 
     recentCandidates:
       support.recentCandidates,
