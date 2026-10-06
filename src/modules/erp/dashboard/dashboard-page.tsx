@@ -19,10 +19,9 @@ import {
   type DashboardFiltersState,
 } from "./components/dashboard-filters";
 import { DashboardGreeting } from "./components/dashboard-greeting";
-import {
-  DashboardVisaMonitor,
-} from "./components/dashboard-visa-monitor";
+import { DashboardVisaMonitor } from "./components/dashboard-visa-monitor";
 import { DashboardActivity } from "./components/dashboard-activity";
+
 /* =======================================================
    MODULE LEVEL CACHE
    Dashboard theke ber hoye fire ashle ager data, filters
@@ -60,14 +59,14 @@ function TabPanel({ id, tabs }: { id: string; tabs: TabItem[] }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-col rounded-lg border bg-background">
-      <div className="flex shrink-0 gap-1 border-b p-1">
+    <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-background">
+      <div className="flex shrink-0 gap-1 overflow-x-auto border-b p-1">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => select(tab.key)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               tab.key === current.key
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -79,7 +78,7 @@ function TabPanel({ id, tabs }: { id: string; tabs: TabItem[] }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
-        <div className="h-full min-h-[320px]">{current.content}</div>
+        <div className="h-full min-h-[200px]">{current.content}</div>
       </div>
     </div>
   );
@@ -125,7 +124,6 @@ export function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // dashboard-service ekhon countries nijei dey
   const countries = useMemo<string[]>(() => data?.countries ?? [], [data]);
 
   /* ======================= LOADING ======================= */
@@ -208,8 +206,13 @@ export function DashboardPage() {
       </div>
 
       {/* MAIN 3 COLUMNS */}
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
-        {/* Column 1 */}
+      {/* MAIN AREA */}
+<div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
+  {/* LEFT: Column 1 + Column 2 + Pipeline strip */}
+  <div className="flex min-h-0 flex-col gap-3 lg:col-span-2">
+    <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+      {/* Column 1 */}
+      <div className="flex min-h-0 flex-col">
         <TabPanel
           id="col1"
           tabs={[
@@ -224,11 +227,6 @@ export function DashboardPage() {
               ),
             },
             {
-              key: "pipeline",
-              label: "Pipeline",
-              content: <DashboardPipeline data={data.pipeline} />,
-            },
-            {
               key: "hold",
               label: "Hold Stages",
               content: (
@@ -240,79 +238,82 @@ export function DashboardPage() {
             },
           ]}
         />
+      </div>
 
-        {/* Column 2 */}
-        <div className="flex min-h-0 flex-col gap-3">
-  {/* Activity: nijer height nibe, shrink hobe na */}
-  <div className="shrink-0 rounded-lg border bg-background p-2">
-    <DashboardActivity />
+      {/* Column 2 */}
+      <div className="flex min-h-0 flex-col gap-3">
+        <div className="shrink-0 rounded-lg border bg-background p-2">
+          <DashboardActivity />
+        </div>
+
+        <TabPanel
+          id="col2"
+          tabs={[
+            {
+              key: "candidates",
+              label: "Recent Candidates",
+              content: <DashboardTable candidates={data.recentCandidates} />,
+            },
+            {
+              key: "passports",
+              label: "Country Passports",
+              content: (
+                <DashboardCountryPassports data={data.countryPassports} />
+              ),
+            },
+            {
+              key: "deadlines",
+              label: "Deadlines",
+              content: (
+                <DashboardUpcomingDeadlines
+                  deadlines={data.upcomingDeadlines}
+                />
+              ),
+            },
+          ]}
+        />
+      </div>
+    </div>
+
+    {/* Pipeline: Column 1 + 2 er niche fixed line */}
+    <div className="shrink-0">
+      <DashboardPipeline data={data.pipeline} />
+    </div>
   </div>
 
-  {/* TabPanel: baki sob height nibe */}
-  <div className="flex min-h-0 flex-1 flex-col">
+  {/* RIGHT: Column 3 (ager moto full height) */}
+  <div className="flex min-h-0 flex-col gap-3">
+    <div className="shrink-0 rounded-lg border bg-background p-2">
+      <DashboardVisaMonitor />
+    </div>
+
     <TabPanel
-      id="col2"
+      id="col3"
       tabs={[
         {
-          key: "candidates",
-          label: "Recent Candidates",
-          content: <DashboardTable candidates={data.recentCandidates} />,
+          key: "actions",
+          label: "Action Center",
+          content: <ActionCenter />,
         },
         {
-          key: "passports",
-          label: "Country Passports",
-          content: (
-            <DashboardCountryPassports data={data.countryPassports} />
-          ),
+          key: "alerts",
+          label: "Document Alerts",
+          content: <DashboardDocumentAlerts alerts={data.documentAlerts} />,
         },
         {
-          key: "deadlines",
-          label: "Deadlines",
-          content: (
-            <DashboardUpcomingDeadlines deadlines={data.upcomingDeadlines} />
-          ),
+          key: "shortcuts",
+          label: "Shortcuts",
+          content: <DashboardShortcuts />,
+        },
+        {
+          key: "trace",
+          label: "Live Trace",
+          content: <DashboardLiveTrace />,
         },
       ]}
     />
   </div>
 </div>
-
-        {/* Column 3 */}
-        <div className="flex min-h-0 flex-col gap-3">
-  {/* VISA MONITOR */}
-  <div className="shrink-0">
-    <DashboardVisaMonitor />
-  </div>
-        <TabPanel
-          id="col3"
-          tabs={[
-            {
-              key: "actions",
-              label: "Action Center",
-              content: <ActionCenter />,
-            },
-            {
-              key: "alerts",
-              label: "Document Alerts",
-              content: (
-                <DashboardDocumentAlerts alerts={data.documentAlerts} />
-              ),
-            },
-            {
-              key: "shortcuts",
-              label: "Shortcuts",
-              content: <DashboardShortcuts />,
-            },
-            {
-              key: "trace",
-              label: "Live Trace",
-              content: <DashboardLiveTrace />,
-            },
-          ]}
-        />
-        </div>
-        {/* <DashboardVisaMonitor /> */}
-      </div>
     </div>
   );
 }

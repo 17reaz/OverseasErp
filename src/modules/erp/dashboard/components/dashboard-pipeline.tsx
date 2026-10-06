@@ -13,13 +13,6 @@ import {
   Vault,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
 import type { DashboardData } from "../dashboard-service";
 
 interface Props {
@@ -77,36 +70,32 @@ export function DashboardPipeline({ data }: Props) {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Candidate Pipeline</CardTitle>
+    <div className="flex items-stretch gap-3 rounded-lg border bg-background px-3 py-2">
+      {/* LEFT: processing total */}
+      <div className="flex shrink-0 items-center gap-2 border-r pr-3">
+        <Activity className="size-4 text-muted-foreground" />
 
-        <p className="text-sm text-muted-foreground">
-          Processing candidates by workflow stage.
+        <div className="leading-tight">
+          <p className="text-[10px] text-muted-foreground">Processing</p>
+
+          <p className="text-base font-semibold tracking-tight">
+            {processingCount}
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT: stages in one line */}
+      {processingCount === 0 ? (
+        <p className="flex min-w-0 flex-1 items-center truncate text-xs text-muted-foreground">
+          No candidates in processing. Hold candidates are excluded from the
+          pipeline.
         </p>
-      </CardHeader>
-
-      <CardContent>
-        {processingCount === 0 ? (
-          <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed">
-            <div className="text-center">
-              <Activity className="mx-auto mb-2 h-4 w-4 text-muted-foreground" />
-
-              <p className="text-sm font-medium">
-                No candidates in processing
-              </p>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Hold candidates are excluded from the pipeline.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      ) : (
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="flex min-w-max items-stretch gap-2 lg:min-w-0">
             {pipelineData.map((item) => {
               const Icon =
-                stageIcons[item.label as keyof typeof stageIcons] ??
-                Activity;
+                stageIcons[item.label as keyof typeof stageIcons] ?? Activity;
 
               const percentage =
                 processingCount > 0
@@ -116,27 +105,26 @@ export function DashboardPipeline({ data }: Props) {
               return (
                 <div
                   key={item.label}
-                  className="rounded-md border px-3 py-2.5"
+                  title={`${item.label}: ${item.value} (${percentage}%)`}
+                  className="flex min-w-[84px] flex-1 flex-col justify-center gap-1"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
+                      <Icon className="size-3 shrink-0" />
 
-                      <span className="truncate text-xs font-medium">
-                        {item.label}
+                      <span className="truncate text-[10px] font-medium">
+                        {item.label === "Police Clearance"
+                          ? "PCC"
+                          : item.label}
                       </span>
                     </div>
 
-                    <span className="shrink-0 text-[11px] text-muted-foreground">
-                      {percentage}%
+                    <span className="shrink-0 text-sm font-semibold leading-none">
+                      {item.value}
                     </span>
                   </div>
 
-                  <p className="mt-1.5 text-xl font-semibold tracking-tight">
-                    {item.value}
-                  </p>
-
-                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+                  <div className="h-1 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-primary transition-all"
                       style={{
@@ -148,20 +136,8 @@ export function DashboardPipeline({ data }: Props) {
               );
             })}
           </div>
-        )}
-
-        <div className="mt-3 flex items-center justify-between border-t pt-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Activity className="h-3.5 w-3.5" />
-
-            <span>Processing</span>
-          </div>
-
-          <span className="text-sm font-semibold">
-            {processingCount}
-          </span>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
