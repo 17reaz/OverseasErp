@@ -7,6 +7,8 @@ import {
   UserPlus,
 } from "lucide-react";
 
+import type { DashboardData } from "../dashboard-service";
+
 type ActivityKey =
   | "candidates"
   | "medical"
@@ -17,38 +19,13 @@ type ActivityKey =
 
 type ActivityPeriod = "today" | "week";
 
-interface ActivityData {
-  candidates: number;
-  medical: number;
-  mofa: number;
-  visa: number;
-  flights: number;
-  payments: number;
-}
+type ActivityData = DashboardData["activity"]["today"];
 
 interface ActivityConfig {
   key: ActivityKey;
   label: string;
   icon: typeof UserPlus;
 }
-
-const TODAY: ActivityData = {
-  candidates: 12,
-  medical: 8,
-  mofa: 5,
-  visa: 3,
-  flights: 4,
-  payments: 7,
-};
-
-const THIS_WEEK: ActivityData = {
-  candidates: 47,
-  medical: 32,
-  mofa: 21,
-  visa: 18,
-  flights: 9,
-  payments: 24,
-};
 
 const ACTIVITY_CONFIG: ActivityConfig[] = [
   {
@@ -83,10 +60,20 @@ const ACTIVITY_CONFIG: ActivityConfig[] = [
   },
 ];
 
-export function DashboardActivity() {
-  const [period, setPeriod] = useState<ActivityPeriod>("today");
+interface DashboardActivityProps {
+  activity: DashboardData["activity"];
+}
 
-  const data = period === "today" ? TODAY : THIS_WEEK;
+export function DashboardActivity({
+  activity,
+}: DashboardActivityProps) {
+  const [period, setPeriod] =
+    useState<ActivityPeriod>("today");
+
+  const data: ActivityData =
+    period === "today"
+      ? activity.today
+      : activity.week;
 
   return (
     <div className="flex h-full min-h-0 flex-col">

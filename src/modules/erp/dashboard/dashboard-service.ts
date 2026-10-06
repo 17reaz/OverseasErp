@@ -14,6 +14,9 @@ import {
   type DashboardCountryPassport,
 } from "./services/dashboard-country-service";
 import {
+  getDashboardActivity,
+} from "./services/dashboard-activity-service";
+import {
   getDashboardUpcomingDeadlines,
   type DashboardDeadline,
 } from "./services/dashboard-deadlines-service";
@@ -69,7 +72,24 @@ export interface DashboardData {
     flightScheduled: number;
     flightDeparted: number;
   };
-
+  activity: {
+  today: {
+    candidates: number;
+    medical: number;
+    mofa: number;
+    visa: number;
+    flights: number;
+    payments: number;
+  };
+  week: {
+    candidates: number;
+    medical: number;
+    mofa: number;
+    visa: number;
+    flights: number;
+    payments: number;
+  };
+};
   pipeline: {
     key:
       | "active"
@@ -165,7 +185,8 @@ export async function getDashboardData(): Promise<DashboardData> {
    * Medical/MOFA/Finger/etc.
    * =====================================================
    */
-
+  const activity =
+    await getDashboardActivity();
   const pipeline =
     getDashboardPipeline(
       processingCandidates,
@@ -205,6 +226,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     return {
     stats,
+ activity,
 
     pipeline,
       countries,

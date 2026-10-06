@@ -236,7 +236,7 @@ export function DashboardPage() {
       {/* Column 2 */}
       <div className="flex min-h-0 flex-col gap-3">
         <div className="shrink-0 rounded-lg border bg-background p-2">
-          <DashboardActivity />
+          <DashboardActivity activity={data.activity} />
         </div>
 
         <TabPanel
