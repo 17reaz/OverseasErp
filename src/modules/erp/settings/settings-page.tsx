@@ -42,7 +42,7 @@ import { LoginActivity } from "./login-activity";
 import { ProfilePage } from "./profile-page";
 import { SupportPage } from "./support-page";
 import { UpdatesSection } from "./updates/updates-section";
-
+import { BillingPage } from "./components/billing-page";
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -350,6 +350,8 @@ function SettingsSectionContent({
       return <DataManagementSection />;
     case "pricing":
       return <PricingSection />;
+      case "billing":
+  return <BillingPage />;
     case "updates":
       return <UpdatesSection />;
     case "activity-log":
