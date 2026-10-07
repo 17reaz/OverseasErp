@@ -353,7 +353,7 @@ export function MedicalPipelineCard({
       ? "Processing"
       : medical.status === "unfit"
         ? "Unfit"
-        : medical.status === "expired"
+        : medical.validity_status === "expired"
           ? "Expired"
           : "New";
 

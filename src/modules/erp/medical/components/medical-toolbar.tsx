@@ -160,8 +160,6 @@ export function MedicalToolbar({
         ? "Fit"
         : statusValue === "unfit"
           ? "Unfit"
-          : statusValue === "expired"
-            ? "Expired"
             : "All";
 
   return (
