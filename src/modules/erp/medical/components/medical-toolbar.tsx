@@ -10,7 +10,7 @@ import {
   SlidersHorizontal,
   Stethoscope,
 } from "lucide-react";
-
+import { MedicalValidityReview } from "./medical-validity-review";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -173,6 +173,12 @@ export function MedicalToolbar({
       createLabel="Add Medical"
     >
       {/* ===================================================
+    VALIDITY REVIEW
+    =================================================== */}
+
+<MedicalValidityReview />
+
+    {/* ===================================================
           MEDICALABLE — standalone toggle
           =================================================== */}
 
@@ -223,9 +229,6 @@ export function MedicalToolbar({
             <DropdownMenuRadioItem value="new">New</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="fit">Fit</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="unfit">Unfit</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="expired">
-              Expired
-            </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>

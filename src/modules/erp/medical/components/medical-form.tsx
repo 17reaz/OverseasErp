@@ -1318,30 +1318,13 @@ export function MedicalForm({
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem
-                    value="new"
-                  >
-                    New
-                  </SelectItem>
-
-                  <SelectItem
-                    value="fit"
-                  >
-                    Fit
-                  </SelectItem>
-
-                  <SelectItem
-                    value="unfit"
-                  >
-                    Unfit
-                  </SelectItem>
-
-                  <SelectItem
-                    value="expired"
-                  >
-                    Expired
-                  </SelectItem>
-                </SelectContent>
+  <SelectItem value="new">New</SelectItem>
+  <SelectItem value="slip">Slip</SelectItem>
+  <SelectItem value="inprogress">In Progress</SelectItem>
+  <SelectItem value="under_review">Under Review</SelectItem>
+  <SelectItem value="fit">Fit</SelectItem>
+  <SelectItem value="unfit">Unfit</SelectItem>
+</SelectContent>
               </Select>
             </div>
 

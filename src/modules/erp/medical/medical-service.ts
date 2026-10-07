@@ -569,7 +569,62 @@ export async function updateMedical(
     error,
   };
 }
+export async function reviewMedicalValidity(
+  medicalId: string,
+  action: MedicalValidityAction,
+) {
+  const { data, error } = await supabase
+    .from("medicals")
+    .update({
+      validity_status: action,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", medicalId)
+    .select("*")
+    .single();
 
+  if (error) {
+    throw new Error(
+      `Failed to update medical validity: ${error.message}`,
+    );
+  }
+
+  return data as Medical;
+}
+export async function getMedicalValidityReviews() {
+  const { data, error } = await supabase
+    .from("medicals")
+    .select(`
+      *,
+      candidate:candidates (
+        id,
+        full_name,
+        passport_number
+      )
+    `)
+    .eq("validity_status", "active")
+    .eq("status", "fit")
+    .order("fit_date", { ascending: true });
+
+  if (error) {
+    throw new Error(
+      `Failed to load medical validity reviews: ${error.message}`,
+    );
+  }
+
+  const now = new Date();
+
+  return (data ?? []).filter((medical) => {
+    const baseDate = medical.fit_date || medical.medical_date;
+
+    if (!baseDate) return false;
+
+    const validUntil = new Date(baseDate);
+    validUntil.setDate(validUntil.getDate() + 60);
+
+    return validUntil.getTime() < now.getTime();
+  }) as Medical[];
+}
 /*
  * =========================================================
  * DELETE MEDICAL

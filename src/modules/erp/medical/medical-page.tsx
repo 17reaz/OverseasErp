@@ -4,7 +4,9 @@ import {
   useMemo,
   useState,
 } from "react";
-
+import {
+  MedicalValidityReview,
+} from "./components/medical-validity-review";
 import {
   toast,
 } from "@/components/shared/toast/toast";
@@ -852,7 +854,7 @@ const loadPipeline = useCallback(async () => {
         }
 
       />
-
+          {/* <MedicalValidityReviewList /> */}
 {filter.view === "medicalable" ? (
   <MedicalPending
   candidates={filteredPendingCandidates}
