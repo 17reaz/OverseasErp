@@ -7,8 +7,14 @@ export type MedicalStatus =
   | "new"
   | "fit"
   | "unfit"
-  | "expired";
-
+  | "slip"
+  | "inprogress"
+  | "under_review";
+  export type MedicalValidityStatus =
+  | "active"
+  | "used"
+  | "expired"
+  | "invalid";
 export type MedicalCandidateCountry =
   | "Saudi Arabia"
   | "Mauritius"
@@ -53,6 +59,8 @@ export interface Medical {
   fit_date: string | null;
 
   status: MedicalStatus;
+
+  validity_status: MedicalValidityStatus;
 
   created_at: string;
 
@@ -762,10 +770,15 @@ export interface MedicalPipelineItem {
  * MEDICAL PIPELINE FILTER HELPERS
  * =========================================================
  */
-
 function isMedicalValid(
   medical: Medical,
 ) {
+  if (
+    medical.validity_status !== "active"
+  ) {
+    return false;
+  }
+
   if (medical.status !== "fit") {
     return false;
   }

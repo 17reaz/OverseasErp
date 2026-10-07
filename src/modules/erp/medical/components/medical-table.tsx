@@ -1,7 +1,16 @@
 // src/modules/erp/medical/components/medical-table.tsx
 
-import { ArrowRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-
+// import { ArrowRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  CircleCheck,
+  CircleX,
+  Clock3,
+  MoreHorizontal,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import type { Medical, MedicalStatus } from "../medical-service";
+import type { Medical, MedicalStatus,MedicalValidityStatus } from "../medical-service";
 
 import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
@@ -27,14 +36,50 @@ interface MedicalTableProps {
 function getStatusVariant(status: MedicalStatus) {
   if (status === "unfit") return "destructive" as const;
   if (status === "fit") return "default" as const;
-  if (status === "expired") return "secondary" as const;
+  // if (status === "expired") return "secondary" as const;
   return "outline" as const;
 }
 
 function getStatusLabel(status: MedicalStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
+function getValidityVariant(
+  status: MedicalValidityStatus,
+) {
+  if (status === "active") return "default" as const;
+  if (status === "used") return "secondary" as const;
+  if (status === "expired") return "outline" as const;
+  if (status === "invalid") return "destructive" as const;
 
+  return "outline" as const;
+}
+
+function getValidityLabel(
+  status: MedicalValidityStatus,
+) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+function getValidityIcon(
+  status: MedicalValidityStatus,
+) {
+  if (status === "active") {
+    return <ShieldCheck className="size-3.5" />;
+  }
+
+  if (status === "used") {
+    return <CircleCheck className="size-3.5" />;
+  }
+
+  if (status === "expired") {
+    return <Clock3 className="size-3.5" />;
+  }
+
+  if (status === "invalid") {
+    return <CircleX className="size-3.5" />;
+  }
+
+  return null;
+}
 export function MedicalTable({
   medicals,
   loading,
@@ -75,6 +120,26 @@ export function MedicalTable({
         </Badge>
       ),
     },
+ {
+  key: "validity_status",
+  header: "Validity",
+  cell: (medical) => (
+    <Badge
+      variant={getValidityVariant(
+        medical.validity_status,
+      )}
+      className="gap-1.5"
+    >
+      {getValidityIcon(
+        medical.validity_status,
+      )}
+
+      {getValidityLabel(
+        medical.validity_status,
+      )}
+    </Badge>
+  ),
+},
     {
       key: "action",
       header: "Action",

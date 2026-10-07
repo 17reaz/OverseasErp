@@ -9,7 +9,7 @@ import {
   toast,
 } from "@/components/shared/toast/toast";
 
-import {
+import {   
   MedicalForm,
 } from "./components/medical-form";
 
