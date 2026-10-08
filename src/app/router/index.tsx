@@ -262,13 +262,7 @@ const SettingsPage = lazy(() =>
 // -----------------------------------------------------------------------------
 
 function PageLoading() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <div className="text-sm text-muted-foreground">
-        Loading...
-      </div>
-    </div>
-  );
+  return null;
 }
 
 // -----------------------------------------------------------------------------
