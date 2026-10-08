@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -34,17 +35,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ServiceType = "internal" | "external";
 
-type ServiceStatus =
-  | "active"
-  | "inactive";
+type ServiceStatus = "active" | "inactive";
 
 interface ServiceItem {
   id: string;
@@ -226,122 +221,79 @@ const services: ServiceItem[] = [
   },
 ];
 
-const money = new Intl.NumberFormat(
-  "en-BD",
-  {
-    style: "currency",
-    currency: "BDT",
-    maximumFractionDigits: 0,
-  },
-);
+const money = new Intl.NumberFormat("en-BD", {
+  style: "currency",
+  currency: "BDT",
+  maximumFractionDigits: 0,
+});
 
 /* =========================================================
    PAGE
 ========================================================= */
 
 export function TasksPage() {
-  const [tab, setTab] = useState<
-    "all" | ServiceType
-  >("all");
-
-  const [search, setSearch] =
-    useState("");
+  const [tab, setTab] = useState<"all" | ServiceType>("all");
+  const [search, setSearch] = useState("");
 
   const filteredServices = useMemo(() => {
-    const query =
-      search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
 
     return services.filter((service) => {
-      const matchesTab =
-        tab === "all" ||
-        service.type === tab;
+      const matchesTab = tab === "all" || service.type === tab;
 
       const matchesSearch =
         !query ||
-        service.name
-          .toLowerCase()
-          .includes(query) ||
-        service.category
-          .toLowerCase()
-          .includes(query) ||
-        service.provider
-          .toLowerCase()
-          .includes(query);
+        service.name.toLowerCase().includes(query) ||
+        service.category.toLowerCase().includes(query) ||
+        service.provider.toLowerCase().includes(query);
 
-      return (
-        matchesTab &&
-        matchesSearch
-      );
+      return matchesTab && matchesSearch;
     });
   }, [search, tab]);
 
-  const internalCount =
-    services.filter(
-      (item) =>
-        item.type === "internal",
-    ).length;
+  const internalCount = services.filter(
+    (item) => item.type === "internal",
+  ).length;
 
-  const externalCount =
-    services.filter(
-      (item) =>
-        item.type === "external",
-    ).length;
+  const externalCount = services.filter(
+    (item) => item.type === "external",
+  ).length;
 
-  const activeProviders =
-    new Set(
-      services
-        .filter(
-          (item) =>
-            item.type === "external" &&
-            item.status === "active",
-        )
-        .map(
-          (item) => item.provider,
-        ),
-    ).size;
+  const activeProviders = new Set(
+    services
+      .filter((item) => item.type === "external" && item.status === "active")
+      .map((item) => item.provider),
+  ).size;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="space-y-5 px-6 py-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-3">
+        {/* HEADER */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Package className="h-4 w-4" />
+            </div>
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+            <div>
+              <h1 className="text-lg font-semibold leading-tight tracking-tight">
+                Services
+              </h1>
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Package className="h-5 w-5" />
-              </div>
-
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight">
-                  Services
-                </h1>
-
-                <p className="text-sm text-muted-foreground">
-                  Manage your internal services and
-                  external providers.
-                </p>
-              </div>
-
+              <p className="text-xs text-muted-foreground">
+                Manage your internal services and external providers.
+              </p>
             </div>
           </div>
 
-          <Button>
+          <Button size="sm">
             <Plus className="h-4 w-4" />
             Add Service
           </Button>
         </div>
 
-        {/* =================================================
-            KPI
-        ================================================= */}
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-
+        {/* KPI */}
+        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
           <StatCard
             title="Total Services"
             value={services.length}
@@ -365,385 +317,215 @@ export function TasksPage() {
             value={activeProviders}
             icon={Building2}
           />
-
         </div>
 
-        {/* =================================================
-            SERVICE DIRECTORY
-        ================================================= */}
-
-        <Card className="overflow-hidden">
-
-          <CardHeader className="border-b pb-4">
-
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-
+        {/* SERVICE DIRECTORY */}
+        <Card className="gap-0 overflow-hidden py-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <CardHeader className="gap-2 border-b px-4 py-2.5 [.border-b]:pb-2.5">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <CardTitle className="text-base">
-                  Service Directory
-                </CardTitle>
+                <CardTitle className="text-sm">Service Directory</CardTitle>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Configure how services are handled
-                  inside the ERP.
+                <p className="text-[11px] text-muted-foreground">
+                  Configure how services are handled inside the ERP.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <Tabs
+                value={tab}
+                onValueChange={(value) => setTab(value as "all" | ServiceType)}
+              >
+                <TabsList className="h-8">
+                  <TabsTrigger value="all" className="text-xs">
+                    All Services
+                  </TabsTrigger>
 
-                {/* Search */}
+                  <TabsTrigger value="internal" className="text-xs">
+                    Internal
+                  </TabsTrigger>
 
-                <div className="relative w-full sm:w-64">
+                  <TabsTrigger value="external" className="text-xs">
+                    External Providers
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <div className="flex gap-2">
+                <div className="relative w-full sm:w-56">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 
                   <Input
                     value={search}
-                    onChange={(event) =>
-                      setSearch(
-                        event.target.value,
-                      )
-                    }
+                    onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search services..."
-                    className="pl-9"
+                    className="h-8 pl-8 text-xs"
                   />
-
                 </div>
-
-                {/* Filter */}
 
                 <Button
                   variant="outline"
                   size="icon"
                   title="Filters"
+                  className="h-8 w-8 shrink-0"
                 >
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-3.5 w-3.5" />
                 </Button>
-
               </div>
             </div>
-
-            {/* Tabs */}
-
-            <Tabs
-              value={tab}
-              onValueChange={(value) =>
-                setTab(
-                  value as
-                    | "all"
-                    | ServiceType,
-                )
-              }
-            >
-              <TabsList>
-
-                <TabsTrigger value="all">
-                  All Services
-                </TabsTrigger>
-
-                <TabsTrigger value="internal">
-                  Internal
-                </TabsTrigger>
-
-                <TabsTrigger value="external">
-                  External Providers
-                </TabsTrigger>
-
-              </TabsList>
-            </Tabs>
-
           </CardHeader>
 
-          {/* =================================================
-              SERVICE LIST
-          ================================================= */}
-
-          <CardContent className="p-0">
-
+          <CardContent className="p-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             <div className="divide-y">
-
-              {filteredServices.map(
-                (service) => (
-                  <div
-                    key={service.id}
-                    className="group flex flex-col gap-4 px-5 py-4 transition hover:bg-muted/30 lg:flex-row lg:items-center"
-                  >
-
-                    {/* Service */}
-
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background">
-
-                        {service.type ===
-                        "internal" ? (
-                          <Stethoscope className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                        )}
-
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <div className="flex flex-wrap items-center gap-2">
-
-                          <p className="font-medium">
-                            {service.name}
-                          </p>
-
-                          <Badge
-                            variant={
-                              service.type ===
-                              "internal"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {service.type ===
-                            "internal"
-                              ? "Internal"
-                              : "External"}
-                          </Badge>
-
-                          {service.status ===
-                          "active" ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
-                              <CircleDot className="h-3 w-3 fill-current" />
-                              Active
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground">
-                              Inactive
-                            </span>
-                          )}
-
-                        </div>
-
-                        <p className="truncate text-xs text-muted-foreground">
-                          {service.description}
-                        </p>
-
-                      </div>
-                    </div>
-
-                    {/* Service Info */}
-
-                    <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4 lg:w-[520px]">
-
-                      <Info
-                        label="Category"
-                        value={
-                          service.category
-                        }
-                      />
-
-                      <Info
-                        label="Provider"
-                        value={
-                          service.provider
-                        }
-                      />
-
-                      <Info
-                        label="Cost"
-                        value={money.format(
-                          service.cost,
-                        )}
-                      />
-
-                      <Info
-                        label="Finance"
-                        value={
-                          service.finance
-                            ? "Connected"
-                            : "Off"
-                        }
-                      />
-
-                    </div>
-
-                    {/* Actions */}
-
-                    <div className="flex items-center justify-between gap-3 lg:w-28 lg:justify-end">
-
-                      {service.workflow ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Workflow
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">
-                          Provider
-                        </span>
-                      )}
-
-                      <DropdownMenu>
-
-                        <DropdownMenuTrigger
-                          asChild
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-
-                            <span className="sr-only">
-                              Open actions
-                            </span>
-                          </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="end">
-
-                          <DropdownMenuItem>
-                            <Settings2 className="mr-2 h-4 w-4" />
-                            Configure
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem>
-                            <Users className="mr-2 h-4 w-4" />
-                            Providers
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem>
-                            <WalletCards className="mr-2 h-4 w-4" />
-                            Finance Setup
-                          </DropdownMenuItem>
-
-                        </DropdownMenuContent>
-
-                      </DropdownMenu>
-
-                    </div>
-
-                  </div>
-                ),
-              )}
+              {filteredServices.map((service) => (
+                <ServiceRow key={service.id} service={service} />
+              ))}
 
               {!filteredServices.length && (
-                <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
+                <div className="flex min-h-24 items-center justify-center text-sm text-muted-foreground">
                   No services found.
                 </div>
               )}
-
             </div>
-
           </CardContent>
         </Card>
 
-        {/* =================================================
-            BOTTOM INFO CARDS
-        ================================================= */}
+        {/* BOTTOM INFO CARDS */}
+        <div className="grid gap-2 lg:grid-cols-3">
+          <InfoCard
+            title="Internal Workflow"
+            description="ERP-managed stages such as Medical, MOFA, Visa and Flight."
+            icon={Activity}
+            footer={
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                {internalCount} services connected to workflow
+              </>
+            }
+          />
 
-        <div className="grid gap-3 lg:grid-cols-3">
-
-          {/* Internal Workflow */}
-
-          <Card>
-            <CardContent className="p-5">
-
-              <div className="flex items-start justify-between">
-
-                <div>
-                  <p className="text-sm font-medium">
-                    Internal Workflow
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    ERP-managed stages such as
-                    Medical, MOFA, Visa and Flight.
-                  </p>
-                </div>
-
-                <Activity className="h-5 w-5 text-primary" />
-
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-
-                {internalCount} services connected
-                to workflow
-
-              </div>
-
-            </CardContent>
-          </Card>
-
-          {/* External Providers */}
-
-          <Card>
-            <CardContent className="p-5">
-
-              <div className="flex items-start justify-between">
-
-                <div>
-                  <p className="text-sm font-medium">
-                    External Providers
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Keep provider relationships
-                    separate from your ERP stages.
-                  </p>
-                </div>
-
-                <Building2 className="h-5 w-5 text-primary" />
-
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-
-                <Globe2 className="h-4 w-4" />
-
+          <InfoCard
+            title="External Providers"
+            description="Keep provider relationships separate from your ERP stages."
+            icon={Building2}
+            footer={
+              <>
+                <Globe2 className="h-3.5 w-3.5" />
                 {activeProviders} active provider
-                {activeProviders === 1
-                  ? ""
-                  : "s"}
+                {activeProviders === 1 ? "" : "s"}
+              </>
+            }
+          />
 
-              </div>
-
-            </CardContent>
-          </Card>
-
-          {/* Finance */}
-
-          <Card>
-            <CardContent className="p-5">
-
-              <div className="flex items-start justify-between">
-
-                <div>
-                  <p className="text-sm font-medium">
-                    Finance Ready
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Designed for future cost and
-                    finance event integration.
-                  </p>
-                </div>
-
-                <WalletCards className="h-5 w-5 text-primary" />
-
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-
-                <ArrowUpRight className="h-4 w-4 text-primary" />
-
+          <InfoCard
+            title="Finance Ready"
+            description="Designed for future cost and finance event integration."
+            icon={WalletCards}
+            footer={
+              <>
+                <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
                 Cost → Service → Finance Event
+              </>
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-              </div>
+/* =========================================================
+   SERVICE ROW
+========================================================= */
 
-            </CardContent>
-          </Card>
+function ServiceRow({ service }: { service: ServiceItem }) {
+  const isInternal = service.type === "internal";
 
+  return (
+    <div className="group flex flex-col gap-2 px-4 py-2 transition hover:bg-muted/30 lg:flex-row lg:items-center lg:gap-3">
+      {/* Service */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+          {isInternal ? (
+            <Stethoscope className="h-3.5 w-3.5 text-primary" />
+          ) : (
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
         </div>
 
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium leading-tight">{service.name}</p>
+
+            <Badge
+              variant={isInternal ? "default" : "secondary"}
+              className="px-1.5 py-0 text-[10px]"
+            >
+              {isInternal ? "Internal" : "External"}
+            </Badge>
+
+            {service.status === "active" ? (
+              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
+                <CircleDot className="h-3 w-3 fill-current" />
+                Active
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">
+                Inactive
+              </span>
+            )}
+          </div>
+
+          <p className="truncate text-[11px] text-muted-foreground">
+            {service.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Service Info */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[480px]">
+        <Info label="Category" value={service.category} />
+        <Info label="Provider" value={service.provider} />
+        <Info label="Cost" value={money.format(service.cost)} />
+        <Info label="Finance" value={service.finance ? "Connected" : "Off"} />
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-between gap-2 lg:w-28 lg:justify-end">
+        {service.workflow ? (
+          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Workflow
+          </span>
+        ) : (
+          <span className="text-[11px] text-muted-foreground">Provider</span>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MoreHorizontal className="h-4 w-4" />
+
+              <span className="sr-only">Open actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <Settings2 className="mr-2 h-4 w-4" />
+              Configure
+            </DropdownMenuItem>
+
+            <DropdownMenuItem>
+              <Users className="mr-2 h-4 w-4" />
+              Providers
+            </DropdownMenuItem>
+
+            <DropdownMenuItem>
+              <WalletCards className="mr-2 h-4 w-4" />
+              Finance Setup
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -763,30 +545,60 @@ function StatCard({
   icon: typeof Package;
 }) {
   return (
-    <Card>
-
-      <CardContent className="flex h-[76px] items-center justify-between px-4">
-
+    <Card className="gap-0 py-0">
+      <CardContent className="flex h-14 items-center justify-between px-3">
         <div>
-
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px] leading-none text-muted-foreground">
             {title}
           </p>
 
-          <p className="mt-1 text-xl font-semibold tracking-tight">
+          <p className="mt-1 text-lg font-semibold leading-none tracking-tight">
             {value}
           </p>
-
         </div>
 
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted/60">
-
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/60">
           <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
+/* =========================================================
+   INFO CARD (bottom cards)
+========================================================= */
+
+function InfoCard({
+  title,
+  description,
+  icon: Icon,
+  footer,
+}: {
+  title: string;
+  description: string;
+  icon: typeof Package;
+  footer: ReactNode;
+}) {
+  return (
+    <Card className="gap-0 py-0">
+      <CardContent className="px-3 py-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-medium">{title}</p>
+
+            <p className="truncate text-[11px] text-muted-foreground">
+              {description}
+            </p>
+          </div>
+
+          <Icon className="h-4 w-4 shrink-0 text-primary" />
         </div>
 
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          {footer}
+        </div>
       </CardContent>
-
     </Card>
   );
 }
@@ -795,24 +607,14 @@ function StatCard({
    INFO
 ========================================================= */
 
-function Info({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+      <p className="text-[10px] uppercase leading-none tracking-wide text-muted-foreground">
         {label}
       </p>
 
-      <p className="mt-1 truncate text-xs font-medium">
-        {value}
-      </p>
-
+      <p className="mt-0.5 truncate text-xs font-medium">{value}</p>
     </div>
   );
 }
