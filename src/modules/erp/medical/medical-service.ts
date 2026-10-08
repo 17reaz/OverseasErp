@@ -15,6 +15,11 @@ export type MedicalStatus =
   | "used"
   | "expired"
   | "invalid";
+
+export type MedicalValidityAction =
+  | "active"
+  | "expired"
+  | "invalid";
 export type MedicalCandidateCountry =
   | "Saudi Arabia"
   | "Mauritius"

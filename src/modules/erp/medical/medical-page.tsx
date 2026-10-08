@@ -4,9 +4,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  MedicalValidityReview,
-} from "./components/medical-validity-review";
+// import {
+//   MedicalValidityReview,
+// } from "./components/medical-validity-review";
 import {
   toast,
 } from "@/components/shared/toast/toast";

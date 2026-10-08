@@ -150,7 +150,7 @@ export function MedicalValidityReviewList() {
         {medicals.map((medical, index) => {
           const expiryDate = getExpiryDate(medical);
           const candidateName =
-            medical.candidate?.full_name || "Unknown Candidate";
+            medical.candidate?.name || "Unknown Candidate";
 
           const processing = processingId === medical.id;
 
