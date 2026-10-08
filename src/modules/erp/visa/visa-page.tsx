@@ -2,8 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { VisaForm } from "./components/visa-form";
 import { VisaPending } from "./components/visa-pending";
 import { VisaTable } from "./components/visa-table";
-import { VisaToolbar, type VisaFilterView } from "./components/visa-toolbar";
 import { VisaGrid } from "./components/visa-grid";
+import {
+  VisaToolbar,
+  type VisaDisplayView,
+  type VisaFilterView,
+} from "./components/visa-toolbar";
+
 import {
   deleteVisa,
   getApprovedMofasWithoutVisa,
@@ -12,11 +17,17 @@ import {
   type VisaEligibleMofa,
 } from "./visa-service";
 import { getCandidates } from "../candidates/candidate-service";
-import { getMofas, type Mofa } from "../mofa/mofa-service";
+// import { getMofas, type Mofa } from "../mofa/mofa-service";
+import {
+  getMofas,
+  getMofaAgencies,
+  type Mofa,
+  type MofaAgency,
+} from "../mofa/mofa-service";
 export function VisaPage() {
   const [records, setRecords] = useState<Visa[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
-  const [agencies] = useState<any[]>([]); // setAgencies বাদ দেওয়া হয়েছে
+  const [agencies, setAgencies] = useState<MofaAgency[]>([]);
 const [mofas, setMofas] = useState<Mofa[]>([]);  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,26 +51,31 @@ const [mofas, setMofas] = useState<Mofa[]>([]);
     candidate_id: string;
     mofa_id: string;
   } | null>(null);
+const loadData = useCallback(async () => {
+  try {
+    const [
+      visaList,
+      candidatesData,
+      mofaResult,
+      agencyResult,
+    ] = await Promise.all([
+      getVisas(),
+      getCandidates(),
+      getMofas(),
+      getMofaAgencies(),
+    ]);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [visaList, candidatesData, mofaResult] =
-  await Promise.all([
-    getVisas(),
-    getCandidates(),
-    getMofas(),
-  ]);
-
-setRecords(visaList);
-setCandidates(candidatesData);
-setMofas(mofaResult.data ?? []);
-    } catch (error) {
-      console.error("Failed to load visa module:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    setRecords(visaList);
+    setCandidates(candidatesData);
+    setMofas(mofaResult.data ?? []);
+    setAgencies(agencyResult.data ?? []);
+  } catch (error) {
+    console.error("Failed to load visa module:", error);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+}, []);
 
   const loadPending = useCallback(async () => {
     try {
@@ -78,27 +94,45 @@ setMofas(mofaResult.data ?? []);
       setPendingLoading(false);
     }
   }, []);
+const handleRefresh = useCallback(async () => {
+  setRefreshing(true);
 
+  try {
+    await Promise.all([
+      loadData(),
+      loadPending(),
+    ]);
+  } finally {
+    setRefreshing(false);
+  }
+}, [loadData, loadPending]);
   useEffect(() => {
     void loadData();
     void loadPending();
   }, [loadData, loadPending]);
 
-  const filteredRecords = useMemo(() => {
-    const query = search.trim().toLowerCase();
+ const filteredRecords = useMemo(() => {
+  const query = search.trim().toLowerCase();
 
-    return records.filter((record) => {
-      const candidate = candidates.find((c) => c.id === record.candidate_id);
+  return records.filter((record) => {
+    const candidate = candidates.find(
+      (c) => c.id === record.candidate_id,
+    );
 
-      return (
-        !query ||
-        candidate?.name.toLowerCase().includes(query) ||
-        candidate?.passport_no.toLowerCase().includes(query) ||
-        record.visa_no.toLowerCase().includes(query) ||
-        record.visa_type.toLowerCase().includes(query)
-      );
-    });
-  }, [records, candidates, search]);
+    const name = candidate?.name?.toLowerCase() ?? "";
+    const passport = candidate?.passport_no?.toLowerCase() ?? "";
+    const visaNo = record.visa_no?.toLowerCase() ?? "";
+    const visaType = record.visa_type?.toLowerCase() ?? "";
+
+    return (
+      !query ||
+      name.includes(query) ||
+      passport.includes(query) ||
+      visaNo.includes(query) ||
+      visaType.includes(query)
+    );
+  });
+}, [records, candidates, search]);
 
   const filteredPendingMofas = useMemo(() => {
     const query = search.trim().toLowerCase();
