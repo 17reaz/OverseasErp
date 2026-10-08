@@ -95,7 +95,7 @@ export function MedicalValidityReview() {
           type="button"
           variant={count > 0 ? "outline" : "ghost"}
           size="sm"
-          className="gap-2"
+          className="h-9 gap-2 shrink-0"
           disabled={loading}
         >
           {loading ? (
