@@ -473,32 +473,30 @@ export async function getDashboardStats(): Promise<{
     ===================================================== */
 
     supabase
-      .from("visas")
-      .select(
-        "candidate_id",
-      )
-      .not(
-        "status",
-        "in",
-        "(issued,approved,cancelled,expired)",
-      ),
+  .from("visas")
+  .select("candidate_id")
+  .in(
+    "status",
+    [
+      "processing",
+      "active",
+    ],
+  ),
 
     /* =====================================================
        VISA - ISSUED
     ===================================================== */
 
-    supabase
-      .from("visas")
-      .select(
-        "candidate_id",
-      )
-      .in(
-        "status",
-        [
-          "issued",
-          "approved",
-        ],
-      ),
+   supabase
+  .from("visas")
+  .select("candidate_id")
+  .in(
+    "status",
+    [
+      "active",
+      "delivered",
+    ],
+  ),
 
     /* =====================================================
        FLIGHT - SCHEDULED
