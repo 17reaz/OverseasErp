@@ -232,7 +232,6 @@ const handleRefresh = useCallback(async () => {
     <VisaGrid
       records={filteredRecords}
       candidates={candidates}
-      agencies={agencies}
       loading={loading}
       onEdit={handleEdit}
       onDelete={handleDelete}
