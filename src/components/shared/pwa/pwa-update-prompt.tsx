@@ -69,17 +69,23 @@ export function PwaUpdatePrompt() {
 
   // ---- button na chepe app theke bairey gele auto apply ----
   useEffect(() => {
-    if (!needRefresh) return
+  if (!needRefresh) return
+  let hiddenAt = 0
 
-    const applyWhenLeaving = () => {
-      if (document.visibilityState !== "hidden") return
-      if (isTyping()) return
+  const onChange = () => {
+    if (document.visibilityState === "hidden") {
+      hiddenAt = Date.now()
+      return
+    }
+    // ফিরে এসেছে: ১০ মিনিটের বেশি বাইরে ছিল আর টাইপ করছে না
+    if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000 && !isTyping()) {
       void updateServiceWorker(true)
     }
+  }
 
-    document.addEventListener("visibilitychange", applyWhenLeaving)
-    return () => document.removeEventListener("visibilitychange", applyWhenLeaving)
-  }, [needRefresh, updateServiceWorker])
+  document.addEventListener("visibilitychange", onChange)
+  return () => document.removeEventListener("visibilitychange", onChange)
+}, [needRefresh, updateServiceWorker])
 
   return null
 }
