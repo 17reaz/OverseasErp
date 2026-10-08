@@ -66,7 +66,7 @@ interface AgencyOption {
 interface MofaOption {
   id: string;
   candidate_id: string;
-  application_number: string;
+  application_number: string | null;
 }
 
 interface VisaFormProps {
@@ -405,14 +405,15 @@ export function VisaForm({
       }),
     );
 
-  const mofaOptions =
-    availableMofas.map(
-      (mofa) => ({
-        value: mofa.id,
-        label:
-          mofa.application_number,
-      }),
-    );
+ const mofaOptions =
+  availableMofas.map(
+    (mofa) => ({
+      value: mofa.id,
+      label:
+        mofa.application_number ??
+        "No application number",
+    }),
+  );
 
   /* =======================================================
      RENDER

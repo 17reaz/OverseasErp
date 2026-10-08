@@ -82,7 +82,7 @@ const stageOptions: { value: MofaStage; label: string }[] = [
   { value: "new", label: "New" },
   { value: "medupdated", label: "Medical Updated" },
   { value: "approved", label: "Approved" },
-  { value: "canceled", label: "Canceled" },
+  // { value: "canceled", label: "Canceled" },
 ];
 
 /* =========================================================
