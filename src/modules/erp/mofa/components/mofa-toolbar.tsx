@@ -31,6 +31,10 @@ import type { MofaStage } from "../mofa-service";
 
 import { PageToolbar } from "../../shared/ui/page-toolbar";
 
+/* =========================================================
+ * TYPES
+ * ========================================================= */
+
 export type MofaFilterState = {
   view: MofaStage | "all" | "mofaable";
   month: "all" | string;
@@ -59,23 +63,23 @@ interface MofaToolbarProps {
 
   refreshing?: boolean;
 
-  // FILTER
-
+  // Filter
   filter?: MofaFilterState;
   onFilterChange?: (filter: MofaFilterState) => void;
-
   monthOptions?: Array<{ value: string; label: string }>;
 
-  // SORT
-
+  // Sort
   sort?: MofaSortState;
   onSortChange?: (sort: MofaSortState) => void;
 
-  // VIEW
-
+  // View
   viewMode?: MofaViewMode;
   onViewModeChange?: (mode: MofaViewMode) => void;
 }
+
+/* =========================================================
+ * CONSTANTS
+ * ========================================================= */
 
 const defaultFilter: MofaFilterState = {
   view: "all",
@@ -86,6 +90,47 @@ const defaultSort: MofaSortState = {
   mode: "custom",
   field: "created_at",
 };
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "new", label: "New" },
+  { value: "medupdated", label: "Med Updated" },
+  { value: "approved", label: "Approved" },
+  { value: "canceled", label: "Canceled" },
+  { value: "expired", label: "Expired" },
+  { value: "invalid", label: "Invalid" },
+];
+
+/** Labels shown on the status button. Anything else falls back to "All". */
+const STATUS_BUTTON_LABELS: Record<string, string> = {
+  new: "New",
+  medupdated: "Med Updated",
+  approved: "Approved",
+};
+
+const SORT_MODE_LABELS: Record<MofaSortState["mode"], string> = {
+  ascending: "Ascending",
+  descending: "Descending",
+  custom: "Custom",
+};
+
+const SORT_FIELD_OPTIONS: Array<{
+  value: MofaSortState["field"];
+  label: string;
+}> = [
+  { value: "name", label: "Candidate name" },
+  { value: "passport_no", label: "Passport number" },
+  { value: "application_number", label: "Application number" },
+  { value: "application_date", label: "Application date" },
+  { value: "created_at", label: "Created date" },
+  { value: "updated_at", label: "Updated date" },
+];
+
+const TRIGGER_BUTTON_CLASS = "h-9 shrink-0";
+
+/* =========================================================
+ * HELPERS
+ * ========================================================= */
 
 function getDefaultMonthOptions() {
   const months: { value: string; label: string }[] = [];
@@ -100,18 +145,22 @@ function getDefaultMonthOptions() {
 
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
-    const value = `${year}-${month}`;
 
-    const label = date.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
+    months.push({
+      value: `${year}-${month}`,
+      label: date.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
     });
-
-    months.push({ value, label });
   }
 
   return months;
 }
+
+/* =========================================================
+ * TOOLBAR
+ * ========================================================= */
 
 export function MofaToolbar({
   search = "",
@@ -146,33 +195,12 @@ export function MofaToolbar({
 
   const isMofaable = filter.view === "mofaable";
   const statusValue = isMofaable ? "all" : filter.view;
+  const statusLabel = STATUS_BUTTON_LABELS[statusValue] ?? "All";
 
   // Mofaable + status are handled by their own controls.
-  const activeFilterCount = [filter.month !== "all" ? "month" : null].filter(
-    Boolean,
-  ).length;
+  const activeFilterCount = filter.month !== "all" ? 1 : 0;
 
-  const sortLabel =
-    sort.mode === "ascending"
-      ? "Ascending"
-      : sort.mode === "descending"
-        ? "Descending"
-        : "Custom";
-
-  const statusLabel =
-    statusValue === "new"
-      ? "New"
-      : statusValue === "medupdated"
-        ? "Med Updated"
-        : statusValue === "approved"
-          ? "Approved"
-          : statusValue === "canceled"
-            ? "Canceled"
-            : statusValue === "expired"
-              ? "Expired"
-              : statusValue === "invalid"
-                ? "Invalid"
-                : "All";
+  const sortLabel = SORT_MODE_LABELS[sort.mode];
 
   return (
     <PageToolbar
@@ -184,85 +212,59 @@ export function MofaToolbar({
       onCreate={onCreate}
       createLabel="Add MOFA"
     >
-      {/* ===================================================
-          MOFAABLE — standalone toggle
-          =================================================== */}
-
+      {/* MOFAABLE — standalone toggle */}
       <Button
         type="button"
         variant={isMofaable ? "secondary" : "outline"}
-        className="h-9 shrink-0"
-        onClick={() =>
-          updateFilter({ view: isMofaable ? "all" : "mofaable" })
-        }
+        className={TRIGGER_BUTTON_CLASS}
+        onClick={() => updateFilter({ view: isMofaable ? "all" : "mofaable" })}
       >
         <FileCheck2 className="mr-2 h-4 w-4" />
-
         <span className="hidden sm:inline">Mofaable</span>
       </Button>
 
-      {/* ===================================================
-          STATUS FILTER — ALL / NEW / MED UPDATED / APPROVED /
-          CANCELED / EXPIRED / INVALID
-          =================================================== */}
-
+      {/* STATUS FILTER */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" type="button" className="h-9 shrink-0">
+          <Button
+            variant="outline"
+            type="button"
+            className={TRIGGER_BUTTON_CLASS}
+          >
             <SlidersHorizontal className="mr-2 h-4 w-4" />
-
             <span className="hidden sm:inline">{statusLabel}</span>
-
-            <span className="sm:hidden">
-              {statusValue === "all" ? "All" : statusLabel}
-            </span>
+            <span className="sm:hidden">{statusLabel}</span>
           </Button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" className="w-48">
           <DropdownMenuLabel>MOFA status</DropdownMenuLabel>
-
           <DropdownMenuSeparator />
 
           <DropdownMenuRadioGroup
             value={statusValue}
             onValueChange={(value) =>
-              updateFilter({
-                view: value as MofaFilterState["view"],
-              })
+              updateFilter({ view: value as MofaFilterState["view"] })
             }
           >
-            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="new">New</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="medupdated">
-              Med Updated
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="approved">
-              Approved
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="canceled">
-              Canceled
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="expired">
-              Expired
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="invalid">
-              Invalid
-            </DropdownMenuRadioItem>
+            {STATUS_OPTIONS.map((option) => (
+              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ===================================================
-          MAIN FILTER
-          Month
-          =================================================== */}
-
+      {/* MAIN FILTER — Month */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" type="button" className="h-9 shrink-0">
+          <Button
+            variant="outline"
+            type="button"
+            className={TRIGGER_BUTTON_CLASS}
+          >
             <SlidersHorizontal className="mr-2 h-4 w-4" />
-
             <span className="hidden sm:inline">Filter</span>
 
             {activeFilterCount > 0 && (
@@ -275,10 +277,7 @@ export function MofaToolbar({
 
         <DropdownMenuContent align="start" className="w-64">
           <DropdownMenuLabel>Filter MOFA</DropdownMenuLabel>
-
           <DropdownMenuSeparator />
-
-          {/* MONTH */}
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>Month</DropdownMenuSubTrigger>
@@ -293,10 +292,7 @@ export function MofaToolbar({
                 </DropdownMenuRadioItem>
 
                 {months.map((month) => (
-                  <DropdownMenuRadioItem
-                    key={month.value}
-                    value={month.value}
-                  >
+                  <DropdownMenuRadioItem key={month.value} value={month.value}>
                     {month.label}
                   </DropdownMenuRadioItem>
                 ))}
@@ -308,12 +304,7 @@ export function MofaToolbar({
 
           <DropdownMenuCheckboxItem
             checked={activeFilterCount === 0}
-            onCheckedChange={() =>
-              onFilterChange?.({
-                ...filter,
-                month: "all",
-              })
-            }
+            onCheckedChange={() => updateFilter({ month: "all" })}
           >
             <Check className="mr-2 h-4 w-4" />
             Clear filters
@@ -321,17 +312,16 @@ export function MofaToolbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ===================================================
-          SORT
-          =================================================== */}
-
+      {/* SORT */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" type="button" className="h-9 shrink-0">
+          <Button
+            variant="outline"
+            type="button"
+            className={TRIGGER_BUTTON_CLASS}
+          >
             <ArrowUpDown className="mr-2 h-4 w-4" />
-
             <span className="hidden sm:inline">Sort</span>
-
             <span className="ml-1 text-xs text-muted-foreground">
               · {sortLabel}
             </span>
@@ -340,15 +330,12 @@ export function MofaToolbar({
 
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel>Sort MOFA</DropdownMenuLabel>
-
           <DropdownMenuSeparator />
 
           <DropdownMenuRadioGroup
             value={sort.mode}
             onValueChange={(value) =>
-              updateSort({
-                mode: value as MofaSortState["mode"],
-              })
+              updateSort({ mode: value as MofaSortState["mode"] })
             }
           >
             <DropdownMenuRadioItem value="ascending">
@@ -378,44 +365,24 @@ export function MofaToolbar({
               <DropdownMenuRadioGroup
                 value={sort.field}
                 onValueChange={(value) =>
-                  updateSort({
-                    field: value as MofaSortState["field"],
-                  })
+                  updateSort({ field: value as MofaSortState["field"] })
                 }
               >
-                <DropdownMenuRadioItem value="name">
-                  Candidate name
-                </DropdownMenuRadioItem>
-
-                <DropdownMenuRadioItem value="passport_no">
-                  Passport number
-                </DropdownMenuRadioItem>
-
-                <DropdownMenuRadioItem value="application_number">
-                  Application number
-                </DropdownMenuRadioItem>
-
-                <DropdownMenuRadioItem value="application_date">
-                  Application date
-                </DropdownMenuRadioItem>
-
-                <DropdownMenuRadioItem value="created_at">
-                  Created date
-                </DropdownMenuRadioItem>
-
-                <DropdownMenuRadioItem value="updated_at">
-                  Updated date
-                </DropdownMenuRadioItem>
+                {SORT_FIELD_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
               </DropdownMenuRadioGroup>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ===================================================
-          LIST / GRID TOGGLE
-          =================================================== */}
-
+      {/* LIST / GRID TOGGLE */}
       <div className="inline-flex h-9 shrink-0 items-center rounded-md border bg-muted/30 p-0.5">
         <Button
           type="button"
@@ -425,7 +392,6 @@ export function MofaToolbar({
           onClick={() => onViewModeChange?.("list")}
         >
           <List className="h-4 w-4" />
-
           <span className="hidden sm:inline">List</span>
         </Button>
 
@@ -437,7 +403,6 @@ export function MofaToolbar({
           onClick={() => onViewModeChange?.("grid")}
         >
           <Grid2X2 className="h-4 w-4" />
-
           <span className="hidden sm:inline">Grid</span>
         </Button>
       </div>

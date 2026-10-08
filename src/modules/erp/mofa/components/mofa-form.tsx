@@ -1,20 +1,28 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 
-import type {
-  FormEvent,
-} from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import {
-  Input,
-} from "@/components/ui/input";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+import { Input } from "@/components/ui/input";
+
+import { Label } from "@/components/ui/label";
 
 import {
-  Label,
-} from "@/components/ui/label";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   Select,
@@ -24,13 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import {
-  UniversalSheet,
-} from "@/modules/erp/shared/forms/universal-sheet";
+import { toast } from "@/components/shared/toast/toast";
 
-import {
-  toast,
-} from "@/components/shared/toast/toast";
+import { UniversalSheet } from "@/modules/erp/shared/forms/universal-sheet";
 
 import {
   createMofa,
@@ -45,51 +49,24 @@ import {
   type MofaStage,
 } from "../mofa-service";
 
-import {
-  Check,
-  ChevronsUpDown,
-} from "lucide-react";
-
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-
-import { Button } from "@/components/ui/button";
 /* =========================================================
  * PROPS
  * ========================================================= */
 
 interface MofaFormProps {
   open: boolean;
-
   mofa: Mofa | null;
-
   candidates: MofaCandidate[];
-
   selectedCandidate?: MofaCandidate | null;
-
-  onOpenChange: (
-    open: boolean,
-  ) => void;
-
+  onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
 
-
 /* =========================================================
- * DEFAULT FORM
+ * CONSTANTS
  * ========================================================= */
+
+const NONE_VALUE = "__none";
 
 const emptyForm: MofaInput = {
   candidate_id: "",
@@ -101,41 +78,59 @@ const emptyForm: MofaInput = {
   stage: "new",
 };
 
-
-/* =========================================================
- * STAGE OPTIONS
- * ========================================================= */
-
-const stageOptions: {
-  value: MofaStage;
-  label: string;
-}[] = [
-  {
-    value: "new",
-    label: "New",
-  },
-  {
-    value: "medupdated",
-    label: "Medical Updated",
-  },
-  {
-    value: "approved",
-    label: "Approved",
-  },
-  {
-    value: "canceled",
-    label: "Canceled",
-  },
-  {
-    value: "expired",
-    label: "Expired",
-  },
-  {
-    value: "invalid",
-    label: "Invalid",
-  },
+const stageOptions: { value: MofaStage; label: string }[] = [
+  { value: "new", label: "New" },
+  { value: "medupdated", label: "Medical Updated" },
+  { value: "approved", label: "Approved" },
+  { value: "canceled", label: "Canceled" },
 ];
 
+/* =========================================================
+ * HELPERS
+ * ========================================================= */
+
+/** Stages that cannot be saved without a medical record. */
+function stageRequiresMedical(stage: MofaStage) {
+  return stage === "medupdated" || stage === "approved";
+}
+
+function getMedicalLabel(medical: MofaMedical) {
+  const date = medical.medical_date
+    ? new Date(medical.medical_date).toLocaleDateString()
+    : "No date";
+
+  const fitDate = medical.fit_date
+    ? new Date(medical.fit_date).toLocaleDateString()
+    : null;
+
+  return [date, medical.status.toUpperCase(), fitDate ? `Fit: ${fitDate}` : null]
+    .filter(Boolean)
+    .join(" • ");
+}
+
+interface FieldProps {
+  label: string;
+  htmlFor: string;
+  labelRight?: ReactNode;
+  children: ReactNode;
+}
+
+function Field({ label, htmlFor, labelRight, children }: FieldProps) {
+  return (
+    <div className="space-y-2">
+      {labelRight ? (
+        <div className="flex items-center justify-between">
+          <Label htmlFor={htmlFor}>{label}</Label>
+          {labelRight}
+        </div>
+      ) : (
+        <Label htmlFor={htmlFor}>{label}</Label>
+      )}
+
+      {children}
+    </div>
+  );
+}
 
 /* =========================================================
  * FORM
@@ -149,179 +144,67 @@ export function MofaForm({
   onOpenChange,
   onSuccess,
 }: MofaFormProps) {
+  const [form, setForm] = useState<MofaInput>(emptyForm);
 
-  /* =======================================================
-   * FORM STATE
-   * ======================================================= */
+  const [medicals, setMedicals] = useState<MofaMedical[]>([]);
+  const [medicalLoading, setMedicalLoading] = useState(false);
 
-  const [
-    form,
-    setForm,
-  ] = useState<MofaInput>(
-    emptyForm,
-  );
+  const [agencies, setAgencies] = useState<MofaAgency[]>([]);
+  const [agenciesLoading, setAgenciesLoading] = useState(false);
 
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  /* =======================================================
-   * MEDICALS
-   * ======================================================= */
+  const isEditing = Boolean(mofa);
 
-  const [
-    medicals,
-    setMedicals,
-  ] = useState<MofaMedical[]>([]);
+  const currentCandidate = useMemo(() => {
+    if (selectedCandidate) {
+      return selectedCandidate;
+    }
 
-  const [
-    medicalLoading,
-    setMedicalLoading,
-  ] = useState(false);
+    if (!form.candidate_id) {
+      return null;
+    }
 
-
-  /* =======================================================
-   * AGENCIES
-   * ======================================================= */
-
-  const [
-    agencies,
-    setAgencies,
-  ] = useState<MofaAgency[]>([]);
-
-  const [
-    agenciesLoading,
-    setAgenciesLoading,
-  ] = useState(false);
-
-
-  /* =======================================================
-   * SUBMIT
-   * ======================================================= */
-
-  const [
-    saving,
-    setSaving,
-  ] = useState(false);
-
-
-  /* =======================================================
-   * DIRTY STATE
-   * ======================================================= */
-
-  const [
-    dirty,
-    setDirty,
-  ] = useState(false);
-
-
-  /* =======================================================
-   * EDITING
-   * ======================================================= */
-
-  const isEditing =
-    Boolean(mofa);
-
-
-  /* =======================================================
-   * SELECTED CANDIDATE
-   * ======================================================= */
-
-  const currentCandidate =
-    useMemo(
-      () => {
-
-        if (
-          selectedCandidate
-        ) {
-          return selectedCandidate;
-        }
-
-        if (
-          !form.candidate_id
-        ) {
-          return null;
-        }
-
-        return (
-          candidates.find(
-            (candidate) =>
-              candidate.id ===
-              form.candidate_id,
-          ) ?? null
-        );
-
-      },
-      [
-        selectedCandidate,
-        form.candidate_id,
-        candidates,
-      ],
+    return (
+      candidates.find((candidate) => candidate.id === form.candidate_id) ?? null
     );
-
+  }, [selectedCandidate, form.candidate_id, candidates]);
 
   /* =======================================================
    * RESET FORM
    * ======================================================= */
 
   useEffect(() => {
-
     if (!open) {
       return;
     }
 
     if (mofa) {
-
       setForm({
-        candidate_id:
-          mofa.candidate_id,
-
-        medical_id:
-          mofa.medical_id,
-
-        agency_id:
-          mofa.agency_id,
-
-        application_number:
-          mofa.application_number ??
-          "",
-
-        application_date:
-          mofa.application_date ??
-          "",
-
-        trade:
-          mofa.trade ??
-          "",
-
-        stage:
-          mofa.stage,
+        candidate_id: mofa.candidate_id,
+        medical_id: mofa.medical_id,
+        agency_id: mofa.agency_id,
+        application_number: mofa.application_number ?? "",
+        application_date: mofa.application_date ?? "",
+        trade: mofa.trade ?? "",
+        stage: mofa.stage,
       });
-
     } else {
-
       setForm({
         ...emptyForm,
-
-        candidate_id:
-          selectedCandidate?.id ??
-          "",
+        candidate_id: selectedCandidate?.id ?? "",
       });
-
     }
 
     setDirty(false);
-
-  }, [
-    open,
-    mofa,
-    selectedCandidate,
-  ]);
-
+  }, [open, mofa, selectedCandidate]);
 
   /* =======================================================
    * LOAD AGENCIES
    * ======================================================= */
 
   useEffect(() => {
-
     if (!open) {
       return;
     }
@@ -329,724 +212,317 @@ export function MofaForm({
     let active = true;
 
     async function loadAgencies() {
-
       try {
+        setAgenciesLoading(true);
 
-        setAgenciesLoading(
-          true,
-        );
-
-        const {
-          data,
-          error,
-        } = await getMofaAgencies();
+        const { data, error } = await getMofaAgencies();
 
         if (error) {
           throw error;
         }
 
         if (active) {
-
-          setAgencies(
-            data ?? [],
-          );
-
+          setAgencies(data ?? []);
         }
-
       } catch (error) {
-
-        console.error(
-          "Failed to load agencies:",
-          error,
-        );
+        console.error("Failed to load agencies:", error);
 
         if (active) {
-
-          toast.error(
-            "Failed to load agencies.",
-            "Please try again.",
-          );
-
+          toast.error("Failed to load agencies.", "Please try again.");
         }
-
       } finally {
-
         if (active) {
-
-          setAgenciesLoading(
-            false,
-          );
-
+          setAgenciesLoading(false);
         }
-
       }
-
     }
 
     void loadAgencies();
 
     return () => {
-
       active = false;
-
     };
-
-  }, [
-    open,
-  ]);
-
+  }, [open]);
 
   /* =======================================================
-   * LOAD MEDICALS
-   *
-   * Medical is optional.
+   * LOAD MEDICALS (medical is optional)
    * ======================================================= */
 
   useEffect(() => {
-
     if (!open) {
       return;
     }
 
     if (!form.candidate_id) {
-
       setMedicals([]);
-
       return;
-
     }
 
     let active = true;
 
     async function loadMedicals() {
-
       try {
+        setMedicalLoading(true);
 
-        setMedicalLoading(
-          true,
-        );
-
-        const {
-          data,
-          error,
-        } =
-          await getCandidateMedicals(
-            form.candidate_id,
-          );
+        const { data, error } = await getCandidateMedicals(form.candidate_id);
 
         if (error) {
           throw error;
         }
 
         if (active) {
-
-          setMedicals(
-            data ?? [],
-          );
-
+          setMedicals(data ?? []);
         }
-
       } catch (error) {
-
-        console.error(
-          "Failed to load medical records:",
-          error,
-        );
+        console.error("Failed to load medical records:", error);
 
         if (active) {
-
           setMedicals([]);
-
-          toast.error(
-            "Failed to load medical records.",
-            "Please try again.",
-          );
-
+          toast.error("Failed to load medical records.", "Please try again.");
         }
-
       } finally {
-
         if (active) {
-
-          setMedicalLoading(
-            false,
-          );
-
+          setMedicalLoading(false);
         }
-
       }
-
     }
 
     void loadMedicals();
 
     return () => {
-
       active = false;
-
     };
-
-  }, [
-    open,
-    form.candidate_id,
-  ]);
-
+  }, [open, form.candidate_id]);
 
   /* =======================================================
-   * CHANGE HELPER
+   * CHANGE HANDLERS
    * ======================================================= */
 
-  function updateField<
-    K extends keyof MofaInput
-  >(
+  function updateField<K extends keyof MofaInput>(
     field: K,
     value: MofaInput[K],
   ) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setDirty(true);
+  }
 
-    setForm(
-      (current) => ({
-        ...current,
-        [field]: value,
-      }),
-    );
+  function handleCandidateChange(candidateId: string) {
+    setForm((current) => ({
+      ...current,
+      candidate_id: candidateId,
+
+      // Medical belongs to the candidate: clear it when candidate changes.
+      medical_id: null,
+    }));
 
     setDirty(true);
-
   }
-
-
-  /* =======================================================
-   * CANDIDATE CHANGE
-   * ======================================================= */
-
-  function handleCandidateChange(
-    candidateId: string,
-  ) {
-
-    setForm(
-      (current) => ({
-        ...current,
-
-        candidate_id:
-          candidateId,
-
-        /*
-         * Medical belongs to candidate.
-         *
-         * When candidate changes,
-         * clear previous medical.
-         */
-
-        medical_id:
-          null,
-      }),
-    );
-
-    setDirty(true);
-
-  }
-
-
-  /* =======================================================
-   * STAGE CHANGE
-   * ======================================================= */
-
-  function handleStageChange(
-    stage: MofaStage,
-  ) {
-
-    updateField(
-      "stage",
-      stage,
-    );
-
-  }
-
-
-  /* =======================================================
-   * MEDICAL LABEL
-   * ======================================================= */
-
-  function getMedicalLabel(
-    medical: MofaMedical,
-  ) {
-
-    const date =
-      medical.medical_date
-        ? new Date(
-            medical.medical_date,
-          ).toLocaleDateString()
-        : "No date";
-
-    const fitDate =
-      medical.fit_date
-        ? new Date(
-            medical.fit_date,
-          ).toLocaleDateString()
-        : null;
-
-    return [
-      date,
-      medical.status.toUpperCase(),
-      fitDate
-        ? `Fit: ${fitDate}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(" • ");
-
-  }
-
 
   /* =======================================================
    * VALIDATION
    * ======================================================= */
 
   function validate(): string | null {
-
     if (!form.candidate_id) {
-
       return "Please select a candidate.";
-
     }
 
-    if (
-      !form.application_number.trim()
-    ) {
-
-      return "Application number is required.";
-
-    }
-
-    /*
-     * Medical is optional for MOFA.
-     *
-     * Medical is required only for:
-     *
-     * medupdated
-     * approved
-     */
-
-    if (
-      (
-        form.stage ===
-          "medupdated" ||
-        form.stage ===
-          "approved"
-      ) &&
-      !form.medical_id
-    ) {
-
-      return (
-        "A medical record is required for this stage."
-      );
-
+    // Medical is optional, except for "medupdated" and "approved".
+    if (stageRequiresMedical(form.stage) && !form.medical_id) {
+      return "A medical record is required for this stage.";
     }
 
     return null;
-
   }
-
 
   /* =======================================================
    * SUBMIT
    * ======================================================= */
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const validationError =
-      validate();
+    const validationError = validate();
 
     if (validationError) {
-
-      toast.error(
-        "Cannot save MOFA.",
-        validationError,
-      );
-
+      toast.error("Cannot save MOFA.", validationError);
       return;
-
     }
 
     try {
-
       setSaving(true);
 
       const input: MofaInput = {
-
-        candidate_id:
-          form.candidate_id,
-
-        medical_id:
-          form.medical_id ||
-          null,
-
-        agency_id:
-          form.agency_id ||
-          null,
-
-        application_number:
-          form.application_number.trim(),
-
-        application_date:
-          form.application_date ||
-          null,
-
-        trade:
-          form.trade?.trim() ||
-          null,
-
-        stage:
-          form.stage,
-
+        candidate_id: form.candidate_id,
+        medical_id: form.medical_id || null,
+        agency_id: form.agency_id || null,
+        application_number: form.application_number?.trim() || null,
+        application_date: form.application_date || null,
+        trade: form.trade?.trim() || null,
+        stage: form.stage,
       };
 
       const result =
         isEditing && mofa
-          ? await updateMofa(
-              mofa.id,
-              input,
-            )
-          : await createMofa(
-              input,
-            );
+          ? await updateMofa(mofa.id, input)
+          : await createMofa(input);
 
       if (result.error) {
         throw result.error;
       }
 
       toast.success(
-        isEditing
-          ? "MOFA updated."
-          : "MOFA created.",
+        isEditing ? "MOFA updated." : "MOFA created.",
         isEditing
           ? "The MOFA record was updated successfully."
           : "The MOFA record was created successfully.",
       );
 
       setDirty(false);
-
       onSuccess();
-
     } catch (error) {
-
-      console.error(
-        "MOFA save error:",
-        error,
-      );
-
-      /*
-       * Keep the real Supabase
-       * error visible in console.
-       */
+      // Keep the real Supabase error visible in the console.
+      console.error("MOFA save error:", error);
 
       toast.error(
-        isEditing
-          ? "Failed to update MOFA."
-          : "Failed to create MOFA.",
+        isEditing ? "Failed to update MOFA." : "Failed to create MOFA.",
         error instanceof Error
           ? error.message
           : "Please check the information and try again.",
       );
-
     } finally {
-
       setSaving(false);
-
     }
-
   }
-
-
-  /* =======================================================
-   * CLOSE
-   * ======================================================= */
-
-  function handleOpenChange(
-    nextOpen: boolean,
-  ) {
-
-    onOpenChange(
-      nextOpen,
-    );
-
-  }
-
 
   /* =======================================================
    * RENDER
    *
    * IMPORTANT:
-   *
-   * UniversalSheet already owns
-   * the <form>.
-   *
-   * Therefore we MUST NOT create
-   * another <form> here.
+   * - UniversalSheet already owns the <form>, so do NOT
+   *   create another <form> here.
+   * - UniversalSheet uses `hasChanges`, NOT `dirty`.
+   * - Do NOT pass className; the shared UniversalSheet
+   *   contract is intentionally left unchanged.
    * ======================================================= */
 
   return (
     <UniversalSheet
-
-      open={
-        open
-      }
-
-      onOpenChange={
-        handleOpenChange
-      }
-
-      title={
-        isEditing
-          ? "Edit MOFA"
-          : "Create MOFA"
-      }
-
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditing ? "Edit MOFA" : "Create MOFA"}
       description={
         isEditing
           ? "Update the MOFA application details."
           : "Create a new MOFA application for a candidate."
       }
-
-      /*
-       * IMPORTANT:
-       * UniversalSheet uses hasChanges,
-       * NOT dirty.
-       */
-      hasChanges={
-        dirty
-      }
-
-      /*
-       * UniversalSheet already supports
-       * submit handling.
-       */
-      onSubmit={
-        handleSubmit
-      }
-
-      /*
-       * Do NOT pass className here.
-       * The shared UniversalSheet contract
-       * is intentionally left unchanged.
-       */
-
+      hasChanges={dirty}
+      onSubmit={handleSubmit}
     >
-
-      {/* =================================================
-       * CANDIDATE
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
-      >
-
-        <Label
-          htmlFor="mofa-candidate"
-        >
-          Candidate
-        </Label>
-
-
+      {/* CANDIDATE */}
+      <Field label="Candidate" htmlFor="mofa-candidate">
         <Popover>
-  <PopoverTrigger asChild>
-    <Button
-      type="button"
-      variant="outline"
-      role="combobox"
-      disabled={saving}
-      className="w-full justify-between font-normal"
-    >
-      {currentCandidate ? (
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate">
-            {currentCandidate.name}
-          </span>
-
-          {currentCandidate.passport_no && (
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {currentCandidate.passport_no}
-            </span>
-          )}
-        </div>
-      ) : (
-        <span className="text-muted-foreground">
-          Select candidate
-        </span>
-      )}
-
-      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-    </Button>
-  </PopoverTrigger>
-
-  <PopoverContent
-    align="start"
-    className="w-[var(--radix-popover-trigger-width)] p-0"
-  >
-    <Command>
-      <CommandInput
-        placeholder="Search candidate or passport..."
-      />
-
-      <CommandList>
-        <CommandEmpty>
-          No candidate found.
-        </CommandEmpty>
-
-        <CommandGroup>
-          {candidates.map((candidate) => (
-            <CommandItem
-              key={candidate.id}
-              value={`${candidate.name} ${candidate.passport_no ?? ""}`}
-              onSelect={() => {
-                handleCandidateChange(
-                  candidate.id,
-                );
-              }}
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              role="combobox"
+              disabled={saving}
+              className="w-full justify-between font-normal"
             >
-              <Check
-                className={
-                  `mr-2 h-4 w-4 ${
-                    form.candidate_id === candidate.id
-                      ? "opacity-100"
-                      : "opacity-0"
-                  }`
-                }
-              />
+              {currentCandidate ? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">{currentCandidate.name}</span>
 
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate">
-                  {candidate.name}
-                </span>
+                  {currentCandidate.passport_no && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {currentCandidate.passport_no}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">Select candidate</span>
+              )}
 
-                {candidate.passport_no && (
-                  <span className="text-xs text-muted-foreground">
-                    {candidate.passport_no}
-                  </span>
-                )}
-              </div>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  </PopoverContent>
-</Popover>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
 
+          <PopoverContent
+            align="start"
+            className="w-[var(--radix-popover-trigger-width)] p-0"
+          >
+            <Command>
+              <CommandInput placeholder="Search candidate or passport..." />
+
+              <CommandList>
+                <CommandEmpty>No candidate found.</CommandEmpty>
+
+                <CommandGroup>
+                  {candidates.map((candidate) => (
+                    <CommandItem
+                      key={candidate.id}
+                      value={`${candidate.name} ${candidate.passport_no ?? ""}`}
+                      onSelect={() => handleCandidateChange(candidate.id)}
+                    >
+                      <Check
+                        className={`mr-2 h-4 w-4 ${
+                          form.candidate_id === candidate.id
+                            ? "opacity-100"
+                            : "opacity-0"
+                        }`}
+                      />
+
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate">{candidate.name}</span>
+
+                        {candidate.passport_no && (
+                          <span className="text-xs text-muted-foreground">
+                            {candidate.passport_no}
+                          </span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
         {currentCandidate && (
-
-          <p
-            className="
-              text-xs
-              text-muted-foreground
-            "
-          >
-
+          <p className="text-xs text-muted-foreground">
             Passport:{" "}
-
-            <span
-              className="
-                font-medium
-                text-foreground
-              "
-            >
-              {
-                currentCandidate.passport_no
-              }
+            <span className="font-medium text-foreground">
+              {currentCandidate.passport_no}
             </span>
 
             {currentCandidate.agent?.name && (
               <>
                 {" • "}
-                Agent:{" "}
-                {
-                  currentCandidate.agent.name
-                }
+                Agent: {currentCandidate.agent.name}
               </>
             )}
-
           </p>
-
         )}
+      </Field>
 
-      </div>
-
-
-      {/* =================================================
-       * MEDICAL
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
+      {/* MEDICAL */}
+      <Field
+        label="Medical"
+        htmlFor="mofa-medical"
+        labelRight={
+          <span className="text-xs text-muted-foreground">Optional</span>
+        }
       >
-
-        <div
-          className="
-            flex
-            items-center
-            justify-between
-          "
-        >
-
-          <Label
-            htmlFor="mofa-medical"
-          >
-            Medical
-          </Label>
-
-          <span
-            className="
-              text-xs
-              text-muted-foreground
-            "
-          >
-            Optional
-          </span>
-
-        </div>
-
-
         <Select
-
-          value={
-            form.medical_id ??
-            "__none"
+          value={form.medical_id ?? NONE_VALUE}
+          onValueChange={(value) =>
+            updateField("medical_id", value === NONE_VALUE ? null : value)
           }
-
-          onValueChange={
-            (value) => {
-
-              updateField(
-                "medical_id",
-                value === "__none"
-                  ? null
-                  : value,
-              );
-
-            }
-          }
-
-          disabled={
-            saving ||
-            !form.candidate_id ||
-            medicalLoading
-          }
-
+          disabled={saving || !form.candidate_id || medicalLoading}
         >
-
-          <SelectTrigger
-            id="mofa-medical"
-          >
-
+          <SelectTrigger id="mofa-medical">
             <SelectValue
               placeholder={
                 !form.candidate_id
@@ -1056,419 +532,131 @@ export function MofaForm({
                     : "Select medical"
               }
             />
-
           </SelectTrigger>
 
-
           <SelectContent>
+            <SelectItem value={NONE_VALUE}>No medical</SelectItem>
 
-            <SelectItem
-              value="__none"
-            >
-              No medical
-            </SelectItem>
-
-
-            {medicals.map(
-              (
-                medical,
-              ) => (
-
-                <SelectItem
-                  key={
-                    medical.id
-                  }
-                  value={
-                    medical.id
-                  }
-                >
-                  {
-                    getMedicalLabel(
-                      medical,
-                    )
-                  }
-                </SelectItem>
-
-              ),
-            )}
-
+            {medicals.map((medical) => (
+              <SelectItem key={medical.id} value={medical.id}>
+                {getMedicalLabel(medical)}
+              </SelectItem>
+            ))}
           </SelectContent>
-
         </Select>
 
-
-        <p
-          className="
-            text-xs
-            text-muted-foreground
-          "
-        >
-          MOFA can be created without
-          a medical record. Medical is
-          required for Medical Updated
-          and Approved stages.
+        <p className="text-xs text-muted-foreground">
+          MOFA can be created without a medical record. Medical is required for
+          Medical Updated and Approved stages.
         </p>
+      </Field>
 
-      </div>
-
-
-      {/* =================================================
-       * APPLICATION NUMBER
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
+      {/* APPLICATION NUMBER */}
+      <Field
+        label="Application Number"
+        htmlFor="mofa-application-number"
+        labelRight={
+          <span className="text-xs text-muted-foreground">Optional</span>
+        }
       >
-
-        <Label
-          htmlFor="mofa-application-number"
-        >
-          Application Number
-        </Label>
-
-
         <Input
-
           id="mofa-application-number"
-
-          value={
-            form.application_number
+          value={form.application_number ?? ""}
+          onChange={(event) =>
+            updateField("application_number", event.target.value)
           }
-
-          onChange={
-            (event) =>
-              updateField(
-                "application_number",
-                event.target.value,
-              )
-          }
-
-          placeholder="
-            Enter application number
-          "
-
-          disabled={
-            saving
-          }
-
+          placeholder="Enter application number"
+          disabled={saving}
         />
+      </Field>
 
-      </div>
-
-
-      {/* =================================================
-       * APPLICATION DATE
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
-      >
-
-        <Label
-          htmlFor="mofa-application-date"
-        >
-          Application Date
-        </Label>
-
-
+      {/* APPLICATION DATE */}
+      <Field label="Application Date" htmlFor="mofa-application-date">
         <Input
-
           id="mofa-application-date"
-
           type="date"
-
-          value={
-            form.application_date ??
-            ""
+          value={form.application_date ?? ""}
+          onChange={(event) =>
+            updateField("application_date", event.target.value)
           }
-
-          onChange={
-            (event) =>
-              updateField(
-                "application_date",
-                event.target.value,
-              )
-          }
-
-          disabled={
-            saving
-          }
-
+          disabled={saving}
         />
+      </Field>
 
-      </div>
-
-
-      {/* =================================================
-       * TRADE
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
-      >
-
-        <Label
-          htmlFor="mofa-trade"
-        >
-          Trade
-        </Label>
-
-
+      {/* TRADE */}
+      <Field label="Trade" htmlFor="mofa-trade">
         <Input
-
           id="mofa-trade"
-
-          value={
-            form.trade ??
-            ""
-          }
-
-          onChange={
-            (event) =>
-              updateField(
-                "trade",
-                event.target.value,
-              )
-          }
-
-          placeholder="
-            Enter trade
-          "
-
-          disabled={
-            saving
-          }
-
+          value={form.trade ?? ""}
+          onChange={(event) => updateField("trade", event.target.value)}
+          placeholder="Enter trade"
+          disabled={saving}
         />
+      </Field>
 
-      </div>
-
-
-      {/* =================================================
-       * AGENCY
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
-      >
-
-        <Label
-          htmlFor="mofa-agency"
-        >
-          Agency
-        </Label>
-
-
+      {/* AGENCY */}
+      <Field label="Agency" htmlFor="mofa-agency">
         <Select
-
-          value={
-            form.agency_id ??
-            "__none"
+          value={form.agency_id ?? NONE_VALUE}
+          onValueChange={(value) =>
+            updateField("agency_id", value === NONE_VALUE ? null : value)
           }
-
-          onValueChange={
-            (value) =>
-              updateField(
-                "agency_id",
-                value === "__none"
-                  ? null
-                  : value,
-              )
-          }
-
-          disabled={
-            saving ||
-            agenciesLoading
-          }
-
+          disabled={saving || agenciesLoading}
         >
-
-          <SelectTrigger
-            id="mofa-agency"
-          >
-
+          <SelectTrigger id="mofa-agency">
             <SelectValue
               placeholder={
-                agenciesLoading
-                  ? "Loading agencies..."
-                  : "Select agency"
+                agenciesLoading ? "Loading agencies..." : "Select agency"
               }
             />
-
           </SelectTrigger>
 
-
           <SelectContent>
+            <SelectItem value={NONE_VALUE}>No agency</SelectItem>
 
-            <SelectItem
-              value="__none"
-            >
-              No agency
-            </SelectItem>
+            {agencies.map((agency) => (
+              <SelectItem key={agency.id} value={agency.id}>
+                <div className="flex items-center gap-2">
+                  <span>{agency.name}</span>
 
-
-            {agencies.map(
-              (
-                agency,
-              ) => (
-
-                <SelectItem
-                  key={
-                    agency.id
-                  }
-                  value={
-                    agency.id
-                  }
-                >
-
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                    "
-                  >
-
-                    <span>
-                      {
-                        agency.name
-                      }
+                  {agency.code && (
+                    <span className="text-muted-foreground">
+                      ({agency.code})
                     </span>
-
-                    {agency.code && (
-                      <span
-                        className="
-                          text-muted-foreground
-                        "
-                      >
-                        (
-                        {
-                          agency.code
-                        }
-                        )
-                      </span>
-                    )}
-
-                  </div>
-
-                </SelectItem>
-
-              ),
-            )}
-
+                  )}
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
-
         </Select>
+      </Field>
 
-      </div>
-
-
-      {/* =================================================
-       * STAGE
-       * ================================================= */}
-
-      <div
-        className="
-          space-y-2
-        "
-      >
-
-        <Label
-          htmlFor="mofa-stage"
-        >
-          Stage
-        </Label>
-
-
+      {/* STAGE */}
+      <Field label="Stage" htmlFor="mofa-stage">
         <Select
-
-          value={
-            form.stage
-          }
-
-          onValueChange={
-            (value) =>
-              handleStageChange(
-                value as MofaStage,
-              )
-          }
-
-          disabled={
-            saving
-          }
-
+          value={form.stage}
+          onValueChange={(value) => updateField("stage", value as MofaStage)}
+          disabled={saving}
         >
-
-          <SelectTrigger
-            id="mofa-stage"
-          >
-
-            <SelectValue
-              placeholder="
-                Select stage
-              "
-            />
-
+          <SelectTrigger id="mofa-stage">
+            <SelectValue placeholder="Select stage" />
           </SelectTrigger>
 
-
           <SelectContent>
-
-            {stageOptions.map(
-              (
-                option,
-              ) => (
-
-                <SelectItem
-                  key={
-                    option.value
-                  }
-                  value={
-                    option.value
-                  }
-                >
-                  {
-                    option.label
-                  }
-                </SelectItem>
-
-              ),
-            )}
-
+            {stageOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
-
         </Select>
 
-
-        {(
-          form.stage ===
-            "medupdated" ||
-          form.stage ===
-            "approved"
-        ) && (
-
-          <p
-            className="
-              text-xs
-              text-amber-600
-            "
-          >
-            A medical record is required
-            for this stage.
+        {stageRequiresMedical(form.stage) && (
+          <p className="text-xs text-amber-600">
+            A medical record is required for this stage.
           </p>
-
         )}
-
-      </div>
-
+      </Field>
     </UniversalSheet>
   );
 }

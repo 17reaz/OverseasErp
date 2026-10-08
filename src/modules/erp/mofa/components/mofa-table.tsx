@@ -26,45 +26,68 @@ interface MofaTableProps {
 }
 
 /* =========================================================
- * STAGE LABEL / CLASS
+ * BADGE CONFIG
+ *
+ * Unknown values fall back to the raw value as label and
+ * to DEFAULT_BADGE_CLASS as style.
  * ========================================================= */
 
+const BADGE_BASE_CLASS =
+  "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium";
+
+const DEFAULT_BADGE_CLASS = "border-border bg-background";
+
+const STAGE_LABELS: Record<string, string> = {
+  new: "New",
+  medupdated: "Medical Updated",
+  approved: "Approved",
+  canceled: "Canceled",
+  expired: "Expired",
+  invalid: "Invalid",
+};
+
+const STAGE_CLASSES: Record<string, string> = {
+  approved: "border-foreground/20 bg-foreground/5",
+  medupdated: "border-border bg-muted",
+  canceled: "border-destructive/20 bg-destructive/5 text-destructive",
+  expired: "border-border bg-muted text-muted-foreground",
+  invalid: "border-destructive/20 bg-destructive/5 text-destructive",
+  new: DEFAULT_BADGE_CLASS,
+};
+
+const VALIDITY_LABELS: Record<string, string> = {
+  active: "Active",
+  used: "Used",
+  expired: "Expired",
+  invalid: "Invalid",
+};
+
+const VALIDITY_CLASSES: Record<string, string> = {
+  active: "border-foreground/20 bg-foreground/5 text-foreground",
+  used: "border-border bg-muted text-muted-foreground",
+  expired: "border-border bg-muted text-muted-foreground",
+  invalid: "border-destructive/20 bg-destructive/5 text-destructive",
+};
+
 function getStageLabel(stage: Mofa["stage"]) {
-  switch (stage) {
-    case "new":
-      return "New";
-    case "medupdated":
-      return "Medical Updated";
-    case "approved":
-      return "Approved";
-    case "canceled":
-      return "Canceled";
-    case "expired":
-      return "Expired";
-    case "invalid":
-      return "Invalid";
-    default:
-      return stage;
-  }
+  return STAGE_LABELS[stage] ?? stage;
 }
 
 function getStageClass(stage: Mofa["stage"]) {
-  switch (stage) {
-    case "approved":
-      return "border-foreground/20 bg-foreground/5";
-    case "medupdated":
-      return "border-border bg-muted";
-    case "canceled":
-      return "border-destructive/20 bg-destructive/5 text-destructive";
-    case "expired":
-      return "border-border bg-muted text-muted-foreground";
-    case "invalid":
-      return "border-destructive/20 bg-destructive/5 text-destructive";
-    case "new":
-    default:
-      return "border-border bg-background";
-  }
+  return STAGE_CLASSES[stage] ?? DEFAULT_BADGE_CLASS;
 }
+
+function getValidityLabel(status: Mofa["validity_status"]) {
+  return VALIDITY_LABELS[status] ?? status;
+}
+
+function getValidityClass(status: Mofa["validity_status"]) {
+  return VALIDITY_CLASSES[status] ?? DEFAULT_BADGE_CLASS;
+}
+
+/* =========================================================
+ * HELPERS
+ * ========================================================= */
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -164,9 +187,7 @@ export function MofaTable({
       cell: (mofa) =>
         mofa.agency ? (
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {mofa.agency.name}
-            </p>
+            <p className="truncate text-sm font-medium">{mofa.agency.name}</p>
 
             {mofa.agency.code && (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -192,12 +213,22 @@ export function MofaTable({
       header: "Stage",
       className: "w-[140px]",
       cell: (mofa) => (
+        <span className={`${BADGE_BASE_CLASS} ${getStageClass(mofa.stage)}`}>
+          {getStageLabel(mofa.stage)}
+        </span>
+      ),
+    },
+    {
+      key: "validity",
+      header: "Validity",
+      className: "w-[120px]",
+      cell: (mofa) => (
         <span
-          className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${getStageClass(
-            mofa.stage,
+          className={`${BADGE_BASE_CLASS} ${getValidityClass(
+            mofa.validity_status,
           )}`}
         >
-          {getStageLabel(mofa.stage)}
+          {getValidityLabel(mofa.validity_status)}
         </span>
       ),
     },
