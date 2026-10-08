@@ -65,7 +65,7 @@ interface CandidateOption {
 
 interface VisaOption {
   id: string;
-  visa_no: string;
+  visa_no?: string | null;
   candidate_id: string;
 }
 

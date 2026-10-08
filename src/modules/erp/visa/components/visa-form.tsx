@@ -109,14 +109,61 @@ interface FormState {
 /* =========================================================
    DEFAULT
 ========================================================= */
-
+const VISA_TYPE_OPTIONS = [
+  {
+    value: "amel_id",
+    label: "Amel ID",
+  },
+  {
+    value: "one_year",
+    label: "1 Year",
+  },
+  {
+    value: "mahara",
+    label: "Mahara",
+  },
+  {
+    value: "ewan",
+    label: "Ewan",
+  },
+  {
+    value: "initial",
+    label: "Initial",
+  },
+  {
+    value: "sasko",
+    label: "Sasko",
+  },
+];
+const VISA_STATUS_OPTIONS = [
+  {
+    value: "processing",
+    label: "Processing",
+  },
+  {
+    value: "active",
+    label: "Active",
+  },
+  {
+    value: "expired",
+    label: "Expired",
+  },
+  {
+    value: "cancelled",
+    label: "Cancelled",
+  },
+  {
+    value: "delivered",
+    label: "Delivered",
+  },
+];
 const DEFAULT_FORM: FormState = {
   candidate_id: "",
   mofa_id: "",
   visa_no: "",
   visa_date: "",
   expiry_date: "",
-  visa_type: "employment",
+  visa_type: "amel_id",
   status: "processing",
   agency_id: "",
   remarks: "",
@@ -207,8 +254,8 @@ export function VisaForm({
           record.expiry_date ?? "",
 
         visa_type:
-          record.visa_type ??
-          "employment",
+  record.visa_type ??
+  "amel_id",
 
         status:
           record.status ??
@@ -312,14 +359,7 @@ export function VisaForm({
       return;
     }
 
-    if (!form.visa_no.trim()) {
-      setError(
-        "Please enter the visa number.",
-      );
-      return;
-    }
-
-    setSaving(true);
+   setSaving(true);
     setError("");
 
     try {
@@ -327,8 +367,8 @@ export function VisaForm({
         mofa_id:
           form.mofa_id || null,
 
-        visa_no:
-          form.visa_no.trim(),
+       visa_no:
+  form.visa_no.trim() || null,
 
         visa_date:
           form.visa_date || null,
@@ -337,8 +377,8 @@ export function VisaForm({
           form.expiry_date || null,
 
         visa_type:
-          form.visa_type.trim() ||
-          "employment",
+  form.visa_type ||
+  "amel_id",
 
         status:
           form.status.trim() ||
@@ -446,8 +486,7 @@ export function VisaForm({
       loading={saving}
       disabled={
         saving ||
-        !form.candidate_id ||
-        !form.visa_no.trim()
+        !form.candidate_id 
       }
       hasChanges={
         hasChanges
@@ -617,50 +656,79 @@ export function VisaForm({
                   .value,
               )
             }
-            placeholder="Enter visa number"
+            placeholder="Enter visa number (optional)"
             disabled={saving}
-            required
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput
-              id="visa-type"
-              label="Visa Type"
-              value={
-                form.visa_type
-              }
-              onChange={(
-                event,
-              ) =>
-                updateField(
-                  "visa_type",
-                  event.target
-                    .value,
-                )
-              }
-              placeholder="e.g. employment"
-              disabled={saving}
-            />
+ <div className="grid grid-cols-1 gap-4">
+  {/* Visa Type */}
+  <div className="space-y-2">
+    <label className="text-sm font-medium">
+      Visa Type
+    </label>
 
-            <FormInput
-              id="visa-status"
-              label="Status"
-              value={
-                form.status
-              }
-              onChange={(
-                event,
-              ) =>
-                updateField(
-                  "status",
-                  event.target
-                    .value,
-                )
-              }
-              placeholder="e.g. processing, issued"
-              disabled={saving}
-            />
-          </div>
+    <div className="grid grid-cols-3 gap-1.5">
+      {VISA_TYPE_OPTIONS.map((option) => {
+        const selected = form.visa_type === option.value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            disabled={saving}
+            onClick={() =>
+              updateField("visa_type", option.value)
+            }
+            className={cn(
+              "h-8 rounded-md border px-2 text-xs font-medium transition-all",
+              "hover:bg-muted/70",
+              selected
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-border bg-background text-muted-foreground",
+              saving && "cursor-not-allowed opacity-50",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+
+  {/* Status */}
+  <div className="space-y-2">
+    <label className="text-sm font-medium">
+      Status
+    </label>
+
+    <div className="grid grid-cols-3 gap-1.5">
+      {VISA_STATUS_OPTIONS.map((option) => {
+        const selected = form.status === option.value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            disabled={saving}
+            onClick={() =>
+              updateField("status", option.value)
+            }
+            className={cn(
+              "h-8 rounded-md border px-2 text-xs font-medium transition-all",
+              "hover:bg-muted/70",
+              selected
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-border bg-background text-muted-foreground",
+              saving && "cursor-not-allowed opacity-50",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+</div>
         </div>
       </FormSection>
 

@@ -9,7 +9,7 @@ export interface Visa {
   candidate_id: string;
   mofa_id: string | null;
   sl: number;
-  visa_no: string;
+  visa_no?: string | null;
   visa_date: string | null;
   expiry_date: string | null;
   visa_type: string;
@@ -23,7 +23,7 @@ export interface Visa {
 export type VisaInput = {
   candidate_id: string;
   mofa_id?: string | null;
-  visa_no: string;
+  visa_no?: string | null;
   visa_date?: string | null;
   expiry_date?: string | null;
   visa_type?: string;
