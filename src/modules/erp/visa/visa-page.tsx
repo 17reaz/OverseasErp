@@ -3,6 +3,7 @@ import { VisaForm } from "./components/visa-form";
 import { VisaPending } from "./components/visa-pending";
 import { VisaTable } from "./components/visa-table";
 import { VisaToolbar, type VisaFilterView } from "./components/visa-toolbar";
+import { VisaGrid } from "./components/visa-grid";
 import {
   deleteVisa,
   getApprovedMofasWithoutVisa,
@@ -22,7 +23,8 @@ const [mofas, setMofas] = useState<Mofa[]>([]);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Visa | null>(null);
-
+  const [displayView, setDisplayView] =
+  useState<VisaDisplayView>("list");
   /* =======================================================
    * VISAABLE — approved MOFA + finger completed +
    * police clearance verified, no visa yet
@@ -173,38 +175,45 @@ setMofas(mofaResult.data ?? []);
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       
 
-      <VisaToolbar
-        search={search}
-        onSearchChange={setSearch}
-        onRefresh={() => {
-          setRefreshing(true);
-          void loadData();
-          void loadPending();
-        }}
-        onCreate={handleCreate}
-        refreshing={refreshing || pendingLoading}
-        view={view}
-        onViewChange={setView}
-      />
+     <VisaToolbar
+  search={search}
+  onSearchChange={setSearch}
+  onRefresh={handleRefresh}
+  onCreate={handleCreate}
+  refreshing={refreshing}
+  view={view}
+  onViewChange={setView}
+  displayView={displayView}
+  onDisplayViewChange={setDisplayView}
+/>
 
-      <div className="min-h-0 flex-1">
-        {view === "visaable" ? (
-          <VisaPending
-            items={filteredPendingMofas}
-            loading={pendingLoading}
-            onAddVisa={handleAddVisa}
-          />
-        ) : (
-          <VisaTable
-            records={filteredRecords}
-            candidates={candidates}
-            agencies={agencies}
-            loading={loading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        )}
-      </div>
+     <div className="min-h-0 flex-1">
+  {view === "visaable" ? (
+    <VisaPending
+      items={filteredPendingMofas}
+      loading={pendingLoading}
+      onAddVisa={handleAddVisa}
+    />
+  ) : displayView === "grid" ? (
+    <VisaGrid
+      records={filteredRecords}
+      candidates={candidates}
+      agencies={agencies}
+      loading={loading}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+    />
+  ) : (
+    <VisaTable
+      records={filteredRecords}
+      candidates={candidates}
+      agencies={agencies}
+      loading={loading}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+    />
+  )}
+</div>
 
       <VisaForm
         open={formOpen}
