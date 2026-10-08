@@ -776,6 +776,7 @@ export function MofaForm({
       {/* STAGE */}
       {/* STAGE */}
 {/* STAGE */}
+{/* STAGE */}
 <Field
   label="Stage"
   htmlFor="mofa-stage"
@@ -790,9 +791,6 @@ export function MofaForm({
       const selected =
         form.stage === option.value;
 
-      const requiresMedical =
-        stageRequiresMedical(option.value);
-
       return (
         <button
           key={option.value}
@@ -804,42 +802,21 @@ export function MofaForm({
               option.value,
             )
           }
-          className={`flex min-h-14 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition ${
+          className={`flex h-10 items-center justify-between rounded-lg border px-3 text-sm font-medium transition ${
             selected
-              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-              : "hover:border-primary/40 hover:bg-muted/50"
+              ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/20"
+              : "text-foreground hover:border-primary/40 hover:bg-muted/50"
           }`}
         >
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {option.label}
-            </p>
+          <span className="truncate">
+            {option.label}
+          </span>
 
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-              {option.value === "new" &&
-                "New application"}
-
-              {option.value === "medupdated" &&
-                "Medical updated"}
-
-              {option.value === "approved" &&
-                "Application approved"}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            {requiresMedical && (
-              <span className="text-[10px] text-amber-600">
-                Medical
-              </span>
-            )}
-
-            {selected && (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Check className="h-3 w-3" />
-              </div>
-            )}
-          </div>
+          {selected && (
+            <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Check className="h-3 w-3" />
+            </span>
+          )}
         </button>
       );
     })}
