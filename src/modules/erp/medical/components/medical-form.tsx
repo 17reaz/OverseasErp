@@ -1293,40 +1293,54 @@ export function MedicalForm({
                 STATUS
                 ================================================= */}
 
-            <div
-              className="
-                space-y-2
-              "
-            >
-              <Label>
-                Status
-              </Label>
+           <div className="space-y-2">
+  <div className="flex items-center justify-between">
+    <Label>Status</Label>
 
-              <Select
-                value={
-                  status
-                }
-                onValueChange={
-                  handleStatusChange
-                }
-                disabled={
-                  loading
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+    <span className="text-xs text-muted-foreground">
+      Required
+    </span>
+  </div>
 
-                <SelectContent>
-  <SelectItem value="new">New</SelectItem>
-  <SelectItem value="slip">Slip</SelectItem>
-  <SelectItem value="inprogress">In Progress</SelectItem>
-  <SelectItem value="under_review">Under Review</SelectItem>
-  <SelectItem value="fit">Fit</SelectItem>
-  <SelectItem value="unfit">Unfit</SelectItem>
-</SelectContent>
-              </Select>
-            </div>
+  <div className="grid grid-cols-2 gap-2">
+    {[
+      { value: "new", label: "New" },
+      { value: "slip", label: "Slip" },
+      { value: "inprogress", label: "In Progress" },
+      { value: "under_review", label: "Under Review" },
+      { value: "fit", label: "Fit" },
+      { value: "unfit", label: "Unfit" },
+    ].map((option) => {
+      const selected = status === option.value;
+
+      return (
+        <button
+          key={option.value}
+          type="button"
+          disabled={loading}
+          onClick={() => handleStatusChange(option.value)}
+          className={cn(
+            "flex h-10 items-center justify-between rounded-lg border px-3 text-sm font-medium transition",
+            selected
+              ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/20"
+              : "text-foreground hover:border-primary/40 hover:bg-muted/50",
+            loading && "cursor-not-allowed opacity-60",
+          )}
+        >
+          <span className="truncate">
+            {option.label}
+          </span>
+
+          {selected && (
+            <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Check className="h-3 w-3" />
+            </span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+</div>
 
             {/* =================================================
                 FIT DATE
