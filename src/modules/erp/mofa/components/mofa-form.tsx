@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
-import { Check, ChevronsUpDown } from "lucide-react";
+// import { Check, ChevronsUpDown } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  CalendarDays,
+  CircleCheck,
+  CircleX,
+  Clock3,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -94,20 +102,40 @@ function stageRequiresMedical(stage: MofaStage) {
   return stage === "medupdated" || stage === "approved";
 }
 
-function getMedicalLabel(medical: MofaMedical) {
-  const date = medical.medical_date
-    ? new Date(medical.medical_date).toLocaleDateString()
-    : "No date";
+// function getMedicalLabel(medical: MofaMedical) {
+//   const date = medical.medical_date
+//     ? new Date(medical.medical_date).toLocaleDateString()
+//     : "No date";
 
-  const fitDate = medical.fit_date
-    ? new Date(medical.fit_date).toLocaleDateString()
-    : null;
+//   const fitDate = medical.fit_date
+//     ? new Date(medical.fit_date).toLocaleDateString()
+//     : null;
 
-  return [date, medical.status.toUpperCase(), fitDate ? `Fit: ${fitDate}` : null]
-    .filter(Boolean)
-    .join(" • ");
+//   return [date, medical.status.toUpperCase(), fitDate ? `Fit: ${fitDate}` : null]
+//     .filter(Boolean)
+//     .join(" • ");
+// }
+function getMedicalStatusIcon(status: string) {
+  const normalized = status.toLowerCase();
+
+  if (
+    normalized === "fit" ||
+    normalized === "passed" ||
+    normalized === "completed"
+  ) {
+    return <CircleCheck className="h-4 w-4 text-emerald-600" />;
+  }
+
+  if (
+    normalized === "unfit" ||
+    normalized === "failed" ||
+    normalized === "cancelled"
+  ) {
+    return <CircleX className="h-4 w-4 text-destructive" />;
+  }
+
+  return <Clock3 className="h-4 w-4 text-amber-600" />;
 }
-
 interface FieldProps {
   label: string;
   htmlFor: string;
@@ -508,48 +536,162 @@ export function MofaForm({
       </Field>
 
       {/* MEDICAL */}
-      <Field
-        label="Medical"
-        htmlFor="mofa-medical"
-        labelRight={
-          <span className="text-xs text-muted-foreground">Optional</span>
-        }
+    {/* MEDICAL */}
+<Field
+  label="Medical"
+  htmlFor="mofa-medical"
+  labelRight={
+    <span className="text-xs text-muted-foreground">
+      {stageRequiresMedical(form.stage)
+        ? "Required"
+        : "Optional"}
+    </span>
+  }
+>
+  {!form.candidate_id ? (
+    <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center">
+      <p className="text-sm font-medium">
+        Select a candidate first
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Available medical records will appear here.
+      </p>
+    </div>
+  ) : medicalLoading ? (
+    <div className="rounded-lg border bg-muted/20 px-4 py-6 text-center">
+      <p className="text-sm text-muted-foreground">
+        Loading medical records...
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {/* NO MEDICAL */}
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => updateField("medical_id", null)}
+        className={`w-full rounded-lg border p-3 text-left transition ${
+          form.medical_id === null
+            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+            : "hover:bg-muted/50"
+        }`}
       >
-        <Select
-          value={form.medical_id ?? NONE_VALUE}
-          onValueChange={(value) =>
-            updateField("medical_id", value === NONE_VALUE ? null : value)
-          }
-          disabled={saving || !form.candidate_id || medicalLoading}
-        >
-          <SelectTrigger id="mofa-medical">
-            <SelectValue
-              placeholder={
-                !form.candidate_id
-                  ? "Select candidate first"
-                  : medicalLoading
-                    ? "Loading medical records..."
-                    : "Select medical"
-              }
-            />
-          </SelectTrigger>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">
+              No medical
+            </p>
 
-          <SelectContent>
-            <SelectItem value={NONE_VALUE}>No medical</SelectItem>
+            <p className="text-xs text-muted-foreground">
+              Continue without linking a medical record.
+            </p>
+          </div>
 
-            {medicals.map((medical) => (
-              <SelectItem key={medical.id} value={medical.id}>
-                {getMedicalLabel(medical)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {form.medical_id === null && (
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Check className="h-3 w-3" />
+            </div>
+          )}
+        </div>
+      </button>
 
-        <p className="text-xs text-muted-foreground">
-          MOFA can be created without a medical record. Medical is required for
-          Medical Updated and Approved stages.
-        </p>
-      </Field>
+      {/* MEDICAL RECORDS */}
+      {medicals.length > 0 ? (
+        <div className="space-y-2">
+          {medicals.map((medical) => {
+            const selected =
+              form.medical_id === medical.id;
+
+            const medicalDate = medical.medical_date
+              ? new Date(
+                  medical.medical_date,
+                ).toLocaleDateString()
+              : "No date";
+
+            const fitDate = medical.fit_date
+              ? new Date(
+                  medical.fit_date,
+                ).toLocaleDateString()
+              : null;
+
+            return (
+              <button
+                key={medical.id}
+                type="button"
+                disabled={saving}
+                onClick={() =>
+                  updateField(
+                    "medical_id",
+                    medical.id,
+                  )
+                }
+                className={`w-full rounded-lg border p-3 text-left transition ${
+                  selected
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "hover:border-primary/40 hover:bg-muted/50"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {getMedicalStatusIcon(
+                        medical.status,
+                      )}
+
+                      <span className="text-sm font-medium capitalize">
+                        {medical.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        Medical: {medicalDate}
+                      </span>
+
+                      {fitDate && (
+                        <span>
+                          Fit: {fitDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {selected && (
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-5 text-center">
+          <p className="text-sm font-medium">
+            No medical record found
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            This candidate does not have an existing medical record.
+          </p>
+        </div>
+      )}
+    </div>
+  )}
+
+  {stageRequiresMedical(form.stage) ? (
+    <p className="text-xs text-amber-600">
+      Select a medical record before saving this stage.
+    </p>
+  ) : (
+    <p className="text-xs text-muted-foreground">
+      Select an existing medical record to link it with this MOFA.
+    </p>
+  )}
+</Field>
 
       {/* APPLICATION NUMBER */}
       <Field
@@ -632,31 +774,83 @@ export function MofaForm({
       </Field>
 
       {/* STAGE */}
-      <Field label="Stage" htmlFor="mofa-stage">
-        <Select
-          value={form.stage}
-          onValueChange={(value) => updateField("stage", value as MofaStage)}
+      {/* STAGE */}
+{/* STAGE */}
+<Field
+  label="Stage"
+  htmlFor="mofa-stage"
+  labelRight={
+    <span className="text-xs text-muted-foreground">
+      Required
+    </span>
+  }
+>
+  <div className="grid grid-cols-2 gap-2">
+    {stageOptions.map((option) => {
+      const selected =
+        form.stage === option.value;
+
+      const requiresMedical =
+        stageRequiresMedical(option.value);
+
+      return (
+        <button
+          key={option.value}
+          type="button"
           disabled={saving}
+          onClick={() =>
+            updateField(
+              "stage",
+              option.value,
+            )
+          }
+          className={`flex min-h-14 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition ${
+            selected
+              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+              : "hover:border-primary/40 hover:bg-muted/50"
+          }`}
         >
-          <SelectTrigger id="mofa-stage">
-            <SelectValue placeholder="Select stage" />
-          </SelectTrigger>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              {option.label}
+            </p>
 
-          <SelectContent>
-            {stageOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              {option.value === "new" &&
+                "New application"}
 
-        {stageRequiresMedical(form.stage) && (
-          <p className="text-xs text-amber-600">
-            A medical record is required for this stage.
-          </p>
-        )}
-      </Field>
+              {option.value === "medupdated" &&
+                "Medical updated"}
+
+              {option.value === "approved" &&
+                "Application approved"}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            {requiresMedical && (
+              <span className="text-[10px] text-amber-600">
+                Medical
+              </span>
+            )}
+
+            {selected && (
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Check className="h-3 w-3" />
+              </div>
+            )}
+          </div>
+        </button>
+      );
+    })}
+  </div>
+
+  {stageRequiresMedical(form.stage) && (
+    <p className="text-xs text-amber-600">
+      A medical record is required for this stage.
+    </p>
+  )}
+</Field>
     </UniversalSheet>
   );
 }
