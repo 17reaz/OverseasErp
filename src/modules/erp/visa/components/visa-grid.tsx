@@ -25,22 +25,16 @@ interface VisaGridProps {
   onDelete: (record: Visa) => void;
 }
 
-// Visa er nijer validity ei grid e use hoy na. Medical dead hole Visa o dead.
-const MEDICAL_VALIDITY_DAYS = 90;
+/* =======================================================
+   VISA VALIDITY
+======================================================= */
+
+const VISA_VALIDITY_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /* =======================================================
    FIELD ADAPTER
-   Tomar Visa / Candidate type er field name onujayi
-   shudhu ei function ta mil kore nio.
 ======================================================= */
-
-interface LooseMedical {
-  fit_date?: string | null;
-  fit_number?: string | null;
-  medical_number?: string | null;
-  number?: string | null;
-}
 
 interface LooseCandidate {
   name?: string | null;
@@ -48,16 +42,15 @@ interface LooseCandidate {
   passport_no?: string | null;
   agent_name?: string | null;
   agent?: { name?: string | null } | null;
-  medical?: LooseMedical | null;
 }
 
 interface LooseVisa {
   sl?: number | string | null;
   visa_no?: string | null;
   status?: string | null;
+  visa_type?: string | null;
   visa_date?: string | null;
   expiry_date?: string | null;
-  medical?: LooseMedical | null;
   candidate?: LooseCandidate | null;
   agent?: { name?: string | null } | string | null;
 }
@@ -65,30 +58,22 @@ interface LooseVisa {
 function getFields(record: Visa, candidate?: Candidate) {
   const r = record as unknown as LooseVisa;
   const c = (r.candidate ?? candidate ?? null) as LooseCandidate | null;
-  const cFromList = candidate as unknown as LooseCandidate | undefined;
 
   const agent =
     typeof r.agent === "string"
       ? r.agent
       : (r.agent?.name ?? c?.agent?.name ?? c?.agent_name ?? null);
 
-  // medical visa te, visa.candidate te, ba candidates list er bhitore thakte pare
-  const medical = r.medical ?? c?.medical ?? cFromList?.medical ?? null;
-
   return {
     name: c?.name ?? candidate?.name ?? "Unknown candidate",
-    sl: r.sl ?? c?.sl ?? cFromList?.sl ?? null,
+    sl: r.sl ?? c?.sl ?? null,
     passport: c?.passport_no ?? candidate?.passport_no ?? null,
     agent,
-    // Visa data (shudhu dekhanor jonno)
     visaNo: r.visa_no ?? null,
+    visaType: r.visa_type ?? null,
     status: r.status ?? null,
     visaDate: r.visa_date ?? null,
     visaExpiry: r.expiry_date ?? null,
-    // Medical data (validity eta theke)
-    fitDate: medical?.fit_date ?? null,
-    fitNumber:
-      medical?.fit_number ?? medical?.medical_number ?? medical?.number ?? null,
   };
 }
 
@@ -98,20 +83,32 @@ function getFields(record: Visa, candidate?: Candidate) {
 
 function toTime(value: string | null) {
   if (!value) return null;
+
   const t = new Date(value).getTime();
+
   return Number.isNaN(t) ? null : t;
 }
 
-function getFitDays(fitDate: string | null) {
-  const t = toTime(fitDate);
+function getVisaDays(visaDate: string | null) {
+  const t = toTime(visaDate);
+
   if (t === null) return 0;
+
   return Math.max(0, Math.floor((Date.now() - t) / DAY_MS));
 }
 
-// Medical date na thakle expired dhora hobe
-function getRemaining(f: ReturnType<typeof getFields>) {
-  if (toTime(f.fitDate) === null) return 0;
-  return MEDICAL_VALIDITY_DAYS - getFitDays(f.fitDate);
+/*
+ * Visa validity:
+ * visa_date + 90 days
+ *
+ * visa_date na thakle expired dhora hobe.
+ */
+function getRemaining(visaDate: string | null) {
+  const t = toTime(visaDate);
+
+  if (t === null) return 0;
+
+  return VISA_VALIDITY_DAYS - getVisaDays(visaDate);
 }
 
 function formatDate(value: string | null) {
@@ -134,29 +131,41 @@ function getStatusLabel(status?: string | null) {
 
 function getStatusClass(status?: string | null) {
   switch (status) {
-    case "approved":
-    case "issued":
     case "active":
-    case "granted":
       return "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
 
-    case "rejected":
     case "cancelled":
     case "expired":
       return "border-destructive/20 bg-destructive/10 text-destructive";
 
     case "processing":
-    case "in_progress":
-    case "under_review":
       return "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400";
+
+    case "delivered":
+      return "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400";
 
     default:
       return "border-muted-foreground/20 bg-muted text-muted-foreground";
   }
 }
 
+function getVisaTypeLabel(type?: string | null) {
+  if (!type) return "—";
+
+  const labels: Record<string, string> = {
+    amel_id: "Amel ID",
+    one_year: "1 Year",
+    mahara: "Mahara",
+    ewan: "Ewan",
+    initial: "Initial",
+    sasko: "Sasko",
+  };
+
+  return labels[type] ?? type.replace(/_/g, " ");
+}
+
 /* =======================================================
-   TONE (rong shudhu validity bojhay)
+   TONE
 ======================================================= */
 
 type Tone = "ok" | "warn" | "danger";
@@ -165,12 +174,19 @@ type Filter = "all" | Tone;
 function getTone(remaining: number): Tone {
   if (remaining <= 7) return "danger";
   if (remaining <= 20) return "warn";
+
   return "ok";
 }
 
 const TONE: Record<
   Tone,
-  { stroke: string; text: string; soft: string; ring: string; label: string }
+  {
+    stroke: string;
+    text: string;
+    soft: string;
+    ring: string;
+    label: string;
+  }
 > = {
   ok: {
     stroke: "stroke-emerald-500",
@@ -179,6 +195,7 @@ const TONE: Record<
     ring: "ring-emerald-500/40",
     label: "Valid",
   },
+
   warn: {
     stroke: "stroke-amber-500",
     text: "text-amber-700 dark:text-amber-400",
@@ -186,6 +203,7 @@ const TONE: Record<
     ring: "ring-amber-500/40",
     label: "Soon",
   },
+
   danger: {
     stroke: "stroke-red-500",
     text: "text-red-700 dark:text-red-400",
@@ -221,8 +239,13 @@ function Ring({
 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
+
   const shown = Math.max(0, remaining);
-  const pct = Math.max(0, Math.min(1, shown / MEDICAL_VALIDITY_DAYS));
+
+  const pct = Math.max(
+    0,
+    Math.min(1, shown / VISA_VALIDITY_DAYS),
+  );
 
   return (
     <svg
@@ -291,7 +314,9 @@ function VisaListCard({
       className={[
         "flex h-16 w-full items-center gap-3 rounded-lg border bg-card px-3 text-left transition-all",
         "hover:border-foreground/20 hover:shadow-sm",
-        selected ? `ring-2 ${TONE[tone].ring} border-transparent` : "",
+        selected
+          ? `ring-2 ${TONE[tone].ring} border-transparent`
+          : "",
       ].join(" ")}
     >
       <Ring remaining={remaining} tone={tone} />
@@ -309,7 +334,9 @@ function VisaListCard({
 
       <Badge
         variant="outline"
-        className={`shrink-0 px-2 py-0.5 text-[10px] ${getStatusClass(f.status)}`}
+        className={`shrink-0 px-2 py-0.5 text-[10px] ${getStatusClass(
+          f.status,
+        )}`}
       >
         {getStatusLabel(f.status)}
       </Badge>
@@ -318,7 +345,7 @@ function VisaListCard({
 }
 
 /* =======================================================
-   DETAIL PANEL
+   DETAIL
 ======================================================= */
 
 function Detail({
@@ -336,12 +363,20 @@ function Detail({
         {label}
       </p>
 
-      <p className={`truncate text-sm font-medium ${mono ? "font-mono" : ""}`}>
+      <p
+        className={`truncate text-sm font-medium ${
+          mono ? "font-mono" : ""
+        }`}
+      >
         {value}
       </p>
     </div>
   );
 }
+
+/* =======================================================
+   DETAIL PANEL
+======================================================= */
 
 function VisaDetailPanel({
   row,
@@ -357,7 +392,9 @@ function VisaDetailPanel({
       <div className="flex min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center">
         <MousePointerClick className="mb-2 size-5 text-muted-foreground" />
 
-        <p className="text-sm font-medium">Select a candidate</p>
+        <p className="text-sm font-medium">
+          Select a candidate
+        </p>
 
         <p className="mt-1 text-xs text-muted-foreground">
           Click a card to see full Visa details here.
@@ -374,7 +411,12 @@ function VisaDetailPanel({
     <div className="space-y-4 rounded-xl border bg-card p-4">
       {/* HEAD */}
       <div className="flex items-center gap-3">
-        <Ring remaining={remaining} tone={tone} size={64} stroke={6} />
+        <Ring
+          remaining={remaining}
+          tone={tone}
+          size={64}
+          stroke={6}
+        />
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold leading-tight">
@@ -388,25 +430,56 @@ function VisaDetailPanel({
           <span
             className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${t.soft} ${t.text}`}
           >
-            {expired ? "Medical expired" : `${t.label} · ${remaining} days left`}
+            {expired
+              ? "Visa expired"
+              : `${t.label} · ${remaining} days left`}
           </span>
         </div>
       </div>
 
       {/* INFO */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4">
-        <Detail label="Agent" value={f.agent ?? "—"} />
-        <Detail label="Passport" value={f.passport ?? "—"} mono />
-        <Detail label="Visa No." value={f.visaNo ?? "Not assigned"} mono />
-        <Detail label="Visa Date" value={formatDate(f.visaDate)} />
-        <Detail label="Visa Expiry" value={formatDate(f.visaExpiry)} />
-        <Detail label="Fit No." value={f.fitNumber ?? "—"} mono />
-        <Detail label="Fit Date" value={formatDate(f.fitDate)} />
         <Detail
-          label="Fit since"
+          label="Agent"
+          value={f.agent ?? "—"}
+        />
+
+        <Detail
+          label="Passport"
+          value={f.passport ?? "—"}
+          mono
+        />
+
+        <Detail
+          label="Visa No."
+          value={f.visaNo ?? "Not assigned"}
+          mono
+        />
+
+        <Detail
+          label="Visa Type"
+          value={getVisaTypeLabel(f.visaType)}
+        />
+
+        <Detail
+          label="Visa Date"
+          value={formatDate(f.visaDate)}
+        />
+
+        <Detail
+          label="Visa Expiry"
+          value={formatDate(f.visaExpiry)}
+        />
+
+        <Detail
+          label="Visa age"
           value={days === 0 ? "Today" : `${days} days`}
         />
-        <Detail label="Valid for" value={`${MEDICAL_VALIDITY_DAYS} days`} />
+
+        <Detail
+          label="Valid for"
+          value={`${VISA_VALIDITY_DAYS} days`}
+        />
       </div>
 
       {/* STATUS */}
@@ -417,6 +490,7 @@ function VisaDetailPanel({
         ].join(" ")}
       >
         <FileCheck2 className="size-4" />
+
         Visa {getStatusLabel(f.status)}
       </div>
 
@@ -445,7 +519,7 @@ function VisaDetailPanel({
 }
 
 /* =======================================================
-   SKELETON / EMPTY
+   SKELETON
 ======================================================= */
 
 function VisaGridSkeleton() {
@@ -461,6 +535,10 @@ function VisaGridSkeleton() {
   );
 }
 
+/* =======================================================
+   EMPTY
+======================================================= */
+
 function VisaGridEmpty() {
   return (
     <Card className="rounded-xl">
@@ -469,10 +547,12 @@ function VisaGridEmpty() {
           <FileCheck2 className="size-5 text-muted-foreground" />
         </div>
 
-        <h3 className="text-sm font-medium">No visa records found</h3>
+        <h3 className="text-sm font-medium">
+          No active visa records found
+        </h3>
 
         <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-          Visa records will appear here once created.
+          Active Visa records will appear here once created.
         </p>
       </CardContent>
     </Card>
@@ -490,24 +570,44 @@ export function VisaGrid({
   onEdit,
   onDelete,
 }: VisaGridProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [selectedId, setSelectedId] =
+    useState<string | null>(null);
 
-  // kom din baki age (urgent upore)
+  const [filter, setFilter] =
+    useState<Filter>("all");
+
+  /*
+   * IMPORTANT:
+   * Grid e shudhu active visa dekhabe.
+   *
+   * Countdown:
+   * visa_date -> 90 days
+   */
   const rows = useMemo<Row[]>(() => {
     if (loading) return [];
 
     return records
+      .filter((record) => {
+        const status = String(
+          (record as unknown as LooseVisa).status ?? "",
+        ).toLowerCase();
+
+        return status === "active";
+      })
       .map((record) => {
-        const candidate = candidates.find((c) => c.id === record.candidate_id);
+        const candidate = candidates.find(
+          (c) => c.id === record.candidate_id,
+        );
+
         const f = getFields(record, candidate);
-        const remaining = getRemaining(f);
+
+        const remaining = getRemaining(f.visaDate);
 
         return {
           record,
           id: String(record.id),
           f,
-          days: getFitDays(f.fitDate),
+          days: getVisaDays(f.visaDate),
           remaining,
           tone: getTone(remaining),
         };
@@ -518,43 +618,82 @@ export function VisaGrid({
   const counts = useMemo(
     () => ({
       all: rows.length,
-      danger: rows.filter((r) => r.tone === "danger").length,
-      warn: rows.filter((r) => r.tone === "warn").length,
-      ok: rows.filter((r) => r.tone === "ok").length,
+
+      danger: rows.filter(
+        (r) => r.tone === "danger",
+      ).length,
+
+      warn: rows.filter(
+        (r) => r.tone === "warn",
+      ).length,
+
+      ok: rows.filter(
+        (r) => r.tone === "ok",
+      ).length,
     }),
     [rows],
   );
 
   const visibleRows =
-    filter === "all" ? rows : rows.filter((r) => r.tone === filter);
+    filter === "all"
+      ? rows
+      : rows.filter(
+          (r) => r.tone === filter,
+        );
 
-  const selectedRow = rows.find((r) => r.id === selectedId) ?? null;
+  const selectedRow =
+    rows.find(
+      (r) => r.id === selectedId,
+    ) ?? null;
 
-  const chips: { key: Filter; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "danger", label: "Urgent ≤7d" },
-    { key: "warn", label: "Soon ≤20d" },
-    { key: "ok", label: "Valid" },
+  const chips: {
+    key: Filter;
+    label: string;
+  }[] = [
+    {
+      key: "all",
+      label: "All",
+    },
+    {
+      key: "danger",
+      label: "Urgent ≤7d",
+    },
+    {
+      key: "warn",
+      label: "Soon ≤20d",
+    },
+    {
+      key: "ok",
+      label: "Valid",
+    },
   ];
 
-  if (loading) return <VisaGridSkeleton />;
+  if (loading) {
+    return <VisaGridSkeleton />;
+  }
 
-  if (!rows.length) return <VisaGridEmpty />;
+  if (!rows.length) {
+    return <VisaGridEmpty />;
+  }
 
   return (
     <div className="space-y-3">
       {/* FILTER CHIPS */}
       <div className="flex flex-wrap gap-1.5">
         {chips.map((chip) => {
-          const active = filter === chip.key;
+          const active =
+            filter === chip.key;
 
           return (
             <button
               key={chip.key}
               type="button"
-              onClick={() => setFilter(chip.key)}
+              onClick={() =>
+                setFilter(chip.key)
+              }
               className={[
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+
                 active
                   ? "border-foreground bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
@@ -565,7 +704,10 @@ export function VisaGrid({
               <span
                 className={[
                   "rounded-full px-1.5 text-[10px] font-semibold",
-                  active ? "bg-background/20" : "bg-muted",
+
+                  active
+                    ? "bg-background/20"
+                    : "bg-muted",
                 ].join(" ")}
               >
                 {counts[chip.key]}
@@ -577,7 +719,7 @@ export function VisaGrid({
 
       {/* LIST + DETAIL */}
       <div className="grid items-start gap-3 lg:grid-cols-[1fr_340px]">
-        {/* Mobile e panel upore, desktop e dane */}
+        {/* DETAIL PANEL */}
         <div className="order-first lg:order-last lg:sticky lg:top-0">
           <VisaDetailPanel
             row={selectedRow}
@@ -586,10 +728,11 @@ export function VisaGrid({
           />
         </div>
 
+        {/* VISA LIST */}
         <div className="max-h-[calc(100vh-17rem)] overflow-y-auto pr-1">
           {visibleRows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No candidates in this filter.
+              No active visas in this filter.
             </p>
           ) : (
             <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -597,10 +740,15 @@ export function VisaGrid({
                 <VisaListCard
                   key={row.id}
                   row={row}
-                  selected={row.id === selectedId}
+                  selected={
+                    row.id === selectedId
+                  }
                   onSelect={() =>
-                    setSelectedId((current) =>
-                      current === row.id ? null : row.id,
+                    setSelectedId(
+                      (current) =>
+                        current === row.id
+                          ? null
+                          : row.id,
                     )
                   }
                 />
