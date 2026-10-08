@@ -80,6 +80,7 @@ function getValidityIcon(
 
   return null;
 }
+
 export function MedicalTable({
   medicals,
   loading,
@@ -185,11 +186,15 @@ export function MedicalTable({
       ),
     },
   ];
-
+const sortedMedicals = [...medicals].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() -
+      new Date(a.created_at).getTime(),
+  );
   return (
     <DataTable
       columns={columns}
-      data={medicals}
+      data={sortedMedicals}
       getRowKey={(medical) => medical.id}
       loading={loading}
       emptyTitle="No medical records found"
