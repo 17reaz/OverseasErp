@@ -1,7 +1,12 @@
 // src/modules/erp/mofa/components/mofa-table.tsx
 
-import { CalendarDays, Pencil, Trash2 } from "lucide-react";
-
+import { CalendarDays,MoreVertical, Pencil, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
 import type { Mofa } from "../mofa-service";
@@ -233,33 +238,48 @@ export function MofaTable({
       ),
     },
     {
-      key: "action",
-      header: "Action",
-      className: "w-[100px] text-right",
-      cell: (mofa) => (
-        <div className="flex justify-end gap-1">
+  key: "action",
+  header: "Action",
+  className: "w-[100px] text-right",
+  cell: (mofa) => (
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             size="icon"
+          >
+            <MoreVertical className="h-4 w-4" />
+            <span className="sr-only">
+              Open actions
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align="end"
+          className="w-36"
+        >
+          <DropdownMenuItem
             onClick={() => onEdit?.(mofa)}
           >
-            <Pencil className="h-4 w-4" />
-            <span className="sr-only">Edit MOFA</span>
-          </Button>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
+          <DropdownMenuItem
             onClick={() => onDelete?.(mofa)}
+            className="text-destructive focus:text-destructive"
           >
-            <Trash2 className="h-4 w-4" />
-            <span className="sr-only">Delete MOFA</span>
-          </Button>
-        </div>
-      ),
-    },
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ),
+},
   ];
 
   return (
