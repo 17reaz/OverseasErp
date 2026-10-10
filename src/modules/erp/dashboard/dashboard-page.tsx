@@ -14,6 +14,7 @@ import { DashboardPipeline } from "./components/dashboard-pipeline";
 import { DashboardCountryPassports } from "./components/dashboard-country-passports";
 import { DashboardUpcomingDeadlines } from "./components/dashboard-upcoming-deadlines";
 import { DashboardLiveTrace } from "./components/dashboard-live-trace";
+import { ActivePartiesCard } from "./components/active-parties-card";
 import {
   DashboardFilters,
   type DashboardFiltersState,
@@ -277,10 +278,11 @@ export function DashboardPage() {
 
   {/* RIGHT: Column 3 (ager moto full height) */}
   <div className="flex min-h-0 flex-col gap-3">
+    <ActivePartiesCard />
     <div className="shrink-0 rounded-lg border bg-background p-2">
       <DashboardVisaMonitor />
     </div>
-
+          
     <TabPanel
       id="col3"
       tabs={[
