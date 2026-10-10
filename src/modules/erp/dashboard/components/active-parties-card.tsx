@@ -57,10 +57,9 @@ export function ActivePartiesCard() {
 
   if (loading) {
     return (
-      <Card className="flex flex-row items-center gap-3 px-3 py-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="ml-auto h-7 w-24" />
-        <Skeleton className="h-7 w-24" />
+      <Card className="flex flex-row items-center gap-2 px-3 py-2">
+        <Skeleton className="h-9 flex-1" />
+        <Skeleton className="h-9 flex-1" />
       </Card>
     );
   }
@@ -99,28 +98,28 @@ export function ActivePartiesCard() {
   ];
 
   return (
-    <Card className="flex flex-row flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
-      <div className="ml-auto flex items-center gap-2">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.label}
-              className="flex items-center gap-2 rounded-md border bg-background px-2 py-1"
+    <Card className="flex flex-row items-center gap-2 px-3 py-2">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div
+            key={item.label}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-md border bg-background px-2 py-1.5"
+          >
+            <span
+              className={`flex size-7 shrink-0 items-center justify-center rounded ${item.accent}`}
             >
-              <span
-                className={`flex size-6 items-center justify-center rounded ${item.accent}`}
-              >
-                <Icon className="size-3.5" />
-              </span>
-              <span className="text-xs text-muted-foreground">{item.label}</span>
-              <span className="text-sm font-semibold tabular-nums">
-                {item.value.toLocaleString()}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+              <Icon className="size-4" />
+            </span>
+            <span className="truncate text-xs text-muted-foreground">
+              {item.label}
+            </span>
+            <span className="ml-auto text-sm font-semibold tabular-nums">
+              {item.value.toLocaleString()}
+            </span>
+          </div>
+        );
+      })}
     </Card>
   );
 }
