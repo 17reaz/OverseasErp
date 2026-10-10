@@ -63,20 +63,23 @@ export function AgentForm({
       setCode("");
 
       onSuccess();
-    } catch (error) {
-      console.error(
-        "Failed to create agent:",
-        error,
-      );
+    
+    } catch (error: unknown) {
+      console.error("Failed to create agent:", error);
 
-      setError(
-        error instanceof Error
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof error.message === "string"
           ? error.message
-          : "Failed to create agent.",
-      );
+          : "Unknown error while creating agent.";
+
+      setError(message);
     } finally {
       setLoading(false);
     }
+
   }
 
   return (

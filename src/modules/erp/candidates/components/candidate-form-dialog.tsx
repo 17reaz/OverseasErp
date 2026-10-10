@@ -141,7 +141,12 @@ export function CandidateFormDialog({
     if (!open) return;
 
     setDraft("passportNo", candidate?.passport_no ?? "");
-setDraft("name", (candidate?.name ?? "").toUpperCase());    setDraft("receivedDate", candidate?.received_date ?? getToday());
+setDraft("name", (candidate?.name ?? "").toUpperCase());    setDraft(
+  "receivedDate",
+  candidate
+    ? candidate.received_date ?? ""
+    : getToday(),
+);
     setDraft("country", candidate?.country ?? "");
     setDraft("currentStage", candidate?.current_stage ?? "candidate");
     setSelectedAgentId(candidate?.agent_id ?? null);
