@@ -140,7 +140,7 @@ export function VisaTable({
 
     return hasBmet ? (
       <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-        BMET OK
+        OK
       </span>
     ) : (
       <span className="text-muted-foreground">—</span>
