@@ -7,8 +7,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, ChevronsUpDown } from "lucide-react";
-
+import { Check, ChevronsUpDown, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -49,6 +48,8 @@ interface BmetFormProps {
 
 interface BmetFormState {
   candidate_id: string;
+  phone_number: string;
+password: string;
   pdo: boolean;
   finger: boolean;
   nominee: boolean;
@@ -59,6 +60,8 @@ interface BmetFormState {
 
 const DEFAULT_FORM: BmetFormState = {
   candidate_id: "",
+  phone_number: "",
+  password: "",
   pdo: false,
   finger: false,
   nominee: false,
@@ -80,7 +83,7 @@ export function BmetForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [dirty, setDirty] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const isEdit = Boolean(record);
 
   useEffect(() => {
@@ -91,6 +94,8 @@ export function BmetForm({
     if (record) {
       setForm({
         candidate_id: record.candidate_id,
+        phone_number: record.phone_number ?? "",
+password: record.password ?? "",
         pdo: record.pdo,
         finger: record.finger,
         nominee: record.nominee,
@@ -133,6 +138,8 @@ export function BmetForm({
 
     try {
       const input = {
+        phone_number: form.phone_number.trim() || null,
+password: form.password || null,
         pdo: form.pdo,
         finger: form.finger,
         nominee: form.nominee,
@@ -303,6 +310,68 @@ export function BmetForm({
               Mark each requirement when completed.
             </p>
           </div>
+          
+{/* BMET Contact and Login */}
+<div className="space-y-4 rounded-lg border p-4">
+  <div>
+    <h3 className="text-sm font-medium">
+      BMET Contact & Login
+    </h3>
+    <p className="mt-1 text-xs text-muted-foreground">
+      Candidate-এর BMET registration phone এবং login password।
+    </p>
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="bmet-phone-number">
+      Phone Number
+    </Label>
+    <Input
+      id="bmet-phone-number"
+      type="tel"
+      value={form.phone_number}
+      onChange={(event) =>
+        updateField("phone_number", event.target.value)
+      }
+      placeholder="01XXXXXXXXX"
+      disabled={saving}
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="bmet-password">
+      BMET Password
+    </Label>
+    <div className="relative">
+      <Input
+        id="bmet-password"
+        type={showPassword ? "text" : "password"}
+        value={form.password}
+        onChange={(event) =>
+          updateField("password", event.target.value)
+        }
+        placeholder="BMET login password"
+        className="pr-10"
+        disabled={saving}
+        autoComplete="new-password"
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+        onClick={() => setShowPassword((value) => !value)}
+        aria-label={showPassword ? "Hide password" : "Show password"}
+      >
+        {showPassword ? (
+          <EyeOff className="h-4 w-4" />
+        ) : (
+          <Eye className="h-4 w-4" />
+        )}
+      </Button>
+    </div>
+  </div>
+</div>
 
           <div className="rounded-lg border">
             <ChecklistItem

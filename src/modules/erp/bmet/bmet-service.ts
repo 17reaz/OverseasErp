@@ -4,6 +4,8 @@ export interface BmetRecord {
   id: string;
   tenant_id: string;
   candidate_id: string;
+  phone_number: string | null;
+  password: string | null;
   pdo: boolean;
   finger: boolean;
   nominee: boolean;
@@ -16,6 +18,8 @@ export interface BmetRecord {
 
 export interface CreateBmetInput {
   candidate_id: string;
+  phone_number?: string | null;
+  password?: string | null;
   pdo?: boolean;
   finger?: boolean;
   nominee?: boolean;
@@ -25,6 +29,8 @@ export interface CreateBmetInput {
 }
 
 export interface UpdateBmetInput {
+  phone_number?: string | null;
+  password?: string | null;
   pdo?: boolean;
   finger?: boolean;
   nominee?: boolean;

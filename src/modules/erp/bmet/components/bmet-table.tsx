@@ -1,4 +1,5 @@
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { useState } from "react";
+  import { Check, Pencil, Trash2, X, Eye, EyeOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,8 @@ export function BmetTable({
       candidate,
     ]),
   );
-
+  const [revealedPasswords, setRevealedPasswords] =
+  useState<Set<string>>(() => new Set());
   const columns: DataTableColumn<BmetRecord>[] = [
     {
       key: "candidate",
@@ -111,6 +113,63 @@ export function BmetTable({
         </span>
       ),
     },
+
+{
+  key: "phone_number",
+  header: "Phone Number",
+  hideOnMobile: true,
+  cell: (record) => (
+    <span className="whitespace-nowrap text-sm">
+      {record.phone_number || "—"}
+    </span>
+  ),
+},
+{
+  key: "password",
+  header: "BMET Password",
+  hideOnMobile: true,
+  cell: (record) => {
+    if (!record.password) {
+      return <span className="text-muted-foreground">—</span>;
+    }
+
+    const isRevealed = revealedPasswords.has(record.id);
+
+    return (
+      <div className="flex items-center gap-1">
+        <span className="max-w-32 truncate font-mono text-xs">
+          {isRevealed ? record.password : "••••••••"}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() =>
+            setRevealedPasswords((previous) => {
+              const next = new Set(previous);
+
+              if (next.has(record.id)) {
+                next.delete(record.id);
+              } else {
+                next.add(record.id);
+              }
+
+              return next;
+            })
+          }
+          aria-label={isRevealed ? "Hide password" : "Show password"}
+        >
+          {isRevealed ? (
+            <EyeOff className="h-3.5 w-3.5" />
+          ) : (
+            <Eye className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      </div>
+    );
+  },
+},
 
     {
       key: "pdo",
