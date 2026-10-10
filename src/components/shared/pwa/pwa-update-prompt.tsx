@@ -1,12 +1,17 @@
 import { useEffect, useRef } from "react"
 import { useRegisterSW } from "virtual:pwa-register/react"
 import { toast } from "@/components/shared/toast/toast"
+import {
+  hasUnsavedChanges,
+  subscribeUnsavedChanges,
+} from "@/lib/unsaved-changes"
 
 const CHECK_INTERVAL = 5 * 60 * 1000
 
 export function PwaUpdatePrompt() {
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
   const toastShownRef = useRef(false)
+  const applyingRef = useRef(false)
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -15,8 +20,8 @@ export function PwaUpdatePrompt() {
     onRegisteredSW(_url, registration) {
       registrationRef.current = registration ?? null
 
-      // Initial registration er por ekbar update check.
-      // Eta app reload kore na.
+      // Notun version thakle browser nijei background e
+      // download + precache kore rakhe. UI te kichu dekhay na.
       registration?.update().catch(() => {})
     },
 
@@ -26,35 +31,28 @@ export function PwaUpdatePrompt() {
   })
 
   // ---------------------------------------------------------
-  // Background update check
+  // Update apply korar single entry point
   // ---------------------------------------------------------
-  useEffect(() => {
-    const checkForUpdate = () => {
-      if (!navigator.onLine) return
+  const applyUpdate = () => {
+    if (applyingRef.current) return
 
-      registrationRef.current?.update().catch(() => {})
-    }
+    applyingRef.current = true
+    setNeedRefresh(false)
 
-    // Background e periodically new deployment check korbe
-    const intervalId = window.setInterval(
-      checkForUpdate,
-      CHECK_INTERVAL,
-    )
+    // skipWaiting + reload (already download kora, tai instant)
+    void updateServiceWorker(true)
+  }
 
-    // Internet abar ashle update check korbe
-    window.addEventListener("online", checkForUpdate)
+  // Page hidden + kono unsaved change nei hole-i silently apply
+  const tryApplySilently = () => {
+    if (document.visibilityState !== "hidden") return
+    if (hasUnsavedChanges()) return
 
-    return () => {
-      window.clearInterval(intervalId)
-      window.removeEventListener("online", checkForUpdate)
-    }
-  }, [])
+    applyUpdate()
+  }
 
-  // ---------------------------------------------------------
-  // New version ready -> show toast
-  // ---------------------------------------------------------
-  useEffect(() => {
-    if (!needRefresh || toastShownRef.current) return
+  const showUpdateToast = () => {
+    if (toastShownRef.current) return
 
     toastShownRef.current = true
 
@@ -66,30 +64,87 @@ export function PwaUpdatePrompt() {
       duration: 0,
       action: {
         label: "Update",
-        onClick: () => {
-          setNeedRefresh(false)
-
-          // User manually update korle:
-          // skipWaiting + page reload
-          void updateServiceWorker(true)
-        },
+        // User nijer icche te press korle shorashori apply
+        onClick: applyUpdate,
       },
     })
-  }, [needRefresh, setNeedRefresh, updateServiceWorker])
+  }
 
   // ---------------------------------------------------------
-  // IMPORTANT:
-  // visibilitychange / inactive -> active
-  // ekhane kono updateServiceWorker(true) nei.
-  //
-  // Tai:
-  // app minimize korle
-  // tab change korle
-  // phone lock/unlock korle
-  // PWA theke baire giye abar ashle
-  //
-  // automatically reload hobe na.
+  // Silent background update check
   // ---------------------------------------------------------
+  useEffect(() => {
+    const checkForUpdate = () => {
+      if (!navigator.onLine) return
+
+      registrationRef.current?.update().catch(() => {})
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkForUpdate()
+      }
+    }
+
+    const intervalId = window.setInterval(
+      checkForUpdate,
+      CHECK_INTERVAL,
+    )
+
+    window.addEventListener("online", checkForUpdate)
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener("online", checkForUpdate)
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange,
+      )
+    }
+  }, [])
+
+  // ---------------------------------------------------------
+  // Update ready thakle:
+  //
+  // - hidden + clean   -> silently apply
+  // - hidden + dirty   -> apply kora hobe na, wait kore
+  // - visible          -> toast dekhabe
+  //
+  // Dirty form clean hole (save korle) ar page hidden thakle
+  // tokhon apply hobe.
+  // ---------------------------------------------------------
+  useEffect(() => {
+    if (!needRefresh) return
+
+    if (document.visibilityState === "visible") {
+      showUpdateToast()
+    } else {
+      tryApplySilently()
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        tryApplySilently()
+      } else {
+        // dirty chhilo bole apply hoyni, ekhon user fire eshese
+        showUpdateToast()
+      }
+    }
+
+    const unsubscribe = subscribeUnsavedChanges(tryApplySilently)
+
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      unsubscribe()
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange,
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needRefresh])
 
   return null
 }

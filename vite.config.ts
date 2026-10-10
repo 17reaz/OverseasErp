@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 import { execFileSync, execSync } from "child_process"
 import { readFileSync } from "fs"
+
 function getCommitHash(): string {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim()
@@ -17,6 +18,7 @@ function getCommitHash(): string {
     )
   }
 }
+
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8")) as {
   version: string
 }
@@ -40,119 +42,127 @@ function getCommits(limit = 100) {
     return [] // git nei hole (jemon kono Docker build) khali thakbe
   }
 }
+
 export default defineConfig({
   define: {
-  __COMMIT_HASH__: JSON.stringify(getCommitHash()),
-  __APP_VERSION__: JSON.stringify(pkg.version),
-  __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-  __COMMITS__: JSON.stringify(getCommits()),
-},
+    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __COMMITS__: JSON.stringify(getCommits()),
+  },
 
   plugins: [
     react(),
     tailwindcss(),
 
     VitePWA({
+      // "prompt": notun service worker download hoye "waiting" e thake.
+      // PwaUpdatePrompt jokhon bolbe tokhon-i activate hobe.
       registerType: "prompt",
       injectRegister: false,
 
       workbox: {
-  maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
 
-  cleanupOutdatedCaches: true,
-  clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
 
-  // Lazy-loaded route chunks and heavy libraries
-  // should NOT be downloaded during PWA install/update.
-  globIgnores: [
-    "**/react-pdf*.js",
-    "**/*-page-*.js",
-    "**/client-*.js",
-    "**/workbox-*.js",
-  ],
+        // IMPORTANT: false thakte hobe.
+        // true dile notun worker nijei activate hoye jay,
+        // tahole needRefresh kokhono true hobe na
+        // ar silent/instant update flow bhenge jabe.
+        skipWaiting: false,
 
-  runtimeCaching: [
-    {
-  urlPattern: ({ request }) =>
-    request.destination === "script",
+        // /api navigation kokhono index.html fallback pabe na
+        navigateFallbackDenylist: [/^\/api/],
 
-  handler: "StaleWhileRevalidate",
+        // Lazy-loaded route chunks and heavy libraries
+        // should NOT be downloaded during PWA install/update.
+        globIgnores: [
+          "**/react-pdf*.js",
+          "**/*-page-*.js",
+          "**/client-*.js",
+          "**/workbox-*.js",
+        ],
 
-  options: {
-    cacheName: "oerp-js",
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === "script",
 
-    expiration: {
-      maxEntries: 80,
-      maxAgeSeconds: 60 * 60 * 24 * 7,
-    },
+            handler: "StaleWhileRevalidate",
 
-    cacheableResponse: {
-      statuses: [200],
-    },
-  },
-},
+            options: {
+              cacheName: "oerp-js",
 
-    {
-  urlPattern: ({ request }) =>
-    request.destination === "style",
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 60 * 24 * 7,
+              },
 
-  handler: "StaleWhileRevalidate",
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
 
-  options: {
-    cacheName: "oerp-css",
+          {
+            urlPattern: ({ request }) => request.destination === "style",
 
-    expiration: {
-      maxEntries: 20,
-      maxAgeSeconds: 60 * 60 * 24 * 7,
-    },
+            handler: "StaleWhileRevalidate",
 
-    cacheableResponse: {
-      statuses: [200],
-    },
-  },
-},
+            options: {
+              cacheName: "oerp-css",
 
-    {
-      urlPattern: ({ request }) =>
-        request.destination === "font",
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 7,
+              },
 
-      handler: "CacheFirst",
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
 
-      options: {
-        cacheName: "oerp-fonts",
+          {
+            urlPattern: ({ request }) => request.destination === "font",
 
-        expiration: {
-          maxEntries: 20,
-          maxAgeSeconds: 60 * 60 * 24 * 365,
-        },
+            handler: "CacheFirst",
 
-        cacheableResponse: {
-          statuses: [200],
-        },
+            options: {
+              cacheName: "oerp-fonts",
+
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
+
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
+
+          {
+            urlPattern: ({ request }) => request.destination === "image",
+
+            handler: "CacheFirst",
+
+            options: {
+              cacheName: "oerp-images",
+
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+
+              cacheableResponse: {
+                statuses: [200],
+              },
+            },
+          },
+        ],
       },
-    },
-
-    {
-      urlPattern: ({ request }) =>
-        request.destination === "image",
-
-      handler: "CacheFirst",
-
-      options: {
-        cacheName: "oerp-images",
-
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60 * 24 * 30,
-        },
-
-        cacheableResponse: {
-          statuses: [200],
-        },
-      },
-    },
-  ],
-},
 
       devOptions: {
         enabled: false,
@@ -193,12 +203,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
   server: {
-  proxy: {
-    "/api": {
-      target: "http://localhost:8000",
-      changeOrigin: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
-},
 })
