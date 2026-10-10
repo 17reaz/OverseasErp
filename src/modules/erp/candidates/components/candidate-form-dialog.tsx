@@ -58,6 +58,8 @@ const countries = [
   "Laos",
   "Malaysia",
   "Belarus",
+  "Fiji",
+  "UAE",
 ] as const;
 
 // Local date (YYYY-MM-DD) - toISOString() would use UTC and can show yesterday.
