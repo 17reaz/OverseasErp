@@ -89,12 +89,28 @@ export function MedicalTable({
   onNext,
 }: MedicalTableProps) {
   const columns: DataTableColumn<Medical>[] = [
-    {
-      key: "candidate",
-      header: "Candidate",
-      className: "font-medium",
-      cell: (medical) => medical.candidate?.name ?? "—",
-    },
+   
+
+{
+  key: "candidate",
+  header: "Candidate",
+  className: "font-medium min-w-[180px]",
+  cell: (medical) => (
+    <div className="flex flex-col items-start gap-0.5">
+      {medical.version > 1 && (
+        <div className="flex w-full justify-end">
+          <span className="text-[10px] leading-none text-muted-foreground">
+            V{medical.version}
+          </span>
+        </div>
+      )}
+
+      <span>{medical.candidate?.name ?? "—"}</span>
+    </div>
+  ),
+},
+
+
     {
       key: "passport",
       header: "Passport",

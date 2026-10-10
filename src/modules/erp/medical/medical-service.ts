@@ -58,7 +58,7 @@ export interface Medical {
   tenant_id: string;
 
   candidate_id: string;
-
+   version: number;
   medical_date: string | null;
 
   fit_date: string | null;
