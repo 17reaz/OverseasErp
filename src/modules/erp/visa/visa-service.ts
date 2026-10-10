@@ -70,221 +70,215 @@ export interface VisaEligibleCandidate {
 }
 
 export interface VisaEligibleMofa {
+  // Unique row key; medical ID ব্যবহার করা যাবে যদি MOFA না থাকে
   id: string;
 
-  application_number: string;
+  candidate_id: string;
+  medical_id: string;
+  mofa_id: string | null;
 
+  application_number: string | null;
   fit_date: string | null;
+  medical_valid: boolean;
 
   finger_completed: boolean;
-
   police_clearance_verified: boolean;
-
-  candidate_id: string;
+  takamul_completed: boolean;
 
   candidate: VisaEligibleCandidate;
 }
 
 export async function getApprovedMofasWithoutVisa() {
-  /*
-   * 1. Approved MOFAs + candidate + fit date
-   *    (fit date comes from the linked medical)
-   */
+  const today = new Date().toISOString().slice(0, 10);
 
-  const {
-    data: mofas,
-    error: mofasError,
-  } = await supabase
+  // 1. Fit medical records that are marked active
+  
+
+  // Keep the date filter below separate: a fit date in the past
+  // may still be valid, depending on the configured validity period.
+  const { data: allActiveMedicals, error: activeMedicalError } =
+    await supabase
+      .from("medicals")
+      .select(`
+        id,
+        candidate_id,
+        fit_date,
+        status,
+        validity_status,
+        version
+      `)
+      .eq("status", "fit")
+      .eq("validity_status", "active");
+
+  if (activeMedicalError) {
+    return { data: null, error: activeMedicalError };
+  }
+
+  const validMedicals = (allActiveMedicals ?? []).filter((medical) => {
+    if (!medical.fit_date || medical.fit_date > today) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // 2. Candidate information
+  const candidateIds = [
+    ...new Set(validMedicals.map((medical) => medical.candidate_id)),
+  ];
+
+  if (candidateIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const { data: candidates, error: candidateError } = await supabase
+    .from("candidates")
+    .select("id, name, passport_no, sl")
+    .in("id", candidateIds)
+    .eq("is_deleted", false);
+
+  if (candidateError) {
+    return { data: null, error: candidateError };
+  }
+
+  const candidateMap = new Map(
+    (candidates ?? []).map((candidate) => [candidate.id, candidate]),
+  );
+
+  // 3. MOFA records; candidates without MOFA are included too.
+  const { data: mofas, error: mofaError } = await supabase
     .from("mofas")
     .select(`
       id,
-      application_number,
       candidate_id,
+      medical_id,
+      application_number,
       stage,
-      candidate:candidates (
-        id,
-        name,
-        passport_no,
-        sl
-      ),
-      medical:medicals (
-        fit_date
-      )
+      validity_status,
+      version
     `)
-    .eq(
-      "stage",
-      "approved",
-    )
-    .order(
-      "application_date",
-      {
-        ascending: false,
-      },
-    );
+    .in("candidate_id", candidateIds)
+    .eq("stage", "approved")
+    .eq("validity_status", "active");
 
-  if (mofasError) {
-    return {
-      data: null,
-      error: mofasError,
-    };
+  if (mofaError) {
+    return { data: null, error: mofaError };
   }
 
-
-  /*
-   * 2. MOFAs that already have a visa
-   */
-
-  const {
-    data: visas,
-    error: visasError,
-  } = await supabase
+  const { data: visas, error: visaError } = await supabase
     .from("visas")
-    .select(
-      "mofa_id",
-    );
+    .select("candidate_id, mofa_id");
 
-  if (visasError) {
-    return {
-      data: null,
-      error: visasError,
-    };
+  if (visaError) {
+    return { data: null, error: visaError };
   }
 
-  const visaMofaIds =
-    new Set(
-      (visas ?? [])
-        .map(
-          (visa) =>
-            visa.mofa_id,
-        )
-        .filter(Boolean),
-    );
+  const candidatesWithVisa = new Set(
+    (visas ?? []).map((visa) => visa.candidate_id),
+  );
 
+  const visaMofaIds = new Set(
+    (visas ?? [])
+      .map((visa) => visa.mofa_id)
+      .filter((id): id is string => Boolean(id)),
+  );
 
-  /*
-   * 3. Candidates with a completed
-   *    fingerprint record
-   */
-
-  const {
-    data: fingers,
-    error: fingersError,
-  } = await supabase
+  // 4. Current completed finger records
+  const { data: fingers, error: fingerError } = await supabase
     .from("fingers")
-    .select(
-      "candidate_id",
-    )
-    .eq(
-      "status",
-      "completed",
-    );
+    .select("candidate_id")
+    .eq("status", "completed")
+    .eq("is_current", true);
 
-  if (fingersError) {
-    return {
-      data: null,
-      error: fingersError,
-    };
+  if (fingerError) {
+    return { data: null, error: fingerError };
   }
 
-  const fingerCompletedCandidateIds =
-    new Set(
-      (fingers ?? []).map(
-        (finger) =>
-          finger.candidate_id,
-      ),
-    );
+  const fingerCandidateIds = new Set(
+    (fingers ?? []).map((finger) => finger.candidate_id),
+  );
 
-
-  /*
-   * 4. Candidates with a verified
-   *    police clearance
-   */
-
-  const {
-    data: policeClearances,
-    error: policeClearancesError,
-  } = await supabase
+  // 5. Verified Police Clearance
+  const { data: policeClearances, error: pcError } = await supabase
     .from("police_clearances")
-    .select(
-      "candidate_id",
-    )
-    .eq(
-      "verified",
-      true,
-    );
+    .select("candidate_id")
+    .eq("verified", true);
 
-  if (policeClearancesError) {
-    return {
-      data: null,
-      error: policeClearancesError,
-    };
+  if (pcError) {
+    return { data: null, error: pcError };
   }
 
-  const verifiedPoliceClearanceCandidateIds =
-    new Set(
-      (policeClearances ?? []).map(
-        (clearance) =>
-          clearance.candidate_id,
-      ),
-    );
+  const pcCandidateIds = new Set(
+    (policeClearances ?? []).map((pc) => pc.candidate_id),
+  );
 
+  // 6. Completed Takamul / trade tests
+  const { data: tradeTests, error: takamulError } = await supabase
+    .from("trade_tests")
+    .select("candidate_id")
+    .eq("status", "completed");
 
-  /*
-   * 5. Combine
-   *
-   * Only gate on "no visa yet" — finger
-   * and police clearance are shown as
-   * booleans, not filtered on.
-   */
+  if (takamulError) {
+    return { data: null, error: takamulError };
+  }
 
-  const pending: VisaEligibleMofa[] =
-    (mofas ?? [])
-      .filter(
-        (mofa) =>
-          !visaMofaIds.has(
-            mofa.id,
-          ),
-      )
-      .map((mofa) => {
+  const takamulCandidateIds = new Set(
+    (tradeTests ?? []).map((test) => test.candidate_id),
+  );
 
-        const rawCandidate =
-          Array.isArray(mofa.candidate)
-            ? mofa.candidate[0]
-            : mofa.candidate;
+  // 7. Pick the newest approved MOFA for each candidate.
+  // A medical without an approved MOFA remains eligible.
+  const mofaByCandidate = new Map<string, (typeof mofas)[number]>();
 
-        const rawMedical =
-          Array.isArray(mofa.medical)
-            ? mofa.medical[0]
-            : mofa.medical;
+  for (const mofa of mofas ?? []) {
+    if (visaMofaIds.has(mofa.id)) continue;
 
-        return {
-          id: mofa.id,
-          application_number: mofa.application_number,
-          fit_date: rawMedical?.fit_date ?? null,
-          finger_completed:
-            fingerCompletedCandidateIds.has(
-              mofa.candidate_id,
-            ),
-          police_clearance_verified:
-            verifiedPoliceClearanceCandidateIds.has(
-              mofa.candidate_id,
-            ),
-          candidate_id: mofa.candidate_id,
-          candidate: {
-            id: rawCandidate.id,
-            name: rawCandidate.name,
-            passport_no: rawCandidate.passport_no,
-            sl: rawCandidate.sl,
-          },
-        };
+    const existing = mofaByCandidate.get(mofa.candidate_id);
 
-      });
+    if (!existing || (mofa.version ?? 1) > (existing.version ?? 1)) {
+      mofaByCandidate.set(mofa.candidate_id, mofa);
+    }
+  }
 
+  const result: VisaEligibleMofa[] = [];
 
-  return {
-    data: pending,
-    error: null,
-  };
+  for (const medical of validMedicals) {
+    const candidate = candidateMap.get(medical.candidate_id);
+
+    if (!candidate) continue;
+
+    // No Visa for this candidate
+    if (candidatesWithVisa.has(candidate.id)) continue;
+
+    const mofa = mofaByCandidate.get(candidate.id);
+
+    // If an approved MOFA exists, it must belong to this medical.
+    // Otherwise the candidate may still appear without a MOFA.
+    if (mofa && mofa.medical_id && mofa.medical_id !== medical.id) {
+      continue;
+    }
+
+    result.push({
+      id: mofa?.id ?? medical.id,
+      candidate_id: candidate.id,
+      medical_id: medical.id,
+      mofa_id: mofa?.id ?? null,
+      application_number: mofa?.application_number ?? null,
+      fit_date: medical.fit_date,
+      medical_valid: true,
+      finger_completed: fingerCandidateIds.has(candidate.id),
+      police_clearance_verified: pcCandidateIds.has(candidate.id),
+      takamul_completed: takamulCandidateIds.has(candidate.id),
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        passport_no: candidate.passport_no,
+        sl: candidate.sl,
+      },
+    });
+  }
+
+  return { data: result, error: null };
 }
 
 export async function createVisa(input: VisaInput): Promise<Visa> {
