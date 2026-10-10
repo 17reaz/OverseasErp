@@ -1,6 +1,13 @@
 import { useState } from "react";
-  import { Check, Pencil, Trash2, X, Eye, EyeOff } from "lucide-react";
-
+import {
+  Check,
+  Pencil,
+  Trash2,
+  X,
+  Eye,
+  EyeOff,
+  MoreHorizontal,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -8,7 +15,12 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/ui/data-table";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { BmetRecord } from "../bmet-service";
 
 interface CandidateInfo {
@@ -257,35 +269,45 @@ export function BmetTable({
       },
     },
 
-    {
-      key: "action",
-      header: "Actions",
-      className: "w-[110px] text-right",
-      cell: (record) => (
-        <div className="flex justify-end gap-1">
+    
+{
+  key: "action",
+  header: "Actions",
+  className: "w-[80px] text-right",
+  cell: (record) => (
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => onEdit(record)}
-            aria-label="Edit BMET record"
+            className="h-8 w-8"
+            aria-label="Open BMET actions"
           >
-            <Pencil className="h-4 w-4" />
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
+        </DropdownMenuTrigger>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
+        <DropdownMenuContent align="end" className="w-36">
+          <DropdownMenuItem onClick={() => onEdit(record)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={() => onDelete(record)}
-            aria-label="Delete BMET record"
+            className="text-destructive focus:text-destructive"
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  ),
+},
+
   ];
 
   return (
