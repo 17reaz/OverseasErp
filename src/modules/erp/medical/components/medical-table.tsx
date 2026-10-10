@@ -90,7 +90,6 @@ export function MedicalTable({
 }: MedicalTableProps) {
   const columns: DataTableColumn<Medical>[] = [
    
-
 {
   key: "candidate",
   header: "Candidate",
@@ -99,9 +98,12 @@ export function MedicalTable({
     <div className="flex flex-col items-start gap-0.5">
       {medical.version > 1 && (
         <div className="flex w-full justify-end">
-          <span className="text-[10px] leading-none text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="h-4 border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold leading-none text-amber-600 dark:text-amber-400"
+          >
             V{medical.version}
-          </span>
+          </Badge>
         </div>
       )}
 
