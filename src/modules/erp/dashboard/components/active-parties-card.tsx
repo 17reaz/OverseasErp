@@ -100,10 +100,6 @@ export function ActivePartiesCard() {
 
   return (
     <Card className="flex flex-row flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
-      <h3 className="text-sm font-semibold tracking-tight">
-        Agency & Agent Overview
-      </h3>
-
       <div className="ml-auto flex items-center gap-2">
         {items.map((item) => {
           const Icon = item.icon;
