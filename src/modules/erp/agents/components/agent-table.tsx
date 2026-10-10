@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,24 +27,17 @@ interface AgentTableProps {
   onDelete: (id: string) => void;
 }
 
-/**
- * Agents don't have an `sl` column in the database,
- * so we derive one from `created_at`.
- */
-function buildSlMap(agents: Agent[]) {
-  const bySl = [...agents].sort(
-    (a, b) =>
-      new Date(a.created_at).getTime() -
-      new Date(b.created_at).getTime(),
-  );
+function formatDate(value?: string | null) {
+  if (!value) return "—";
 
-  const map = new Map<string, number>();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
 
-  bySl.forEach((agent, index) => {
-    map.set(agent.id, index + 1);
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
-
-  return map;
 }
 
 function AgentActions({
@@ -62,10 +55,10 @@ function AgentActions({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Agent actions"
+          aria-label="More actions"
           className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          <Trash2 className="h-4 w-4" />
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
 
@@ -130,14 +123,12 @@ export function AgentTable({
 
   onDelete,
 }: AgentTableProps) {
-  const slMap = buildSlMap(agents);
-
   const columns: DataTableColumn<Agent>[] = [
     {
       key: "sl",
       header: "SL",
       className: "w-[80px] font-medium",
-      cell: (agent) => slMap.get(agent.id) ?? "—",
+      cell: (agent) => agent.sl ?? "—",
     },
 
     {
@@ -157,6 +148,36 @@ export function AgentTable({
           {agent.name ?? "—"}
         </Link>
       ),
+    },
+
+    {
+      key: "status",
+      header: "Status",
+      className: "w-[110px]",
+      cell: (agent) =>
+        agent.is_active ? (
+          <span className="inline-flex h-5 items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+            Active
+          </span>
+        ) : (
+          <span className="inline-flex h-5 items-center rounded-full border border-muted-foreground/30 bg-muted px-2 text-[11px] font-medium text-muted-foreground">
+            Inactive
+          </span>
+        ),
+    },
+
+    {
+      key: "created_at",
+      header: "Created",
+      className: "w-[130px]",
+      cell: (agent) => formatDate(agent.created_at),
+    },
+
+    {
+      key: "updated_at",
+      header: "Updated",
+      className: "w-[130px]",
+      cell: (agent) => formatDate(agent.updated_at),
     },
 
     {
