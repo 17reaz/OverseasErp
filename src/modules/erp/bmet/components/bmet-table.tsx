@@ -1,15 +1,20 @@
 import { useState } from "react";
 import {
   Check,
+  Copy,
   Pencil,
   Trash2,
   X,
   Eye,
-  EyeOff,
   MoreHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   DataTable,
@@ -65,11 +70,7 @@ function isComplete(record: BmetRecord) {
   );
 }
 
-function ChecklistBadge({
-  checked,
-}: {
-  checked: boolean;
-}) {
+function ChecklistBadge({ checked }: { checked: boolean }) {
   return checked ? (
     <span className="inline-flex items-center justify-center">
       <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -78,6 +79,93 @@ function ChecklistBadge({
     <span className="inline-flex items-center justify-center">
       <X className="h-4 w-4 text-muted-foreground" />
     </span>
+  );
+}
+
+function CopyButton({
+  value,
+  label,
+}: {
+  value: string;
+  label: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 shrink-0"
+      onClick={() => void handleCopy()}
+      aria-label={`Copy ${label}`}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+    </Button>
+  );
+}
+
+function ContactCell({ record }: { record: BmetRecord }) {
+  const phone = record.phone_number;
+  const password = record.password;
+
+  if (!phone && !password) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {phone ? (
+        <>
+          <span className="whitespace-nowrap text-sm">{phone}</span>
+          <CopyButton value={phone} label="phone number" />
+        </>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      )}
+
+      {password && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              aria-label="Show BMET password"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+
+          <PopoverContent align="start" className="w-auto min-w-48 p-3">
+            <p className="mb-1.5 text-xs text-muted-foreground">
+              BMET Password
+            </p>
+            <div className="flex items-center gap-1">
+              <span className="select-all break-all font-mono text-sm">
+                {password}
+              </span>
+              <CopyButton value={password} label="password" />
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 }
 
@@ -95,13 +183,9 @@ export function BmetTable({
   onDelete,
 }: BmetTableProps) {
   const candidateMap = new Map(
-    candidates.map((candidate) => [
-      candidate.id,
-      candidate,
-    ]),
+    candidates.map((candidate) => [candidate.id, candidate]),
   );
-  const [revealedPasswords, setRevealedPasswords] =
-  useState<Set<string>>(() => new Set());
+
   const columns: DataTableColumn<BmetRecord>[] = [
     {
       key: "candidate",
@@ -120,68 +204,17 @@ export function BmetTable({
       hideOnMobile: true,
       cell: (record) => (
         <span className="font-mono text-sm">
-          {candidateMap.get(record.candidate_id)
-            ?.passport_no ?? "—"}
+          {candidateMap.get(record.candidate_id)?.passport_no ?? "—"}
         </span>
       ),
     },
 
-{
-  key: "phone_number",
-  header: "Phone Number",
-  hideOnMobile: true,
-  cell: (record) => (
-    <span className="whitespace-nowrap text-sm">
-      {record.phone_number || "—"}
-    </span>
-  ),
-},
-{
-  key: "password",
-  header: "BMET Password",
-  hideOnMobile: true,
-  cell: (record) => {
-    if (!record.password) {
-      return <span className="text-muted-foreground">—</span>;
-    }
-
-    const isRevealed = revealedPasswords.has(record.id);
-
-    return (
-      <div className="flex items-center gap-1">
-        <span className="max-w-32 truncate font-mono text-xs">
-          {isRevealed ? record.password : "••••••••"}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() =>
-            setRevealedPasswords((previous) => {
-              const next = new Set(previous);
-
-              if (next.has(record.id)) {
-                next.delete(record.id);
-              } else {
-                next.add(record.id);
-              }
-
-              return next;
-            })
-          }
-          aria-label={isRevealed ? "Hide password" : "Show password"}
-        >
-          {isRevealed ? (
-            <EyeOff className="h-3.5 w-3.5" />
-          ) : (
-            <Eye className="h-3.5 w-3.5" />
-          )}
-        </Button>
-      </div>
-    );
-  },
-},
+    {
+      key: "contact",
+      header: "Phone / Password",
+      hideOnMobile: true,
+      cell: (record) => <ContactCell record={record} />,
+    },
 
     {
       key: "pdo",
@@ -244,8 +277,7 @@ export function BmetTable({
       key: "bmet_date",
       header: "BMET Date",
       hideOnMobile: true,
-      cell: (record) =>
-        formatDate(record.bmet_date),
+      cell: (record) => formatDate(record.bmet_date),
     },
 
     {
@@ -269,45 +301,43 @@ export function BmetTable({
       },
     },
 
-    
-{
-  key: "action",
-  header: "Actions",
-  className: "w-[80px] text-right",
-  cell: (record) => (
-    <div className="flex justify-end">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            aria-label="Open BMET actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+    {
+      key: "action",
+      header: "Actions",
+      className: "w-[80px] text-right",
+      cell: (record) => (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Open BMET actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-36">
-          <DropdownMenuItem onClick={() => onEdit(record)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem onClick={() => onEdit(record)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onClick={() => onDelete(record)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  ),
-},
-
+              <DropdownMenuItem
+                onClick={() => onDelete(record)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -322,8 +352,7 @@ export function BmetTable({
       onPageChange={onPageChange}
       total={total}
       serverPagination={
-        typeof total === "number" &&
-        total !== records.length
+        typeof total === "number" && total !== records.length
       }
     />
   );
