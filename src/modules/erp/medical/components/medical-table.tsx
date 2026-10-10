@@ -90,6 +90,18 @@ export function MedicalTable({
   onNext,
 }: MedicalTableProps) {
   const columns: DataTableColumn<Medical>[] = [
+    
+{
+  key: "sl",
+  header: "SL",
+  className: "w-[60px] text-center",
+  cell: (_medical, index) => (
+    <span className="text-sm tabular-nums text-muted-foreground">
+      {index + 1}
+    </span>
+  ),
+},
+
  {
   key: "candidate",
   header: "Candidate",
