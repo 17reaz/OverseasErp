@@ -7,6 +7,7 @@ import {
   CircleX,
   Clock3,
   MoreHorizontal,
+  RotateCw,
   Pencil,
   ShieldCheck,
   Trash2,
@@ -89,29 +90,26 @@ export function MedicalTable({
   onNext,
 }: MedicalTableProps) {
   const columns: DataTableColumn<Medical>[] = [
-   
-{
+ {
   key: "candidate",
   header: "Candidate",
   className: "font-medium min-w-[180px]",
   cell: (medical) => (
-    <div className="flex flex-col items-start gap-0.5">
-      {medical.version > 1 && (
-        <div className="flex w-full justify-end">
-          <Badge
-            variant="outline"
-            className="h-4 border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold leading-none text-amber-600 dark:text-amber-400"
-          >
-            V{medical.version}
-          </Badge>
-        </div>
-      )}
+    <div className="flex items-center gap-2">
+      <span className="truncate">{medical.candidate?.name ?? "—"}</span>
 
-      <span>{medical.candidate?.name ?? "—"}</span>
+      {medical.version > 1 && (
+        <Badge
+          variant="outline"
+          title={`Medical version ${medical.version}`}
+          className="h-[18px] shrink-0 gap-1 rounded-full border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold leading-none text-amber-600 dark:text-amber-400"
+        >
+          <RotateCw className="size-2.5" />V{medical.version}
+        </Badge>
+      )}
     </div>
   ),
 },
-
 
     {
       key: "passport",
