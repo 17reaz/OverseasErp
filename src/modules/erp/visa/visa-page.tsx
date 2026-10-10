@@ -4,6 +4,10 @@ import { VisaPending } from "./components/visa-pending";
 import { VisaTable } from "./components/visa-table";
 import { VisaGrid } from "./components/visa-grid";
 import {
+  getBmetRecords,
+  type BmetRecord,
+} from "../bmet/bmet-service";
+import {
   VisaToolbar,
   type VisaDisplayView,
   type VisaFilterView,
@@ -36,6 +40,7 @@ const [mofas, setMofas] = useState<Mofa[]>([]);
   const [editingRecord, setEditingRecord] = useState<Visa | null>(null);
   const [displayView, setDisplayView] =
   useState<VisaDisplayView>("list");
+  const [bmetRecords, setBmetRecords] = useState<BmetRecord[]>([]);
   /* =======================================================
    * VISAABLE — approved MOFA + finger completed +
    * police clearance verified, no visa yet
@@ -51,32 +56,36 @@ const [mofas, setMofas] = useState<Mofa[]>([]);
     candidate_id: string;
     mofa_id: string;
   } | null>(null);
+
 const loadData = useCallback(async () => {
   try {
+    setLoading(true);
+
     const [
       visaList,
       candidatesData,
       mofaResult,
       agencyResult,
+      bmetData,
     ] = await Promise.all([
       getVisas(),
       getCandidates(),
       getMofas(),
       getMofaAgencies(),
+      getBmetRecords(),
     ]);
 
     setRecords(visaList);
     setCandidates(candidatesData);
     setMofas(mofaResult.data ?? []);
     setAgencies(agencyResult.data ?? []);
+    setBmetRecords(bmetData);
   } catch (error) {
-    console.error("Failed to load visa module:", error);
+    console.error("Failed to load visa data:", error);
   } finally {
     setLoading(false);
-    setRefreshing(false);
   }
 }, []);
-
   const loadPending = useCallback(async () => {
     try {
       setPendingLoading(true);
@@ -242,6 +251,7 @@ const handleRefresh = useCallback(async () => {
       candidates={candidates}
       agencies={agencies}
       loading={loading}
+      bmetRecords={bmetRecords}
       onEdit={handleEdit}
       onDelete={handleDelete}
     />

@@ -1,7 +1,7 @@
 // src/modules/erp/visa/components/visa-table.tsx
 
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-
+import type { BmetRecord } from "../../bmet/bmet-service";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ interface VisaTableProps {
   candidates: CandidateOption[];
   agencies: AgencyOption[];
   loading?: boolean;
-
+  bmetRecords: BmetRecord[];
   page?: number;
   pageSize?: number;
   total?: number;
@@ -56,7 +56,7 @@ export function VisaTable({
   candidates,
   agencies,
   loading = false,
-
+  bmetRecords,
   page,
   pageSize = 10,
   total,
@@ -100,15 +100,15 @@ export function VisaTable({
         </span>
       ),
     },
-    {
-      key: "visa_no",
-      header: "Visa No",
-      cell: (record) => (
-        <span className="font-mono text-xs font-semibold">
-          {record.visa_no}
-        </span>
-      ),
-    },
+    // {
+    //   key: "visa_no",
+    //   header: "Visa No",
+    //   cell: (record) => (
+    //     <span className="font-mono text-xs font-semibold">
+    //       {record.visa_no}
+    //     </span>
+    //   ),
+    // },
     {
       key: "type",
       header: "Type",
@@ -129,6 +129,24 @@ export function VisaTable({
       hideOnMobile: true,
       cell: (record) => formatDate(record.expiry_date),
     },
+    {
+  key: "manpower",
+  header: "Manpower",
+  hideOnMobile: true,
+  cell: (record) => {
+    const hasBmet = bmetRecords.some(
+      (bmet) => bmet.candidate_id === record.candidate_id,
+    );
+
+    return hasBmet ? (
+      <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+        BMET OK
+      </span>
+    ) : (
+      <span className="text-muted-foreground">—</span>
+    );
+  },
+},
     {
       key: "agency",
       header: "Agency",
