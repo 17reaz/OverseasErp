@@ -14,6 +14,10 @@ export interface FingerRecord {
   tenant_id: string;
   candidate_id: string;
   sl: number;
+   version: number;
+is_current: boolean;
+invalidated_at: string | null;
+invalidated_reason: string | null;
   finger_date: string | null;
   finger_type: FingerType;
   status: FingerStatus;
@@ -47,6 +51,7 @@ export async function getFingerRecords(): Promise<FingerRecord[]> {
   const { data, error } = await supabase
     .from("fingers")
     .select("*")
+    .eq("is_current", true)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -62,6 +67,21 @@ export async function getFingerRecords(): Promise<FingerRecord[]> {
  * RLS still applies, so a candidate from another tenant
  * cannot expose another tenant's finger records.
  */
+export async function getFingerVersionHistory(
+  candidateId: string,
+): Promise<FingerRecord[]> {
+  const { data, error } = await supabase
+    .from("fingers")
+    .select("*")
+    .eq("candidate_id", candidateId)
+    .order("version", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as FingerRecord[];
+}
 export async function getFingerRecordsByCandidate(
   candidateId: string,
 ): Promise<FingerRecord[]> {

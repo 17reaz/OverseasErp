@@ -84,15 +84,28 @@ export function FingerTable({
       cell: (record) => record.sl,
     },
     {
-      key: "candidate",
-      header: "Candidate",
-      cell: (record) => (
-        <span className="font-medium">
-          {candidateMap.get(record.candidate_id)?.name ??
-            "Unknown candidate"}
-        </span>
-      ),
-    },
+  key: "candidate",
+  header: "Candidate",
+  cell: (record) => (
+    <div className="flex items-center gap-2">
+      <span className="font-medium">
+        {candidateMap.get(record.candidate_id)?.name ??
+          "Unknown candidate"}
+      </span>
+
+      <Badge
+        variant="outline"
+        className={
+          record.is_current
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+            : "border-muted-foreground/30 bg-muted text-muted-foreground"
+        }
+      >
+        V{record.version}
+      </Badge>
+    </div>
+  ),
+},
     {
       key: "passport",
       header: "Passport",
