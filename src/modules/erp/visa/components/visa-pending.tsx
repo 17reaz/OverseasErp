@@ -109,9 +109,6 @@ export function VisaPending({
                     <span className="block truncate text-sm font-medium">
                       {item.candidate.name}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      Medical valid
-                    </span>
                   </td>
 
                   <td className="w-[140px] px-4 py-3 font-mono text-sm">
