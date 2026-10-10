@@ -43,7 +43,7 @@ function StepperNode({
 
   return (
     <div className="flex flex-1 items-start">
-      <div className="flex min-w-[92px] flex-col items-center gap-2 text-center">
+      <div className="flex min-w-[76px] flex-col items-center gap-1.5 text-center">
         <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -51,16 +51,16 @@ function StepperNode({
                 type="button"
                 onClick={onOpen}
                 className={cn(
-                  "group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-transform hover:scale-105",
+                  "group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-transform hover:scale-105",
                   config.dot,
                 )}
               >
                 {module.icon}
 
-                <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-background">
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-background">
                   <StatusIcon
                     className={cn(
-                      "h-3 w-3",
+                      "h-2.5 w-2.5",
                       status === "completed" && "text-primary",
                       status === "processing" && "text-blue-500",
                       status === "failed" && "text-destructive",
@@ -89,14 +89,17 @@ function StepperNode({
         <div className="space-y-0.5">
           <p className="text-xs font-medium leading-tight">{module.title}</p>
 
-          <Badge variant={config.variant} className="text-[10px] font-normal">
+          <Badge
+            variant={config.variant}
+            className="px-1.5 py-0 text-[10px] font-normal"
+          >
             {config.label}
           </Badge>
         </div>
 
         <Link
           to={href}
-          className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
           View all
         </Link>
@@ -105,7 +108,7 @@ function StepperNode({
       {!isLast && (
         <div
           className={cn(
-            "mt-[22px] h-0.5 flex-1 min-w-[24px] rounded-full transition-colors",
+            "mt-[18px] h-0.5 min-w-[16px] flex-1 rounded-full transition-colors",
             config.line,
           )}
         />
@@ -124,11 +127,11 @@ function DocumentsStepNode({
   const config = getStatusConfig(status)
 
   return (
-    <div className="flex min-w-[92px] flex-col items-center gap-2 text-center">
+    <div className="flex min-w-[76px] flex-col items-center gap-1.5 text-center">
       <Link
         to={href}
         className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-transform hover:scale-105",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-transform hover:scale-105",
           config.dot,
         )}
       >
@@ -138,14 +141,17 @@ function DocumentsStepNode({
       <div className="space-y-0.5">
         <p className="text-xs font-medium leading-tight">Documents</p>
 
-        <Badge variant={config.variant} className="text-[10px] font-normal">
+        <Badge
+          variant={config.variant}
+          className="px-1.5 py-0 text-[10px] font-normal"
+        >
           {config.label}
         </Badge>
       </div>
 
       <Link
         to={href}
-        className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
       >
         Open
       </Link>
@@ -165,8 +171,8 @@ export function ProcessingStepper({
   onOpenModule: (moduleKey: string) => void
 }) {
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <div className="flex min-w-max items-start gap-1 px-1 sm:min-w-full">
+    <div className="w-full overflow-x-auto pb-1">
+      <div className="flex min-w-max items-start gap-0.5 px-1 sm:min-w-full">
         {MODULES.map((module) => (
           <StepperNode
             key={module.key}

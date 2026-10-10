@@ -13,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useAuth } from "@/modules/auth/components/auth-provider"
@@ -169,22 +168,22 @@ export function CandidateProfilePage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 pb-6">
+      <div className="space-y-4 pb-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-9 w-9 rounded-md" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-3.5 w-28" />
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <Skeleton className="h-56 rounded-xl" />
-          <Skeleton className="h-56 rounded-xl" />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-40 rounded-xl" />
         </div>
 
-        <Skeleton className="h-40 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-48 rounded-xl" />
       </div>
     )
   }
@@ -197,15 +196,15 @@ export function CandidateProfilePage() {
   if (error || !candidate) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" asChild>
+        <Button variant="ghost" size="sm" asChild>
           <Link to="/app/candidates">
             <ArrowLeft />
             Back to Candidates
           </Link>
         </Button>
 
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
-          <AlertCircle className="h-8 w-8 text-destructive" />
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-8 text-center">
+          <AlertCircle className="h-7 w-7 text-destructive" />
 
           <div className="space-y-1">
             <p className="font-medium text-destructive">
@@ -233,20 +232,25 @@ export function CandidateProfilePage() {
   const addModule = MODULES.find((m) => m.key === addModuleKey) ?? null
 
   return (
-    <div className="min-h-0 space-y-6 pb-6">
+    <div className="min-h-0 space-y-4 pb-4">
 
       {/* HEADER */}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <Button variant="ghost" size="icon" asChild className="shrink-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="h-8 w-8 shrink-0"
+          >
             <Link to="/app/candidates">
               <ArrowLeft />
             </Link>
           </Button>
 
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
             aria-hidden="true"
           >
             {getInitials(candidate.name)}
@@ -254,13 +258,13 @@ export function CandidateProfilePage() {
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-2xl font-semibold tracking-tight">
+              <h1 className="truncate text-lg font-semibold tracking-tight">
                 {candidate.name}
               </h1>
 
               <Badge
                 variant={candidate.is_returned ? "destructive" : "default"}
-                className="gap-1.5"
+                className="gap-1 px-2 py-0 text-[10px]"
               >
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
@@ -272,13 +276,13 @@ export function CandidateProfilePage() {
               </Badge>
             </div>
 
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Passport {candidate.passport_no}
             </p>
           </div>
         </div>
 
-        <Button onClick={() => setEditOpen(true)} className="shrink-0">
+        <Button size="sm" onClick={() => setEditOpen(true)} className="shrink-0">
           <Pencil />
           Edit Candidate
         </Button>
@@ -286,7 +290,7 @@ export function CandidateProfilePage() {
 
       {/* OVERVIEW: INFO + QR */}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
         <CandidateInfoCard candidate={candidate} />
         <CandidateQrCard candidateId={candidate.id} />
       </div>
@@ -297,18 +301,16 @@ export function CandidateProfilePage() {
 
       {/* PROCESSING MODULES — clickable stepper */}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Processing Modules</CardTitle>
+      <Card className="gap-3 py-4">
+        <CardHeader className="px-4">
+          <CardTitle className="text-base">Processing Modules</CardTitle>
 
-          <p className="text-sm text-muted-foreground">
-            Tap a step to view its existing records or add a new one.
+          <p className="text-xs text-muted-foreground">
+            Tap a step to view its records or add a new one.
           </p>
         </CardHeader>
 
-        <Separator />
-
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="space-y-3 px-4">
           <ProcessingStepper
             moduleStatuses={moduleStatuses}
             documentsStatus={documentsStatus}

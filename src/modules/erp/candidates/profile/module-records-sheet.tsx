@@ -54,7 +54,7 @@ function ModuleFormFields({
   setField: (key: string, value: string | boolean) => void
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {module.fields.map((field) => {
         if (field.showIf && !field.showIf(values)) {
           return null
@@ -63,7 +63,7 @@ function ModuleFormFields({
         const inputId = `${module.key}-${field.key}`
 
         return (
-          <div key={field.key} className="space-y-1.5">
+          <div key={field.key} className="space-y-1">
             <Label htmlFor={inputId}>
               {field.label}
               {field.required && " *"}
@@ -143,16 +143,16 @@ function RecordRow({
   const date = (record[module.dateField] as string | null) ?? record.created_at
 
   return (
-    <div className="rounded-md border bg-muted/20 p-3">
+    <div className="rounded-md border bg-muted/20 px-3 py-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{date ?? "—"}</p>
+        <p className="text-xs font-medium">{date ?? "—"}</p>
 
-        <Badge variant={config.variant} className="text-[10px]">
+        <Badge variant={config.variant} className="px-1.5 py-0 text-[10px]">
           {config.label}
         </Badge>
       </div>
 
-      <p className="mt-1 text-xs text-muted-foreground">
+      <p className="mt-0.5 text-xs text-muted-foreground">
         {module.summary(record)}
       </p>
     </div>
@@ -317,9 +317,9 @@ export function ModuleRecordsSheet({
 
         {mode === "list" && (
           <>
-            <div className="flex-1 space-y-3 overflow-y-auto px-6 py-6">
+            <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
               {loadingRecords ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-4 text-center text-xs text-muted-foreground">
                   Loading records...
                 </p>
               ) : hasRecords ? (
@@ -327,7 +327,7 @@ export function ModuleRecordsSheet({
                   <RecordRow key={record.id} module={module} record={record} />
                 ))
               ) : (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-4 text-center text-xs text-muted-foreground">
                   No records yet.
                 </p>
               )}
@@ -335,7 +335,7 @@ export function ModuleRecordsSheet({
 
             <Separator />
 
-            <SheetFooter className="px-6 py-4">
+            <SheetFooter className="px-4 py-3">
               <Button variant="outline" onClick={handleClose}>
                 Close
               </Button>
@@ -352,7 +352,7 @@ export function ModuleRecordsSheet({
 
         {mode === "form" && (
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               <ModuleFormFields
                 module={module}
                 values={values}
@@ -360,7 +360,7 @@ export function ModuleRecordsSheet({
               />
             </div>
 
-            <SheetFooter className="border-t px-6 py-4">
+            <SheetFooter className="border-t px-4 py-3">
               <Button
                 type="button"
                 variant="outline"

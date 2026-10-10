@@ -51,37 +51,36 @@ export function CandidateTimelineCard({
   }, [candidateId])
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="flex items-center gap-2 text-base">
           <History className="h-4 w-4" />
           Timeline
         </CardTitle>
 
-        <p className="text-sm text-muted-foreground">
-          Every record added for this candidate, across all modules, newest
-          first.
+        <p className="text-xs text-muted-foreground">
+          All records across modules, newest first.
         </p>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="px-4">
         {loading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
+          <p className="py-4 text-center text-xs text-muted-foreground">
             Loading timeline...
           </p>
         ) : entries.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
+          <p className="py-4 text-center text-xs text-muted-foreground">
             No records yet for this candidate.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-md border">
+          <div className="max-h-72 overflow-auto rounded-md border">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Module</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Details</TableHead>
+              <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur">
+                <TableRow className="h-8">
+                  <TableHead className="h-8 px-3 text-xs">Module</TableHead>
+                  <TableHead className="h-8 px-3 text-xs">Date</TableHead>
+                  <TableHead className="h-8 px-3 text-xs">Status</TableHead>
+                  <TableHead className="h-8 px-3 text-xs">Details</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -91,20 +90,25 @@ export function CandidateTimelineCard({
 
                   return (
                     <TableRow key={`${entry.moduleKey}-${index}`}>
-                      <TableCell className="flex items-center gap-2 font-medium">
+                      <TableCell className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium">
                         {entry.icon}
                         {entry.moduleTitle}
                       </TableCell>
 
-                      <TableCell>{entry.date ?? "—"}</TableCell>
+                      <TableCell className="px-3 py-1.5 text-xs">
+                        {entry.date ?? "—"}
+                      </TableCell>
 
-                      <TableCell>
-                        <Badge variant={config.variant} className="text-xs">
+                      <TableCell className="px-3 py-1.5">
+                        <Badge
+                          variant={config.variant}
+                          className="px-1.5 py-0 text-[10px]"
+                        >
                           {config.label}
                         </Badge>
                       </TableCell>
 
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="px-3 py-1.5 text-xs text-muted-foreground">
                         {entry.details}
                       </TableCell>
                     </TableRow>

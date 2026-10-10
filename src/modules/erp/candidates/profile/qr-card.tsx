@@ -9,23 +9,23 @@ import {
 
 export function CandidateQrCard({ candidateId }: { candidateId: string }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Candidate QR</CardTitle>
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="text-base">Candidate QR</CardTitle>
       </CardHeader>
 
-      <CardContent>
-        <div className="flex flex-col items-center justify-center rounded-lg border bg-muted/20 p-6">
-          <div className="rounded-lg border bg-background p-3 shadow-sm">
+      <CardContent className="px-4">
+        <div className="flex flex-col items-center justify-center rounded-lg border bg-muted/20 p-3">
+          <div className="rounded-md border bg-background p-2 shadow-sm">
             <QRCodeSVG
               value={`https://overseaserp.vercel.app/candidate/${candidateId}`}
-              size={150}
+              size={110}
               level="M"
             />
           </div>
 
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            Scan to open candidate profile
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            Scan to open profile
           </p>
         </div>
       </CardContent>
