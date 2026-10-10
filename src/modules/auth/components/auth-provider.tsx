@@ -82,30 +82,21 @@ interface AuthProviderProps {
 export function AuthProvider({
   children,
 }: AuthProviderProps) {
-  const [session, setSession] =
-    useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [memberships, setMemberships] = useState<TenantMembership[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [profile, setProfile] =
-    useState<Profile | null>(null);
-
-  const [tenant, setTenant] =
-    useState<Tenant | null>(null);
-
-  const [memberships, setMemberships] =
-    useState<TenantMembership[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const loginSessionIdRef =
-    useRef<string | null>(null);
+  const loginSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
+    let authRequestId = 0;
 
     async function loadUserData(
       currentSession: Session | null,
-    ) {
+    ): Promise<Profile | null> {
       if (!currentSession?.user) {
         if (!mounted) return null;
 
@@ -116,28 +107,16 @@ export function AuthProvider({
         return null;
       }
 
-      /*
-       * ------------------------------------------------------
-       * 1. Load the user's profile
-       * ------------------------------------------------------
-       *
-       * We keep this because the rest of the application
-       * currently depends on the existing Profile shape.
-       */
+      // 1. Load profile
       const {
         data: currentProfile,
         error: profileError,
-      } = await getProfile(
-        currentSession.user.id,
-      );
+      } = await getProfile(currentSession.user.id);
 
       if (!mounted) return null;
 
       if (profileError || !currentProfile) {
-        console.error(
-          "Failed to load profile:",
-          profileError,
-        );
+        console.error("Failed to load profile:", profileError);
 
         setProfile(null);
         setTenant(null);
@@ -146,13 +125,7 @@ export function AuthProvider({
         return null;
       }
 
-      /*
-       * ------------------------------------------------------
-       * 2. Load memberships
-       * ------------------------------------------------------
-       *
-       * This is now the source for workspace membership.
-       */
+      // 2. Load tenant memberships
       const {
         data: currentMemberships,
         error: membershipError,
@@ -173,34 +146,22 @@ export function AuthProvider({
         return currentProfile;
       }
 
-   const safeMemberships: TenantMembership[] =
-  (currentMemberships ?? []) as TenantMembership[];
+      const safeMemberships: TenantMembership[] =
+        (currentMemberships ?? []) as TenantMembership[];
 
-setMemberships(safeMemberships);
-      /*
-       * ------------------------------------------------------
-       * 3. Resolve active workspace
-       * ------------------------------------------------------
-       *
-       * For now the existing profile.tenant_id remains the
-       * active workspace. This keeps the current ERP stable.
-       *
-       * Later we will add workspace switching without
-       * changing the ERP modules all at once.
-       */
+      setMemberships(safeMemberships);
+
+      // 3. Resolve active workspace
       const activeMembership =
         safeMemberships.find(
           (membership) =>
-            membership.tenant_id ===
-            currentProfile.tenant_id,
+            membership.tenant_id === currentProfile.tenant_id,
         ) ??
         safeMemberships[0] ??
         null;
 
       if (!activeMembership) {
-        console.error(
-          "No active workspace membership found.",
-        );
+        console.error("No active workspace membership found.");
 
         setProfile(currentProfile);
         setTenant(null);
@@ -208,45 +169,25 @@ setMemberships(safeMemberships);
         return currentProfile;
       }
 
-      /*
-       * ------------------------------------------------------
-       * 4. Keep profile compatible with existing application
-       * ------------------------------------------------------
-       *
-       * If the membership layer becomes the source of truth
-       * for role/workspace, these values will eventually come
-       * from membership instead of profiles.
-       */
+      // 4. Normalize profile for the active workspace
       const normalizedProfile: Profile = {
         ...currentProfile,
-        tenant_id:
-          activeMembership.tenant_id,
-        role:
-          activeMembership.role,
+        tenant_id: activeMembership.tenant_id,
+        role: activeMembership.role,
       };
 
       setProfile(normalizedProfile);
 
-      /*
-       * ------------------------------------------------------
-       * 5. Load active tenant
-       * ------------------------------------------------------
-       */
+      // 5. Load active tenant
       const {
         data: currentTenant,
         error: tenantError,
-      } = await getTenant(
-        activeMembership.tenant_id,
-      );
+      } = await getTenant(activeMembership.tenant_id);
 
       if (!mounted) return normalizedProfile;
 
       if (tenantError) {
-        console.error(
-          "Failed to load tenant:",
-          tenantError,
-        );
-
+        console.error("Failed to load tenant:", tenantError);
         setTenant(null);
 
         return normalizedProfile;
@@ -258,46 +199,54 @@ setMemberships(safeMemberships);
     }
 
     async function initializeAuth() {
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-
-      if (!mounted) return;
-
-      setSession(currentSession);
-
-      const currentProfile =
-        await loadUserData(currentSession);
-
-      if (
-        currentSession &&
-        currentProfile?.tenant_id
-      ) {
+      try {
         const {
-          data,
+          data: { session: currentSession },
           error,
-        } = await createLoginSession(
-          currentSession,
-          {
-            id: currentProfile.id,
-            tenant_id:
-              currentProfile.tenant_id,
-          },
-        );
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
 
         if (error) {
-          console.error(
-            "Failed to create login session:",
-            error,
-          );
-        } else if (data?.session_id) {
-          loginSessionIdRef.current =
-            data.session_id;
+          console.error("Failed to get auth session:", error);
+          setLoading(false);
+          return;
         }
-      }
 
-      if (mounted) {
-        setLoading(false);
+        setSession(currentSession);
+
+        const currentProfile = await loadUserData(currentSession);
+
+        if (
+          !mounted
+        ) {
+          return;
+        }
+
+        if (currentSession && currentProfile?.tenant_id) {
+          const {
+            data,
+            error: loginSessionError,
+          } = await createLoginSession(currentSession, {
+            id: currentProfile.id,
+            tenant_id: currentProfile.tenant_id,
+          });
+
+          if (loginSessionError) {
+            console.error(
+              "Failed to create login session:",
+              loginSessionError,
+            );
+          } else if (data?.session_id) {
+            loginSessionIdRef.current = data.session_id;
+          }
+        }
+      } catch (error) {
+        console.error("Auth initialization failed:", error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -305,88 +254,103 @@ setMemberships(safeMemberships);
 
     const {
       data: { subscription },
-    } =
-      supabase.auth.onAuthStateChange(
-        (event, currentSession) => {
-          if (!mounted) return;
+    } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        if (!mounted) return;
 
-          setSession(currentSession);
+        setSession(currentSession);
 
-          if (event === "SIGNED_OUT") {
-            const sessionId =
-              loginSessionIdRef.current;
+        // Handle sign-out immediately.
+        if (event === "SIGNED_OUT") {
+          authRequestId += 1;
 
-            loginSessionIdRef.current =
-              null;
+          const sessionId = loginSessionIdRef.current;
+          loginSessionIdRef.current = null;
 
-            if (sessionId) {
-              void closeLoginSession(
-                sessionId,
-              );
-            }
-
-            setProfile(null);
-            setTenant(null);
-            setMemberships([]);
-            setLoading(false);
-
-            return;
+          if (sessionId) {
+            void closeLoginSession(sessionId);
           }
 
+          setProfile(null);
+          setTenant(null);
+          setMemberships([]);
+          setLoading(false);
+
+          return;
+        }
+
+        // Ignore token refreshes for UI loading purposes.
+        // They should not replace the ERP screen with Loading...
+        if (
+          event === "TOKEN_REFRESHED" ||
+          event === "INITIAL_SESSION"
+        ) {
+          return;
+        }
+
+        // Only show the full-screen loading state for a
+        // meaningful auth/profile change, not every auth event.
+        const shouldShowLoading =
+          event === "SIGNED_IN" ||
+          event === "USER_UPDATED";
+
+        if (shouldShowLoading) {
           setLoading(true);
+        }
 
-          /*
-           * Do not make Supabase calls directly
-           * inside onAuthStateChange.
-           */
-          setTimeout(async () => {
-            if (!mounted) return;
+        const requestId = ++authRequestId;
 
-            const currentProfile =
-              await loadUserData(
-                currentSession,
-              );
+        // Defer Supabase calls until after the auth callback.
+        setTimeout(async () => {
+          if (!mounted || requestId !== authRequestId) return;
+
+          try {
+            const updatedProfile = await loadUserData(currentSession);
+
+            if (!mounted || requestId !== authRequestId) return;
 
             if (
               event === "SIGNED_IN" &&
               currentSession &&
-              currentProfile?.tenant_id
+              updatedProfile?.tenant_id
             ) {
               const {
                 data,
                 error,
-              } =
-                await createLoginSession(
-                  currentSession,
-                  {
-                    id: currentProfile.id,
-                    tenant_id:
-                      currentProfile.tenant_id,
-                  },
-                );
+              } = await createLoginSession(currentSession, {
+                id: updatedProfile.id,
+                tenant_id: updatedProfile.tenant_id,
+              });
+
+              if (!mounted || requestId !== authRequestId) return;
 
               if (error) {
                 console.error(
                   "Failed to create login session:",
                   error,
                 );
-              } else if (
-                data?.session_id
-              ) {
-                loginSessionIdRef.current =
-                  data.session_id;
+              } else if (data?.session_id) {
+                loginSessionIdRef.current = data.session_id;
               }
             }
-
-            if (mounted) {
+          } catch (error) {
+            console.error("Auth state update failed:", error);
+          } finally {
+            if (
+              mounted &&
+              requestId === authRequestId &&
+              shouldShowLoading
+            ) {
               setLoading(false);
             }
-          }, 0);
-        },
-      );
+          }
+        }, 0);
+      },
+    );
 
     return () => {
       mounted = false;
+      authRequestId += 1;
       subscription.unsubscribe();
     };
   }, []);
@@ -408,13 +372,10 @@ setMemberships(safeMemberships);
 }
 
 export function useAuth() {
-  const context =
-    useContext(AuthContext);
+  const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error(
-      "useAuth must be used inside AuthProvider",
-    );
+    throw new Error("useAuth must be used inside AuthProvider");
   }
 
   return context;
