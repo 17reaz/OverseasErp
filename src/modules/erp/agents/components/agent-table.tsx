@@ -149,7 +149,11 @@ export function AgentTable({
         </Link>
       ),
     },
-
+{
+  key: "phone",
+  header: "Phone",
+  cell: (agent) => agent.phone ?? "—",
+},
     {
       key: "status",
       header: "Status",

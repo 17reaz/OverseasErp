@@ -35,6 +35,7 @@ export async function createAgent(
   name: string,
   code: string,
   tenantId: string,
+  phone?: string | null,
 ): Promise<Agent> {
   const { data, error } = await supabase
     .from("agents")
@@ -42,6 +43,7 @@ export async function createAgent(
       name,
       code,
       tenant_id: tenantId,
+      phone: phone?.trim() || null,
     })
     .select()
     .single();
@@ -53,9 +55,34 @@ export async function createAgent(
   return data;
 }
 
-export async function deleteAgent(
+export async function updateAgent(
   id: string,
-) {
+  values: {
+    name?: string;
+    code?: string;
+    phone?: string | null;
+  },
+): Promise<Agent> {
+  const { data, error } = await supabase
+    .from("agents")
+    .update({
+      ...values,
+      ...(values.phone !== undefined && {
+        phone: values.phone?.trim() || null,
+      }),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteAgent(id: string) {
   const { error } = await supabase
     .from("agents")
     .delete()
