@@ -83,7 +83,7 @@ export interface Mofa {
   id: string;
   tenant_id: string;
   sl: number;
-
+version: number;
   candidate_id: string;
   medical_id: string | null;
   agency_id: string | null;

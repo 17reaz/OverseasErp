@@ -1,6 +1,13 @@
 // src/modules/erp/mofa/components/mofa-table.tsx
 
-import { CalendarDays,MoreVertical, Pencil, Trash2 } from "lucide-react";
+// import { CalendarDays,MoreVertical, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  MoreVertical,
+  Pencil,
+  RotateCw,
+  Trash2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,22 +139,33 @@ export function MofaTable({
       cell: (mofa, index) => mofa.sl ?? index + 1,
     },
     {
-      key: "candidate",
-      header: "Candidate",
-      cell: (mofa) => (
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {mofa.candidate?.name ?? "Unknown candidate"}
-          </p>
+  key: "candidate",
+  header: "Candidate",
+  cell: (mofa) => (
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <p className="truncate text-sm font-medium">
+          {mofa.candidate?.name ?? "Unknown candidate"}
+        </p>
+        {mofa.version > 1 && (
+          <span
+            title={`MOFA version ${mofa.version}`}
+            className="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold leading-none text-amber-600 dark:text-amber-400"
+          >
+            <RotateCw className="size-2.5" />
+            V{mofa.version}
+          </span>
+        )}
+      </div>
 
-          {mofa.candidate?.agent?.name && (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              Agent: {mofa.candidate.agent.name}
-            </p>
-          )}
-        </div>
-      ),
-    },
+      {mofa.candidate?.agent?.name && (
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          Agent: {mofa.candidate.agent.name}
+        </p>
+      )}
+    </div>
+  ),
+},
     {
       key: "passport",
       header: "Passport",
