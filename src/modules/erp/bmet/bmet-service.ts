@@ -3,7 +3,10 @@ import { supabase } from "@/lib/supabase/client";
 export interface BmetVisaInfo {
   id: string;
   sl: number;
+  visa_date: string | null;
   visa_no: string | null;
+  expiry_date: string | null;
+  visa_type: string | null;
   status: string;
 }
 export interface BmetRecord {
@@ -63,7 +66,7 @@ export async function getBmetRecords(): Promise<BmetRecord[]> {
       visa:visas (
         id,
         sl,
-        visa_no,
+        visa_date,
         status
       )
     `)

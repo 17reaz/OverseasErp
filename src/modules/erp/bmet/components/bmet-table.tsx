@@ -261,39 +261,110 @@ export function BmetTable({
         </div>
       ),
     },
-{
-  key: "visa",
-  header: "Visa",
-  cell: (record) => {
-    const visa = record.visa;
 
-    if (!record.visa_id || !visa) {
-      return (
-        <span className="text-muted-foreground">
-          No Visa
-        </span>
-      );
-    }
+    {
+      key: "visa",
+      header: "Visa",
+      cell: (record) => {
+        const visa = record.visa;
 
-    return (
-      <div className="flex flex-col gap-1">
-        <span className="font-medium">
-          SL-{visa.sl}
-        </span>
+        if (!record.visa_id || !visa) {
+          return (
+            <span className="text-xs text-muted-foreground">
+              No Visa
+            </span>
+          );
+        }
 
-        {visa.visa_no && (
-          <span className="font-mono text-xs text-muted-foreground">
-            {visa.visa_no}
-          </span>
-        )}
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex flex-col items-start gap-1 rounded-md p-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`View visa details for SL-${visa.sl}`}
+              >
+               
 
-        <Badge variant="outline" className="w-fit text-xs">
-          {visa.status}
-        </Badge>
-      </div>
-    );
-  },
-},
+                {visa.visa_date && (
+                  <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                    {visa.visa_date}
+                  </span>
+                )}
+
+                
+
+                
+              </button>
+            </PopoverTrigger>
+
+            <PopoverContent align="start" className="w-72">
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-semibold">
+                    Visa Information
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Complete visa details
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      SL
+                    </p>
+                    <p className="font-medium">{visa.sl}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Visa No
+                    </p>
+                    <p className="break-all font-medium">
+                      {visa.visa_no || "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Visa Date
+                    </p>
+                    <p>{visa.visa_date || "—"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Expiry Date
+                    </p>
+                    <p>{visa.expiry_date || "—"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Type
+                    </p>
+                    <p className="capitalize">
+                      {visa.visa_type || "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Status
+                    </p>
+                    <Badge variant="outline" className="mt-1">
+                      {visa.status || "—"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      },
+    },
+
     {
       key: "bmet",
       header: "BMET",
