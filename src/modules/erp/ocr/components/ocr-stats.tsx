@@ -1,5 +1,4 @@
 import { AlertCircle, CheckCircle2, Gauge, ScanLine } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import type { OcrScan } from "../types";
 
 export function OcrStats({ scans }: { scans: OcrScan[] }) {
