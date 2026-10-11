@@ -31,7 +31,13 @@ const CandidatesPage = lazy(() =>
     default: module.CandidatesPage,
   })),
 );
-
+const CandidateRegistrationPage = lazy(() =>
+  import("@/modules/erp/candidates/candidate-registration-page").then(
+    (module) => ({
+      default: module.CandidateRegistrationPage,
+    }),
+  ),
+);
 const CandidateProfilePage = lazy(() =>
   import("@/modules/erp/candidates/profile/candidate-profile-page").then(
     (module) => ({
@@ -355,7 +361,10 @@ function AppRouter() {
                 path="candidates"
                 element={<CandidatesPage />}
               />
-
+<Route
+  path="candidates/new"
+  element={<CandidateRegistrationPage />}
+/>
               <Route
                 path="candidates/:candidateId"
                 element={<CandidateProfilePage />}
