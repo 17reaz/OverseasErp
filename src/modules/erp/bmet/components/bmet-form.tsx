@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, ChevronsUpDown, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
+import {
+  getVisas,
+  type Visa,
+} from "@/modules/erp/visa/visa-service";
 import {
   Command,
   CommandEmpty,
@@ -54,6 +57,7 @@ password: string;
   finger: boolean;
   nominee: boolean;
   bank: boolean;
+  visa_id: string;
   bmet: boolean;
   bmet_date: string;
 }
@@ -66,6 +70,7 @@ const DEFAULT_FORM: BmetFormState = {
   finger: false,
   nominee: false,
   bank: false,
+  visa_id: "",
   bmet: false,
   bmet_date: "",
 };
@@ -84,6 +89,7 @@ export function BmetForm({
   const [error, setError] = useState("");
   const [dirty, setDirty] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [visas, setVisas] = useState<Visa[]>([]);
   const isEdit = Boolean(record);
 
   useEffect(() => {
@@ -100,13 +106,22 @@ password: record.password ?? "",
         finger: record.finger,
         nominee: record.nominee,
         bank: record.bank,
+        visa_id: record.visa_id ?? "",
         bmet: record.bmet,
         bmet_date: record.bmet_date ?? "",
       });
     } else {
       setForm(DEFAULT_FORM);
     }
-
+    void getVisas()
+  .then(setVisas)
+  .catch((err) => {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Failed to load visas.",
+    );
+  });
     setError("");
     setDirty(false);
   }, [open, record]);
@@ -300,6 +315,53 @@ password: form.password || null,
             </p>
           )}
         </div>
+
+{/* Visa Selection */}
+<div className="space-y-2 rounded-lg border p-4">
+  <Label htmlFor="bmet-visa">
+    Visa
+    {form.bmet && (
+      <span className="text-destructive"> *</span>
+    )}
+  </Label>
+
+  <select
+    id="bmet-visa"
+    value={form.visa_id}
+    onChange={(event) =>
+      updateField("visa_id", event.target.value)
+    }
+    disabled={saving}
+    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+  >
+    <option value="">
+      Select Visa {form.bmet ? "(required)" : "(optional)"}
+    </option>
+
+    {visas
+      .filter(
+        (visa) => visa.candidate_id === form.candidate_id,
+      )
+      .map((visa) => (
+        <option key={visa.id} value={visa.id}>
+          {`SL-${visa.sl}${
+            visa.visa_no ? ` · ${visa.visa_no}` : ""
+          } · ${visa.status}`}
+        </option>
+      ))}
+  </select>
+
+  <p className="text-xs text-muted-foreground">
+    PDO, Finger, Nominee and Bank can be updated without
+    a Visa. A Visa is required to complete BMET.
+  </p>
+
+  {form.bmet && !form.visa_id && (
+    <p className="text-xs text-destructive">
+      Select a Visa before marking BMET complete.
+    </p>
+  )}
+</div>
 
         {/* Checklist */}
         <div className="space-y-3">

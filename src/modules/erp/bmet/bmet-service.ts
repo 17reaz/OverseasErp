@@ -1,9 +1,17 @@
 import { supabase } from "@/lib/supabase/client";
 
+export interface BmetVisaInfo {
+  id: string;
+  sl: number;
+  visa_no: string | null;
+  status: string;
+}
 export interface BmetRecord {
   id: string;
   tenant_id: string;
   candidate_id: string;
+  visa_id: string | null;
+  visa: BmetVisaInfo | null;
   phone_number: string | null;
   password: string | null;
   pdo: boolean;
@@ -18,6 +26,7 @@ export interface BmetRecord {
 
 export interface CreateBmetInput {
   candidate_id: string;
+  visa_id?: string | null;
   phone_number?: string | null;
   password?: string | null;
   pdo?: boolean;
@@ -29,6 +38,7 @@ export interface CreateBmetInput {
 }
 
 export interface UpdateBmetInput {
+  visa_id?: string | null;
   phone_number?: string | null;
   password?: string | null;
   pdo?: boolean;
@@ -48,7 +58,15 @@ export interface UpdateBmetInput {
 export async function getBmetRecords(): Promise<BmetRecord[]> {
   const { data, error } = await supabase
     .from("bmet")
-    .select("*")
+    .select(`
+      *,
+      visa:visas (
+        id,
+        sl,
+        visa_no,
+        status
+      )
+    `)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -57,7 +75,6 @@ export async function getBmetRecords(): Promise<BmetRecord[]> {
 
   return (data ?? []) as BmetRecord[];
 }
-
 /**
  * Get one BMET record.
  */
@@ -120,6 +137,7 @@ export async function createBmetRecord(
       finger: input.finger ?? false,
       nominee: input.nominee ?? false,
       bank: input.bank ?? false,
+      visa_id: input.visa_id ?? null,
       bmet: input.bmet ?? false,
       bmet_date: input.bmet_date ?? null,
     })
@@ -147,6 +165,7 @@ export async function updateBmetRecord(
       finger: input.finger,
       nominee: input.nominee,
       bank: input.bank,
+      visa_id: input.visa_id,
       bmet: input.bmet,
       bmet_date: input.bmet_date ?? null,
       updated_at: new Date().toISOString(),

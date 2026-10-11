@@ -261,7 +261,39 @@ export function BmetTable({
         </div>
       ),
     },
+{
+  key: "visa",
+  header: "Visa",
+  cell: (record) => {
+    const visa = record.visa;
 
+    if (!record.visa_id || !visa) {
+      return (
+        <span className="text-muted-foreground">
+          No Visa
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="font-medium">
+          SL-{visa.sl}
+        </span>
+
+        {visa.visa_no && (
+          <span className="font-mono text-xs text-muted-foreground">
+            {visa.visa_no}
+          </span>
+        )}
+
+        <Badge variant="outline" className="w-fit text-xs">
+          {visa.status}
+        </Badge>
+      </div>
+    );
+  },
+},
     {
       key: "bmet",
       header: "BMET",
