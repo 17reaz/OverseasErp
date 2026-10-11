@@ -135,7 +135,7 @@ export function VisaTable({
   hideOnMobile: true,
   cell: (record) => {
     const hasBmet = bmetRecords.some(
-      (bmet) => bmet.candidate_id === record.candidate_id,
+      (bmet) => bmet.visa_id === record.id,
     );
 
     return hasBmet ? (
