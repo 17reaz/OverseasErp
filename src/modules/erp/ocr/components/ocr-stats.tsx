@@ -24,19 +24,13 @@ export function OcrStats({ scans }: { scans: OcrScan[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border bg-border text-sm sm:grid-cols-4">
       {items.map(({ label, value, icon: Icon }) => (
-        <Card key={label}>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-muted p-2">
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold leading-none tabular-nums">{value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{label}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div key={label} className="flex items-center gap-2 bg-background px-3 py-2">
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="font-semibold tabular-nums">{value}</span>
+          <span className="truncate text-muted-foreground">{label}</span>
+        </div>
       ))}
     </div>
   );

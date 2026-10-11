@@ -1,3 +1,3 @@
 git add .
-git commit --no-verify -m "intrigrate ocr service"
+git commit --no-verify -m "ok"
 git push origin main
