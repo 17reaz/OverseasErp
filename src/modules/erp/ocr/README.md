@@ -19,7 +19,10 @@ All data is fake and lives in memory. Nothing is sent to a server.
 - `components/ocr-page.tsx`      page with Scans / New scan / Settings tabs, holds the state
 - `components/ocr-stats.tsx`     summary cards
 - `components/scan-table.tsx`    searchable, filterable list of scans
-- `components/upload-panel.tsx`  drag-and-drop upload with fake progress
+- `components/upload-panel.tsx`  click-to-upload card with default document type
+- `components/page-dropzone.tsx` drop files anywhere on the page, shows a full-screen overlay
+- `components/upload-tray.tsx`   Drive-style upload progress box (bottom right)
+- `hooks/use-auto-upload.ts`     auto upload: fake progress, adds scan as processing, then needs review
 - `components/review-sheet.tsx`  side panel: preview, editable fields, confidence, approve
 - `components/ocr-settings.tsx`  engine, languages, auto-approve rules
 - `data/dummy.ts`                fake scans and field templates
@@ -27,5 +30,5 @@ All data is fake and lives in memory. Nothing is sent to a server.
 
 ## Connecting the real backend later
 
-Replace `DUMMY_SCANS` in `ocr-page.tsx` with an API call, `startScan` in `upload-panel.tsx` with a real upload,
+Replace `DUMMY_SCANS` in `ocr-page.tsx` with an API call, the fake timers in `hooks/use-auto-upload.ts` with a real upload,
 and the placeholder preview in `review-sheet.tsx` with the uploaded image.

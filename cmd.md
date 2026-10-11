@@ -1,3 +1,3 @@
 git add .
-git commit --no-verify -m "least fix before ocr"
+git commit --no-verify -m "intrigrate ocr service"
 git push origin main
