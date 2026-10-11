@@ -380,7 +380,7 @@ export function ActionCenter() {
         <Button
           variant="ghost"
           className="mt-1 h-7 w-full shrink-0 text-xs"
-          onClick={() => navigate("/app/todo")}
+          onClick={() => navigate("/app/ocr")}
         >
           View all actions
           <ArrowRight className="ml-1.5 size-3.5" />

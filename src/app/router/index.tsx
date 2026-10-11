@@ -64,6 +64,8 @@ const AgentProfilePage = lazy(() =>
     }),
   ),
 );
+
+
 const FilesPage = lazy(() =>
   import("@/modules/erp/files/files-page").then((module) => ({
     default: module.FilesPage,
@@ -250,19 +252,16 @@ const FinancePage = lazy(() =>
     default: module.FinancePage,
   })),
 );
-
-const TasksPage = lazy(() =>
-  import("@/modules/erp/tasks/components/tasks-page").then((module) => ({
-    default: module.TasksPage,
-  })),
-);
-
 const SettingsPage = lazy(() =>
   import("@/modules/erp/settings/settings-page").then((module) => ({
     default: module.SettingsPage,
   })),
 );
-
+const OcrPage = lazy(() =>
+  import("@/modules/erp/ocr/components/ocr-page.tsx").then((module) => ({
+    default: module.OcrPage,
+  })),
+);
 // -----------------------------------------------------------------------------
 // Loading UI
 // -----------------------------------------------------------------------------
@@ -393,6 +392,9 @@ function AppRouter() {
                 path="files"
                 element={<FilesPage />}
               />
+              
+
+
 
               {/* Medical */}
               <Route
@@ -530,10 +532,7 @@ function AppRouter() {
               />
 
               {/* Tasks / Todo */}
-              <Route
-                path="todo"
-                element={<TasksPage />}
-              />
+            <Route path="ocr" element={<OcrPage />} />
 
               {/* Settings */}
               <Route

@@ -11,11 +11,11 @@ import {
   Files,
   BarChart3,
   WalletCards,
-  ListTodo,
   Phone,
   FingerprintPattern,
   BadgeCheck,
   Stamp,
+  ScanText,
 } from "lucide-react";
 
 /* =========================================================
@@ -122,9 +122,9 @@ export const erpNavigation = [
   },
 
   {
-    title: "Todo",
-    url: "/app/todo",
-    icon: ListTodo,
+    title: "OCR",
+    url: "/app/ocr",
+    icon: ScanText,
   },
 
 ];
