@@ -1,3 +1,3 @@
 git add .
-git commit --no-verify -m "your commit message"
+git commit --no-verify -m "least fix before ocr"
 git push origin main
