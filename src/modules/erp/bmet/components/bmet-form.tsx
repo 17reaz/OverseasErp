@@ -47,6 +47,8 @@ interface BmetFormProps {
   record?: BmetRecord | null;
   candidates: CandidateOption[];
   onSuccess?: (record: BmetRecord) => void;
+   initialCandidateId?: string;
+  initialVisaId?: string;
 }
 
 interface BmetFormState {
@@ -81,6 +83,8 @@ export function BmetForm({
   record,
   candidates,
   onSuccess,
+  initialCandidateId,
+  initialVisaId,
 }: BmetFormProps) {
   const [form, setForm] =
     useState<BmetFormState>(DEFAULT_FORM);
@@ -92,39 +96,48 @@ export function BmetForm({
   const [visas, setVisas] = useState<Visa[]>([]);
   const isEdit = Boolean(record);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+useEffect(() => {
+  if (!open) return;
 
-    if (record) {
-      setForm({
-        candidate_id: record.candidate_id,
-        phone_number: record.phone_number ?? "",
-password: record.password ?? "",
-        pdo: record.pdo,
-        finger: record.finger,
-        nominee: record.nominee,
-        bank: record.bank,
-        visa_id: record.visa_id ?? "",
-        bmet: record.bmet,
-        bmet_date: record.bmet_date ?? "",
-      });
-    } else {
-      setForm(DEFAULT_FORM);
-    }
-    void getVisas()
-  .then(setVisas)
-  .catch((err) => {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Failed to load visas.",
-    );
-  });
-    setError("");
-    setDirty(false);
-  }, [open, record]);
+  setError("");
+  setDirty(false);
+
+  if (record) {
+    setForm({
+      candidate_id: record.candidate_id,
+      phone_number: record.phone_number ?? "",
+      password: record.password ?? "",
+      pdo: record.pdo,
+      finger: record.finger,
+      nominee: record.nominee,
+      bank: record.bank,
+      visa_id: record.visa_id ?? "",
+      bmet: record.bmet,
+      bmet_date: record.bmet_date ?? "",
+    });
+  } else {
+    setForm({
+      ...DEFAULT_FORM,
+      candidate_id: initialCandidateId ?? "",
+      visa_id: initialVisaId ?? "",
+    });
+  }
+
+  void getVisas()
+    .then(setVisas)
+    .catch((err) => {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load visas.",
+      );
+    });
+}, [
+  open,
+  record,
+  initialCandidateId,
+  initialVisaId,
+]);
 
   function updateField<K extends keyof BmetFormState>(
     field: K,
@@ -280,9 +293,13 @@ password: form.password || null,
             <CommandItem
               key={candidate.id}
               value={`${candidate.name} ${candidate.passport_no}`}
-              onSelect={() =>
-                updateField("candidate_id", candidate.id)
-              }
+              onSelect={() => {
+  updateField("candidate_id", candidate.id);
+
+  if (candidate.id !== form.candidate_id) {
+    updateField("visa_id", "");
+  }
+}}
             >
               <Check
                 className={`mr-2 h-4 w-4 ${
