@@ -142,46 +142,7 @@ export function CandidateRegistrationPage() {
       </Card>
 
       {/* Candidate Summary */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-primary/10 p-2.5 text-primary">
-              <UserRound className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Candidate</p>
-              <p className="text-sm font-medium">
-                {currentStep === 1 ? "New registration" : "Not saved"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-muted p-2.5">
-              <Stethoscope className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Medical</p>
-              <p className="text-sm font-medium">Not added</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-muted p-2.5">
-              <FileCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">MOFA</p>
-              <p className="text-sm font-medium">Not added</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+    
       {/* Form */}
       <Card>
         <CardHeader>

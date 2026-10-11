@@ -74,8 +74,8 @@ export function OcrPage() {
             <p className="text-sm text-muted-foreground">Read candidate documents and review the details before saving.</p>
           </div>
         </div>
-
         <OcrStats scans={scans} />
+
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
