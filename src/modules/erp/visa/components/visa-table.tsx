@@ -129,24 +129,41 @@ export function VisaTable({
       hideOnMobile: true,
       cell: (record) => formatDate(record.expiry_date),
     },
-    {
+   
+{
   key: "manpower",
   header: "Manpower",
   hideOnMobile: true,
   cell: (record) => {
-    const hasBmet = bmetRecords.some(
+    const bmetRecord = bmetRecords.find(
       (bmet) => bmet.visa_id === record.id,
     );
 
-    return hasBmet ? (
-      <span className="inline-flex whitespace-nowrap rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-        OK
+    if (!bmetRecord) {
+      return (
+        <span className="text-muted-foreground">
+          —
+        </span>
+      );
+    }
+
+    const isComplete =
+      bmetRecord.bmet === true;
+
+    return (
+      <span
+        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          isComplete
+            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+            : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+        }`}
+      >
+        {isComplete ? "Complete" : "Pending"}
       </span>
-    ) : (
-      <span className="text-muted-foreground">—</span>
     );
   },
 },
+
     {
       key: "agency",
       header: "Agency",

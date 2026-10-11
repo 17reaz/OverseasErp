@@ -8,6 +8,7 @@ import {
   Grid2X2,
   List,
   SlidersHorizontal,
+  UserRoundPlus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,7 @@ interface CandidateToolbarProps {
 
   onRefresh?: () => void;
   onCreate?: () => void;
-
+  onCreateFullPage?: () => void;
   refreshing?: boolean;
 
   // FILTER
@@ -152,7 +153,7 @@ export function CandidateToolbar({
 
   onRefresh,
   onCreate,
-
+onCreateFullPage,
   refreshing = false,
 
   filter = defaultFilter,
@@ -262,7 +263,16 @@ export function CandidateToolbar({
       refreshing={refreshing}
       onCreate={onCreate}
       createLabel="Create"
-    >
+    ><Button
+  type="button"
+  variant="outline"
+  className="h-9 shrink-0"
+  onClick={onCreateFullPage}
+>
+  <UserRoundPlus className="mr-2 h-4 w-4" />
+  <span className="hidden sm:inline">Full Registration</span>
+  <span className="sm:hidden">Register</span>
+</Button>
 
       {/* ===================================================
           STATUS FILTER

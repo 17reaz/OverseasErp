@@ -21,7 +21,7 @@ import { CandidatesTable } from "./components/candidates-table";
 import { CandidateFormDialog } from "./components/candidate-form-dialog";
 import { CandidateDeleteDialog } from "./components/candidate-delete-dialog";
 import { CandidateReturnDialog } from "./components/candidate-return-dialog";
-
+import { useNavigate } from "react-router-dom";
 // ---- Data / logic helpers ----
 import { useCandidatesLive } from "./candidate-sync";
 import { getCandidateOverallStatus } from "./candidate-selectors";
@@ -46,10 +46,10 @@ import {
 ========================================================= */
 
 export function CandidatesPage() {
+  const navigate = useNavigate();
   /* =======================================================
      STATE: CANDIDATES DATA
   ======================================================= */
-
   // Notun add howa candidate-der id (highlight animation-er jonno)
   const [newCandidateIds, setNewCandidateIds] = useState<Set<string>>(
     new Set(),
@@ -838,6 +838,7 @@ export function CandidatesPage() {
         agentOptions={agentOptions}
         stageOptions={stageOptions}
         monthOptions={monthOptions}
+        onCreateFullPage={() => navigate("/app/candidates/new")}
         sort={candidateSort}
         onSortChange={setCandidateSort}
         viewMode={viewMode}
