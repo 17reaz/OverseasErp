@@ -87,62 +87,46 @@ export function CandidateRegistrationPage() {
       </div>
 
       {/* Stepper */}
-      <Card className="shadow-sm">
-        <CardContent className="p-4 sm:p-6">
-          <div className="grid grid-cols-3 gap-2">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const active = currentStep === step.id;
-              const completed = currentStep > step.id;
+  <CardContent className="p-2 sm:p-3">
+    <div className="grid grid-cols-3 gap-2">
+      {steps.map((step) => {
+        const Icon = step.icon;
+        const active = currentStep === step.id;
+        const completed = currentStep > step.id;
 
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setCurrentStep(step.id)}
-                  className={`flex min-w-0 items-center gap-2 rounded-lg border p-3 text-left transition-colors sm:gap-3 sm:p-4 ${
-                    active
-                      ? "border-primary bg-primary/5"
-                      : completed
-                        ? "border-primary/30 bg-muted/40"
-                        : "border-border hover:bg-muted/50"
-                  }`}
-                >
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : completed
-                          ? "bg-primary/10 text-primary"
-                          : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {completed ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Icon className="h-4 w-4" />
-                    )}
-                  </span>
+        return (
+          <button
+            key={step.id}
+            type="button"
+            title={step.description}
+            onClick={() => setCurrentStep(step.id)}
+            className={`flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors ${
+              active
+                ? "border-primary bg-primary/5"
+                : completed
+                  ? "border-primary/30 bg-muted/40"
+                  : "border-border hover:bg-muted/50"
+            }`}
+          >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : completed
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {completed ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+            </span>
 
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">
-                      {step.title}
-                    </span>
-                    <span className="hidden text-xs text-muted-foreground sm:block">
-                      {step.description}
-                    </span>
-                  </span>
-
-                  {index < steps.length - 1 && null}
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Candidate Summary */}
-    
+            <span className="min-w-0 truncate text-sm font-medium">{step.title}</span>
+          </button>
+        );
+      })}
+    </div>
+  </CardContent>
+     
       {/* Form */}
       <Card>
         <CardHeader>
