@@ -1,4 +1,8 @@
-import { SlidersHorizontal } from "lucide-react";
+
+import {
+  ClipboardCheck,
+  SlidersHorizontal,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -24,9 +28,10 @@ interface BmetToolbarProps {
   onSearchChange: (value: string) => void;
 
   status: BmetStatusFilter;
-  onStatusChange: (
-    value: BmetStatusFilter,
-  ) => void;
+  onStatusChange: (value: BmetStatusFilter) => void;
+
+  bmetAbleMode: boolean;
+  onBmetAbleToggle: () => void;
 
   onRefresh: () => void;
   onCreate: () => void;
@@ -39,6 +44,8 @@ export function BmetToolbar({
   onSearchChange,
   status,
   onStatusChange,
+  bmetAbleMode,
+  onBmetAbleToggle,
   onRefresh,
   onCreate,
   refreshing = false,
@@ -54,65 +61,78 @@ export function BmetToolbar({
     <PageToolbar
       search={search}
       onSearchChange={onSearchChange}
-      searchPlaceholder="Search candidate or passport..."
+      searchPlaceholder={
+        bmetAbleMode
+          ? "Search candidate, passport or visa..."
+          : "Search candidate or passport..."
+      }
       onRefresh={onRefresh}
       refreshing={refreshing}
       onCreate={onCreate}
       createLabel="Create"
     >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            type="button"
-            className="h-9 shrink-0"
+      <Button
+        variant={bmetAbleMode ? "default" : "outline"}
+        type="button"
+        className="h-9 shrink-0"
+        onClick={onBmetAbleToggle}
+        aria-pressed={bmetAbleMode}
+      >
+        <ClipboardCheck className="mr-2 h-4 w-4" />
+        BMET-able
+      </Button>
+
+      {!bmetAbleMode && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              type="button"
+              className="h-9 shrink-0"
+            >
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+
+              <span className="hidden sm:inline">
+                {statusLabel}
+              </span>
+
+              <span className="sm:hidden">
+                {status === "all" ? "All" : statusLabel}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="start"
+            className="w-48"
           >
-            <SlidersHorizontal className="mr-2 h-4 w-4" />
+            <DropdownMenuLabel>
+              BMET status
+            </DropdownMenuLabel>
 
-            <span className="hidden sm:inline">
-              {statusLabel}
-            </span>
+            <DropdownMenuSeparator />
 
-            <span className="sm:hidden">
-              {status === "all"
-                ? "All"
-                : statusLabel}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
+            <DropdownMenuRadioGroup
+              value={status}
+              onValueChange={(value) =>
+                onStatusChange(value as BmetStatusFilter)
+              }
+            >
+              <DropdownMenuRadioItem value="all">
+                All Status
+              </DropdownMenuRadioItem>
 
-        <DropdownMenuContent
-          align="start"
-          className="w-48"
-        >
-          <DropdownMenuLabel>
-            BMET status
-          </DropdownMenuLabel>
+              <DropdownMenuRadioItem value="pending">
+                Pending
+              </DropdownMenuRadioItem>
 
-          <DropdownMenuSeparator />
-
-          <DropdownMenuRadioGroup
-            value={status}
-            onValueChange={(value) =>
-              onStatusChange(
-                value as BmetStatusFilter,
-              )
-            }
-          >
-            <DropdownMenuRadioItem value="all">
-              All Status
-            </DropdownMenuRadioItem>
-
-            <DropdownMenuRadioItem value="pending">
-              Pending
-            </DropdownMenuRadioItem>
-
-            <DropdownMenuRadioItem value="complete">
-              Complete
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+              <DropdownMenuRadioItem value="complete">
+                Complete
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </PageToolbar>
   );
 }

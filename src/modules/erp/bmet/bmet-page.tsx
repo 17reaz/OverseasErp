@@ -1,3 +1,4 @@
+
 import {
   useCallback,
   useEffect,
@@ -8,6 +9,7 @@ import {
 import { BmetForm } from "./components/bmet-form";
 import { BmetTable } from "./components/bmet-table";
 import { BmetToolbar } from "./components/bmet-toolbar";
+import { BmetAbleTable } from "./components/bmet-able-table";
 
 import {
   deleteBmetRecord,
@@ -16,6 +18,10 @@ import {
 } from "./bmet-service";
 
 import { getCandidates } from "../candidates/candidate-service";
+import {
+  getVisas,
+  type Visa,
+} from "../visa/visa-service";
 
 interface CandidateOption {
   id: string;
@@ -24,6 +30,11 @@ interface CandidateOption {
 }
 
 type BmetFilter = "all" | "pending" | "complete";
+
+interface CreateTarget {
+  candidateId: string;
+  visaId: string;
+}
 
 function getBmetStatus(record: BmetRecord): BmetFilter {
   return (
@@ -39,9 +50,8 @@ function getBmetStatus(record: BmetRecord): BmetFilter {
 
 export function BmetPage() {
   const [records, setRecords] = useState<BmetRecord[]>([]);
-  const [candidates, setCandidates] = useState<
-    CandidateOption[]
-  >([]);
+  const [candidates, setCandidates] = useState<CandidateOption[]>([]);
+  const [visas, setVisas] = useState<Visa[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,19 +60,29 @@ export function BmetPage() {
   const [statusFilter, setStatusFilter] =
     useState<BmetFilter>("all");
 
+  const [bmetAbleMode, setBmetAbleMode] = useState(false);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] =
     useState<BmetRecord | null>(null);
 
+  const [createTarget, setCreateTarget] =
+    useState<CreateTarget | null>(null);
+
   const loadData = useCallback(async () => {
     try {
-      const [bmetRecords, candidatesData] =
-        await Promise.all([
-          getBmetRecords(),
-          getCandidates(),
-        ]);
+      const [
+        bmetRecords,
+        candidatesData,
+        visasData,
+      ] = await Promise.all([
+        getBmetRecords(),
+        getCandidates(),
+        getVisas(),
+      ]);
 
       setRecords(bmetRecords);
+      setVisas(visasData);
 
       setCandidates(
         candidatesData.map((candidate) => ({
@@ -86,6 +106,7 @@ export function BmetPage() {
     void loadData();
   }, [loadData]);
 
+  // Existing BMET records with search and status filtering.
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -96,12 +117,8 @@ export function BmetPage() {
 
       const matchesSearch =
         !query ||
-        candidate?.name
-          .toLowerCase()
-          .includes(query) ||
-        candidate?.passport_no
-          .toLowerCase()
-          .includes(query);
+        (candidate?.name ?? "").toLowerCase().includes(query) ||
+        (candidate?.passport_no ?? "").toLowerCase().includes(query);
 
       const status = getBmetStatus(record);
 
@@ -111,20 +128,73 @@ export function BmetPage() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [
-    records,
-    candidates,
-    search,
-    statusFilter,
-  ]);
+  }, [records, candidates, search, statusFilter]);
+
+  // A Visa is BMET-able when no BMET record is linked
+  // to that exact visa_id.
+  const bmetAbleVisas = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    const linkedVisaIds = new Set(
+      records
+        .map((record) => record.visa_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const candidateMap = new Map(
+      candidates.map((candidate) => [
+        candidate.id,
+        candidate,
+      ]),
+    );
+
+    return visas
+      .filter((visa) => !linkedVisaIds.has(visa.id))
+      .map((visa) => ({
+        visa,
+        candidate: candidateMap.get(visa.candidate_id),
+      }))
+      .filter(
+        (
+          item,
+        ): item is {
+          visa: Visa;
+          candidate: CandidateOption;
+        } => Boolean(item.candidate),
+      )
+      .filter(({ visa, candidate }) => {
+        if (!query) return true;
+
+        return (
+          candidate.name.toLowerCase().includes(query) ||
+          candidate.passport_no.toLowerCase().includes(query) ||
+          String(visa.sl).includes(query) ||
+          (visa.visa_no ?? "").toLowerCase().includes(query)
+        );
+      });
+  }, [visas, records, candidates, search]);
 
   function handleCreate() {
     setEditingRecord(null);
+    setCreateTarget(null);
+    setFormOpen(true);
+  }
+
+  function handleCreateForVisa(
+    candidateId: string,
+    visaId: string,
+  ) {
+    setEditingRecord(null);
+    setCreateTarget({
+      candidateId,
+      visaId,
+    });
     setFormOpen(true);
   }
 
   function handleEdit(record: BmetRecord) {
     setEditingRecord(record);
+    setCreateTarget(null);
     setFormOpen(true);
   }
 
@@ -139,9 +209,7 @@ export function BmetPage() {
       }?`,
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       await deleteBmetRecord(record.id);
@@ -189,6 +257,7 @@ export function BmetPage() {
 
     if (!open) {
       setEditingRecord(null);
+      setCreateTarget(null);
     }
   }
 
@@ -199,19 +268,31 @@ export function BmetPage() {
         onSearchChange={setSearch}
         status={statusFilter}
         onStatusChange={setStatusFilter}
+        bmetAbleMode={bmetAbleMode}
+        onBmetAbleToggle={() =>
+          setBmetAbleMode((current) => !current)
+        }
         onRefresh={handleRefresh}
         onCreate={handleCreate}
         refreshing={refreshing}
       />
 
       <div className="min-h-0 flex-1">
-        <BmetTable
-          records={filteredRecords}
-          candidates={candidates}
-          loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        {bmetAbleMode ? (
+          <BmetAbleTable
+            items={bmetAbleVisas}
+            loading={loading}
+            onCreate={handleCreateForVisa}
+          />
+        ) : (
+          <BmetTable
+            records={filteredRecords}
+            candidates={candidates}
+            loading={loading}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        )}
       </div>
 
       <BmetForm
@@ -219,6 +300,8 @@ export function BmetPage() {
         onOpenChange={handleFormOpenChange}
         record={editingRecord}
         candidates={candidates}
+        initialCandidateId={createTarget?.candidateId}
+        initialVisaId={createTarget?.visaId}
         onSuccess={handleFormSuccess}
       />
     </div>
