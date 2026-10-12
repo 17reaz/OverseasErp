@@ -52,16 +52,6 @@ export function DashboardShortcuts() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
-      <div className="shrink-0">
-        <h2 className="text-sm font-semibold leading-none">
-          Operational Shortcuts
-        </h2>
-
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Jump to frequently used modules
-        </p>
-      </div>
-
       <ul className="min-h-0 flex-1 divide-y overflow-auto rounded-md border">
         {shortcuts.map((item) => {
           const Icon = item.icon;
