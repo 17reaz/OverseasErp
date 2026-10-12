@@ -94,6 +94,12 @@ const steps = [
     description: "MOFA registration",
     icon: FileCheck,
   },
+  {
+    id: 4,
+    title: "Visa",
+    description: "Visa registration",
+    icon: FileCheck,
+  },
 ] as const;
 
 /* ─────────────────────────────────────────────────────────────
