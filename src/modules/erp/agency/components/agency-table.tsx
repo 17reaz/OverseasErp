@@ -1,8 +1,13 @@
-import { Building2, Mail, Pencil, Phone, Trash2 } from "lucide-react";
+import { MoreHorizontal,Building2, Mail, Pencil, Phone, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { Agency } from "../agency-service";
 
 import {
@@ -142,39 +147,50 @@ export function AgencyTable({
     },
 
     {
-      key: "action",
-      header: "Action",
-      className: "w-[130px] text-right",
-      cell: (agency) => (
-        <div className="flex items-center justify-end gap-1">
+  key: "action",
+  header: "Action",
+  className: "w-[100px] text-right",
+  cell: (agency) => (
+    <div className="flex items-center justify-end">
+      <Popover>
+        <PopoverTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => onEdit?.(agency)}
-            title="Edit agency"
+            title="More actions"
+            aria-label="More agency actions"
           >
-            <Pencil />
-            <span className="sr-only">
-              Edit agency
-            </span>
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
+        </PopoverTrigger>
 
-          <Button
+        <PopoverContent
+          align="end"
+          className="w-44 p-1"
+        >
+          <button
             type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => onDelete?.(agency)}
-            title="Delete agency"
+            onClick={() => onEdit?.(agency)}
+            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
           >
-            <Trash2 />
-            <span className="sr-only">
-              Delete agency
-            </span>
-          </Button>
-        </div>
-      ),
-    },
+            <Pencil className="h-4 w-4" />
+            Edit agency
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onDelete?.(agency)}
+            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete agency
+          </button>
+        </PopoverContent>
+      </Popover>
+    </div>
+  ),
+},
   ];
 
   return (
