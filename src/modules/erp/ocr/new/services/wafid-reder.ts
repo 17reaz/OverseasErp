@@ -1,4 +1,5 @@
 // wafid-pdf.ts — Wafid / GCC medical status PDF theke data extract (browser-e, server lage na)
+// Font/bold-er upor nirbhor kore na. Known label dhore, tar thik niche-r text-ke value dhore.
 // npm i pdfjs-dist
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"; // Vite
@@ -24,64 +25,68 @@ export interface WafidMedical {
 }
 
 const FIELD_MAP: Record<string, keyof WafidMedical> = {
-  "First name": "firstName",
-  "Last name": "lastName",
-  "Passport No": "passportNo",
-  "Passport issue place": "passportIssuePlace",
-  "Nationality": "nationality",
-  "National ID": "nationalId",
-  "Age": "age",
-  "Weight": "weight",
-  "Height": "height",
-  "Medical test at": "medicalTestAt",
-  "Medical center": "medicalCenter",
-  "Medical center code": "medicalCenterCode",
-  "Medical examination date": "medicalExamDate",
-  "Date of examination in GCC state": "gccExamDate",
-  "Status": "status",
+  "first name": "firstName",
+  "last name": "lastName",
+  "passport no": "passportNo",
+  "passport issue place": "passportIssuePlace",
+  "nationality": "nationality",
+  "national id": "nationalId",
+  "age": "age",
+  "weight": "weight",
+  "height": "height",
+  "medical test at": "medicalTestAt",
+  "medical center": "medicalCenter",
+  "medical center code": "medicalCenterCode",
+  "medical examination date": "medicalExamDate",
+  "date of examination in gcc state": "gccExamDate",
+  "status": "status",
 };
+const MAX_LABEL_PARTS = 5; // ekta label max koyta text-piece-e bhaga thakte pare
 
-type Item = { str: string; x: number; y: number; bold: boolean };
+type Item = { str: string; x: number; y: number };
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
 export async function extractWafidMedical(file: File | ArrayBuffer): Promise<WafidMedical> {
   const buf = file instanceof ArrayBuffer ? file : await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
   const page = await doc.getPage(1);
   const tc = await page.getTextContent();
-  await page.getOperatorList(); // font-er real naam load korar jonno dorkar
 
   const items: Item[] = [];
   for (const it of tc.items as any[]) {
-    const str = String(it.str ?? "").trim();
-    if (!str) continue;
-    let fontName = "";
-    try { fontName = page.commonObjs.get(it.fontName)?.name ?? ""; } catch { /* ignore */ }
-    items.push({ str, x: Math.round(it.transform[4]), y: Math.round(it.transform[5]), bold: /bold/i.test(fontName) });
+    const str = String(it.str ?? "").replace(/\s+/g, " ").trim();
+    if (str) items.push({ str, x: it.transform[4], y: it.transform[5] });
   }
 
-  // column start = jei x-e 3 ta-r beshi item shuru hoy (header bad jabe)
-  const count = new Map<number, number>();
-  for (const i of items) count.set(i.x, (count.get(i.x) ?? 0) + 1);
-  const colStarts = [...count].filter(([, n]) => n >= 3).map(([x]) => x).sort((a, b) => a - b);
-
-  const raw: Record<string, string> = {};
-  for (const cx of colStarts) {
-    const col = items.filter((i) => Math.abs(i.x - cx) <= 3).sort((a, b) => b.y - a.y); // upor theke niche
-    let label: string[] = [], value: string[] = [], mode: "l" | "v" | null = null;
-    for (const it of col) {
-      if (it.bold) { value.push(it.str); mode = "v"; }
-      else {
-        if (mode === "v") { raw[label.join(" ")] = value.join(" "); label = []; value = []; }
-        label.push(it.str); mode = "l";
-      }
-    }
-    if (label.length && value.length) raw[label.join(" ")] = value.join(" ");
+  // 1) x position onujayi column-e bhag (left-aligned item-gulo ek column-e porbe)
+  const sorted = [...items].sort((a, b) => a.x - b.x);
+  const columns: Item[][] = [];
+  for (const it of sorted) {
+    const last = columns[columns.length - 1];
+    if (last && Math.abs(it.x - last[0].x) <= 4) last.push(it);
+    else columns.push([it]);
   }
 
+  // 2) prottek column upor→niche: label khuje, tar porer text gulo value
   const out = Object.fromEntries(Object.values(FIELD_MAP).map((k) => [k, ""])) as unknown as WafidMedical;
-  for (const [label, val] of Object.entries(raw)) {
-    const key = FIELD_MAP[label];
-    if (key) out[key] = val === "-" ? "" : val;
+  for (const col of columns) {
+    col.sort((a, b) => b.y - a.y); // PDF-e y upore boro
+    let current: keyof WafidMedical | null = null;
+    const values: Record<string, string[]> = {};
+    for (let i = 0; i < col.length; ) {
+      // sobcheye lamba label match age (jemon "Medical center code" vs "Medical center")
+      let matched: { key: keyof WafidMedical; len: number } | null = null;
+      for (let len = Math.min(MAX_LABEL_PARTS, col.length - i); len >= 1 && !matched; len--) {
+        const key = FIELD_MAP[norm(col.slice(i, i + len).map((c) => c.str).join(" "))];
+        if (key) matched = { key, len };
+      }
+      if (matched) { current = matched.key; values[current] = []; i += matched.len; }
+      else { if (current) values[current].push(col[i].str); i++; }
+    }
+    for (const [key, parts] of Object.entries(values)) {
+      const v = parts.join(" ").trim();
+      (out as any)[key] = v === "-" ? "" : v;
+    }
   }
   return out;
 }
