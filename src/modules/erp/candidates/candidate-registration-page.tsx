@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { extractWafidMedical } from "../ocr/new/services/wafid-reder";
 import {
   getAgents,
 } from "../agents/agents-service";
@@ -551,12 +552,104 @@ async function handleScan(docType: DocType, file: File) {
     return;
   }
 
+ 
   if (docType === "medical") {
-    setErrorMessage(
-      "Medical OCR এখনো configure করা হয়নি।",
-    );
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+
+    if (!isPdf) {
+      setErrorMessage("Wafid Medical OCR-এর জন্য PDF ফাইল upload করো।");
+      return;
+    }
+
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    setScans((prev) => ({
+      ...prev,
+      medical: {
+        status: "scanning",
+        progress: 25,
+        fileName: file.name,
+        fileSize: file.size,
+      },
+    }));
+
+    try {
+      const result = await extractWafidMedical(file);
+
+      // Wafid date format: DD/MM/YYYY → YYYY-MM-DD
+      const toInputDate = (value: string) => {
+        const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        return match ? `${match[3]}-${match[2]}-${match[1]}` : "";
+      };
+
+      const extractedDate = toInputDate(result.medicalExamDate);
+      const normalizedStatus = result.status.trim().toLowerCase();
+
+      const extractedStatus: MedicalStatus =
+        normalizedStatus === "fit"
+          ? "fit"
+          : normalizedStatus === "unfit"
+            ? "unfit"
+            : "under_review";
+
+      if (extractedDate) {
+        setMedicalDate(extractedDate);
+      }
+
+      setMedicalStatus(extractedStatus);
+
+      setScans((prev) => ({
+        ...prev,
+        medical: {
+          status: "done",
+          progress: 100,
+          fileName: file.name,
+          fileSize: file.size,
+          fields: [
+            { label: "First Name", value: result.firstName || "Not detected" },
+            { label: "Last Name", value: result.lastName || "Not detected" },
+            { label: "Passport No", value: result.passportNo || "Not detected" },
+            {
+              label: "Medical Examination Date",
+              value: result.medicalExamDate || "Not detected",
+            },
+            {
+              label: "GCC Examination Date",
+              value: result.gccExamDate || "Not detected",
+            },
+            {
+              label: "Medical Center",
+              value: result.medicalCenter || "Not detected",
+            },
+            { label: "Status", value: result.status || "Not detected" },
+          ],
+        },
+      }));
+
+      setSuccessMessage(
+        "Medical OCR complete. Verify the extracted date and status before saving.",
+      );
+    } catch (error) {
+      console.error("Wafid Medical OCR failed:", error);
+
+      setScans((prev) => ({
+        ...prev,
+        medical: idleScan,
+      }));
+
+      setErrorMessage(
+        error instanceof Error
+          ? `Medical OCR failed: ${error.message}`
+          : "Medical OCR failed. Please check the PDF and try again.",
+      );
+    }
+
     return;
   }
+
 
   const isPdf =
     file.type === "application/pdf" ||
