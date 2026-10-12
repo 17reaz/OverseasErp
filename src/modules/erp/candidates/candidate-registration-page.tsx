@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import {
   getAgents,
 } from "../agents/agents-service";
+import { readPassport } from "../ocr/new/services/passport-ocr-service";
 import type { Agent } from "../agents/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -127,14 +128,13 @@ async function lookupPassport(value: string) {
   return result.data;
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Dummy OCR (UI only). Replace buildDummyOcr() with the real OCR
- * call later. Everything below is fake data.
- * ───────────────────────────────────────────────────────────── */
 
 type DocType = "passport" | "medical" | "mofa";
 
-type OcrField = { label: string; value: string };
+type OcrField = {
+  label: string;
+  value: string;
+};
 
 type ScanState = {
   status: "idle" | "scanning" | "done";
@@ -145,162 +145,17 @@ type ScanState = {
   fields?: OcrField[];
 };
 
-type DummyIdentity = { name: string; passportNo: string };
-
-type DummyOcrResult = {
-  confidence: number;
-  fields: OcrField[];
-  medical?: { date: string; status: MedicalStatus; fitDate: string };
-  mofa?: {
-    applicationNumber: string;
-    applicationDate: string;
-    trade: string;
-    agencyId: string;
-  };
+const idleScan: ScanState = {
+  status: "idle",
+  progress: 0,
 };
-
-const idleScan: ScanState = { status: "idle", progress: 0 };
-
-const dummyNames = [
-  "Mohammad Rahim Uddin",
-  "Abdul Karim Sheikh",
-  "Md. Jahidul Islam",
-  "Shafiqul Alam",
-  "Nasir Hossain",
-  "Rubel Mia",
-  "Sumon Ahmed",
-  "Kamal Hossain",
-  "Jewel Rana",
-  "Faruk Hasan",
-  "Tareq Aziz",
-  "Mizanur Rahman",
-];
-
-const dummyTrades = [
-  "Cleaner",
-  "Driver",
-  "Welder",
-  "Electrician",
-  "Mason",
-  "Carpenter",
-  "Plumber",
-  "Security Guard",
-];
-
-const usedPassports = new Set<string>();
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function pick<T>(items: readonly T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function randomDigits(length: number) {
-  let out = "";
-  for (let i = 0; i < length; i++) out += randomInt(0, 9);
-  return out;
-}
-
-function isoDaysFromToday(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function addDays(iso: string, days: number) {
-  const date = new Date(iso);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 function formatSize(bytes?: number) {
   if (!bytes) return "";
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function createDummyIdentity(): DummyIdentity {
-  let passportNo = "";
-
-  do {
-    passportNo = `${pick(["A", "B", "E"])}${randomDigits(8)}`;
-  } while (usedPassports.has(passportNo));
-
-  usedPassports.add(passportNo);
-
-  return { name: pick(dummyNames), passportNo };
-}
-
-function buildDummyOcr(
-  docType: DocType,
-  identity: DummyIdentity,
-  agencies: MofaAgency[],
-): DummyOcrResult {
-  const confidence = randomInt(91, 99);
-  const base: OcrField[] = [
-    { label: "Name", value: identity.name },
-    { label: "Passport No", value: identity.passportNo },
-  ];
-
-  if (docType === "passport") {
-    return {
-      confidence,
-      fields: [
-        ...base,
-        { label: "Nationality", value: "Bangladeshi" },
-        {
-          label: "Date of birth",
-          value: `${randomInt(1985, 2002)}-${String(randomInt(1, 12)).padStart(2, "0")}-${String(randomInt(1, 28)).padStart(2, "0")}`,
-        },
-        { label: "Expiry date", value: isoDaysFromToday(randomInt(900, 3000)) },
-      ],
-    };
-  }
-
-  if (docType === "medical") {
-    const date = isoDaysFromToday(-randomInt(1, 10));
-    const status: MedicalStatus = pick(["fit", "fit", "inprogress"] as const);
-    const fitDate = status === "fit" ? addDays(date, randomInt(1, 3)) : "";
-
-    return {
-      confidence,
-      fields: [
-        ...base,
-        { label: "Medical date", value: date },
-        { label: "Status", value: status === "fit" ? "Fit" : "In Progress" },
-        ...(fitDate ? [{ label: "Fit date", value: fitDate }] : []),
-      ],
-      medical: { date, status, fitDate },
-    };
-  }
-
-  const applicationNumber = `MOFA-${new Date().getFullYear()}-${randomDigits(6)}`;
-  const applicationDate = isoDaysFromToday(-randomInt(0, 7));
-  const trade = pick(dummyTrades);
-  const agency = agencies.length ? pick(agencies) : null;
-
-  return {
-    confidence,
-    fields: [
-      ...base,
-      { label: "Application No", value: applicationNumber },
-      { label: "Application date", value: applicationDate },
-      { label: "Trade", value: trade },
-      ...(agency ? [{ label: "Agency", value: agency.name }] : []),
-    ],
-    mofa: {
-      applicationNumber,
-      applicationDate,
-      trade,
-      agencyId: agency?.id ?? "",
-    },
-  };
 }
 
 /* ───────── Upload / scan card ───────── */
@@ -527,8 +382,6 @@ const [agentLoadError, setAgentLoadError] = useState("");
     medical: idleScan,
     mofa: idleScan,
   });
-  const identityRef = useRef<DummyIdentity | null>(null);
-  const mountedRef = useRef(true);
 
   const anyScanning = Object.values(scans).some(
     (scan) => scan.status === "scanning",
@@ -573,12 +426,8 @@ useEffect(() => {
     cancelled = true;
   };
 }, []);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+ 
+ 
 
   useEffect(() => {
     let cancelled = false;
@@ -685,91 +534,99 @@ useEffect(() => {
     }
   }
 
-  async function handleScan(docType: DocType, file: File) {
-    const isSupported =
-      file.type.startsWith("image/") || file.type === "application/pdf";
+  
+async function handleScan(docType: DocType, file: File) {
+  // This first phase supports real Passport OCR only.
+  if (docType !== "passport") {
+    setErrorMessage(
+      "এখন শুধু Passport-এর real OCR চালু আছে। Medical ও MOFA OCR পরে যোগ করা হবে।",
+    );
+    return;
+  }
 
-    if (!isSupported || file.size > 10 * 1024 * 1024) {
-      setErrorMessage("Only image or PDF files up to 10 MB are supported.");
-      return;
-    }
+  if (!file.type.startsWith("image/")) {
+    setErrorMessage("Passport OCR-এর জন্য JPG বা PNG image upload করো।");
+    return;
+  }
 
-    setErrorMessage("");
-    setSuccessMessage("");
+  if (file.size > 10 * 1024 * 1024) {
+    setErrorMessage("File size must be 10 MB or less.");
+    return;
+  }
 
-    // All 3 documents of one candidate carry the same name + passport.
-    // Re-scanning the same document type = a different candidate's document.
-    let identity: DummyIdentity;
+  setErrorMessage("");
+  setSuccessMessage("");
 
-    if (savedCandidate) {
-      identity = {
-        name: savedCandidate.name,
-        passportNo: savedCandidate.passport_no,
-      };
-    } else if (identityRef.current && scans[docType].status === "idle") {
-      identity = identityRef.current;
-    } else {
-      identity = createDummyIdentity();
-      identityRef.current = identity;
-      setScans({ passport: idleScan, medical: idleScan, mofa: idleScan });
-    }
+  setScans((prev) => ({
+    ...prev,
+    passport: {
+      status: "scanning",
+      progress: 5,
+      fileName: file.name,
+      fileSize: file.size,
+    },
+  }));
 
-    setScans((prev) => ({
-      ...prev,
-      [docType]: {
-        status: "scanning",
-        progress: 5,
-        fileName: file.name,
-        fileSize: file.size,
-      },
-    }));
-
-    for (const progress of [20, 40, 60, 80, 95]) {
-      await sleep(260);
-      if (!mountedRef.current) return;
-
+  try {
+    const result = await readPassport(file, (progress) => {
       setScans((prev) => ({
         ...prev,
-        [docType]: { ...prev[docType], progress },
+        passport: {
+          ...prev.passport,
+          status: "scanning",
+          progress,
+          fileName: file.name,
+          fileSize: file.size,
+        },
       }));
-    }
+    });
 
-    await sleep(200);
-    if (!mountedRef.current) return;
-
-    const result = buildDummyOcr(docType, identity, agencies);
-
-    // Fill the form
+    // Fill only fields actually extracted from the Passport.
     if (!savedCandidate) {
-      setName(identity.name);
-      setPassportNo(identity.passportNo);
+      setName(result.name);
+      setPassportNo(result.passportNo);
     }
 
-    if (result.medical && !medicalSaved) {
-      setMedicalDate(result.medical.date);
-      setMedicalStatus(result.medical.status);
-      setFitDate(result.medical.fitDate);
-    }
-
-    if (result.mofa && !mofaSaved) {
-      setApplicationNumber(result.mofa.applicationNumber);
-      setApplicationDate(result.mofa.applicationDate);
-      setTrade(result.mofa.trade);
-      setAgencyId(result.mofa.agencyId);
-    }
+    const fields: OcrField[] = [
+      { label: "Name", value: result.name || "Not detected" },
+      { label: "Passport No", value: result.passportNo || "Not detected" },
+      { label: "Nationality", value: result.nationality || "Not detected" },
+      { label: "Date of birth", value: result.dateOfBirth || "Not detected" },
+      { label: "Sex", value: result.sex || "Not detected" },
+      { label: "Expiry date", value: result.expiryDate || "Not detected" },
+    ];
 
     setScans((prev) => ({
       ...prev,
-      [docType]: {
+      passport: {
         status: "done",
         progress: 100,
         fileName: file.name,
         fileSize: file.size,
         confidence: result.confidence,
-        fields: result.fields,
+        fields,
       },
     }));
+
+    setSuccessMessage(
+      "Passport OCR complete. Please verify the extracted information before saving.",
+    );
+  } catch (error) {
+    console.error("Passport OCR failed:", error);
+
+    setScans((prev) => ({
+      ...prev,
+      passport: idleScan,
+    }));
+
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : "Passport OCR failed. Please try another image.",
+    );
   }
+}
+
 
   async function handleCandidateSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -1047,9 +904,9 @@ useEffect(() => {
                       Scan documents (optional)
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Any one document is enough — name and passport number
-                      are read from it automatically. Medical and MOFA
-                      documents also fill their own steps.
+                      Passport image থেকে real OCR দিয়ে তথ্য পড়া হবে।
+Medical ও MOFA OCR এখনো চালু হয়নি।
+OCR-এর তথ্য যাচাই করে তারপর Candidate save করো।
                     </p>
                   </div>
 
