@@ -15,7 +15,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
+import {
+  getAgents,
+} from "../agents/agents-service";
+import type { Agent } from "../agents/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -496,7 +499,11 @@ export function CandidateRegistrationPage() {
   const [savedMedicalId, setSavedMedicalId] = useState<string | null>(
     null,
   );
-
+// Agent
+const [agents, setAgents] = useState<Agent[]>([]);
+const [agentId, setAgentId] = useState("");
+const [agentsLoading, setAgentsLoading] = useState(true);
+const [agentLoadError, setAgentLoadError] = useState("");
   // MOFA
   const [agencies, setAgencies] = useState<MofaAgency[]>([]);
   const [agencyId, setAgencyId] = useState("");
@@ -531,7 +538,41 @@ export function CandidateRegistrationPage() {
     !!duplicate &&
     !!name.trim() &&
     normalizeName(name) !== normalizeName(duplicate.candidate.name);
+useEffect(() => {
+  let cancelled = false;
 
+  async function loadAgents() {
+    setAgentsLoading(true);
+    setAgentLoadError("");
+
+    try {
+      const data = await getAgents();
+
+      if (cancelled) return;
+
+      setAgents(
+        data.filter(
+          (agent) => agent.is_active && !agent.is_deleted,
+        ),
+      );
+    } catch (error) {
+      if (cancelled) return;
+
+      console.error("Failed to load agents:", error);
+      setAgentLoadError("Could not load agents. Please try again.");
+    } finally {
+      if (!cancelled) {
+        setAgentsLoading(false);
+      }
+    }
+  }
+
+  void loadAgents();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -759,7 +800,7 @@ export function CandidateRegistrationPage() {
         passport_no: normalizePassport(passportNo),
         received_date: receivedDate || null,
         country: countryValues[country] ?? country,
-        agent_id: null,
+        agent_id: agentId || null,
         current_stage: "candidate",
       };
 
@@ -1192,15 +1233,44 @@ export function CandidateRegistrationPage() {
   )}
 </div>
 
-                    <div className="space-y-2">
-                      <Label>Agent</Label>
-                      <Select disabled>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Agent selection not connected" />
-                        </SelectTrigger>
-                        <SelectContent />
-                      </Select>
-                    </div>
+                    <div className="space-y-1.5">
+  <Label>Agent</Label>
+
+  <Select
+    value={agentId || "__none"}
+    onValueChange={(value) =>
+      setAgentId(value === "__none" ? "" : value)
+    }
+    disabled={saving || !!savedCandidate || agentsLoading}
+  >
+    <SelectTrigger className="h-9">
+      <SelectValue
+        placeholder={
+          agentsLoading ? "Loading agents..." : "Select agent (optional)"
+        }
+      />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value="__none">No Agent</SelectItem>
+
+      {agents.map((agent) => (
+        <SelectItem key={agent.id} value={agent.id}>
+          {agent.name || "Unnamed Agent"}
+          {agent.code ? ` (${agent.code})` : ""}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+
+  {agentLoadError ? (
+    <p className="text-xs text-destructive">{agentLoadError}</p>
+  ) : !agentsLoading && agents.length === 0 ? (
+    <p className="text-xs text-muted-foreground">
+      No active agents found. Add an agent from the Agents module.
+    </p>
+  ) : null}
+</div>
 
                     <div className="space-y-2">
                       <Label htmlFor="registration-notes">Notes</Label>
