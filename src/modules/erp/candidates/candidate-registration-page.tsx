@@ -18,6 +18,10 @@ import { Link } from "react-router-dom";
 import {
   getAgents,
 } from "../agents/agents-service";
+import {
+  crossCheckWithPassport,
+  readMofa,
+} from "../ocr/new/services/mofa-reader";
 import { readPassport } from "../ocr/new/services/passport-ocr-service";
 import type { Agent } from "../agents/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -360,6 +364,12 @@ const [agentId, setAgentId] = useState("");
 const [agentsLoading, setAgentsLoading] = useState(true);
 const [agentLoadError, setAgentLoadError] = useState("");
   // MOFA
+  
+const [mofaCrossCheck, setMofaCrossCheck] = useState<{
+  passportNoMatches: boolean;
+  nameMatches: boolean;
+} | null>(null);
+
   const [agencies, setAgencies] = useState<MofaAgency[]>([]);
   const [agencyId, setAgencyId] = useState("");
   const [applicationNumber, setApplicationNumber] = useState("");
@@ -536,30 +546,44 @@ useEffect(() => {
 
   
 async function handleScan(docType: DocType, file: File) {
-  // This first phase supports real Passport OCR only.
-  if (docType !== "passport") {
+  if (file.size > 10 * 1024 * 1024) {
+    setErrorMessage("File size must be 10 MB or less.");
+    return;
+  }
+
+  if (docType === "medical") {
     setErrorMessage(
-      "এখন শুধু Passport-এর real OCR চালু আছে। Medical ও MOFA OCR পরে যোগ করা হবে।",
+      "Medical OCR এখনো configure করা হয়নি।",
     );
     return;
   }
 
-  if (!file.type.startsWith("image/")) {
-    setErrorMessage("Passport OCR-এর জন্য JPG বা PNG image upload করো।");
+  const isPdf =
+    file.type === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf");
+
+  if (docType === "passport" && !file.type.startsWith("image/")) {
+    setErrorMessage(
+      "Passport OCR-এর জন্য JPG বা PNG image upload করো।",
+    );
     return;
   }
 
-  if (file.size > 10 * 1024 * 1024) {
-    setErrorMessage("File size must be 10 MB or less.");
+  if (docType === "mofa" && !isPdf && !file.type.startsWith("image/")) {
+    setErrorMessage("MOFA OCR-এর জন্য PDF, JPG অথবা PNG file দাও।");
     return;
   }
 
   setErrorMessage("");
   setSuccessMessage("");
 
+  if (docType === "mofa") {
+    setMofaCrossCheck(null);
+  }
+
   setScans((prev) => ({
     ...prev,
-    passport: {
+    [docType]: {
       status: "scanning",
       progress: 5,
       fileName: file.name,
@@ -568,61 +592,164 @@ async function handleScan(docType: DocType, file: File) {
   }));
 
   try {
-    const result = await readPassport(file, (progress) => {
+    // ───────── Passport OCR ─────────
+    if (docType === "passport") {
+      const result = await readPassport(file, (progress) => {
+        setScans((prev) => ({
+          ...prev,
+          passport: {
+            ...prev.passport,
+            status: "scanning",
+            progress,
+            fileName: file.name,
+            fileSize: file.size,
+          },
+        }));
+      });
+
+      if (!savedCandidate) {
+        setName(result.name);
+        setPassportNo(result.passportNo);
+      }
+
+      const fields: OcrField[] = [
+        { label: "Name", value: result.name || "Not detected" },
+        {
+          label: "Passport No",
+          value: result.passportNo || "Not detected",
+        },
+        {
+          label: "Nationality",
+          value: result.nationality || "Not detected",
+        },
+        {
+          label: "Date of birth",
+          value: result.dateOfBirth || "Not detected",
+        },
+        { label: "Sex", value: result.sex || "Not detected" },
+        {
+          label: "Expiry date",
+          value: result.expiryDate || "Not detected",
+        },
+      ];
+
       setScans((prev) => ({
         ...prev,
         passport: {
-          ...prev.passport,
-          status: "scanning",
-          progress,
+          status: "done",
+          progress: 100,
           fileName: file.name,
           fileSize: file.size,
+          confidence: result.confidence,
+          fields,
         },
       }));
-    });
 
-    // Fill only fields actually extracted from the Passport.
-    if (!savedCandidate) {
-      setName(result.name);
-      setPassportNo(result.passportNo);
+      setSuccessMessage(
+        "Passport OCR complete. Please verify the extracted information before saving.",
+      );
+
+      return;
+    }
+
+    // ───────── MOFA OCR ─────────
+    const result = await readMofa(file);
+
+    // Fill the existing MOFA form fields.
+    setApplicationNumber(result.applicationNumber || "");
+    setApplicationDate(result.applicationDate || "");
+    setTrade(result.trade || "");
+
+    // Compare the extracted MOFA data with the selected candidate.
+    const passportForCheck = {
+      passportNo: savedCandidate?.passport_no ?? passportNo,
+      name: savedCandidate?.name ?? name,
+    };
+
+    if (
+      result.passportNo &&
+      result.name &&
+      passportForCheck.passportNo.trim() &&
+      passportForCheck.name.trim()
+    ) {
+      setMofaCrossCheck(
+        crossCheckWithPassport(result, passportForCheck),
+      );
     }
 
     const fields: OcrField[] = [
+      {
+        label: "Application No",
+        value: result.applicationNumber || "Not detected",
+      },
+      {
+        label: "Application Date",
+        value: result.applicationDate || "Not detected",
+      },
       { label: "Name", value: result.name || "Not detected" },
-      { label: "Passport No", value: result.passportNo || "Not detected" },
-      { label: "Nationality", value: result.nationality || "Not detected" },
-      { label: "Date of birth", value: result.dateOfBirth || "Not detected" },
-      { label: "Sex", value: result.sex || "Not detected" },
-      { label: "Expiry date", value: result.expiryDate || "Not detected" },
+      {
+        label: "Passport No",
+        value: result.passportNo || "Not detected",
+      },
+      {
+        label: "Occupation / Trade",
+        value: result.trade || "Not detected",
+      },
+      {
+        label: "Visa Type",
+        value: result.visaType || "Not detected",
+      },
+      {
+        label: "Date of Birth",
+        value: result.dateOfBirth || "Not detected",
+      },
+      {
+        label: "Expiry Date",
+        value: result.expiryDate || "Not detected",
+      },
+      {
+        label: "Gender",
+        value: result.gender || "Not detected",
+      },
+      ...(result.reviewFields.length
+        ? [
+            {
+              label: "Review required",
+              value: result.reviewFields.join(", "),
+            },
+          ]
+        : []),
     ];
 
     setScans((prev) => ({
       ...prev,
-      passport: {
+      mofa: {
         status: "done",
         progress: 100,
         fileName: file.name,
         fileSize: file.size,
-        confidence: result.confidence,
+        confidence: result.source === "pdf-text" ? 100 : 85,
         fields,
       },
     }));
 
     setSuccessMessage(
-      "Passport OCR complete. Please verify the extracted information before saving.",
+      result.reviewFields.length
+        ? "MOFA OCR complete. Please review the extracted fields before saving."
+        : "MOFA OCR complete. Please verify the extracted information before saving.",
     );
   } catch (error) {
-    console.error("Passport OCR failed:", error);
+    console.error(`${docType} OCR failed:`, error);
 
     setScans((prev) => ({
       ...prev,
-      passport: idleScan,
+      [docType]: idleScan,
     }));
 
     setErrorMessage(
       error instanceof Error
         ? error.message
-        : "Passport OCR failed. Please try another image.",
+        : `${docType === "mofa" ? "MOFA" : "Passport"} OCR failed. Please try another file.`,
     );
   }
 }
@@ -1411,6 +1538,42 @@ OCR-এর তথ্য যাচাই করে তারপর Candidate save
                 <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
+            
+{mofaCrossCheck && (
+  <Alert
+    variant={
+      mofaCrossCheck.passportNoMatches &&
+      mofaCrossCheck.nameMatches
+        ? "default"
+        : "destructive"
+    }
+  >
+    <AlertCircle className="h-4 w-4" />
+
+    <AlertTitle>MOFA / Passport Cross-check</AlertTitle>
+
+    <AlertDescription>
+      <p>
+        Passport Number:{" "}
+        {mofaCrossCheck.passportNoMatches
+          ? "Matched"
+          : "Does not match"}
+      </p>
+
+      <p>
+        Name:{" "}
+        {mofaCrossCheck.nameMatches
+          ? "Matched"
+          : "Does not match"}
+      </p>
+
+      <p className="mt-1">
+        Please verify the details against both documents before saving.
+      </p>
+    </AlertDescription>
+  </Alert>
+)}
+
           </CardContent>
         </Card>
       </div>

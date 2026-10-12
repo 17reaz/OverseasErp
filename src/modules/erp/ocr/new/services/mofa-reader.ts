@@ -1,7 +1,7 @@
 import { createWorker, PSM } from "tesseract.js";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 export type MofaResult = {
   applicationNumber: string;
   applicationDate: string; // ISO yyyy-mm-dd
@@ -179,18 +179,17 @@ type PdfDocument = Awaited<
   ReturnType<typeof import("pdfjs-dist").getDocument>["promise"]
 >;
 
+
 async function openPdf(file: File): Promise<PdfDocument> {
   const pdfjs = await import("pdfjs-dist");
 
-  // Bundler-friendly worker setup (Next.js / Vite). Adjust the path to your pdfjs-dist version.
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString();
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
   const data = new Uint8Array(await file.arrayBuffer());
+
   return pdfjs.getDocument({ data }).promise;
 }
+
 
 /** Text of page 1 as reading-order lines (items are grouped by their y position). */
 async function extractPdfText(pdf: PdfDocument): Promise<string> {
