@@ -986,18 +986,6 @@ export function CandidateRegistrationPage() {
       {/* ───────── Scrollable Content ───────── */}
       <div className="flex-1 py-6">
         <Card>
-          <CardHeader>
-            <CardTitle>{steps[currentStep - 1].title} Information</CardTitle>
-            <CardDescription>
-              {currentStep === 1 &&
-                "Upload a document to auto-fill, or enter the candidate's information manually."}
-              {currentStep === 2 &&
-                "Upload the medical document to auto-fill, or enter the details manually."}
-              {currentStep === 3 &&
-                "Upload the MOFA document to auto-fill, or enter the details manually."}
-            </CardDescription>
-          </CardHeader>
-
           <Separator />
 
           <CardContent className="space-y-6 pt-6">
