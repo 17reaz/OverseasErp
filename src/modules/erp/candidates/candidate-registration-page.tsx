@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -7,9 +7,12 @@ import {
   ClipboardList,
   FileCheck,
   Loader2,
+  RefreshCw,
   Save,
   Stethoscope,
+  Upload,
   UserRound,
+  type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -25,6 +28,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -34,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 import {
   createCandidate,
@@ -85,6 +90,342 @@ const countryValues: Record<string, string> = {
   malaysia: "Malaysia",
 };
 
+/* ─────────────────────────────────────────────────────────────
+ * Dummy OCR (UI only). Replace buildDummyOcr() with the real OCR
+ * call later. Everything below is fake data.
+ * ───────────────────────────────────────────────────────────── */
+
+type DocType = "passport" | "medical" | "mofa";
+
+type OcrField = { label: string; value: string };
+
+type ScanState = {
+  status: "idle" | "scanning" | "done";
+  progress: number;
+  fileName?: string;
+  fileSize?: number;
+  confidence?: number;
+  fields?: OcrField[];
+};
+
+type DummyIdentity = { name: string; passportNo: string };
+
+type DummyOcrResult = {
+  confidence: number;
+  fields: OcrField[];
+  medical?: { date: string; status: MedicalStatus; fitDate: string };
+  mofa?: {
+    applicationNumber: string;
+    applicationDate: string;
+    trade: string;
+    agencyId: string;
+  };
+};
+
+const idleScan: ScanState = { status: "idle", progress: 0 };
+
+const dummyNames = [
+  "Mohammad Rahim Uddin",
+  "Abdul Karim Sheikh",
+  "Md. Jahidul Islam",
+  "Shafiqul Alam",
+  "Nasir Hossain",
+  "Rubel Mia",
+  "Sumon Ahmed",
+  "Kamal Hossain",
+  "Jewel Rana",
+  "Faruk Hasan",
+  "Tareq Aziz",
+  "Mizanur Rahman",
+];
+
+const dummyTrades = [
+  "Cleaner",
+  "Driver",
+  "Welder",
+  "Electrician",
+  "Mason",
+  "Carpenter",
+  "Plumber",
+  "Security Guard",
+];
+
+const usedPassports = new Set<string>();
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function pick<T>(items: readonly T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function randomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomDigits(length: number) {
+  let out = "";
+  for (let i = 0; i < length; i++) out += randomInt(0, 9);
+  return out;
+}
+
+function isoDaysFromToday(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(iso: string, days: number) {
+  const date = new Date(iso);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatSize(bytes?: number) {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function createDummyIdentity(): DummyIdentity {
+  let passportNo = "";
+
+  do {
+    passportNo = `${pick(["A", "B", "E"])}${randomDigits(8)}`;
+  } while (usedPassports.has(passportNo));
+
+  usedPassports.add(passportNo);
+
+  return { name: pick(dummyNames), passportNo };
+}
+
+function buildDummyOcr(
+  docType: DocType,
+  identity: DummyIdentity,
+  agencies: MofaAgency[],
+): DummyOcrResult {
+  const confidence = randomInt(91, 99);
+  const base: OcrField[] = [
+    { label: "Name", value: identity.name },
+    { label: "Passport No", value: identity.passportNo },
+  ];
+
+  if (docType === "passport") {
+    return {
+      confidence,
+      fields: [
+        ...base,
+        { label: "Nationality", value: "Bangladeshi" },
+        {
+          label: "Date of birth",
+          value: `${randomInt(1985, 2002)}-${String(randomInt(1, 12)).padStart(2, "0")}-${String(randomInt(1, 28)).padStart(2, "0")}`,
+        },
+        { label: "Expiry date", value: isoDaysFromToday(randomInt(900, 3000)) },
+      ],
+    };
+  }
+
+  if (docType === "medical") {
+    const date = isoDaysFromToday(-randomInt(1, 10));
+    const status: MedicalStatus = pick(["fit", "fit", "inprogress"] as const);
+    const fitDate = status === "fit" ? addDays(date, randomInt(1, 3)) : "";
+
+    return {
+      confidence,
+      fields: [
+        ...base,
+        { label: "Medical date", value: date },
+        { label: "Status", value: status === "fit" ? "Fit" : "In Progress" },
+        ...(fitDate ? [{ label: "Fit date", value: fitDate }] : []),
+      ],
+      medical: { date, status, fitDate },
+    };
+  }
+
+  const applicationNumber = `MOFA-${new Date().getFullYear()}-${randomDigits(6)}`;
+  const applicationDate = isoDaysFromToday(-randomInt(0, 7));
+  const trade = pick(dummyTrades);
+  const agency = agencies.length ? pick(agencies) : null;
+
+  return {
+    confidence,
+    fields: [
+      ...base,
+      { label: "Application No", value: applicationNumber },
+      { label: "Application date", value: applicationDate },
+      { label: "Trade", value: trade },
+      ...(agency ? [{ label: "Agency", value: agency.name }] : []),
+    ],
+    mofa: {
+      applicationNumber,
+      applicationDate,
+      trade,
+      agencyId: agency?.id ?? "",
+    },
+  };
+}
+
+/* ───────── Upload / scan card ───────── */
+
+function DocumentDropzone({
+  title,
+  hint,
+  icon: Icon,
+  scan,
+  disabled,
+  compact,
+  onFile,
+}: {
+  title: string;
+  hint: string;
+  icon: LucideIcon;
+  scan: ScanState;
+  disabled?: boolean;
+  compact?: boolean;
+  onFile: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const scanning = scan.status === "scanning";
+  const done = scan.status === "done";
+  const locked = !!disabled || scanning;
+
+  function pick(files: FileList | null) {
+    const file = files?.[0];
+    if (file) onFile(file);
+  }
+
+  return (
+    <div
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!locked) setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        if (!locked) pick(event.dataTransfer.files);
+      }}
+      className={cn(
+        "rounded-lg border border-dashed p-4 transition-colors",
+        dragging && "border-primary bg-primary/5",
+        done && "border-primary/40 bg-muted/30",
+        disabled && !done && "opacity-60",
+      )}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={(event) => {
+          pick(event.target.files);
+          event.target.value = "";
+        }}
+      />
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+              done
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {done ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Icon className="h-4 w-4" />
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{title}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {done || scanning ? scan.fileName : hint}
+            </p>
+          </div>
+        </div>
+
+        {done ? (
+          <Badge variant="secondary" className="shrink-0">
+            {scan.confidence}% match
+          </Badge>
+        ) : null}
+      </div>
+
+      {scan.status === "idle" && (
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-xs text-muted-foreground">
+            Drop a file here or choose one · JPG, PNG, PDF · max 10 MB
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-fit"
+            disabled={locked}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Upload className="mr-2 h-3.5 w-3.5" />
+            Upload {title}
+          </Button>
+        </div>
+      )}
+
+      {scanning && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Reading document…
+          </div>
+          <Progress value={scan.progress} className="h-1.5" />
+        </div>
+      )}
+
+      {done && (
+        <div className="mt-3 space-y-3">
+          <dl
+            className={cn(
+              "grid gap-x-4 gap-y-1.5 text-sm",
+              compact ? "grid-cols-1 text-xs" : "sm:grid-cols-2",
+            )}
+          >
+            {scan.fields?.map((field) => (
+              <div key={field.label} className="flex min-w-0 gap-2">
+                <dt className="shrink-0 text-muted-foreground">
+                  {field.label}:
+                </dt>
+                <dd className="min-w-0 truncate font-medium">{field.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              {formatSize(scan.fileSize)} · Data added to the form
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={locked}
+              onClick={() => inputRef.current?.click()}
+            >
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              Replace
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CandidateRegistrationPage() {
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -127,6 +468,26 @@ export function CandidateRegistrationPage() {
   const [medicalSaved, setMedicalSaved] = useState(false);
   const [mofaSaved, setMofaSaved] = useState(false);
 
+  // Dummy OCR
+  const [scans, setScans] = useState<Record<DocType, ScanState>>({
+    passport: idleScan,
+    medical: idleScan,
+    mofa: idleScan,
+  });
+  const identityRef = useRef<DummyIdentity | null>(null);
+  const mountedRef = useRef(true);
+
+  const anyScanning = Object.values(scans).some(
+    (scan) => scan.status === "scanning",
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -149,6 +510,92 @@ export function CandidateRegistrationPage() {
       cancelled = true;
     };
   }, []);
+
+  async function handleScan(docType: DocType, file: File) {
+    const isSupported =
+      file.type.startsWith("image/") || file.type === "application/pdf";
+
+    if (!isSupported || file.size > 10 * 1024 * 1024) {
+      setErrorMessage("Only image or PDF files up to 10 MB are supported.");
+      return;
+    }
+
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    // All 3 documents of one candidate carry the same name + passport.
+    // Re-scanning the same document type = a different candidate's document.
+    let identity: DummyIdentity;
+
+    if (savedCandidate) {
+      identity = {
+        name: savedCandidate.name,
+        passportNo: savedCandidate.passport_no,
+      };
+    } else if (identityRef.current && scans[docType].status === "idle") {
+      identity = identityRef.current;
+    } else {
+      identity = createDummyIdentity();
+      identityRef.current = identity;
+      setScans({ passport: idleScan, medical: idleScan, mofa: idleScan });
+    }
+
+    setScans((prev) => ({
+      ...prev,
+      [docType]: {
+        status: "scanning",
+        progress: 5,
+        fileName: file.name,
+        fileSize: file.size,
+      },
+    }));
+
+    for (const progress of [20, 40, 60, 80, 95]) {
+      await sleep(260);
+      if (!mountedRef.current) return;
+
+      setScans((prev) => ({
+        ...prev,
+        [docType]: { ...prev[docType], progress },
+      }));
+    }
+
+    await sleep(200);
+    if (!mountedRef.current) return;
+
+    const result = buildDummyOcr(docType, identity, agencies);
+
+    // Fill the form
+    if (!savedCandidate) {
+      setName(identity.name);
+      setPassportNo(identity.passportNo);
+    }
+
+    if (result.medical && !medicalSaved) {
+      setMedicalDate(result.medical.date);
+      setMedicalStatus(result.medical.status);
+      setFitDate(result.medical.fitDate);
+    }
+
+    if (result.mofa && !mofaSaved) {
+      setApplicationNumber(result.mofa.applicationNumber);
+      setApplicationDate(result.mofa.applicationDate);
+      setTrade(result.mofa.trade);
+      setAgencyId(result.mofa.agencyId);
+    }
+
+    setScans((prev) => ({
+      ...prev,
+      [docType]: {
+        status: "done",
+        progress: 100,
+        fileName: file.name,
+        fileSize: file.size,
+        confidence: result.confidence,
+        fields: result.fields,
+      },
+    }));
+  }
 
   async function handleCandidateSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -403,324 +850,404 @@ export function CandidateRegistrationPage() {
             <CardTitle>{steps[currentStep - 1].title} Information</CardTitle>
             <CardDescription>
               {currentStep === 1 &&
-                "Enter the candidate's personal and passport information."}
+                "Upload a document to auto-fill, or enter the candidate's information manually."}
               {currentStep === 2 &&
-                "Enter medical details for the saved candidate."}
+                "Upload the medical document to auto-fill, or enter the details manually."}
               {currentStep === 3 &&
-                "Enter MOFA application details for the saved candidate."}
+                "Upload the MOFA document to auto-fill, or enter the details manually."}
             </CardDescription>
           </CardHeader>
 
           <Separator />
 
-          <CardContent className="pt-6">
+          <CardContent className="space-y-6 pt-6">
+            {/* ───── Step 1 ───── */}
             {currentStep === 1 && (
-              <form
-                id="candidate-registration-form"
-                onSubmit={handleCandidateSubmit}
-                className="space-y-6"
-              >
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="candidate-name">Candidate Name *</Label>
-                    <Input
-                      id="candidate-name"
-                      placeholder="Enter full name"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      disabled={saving || !!savedCandidate}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="passport">Passport Number *</Label>
-                    <Input
-                      id="passport"
-                      placeholder="Enter passport number"
-                      value={passportNo}
-                      onChange={(event) =>
-                        setPassportNo(event.target.value.toUpperCase())
-                      }
-                      disabled={saving || !!savedCandidate}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="received-date">Received Date</Label>
-                    <Input
-                      id="received-date"
-                      type="date"
-                      value={receivedDate}
-                      onChange={(event) => setReceivedDate(event.target.value)}
-                      disabled={saving || !!savedCandidate}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Country *</Label>
-                    <Select
-                      value={country}
-                      onValueChange={setCountry}
-                      disabled={saving || !!savedCandidate}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="saudi-arabia">
-                          Saudi Arabia
-                        </SelectItem>
-                        <SelectItem value="qatar">Qatar</SelectItem>
-                        <SelectItem value="uae">
-                          United Arab Emirates
-                        </SelectItem>
-                        <SelectItem value="kuwait">Kuwait</SelectItem>
-                        <SelectItem value="oman">Oman</SelectItem>
-                        <SelectItem value="bahrain">Bahrain</SelectItem>
-                        <SelectItem value="japan">Japan</SelectItem>
-                        <SelectItem value="malaysia">Malaysia</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Agent</Label>
-                    <Select disabled>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Agent selection not connected" />
-                      </SelectTrigger>
-                      <SelectContent />
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="registration-notes">Notes</Label>
-                    <Textarea
-                      id="registration-notes"
-                      placeholder="Additional information (optional)"
-                      rows={3}
-                      value={notes}
-                      onChange={(event) => setNotes(event.target.value)}
-                      disabled={saving || !!savedCandidate}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Notes are not stored by the current candidate service.
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Scan documents (optional)
                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      Any one document is enough — name and passport number
+                      are read from it automatically. Medical and MOFA
+                      documents also fill their own steps.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <DocumentDropzone
+                      compact
+                      title="Passport"
+                      hint="Passport copy"
+                      icon={UserRound}
+                      scan={scans.passport}
+                      disabled={saving || !!savedCandidate}
+                      onFile={(file) => void handleScan("passport", file)}
+                    />
+                    <DocumentDropzone
+                      compact
+                      title="Medical"
+                      hint="Medical report"
+                      icon={Stethoscope}
+                      scan={scans.medical}
+                      disabled={saving || !!savedCandidate}
+                      onFile={(file) => void handleScan("medical", file)}
+                    />
+                    <DocumentDropzone
+                      compact
+                      title="MOFA"
+                      hint="MOFA application"
+                      icon={FileCheck}
+                      scan={scans.mofa}
+                      disabled={saving || !!savedCandidate}
+                      onFile={(file) => void handleScan("mofa", file)}
+                    />
                   </div>
                 </div>
 
-                {savedCandidate && (
-                  <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-                    <p className="text-sm font-medium">Candidate saved</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {savedCandidate.name} · Passport:{" "}
-                      {savedCandidate.passport_no}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Candidate SL: {savedCandidate.sl ?? "—"}
-                    </p>
+                <Separator />
+
+                <form
+                  id="candidate-registration-form"
+                  onSubmit={handleCandidateSubmit}
+                  className="space-y-6"
+                >
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="candidate-name">Candidate Name *</Label>
+                      <Input
+                        id="candidate-name"
+                        placeholder="Enter full name"
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        disabled={saving || !!savedCandidate}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="passport">Passport Number *</Label>
+                      <Input
+                        id="passport"
+                        placeholder="Enter passport number"
+                        value={passportNo}
+                        onChange={(event) =>
+                          setPassportNo(event.target.value.toUpperCase())
+                        }
+                        disabled={saving || !!savedCandidate}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="received-date">Received Date</Label>
+                      <Input
+                        id="received-date"
+                        type="date"
+                        value={receivedDate}
+                        onChange={(event) =>
+                          setReceivedDate(event.target.value)
+                        }
+                        disabled={saving || !!savedCandidate}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Country *</Label>
+                      <Select
+                        value={country}
+                        onValueChange={setCountry}
+                        disabled={saving || !!savedCandidate}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="saudi-arabia">
+                            Saudi Arabia
+                          </SelectItem>
+                          <SelectItem value="qatar">Qatar</SelectItem>
+                          <SelectItem value="uae">
+                            United Arab Emirates
+                          </SelectItem>
+                          <SelectItem value="kuwait">Kuwait</SelectItem>
+                          <SelectItem value="oman">Oman</SelectItem>
+                          <SelectItem value="bahrain">Bahrain</SelectItem>
+                          <SelectItem value="japan">Japan</SelectItem>
+                          <SelectItem value="malaysia">Malaysia</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Agent</Label>
+                      <Select disabled>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Agent selection not connected" />
+                        </SelectTrigger>
+                        <SelectContent />
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="registration-notes">Notes</Label>
+                      <Textarea
+                        id="registration-notes"
+                        placeholder="Additional information (optional)"
+                        rows={3}
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                        disabled={saving || !!savedCandidate}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Notes are not stored by the current candidate service.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </form>
+
+                  {savedCandidate && (
+                    <div className="rounded-lg border border-dashed bg-muted/30 p-4">
+                      <p className="text-sm font-medium">Candidate saved</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {savedCandidate.name} · Passport:{" "}
+                        {savedCandidate.passport_no}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Candidate SL: {savedCandidate.sl ?? "—"}
+                      </p>
+                    </div>
+                  )}
+                </form>
+              </>
             )}
 
+            {/* ───── Step 2 ───── */}
             {currentStep === 2 && (
-              <form
-                id="medical-registration-form"
-                onSubmit={handleMedicalSubmit}
-                className="space-y-6"
-              >
-                <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-                  <p className="text-sm font-medium">Selected Candidate</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {savedCandidate?.name} · {savedCandidate?.passport_no} · SL{" "}
-                    {savedCandidate?.sl ?? "—"}
-                  </p>
-                </div>
+              <>
+                <DocumentDropzone
+                  title="Medical document"
+                  hint="Medical report or slip"
+                  icon={Stethoscope}
+                  scan={scans.medical}
+                  disabled={saving || medicalSaved}
+                  onFile={(file) => void handleScan("medical", file)}
+                />
 
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="medical-date">Medical Date</Label>
-                    <Input
-                      id="medical-date"
-                      type="date"
-                      value={medicalDate}
-                      onChange={(event) => setMedicalDate(event.target.value)}
-                      disabled={saving || medicalSaved}
-                    />
+                <Separator />
+
+                <form
+                  id="medical-registration-form"
+                  onSubmit={handleMedicalSubmit}
+                  className="space-y-6"
+                >
+                  <div className="rounded-lg border border-dashed bg-muted/30 p-4">
+                    <p className="text-sm font-medium">Selected Candidate</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {savedCandidate?.name} · {savedCandidate?.passport_no} ·
+                      SL {savedCandidate?.sl ?? "—"}
+                    </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Medical Status *</Label>
-                    <Select
-                      value={medicalStatus}
-                      onValueChange={(value) =>
-                        setMedicalStatus(value as MedicalStatus)
-                      }
-                      disabled={saving || medicalSaved}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select medical status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="inprogress">In Progress</SelectItem>
-                        <SelectItem value="fit">Fit</SelectItem>
-                        <SelectItem value="unfit">Unfit</SelectItem>
-                        <SelectItem value="slip">Slip</SelectItem>
-                        <SelectItem value="under_review">
-                          Under Review
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {medicalStatus === "fit" && (
+                  <div className="grid gap-5 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="fit-date">Fit Date</Label>
+                      <Label htmlFor="medical-date">Medical Date</Label>
                       <Input
-                        id="fit-date"
+                        id="medical-date"
                         type="date"
-                        value={fitDate}
-                        onChange={(event) => setFitDate(event.target.value)}
+                        value={medicalDate}
+                        onChange={(event) => setMedicalDate(event.target.value)}
                         disabled={saving || medicalSaved}
                       />
                     </div>
-                  )}
-                </div>
 
-                {medicalSaved && (
-                  <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
-                    <p className="font-medium">Medical saved successfully</p>
-                    <p className="mt-1 text-muted-foreground">
-                      Medical ID: {savedMedicalId}
-                    </p>
+                    <div className="space-y-2">
+                      <Label>Medical Status *</Label>
+                      <Select
+                        value={medicalStatus}
+                        onValueChange={(value) =>
+                          setMedicalStatus(value as MedicalStatus)
+                        }
+                        disabled={saving || medicalSaved}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select medical status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="inprogress">
+                            In Progress
+                          </SelectItem>
+                          <SelectItem value="fit">Fit</SelectItem>
+                          <SelectItem value="unfit">Unfit</SelectItem>
+                          <SelectItem value="slip">Slip</SelectItem>
+                          <SelectItem value="under_review">
+                            Under Review
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {medicalStatus === "fit" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="fit-date">Fit Date</Label>
+                        <Input
+                          id="fit-date"
+                          type="date"
+                          value={fitDate}
+                          onChange={(event) => setFitDate(event.target.value)}
+                          disabled={saving || medicalSaved}
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-              </form>
+
+                  {medicalSaved && (
+                    <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
+                      <p className="font-medium">Medical saved successfully</p>
+                      <p className="mt-1 text-muted-foreground">
+                        Medical ID: {savedMedicalId}
+                      </p>
+                    </div>
+                  )}
+                </form>
+              </>
             )}
 
+            {/* ───── Step 3 ───── */}
             {currentStep === 3 && (
-              <form
-                id="mofa-registration-form"
-                onSubmit={handleMofaSubmit}
-                className="space-y-6"
-              >
-                <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-                  <p className="text-sm font-medium">Selected Candidate</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {savedCandidate?.name} · {savedCandidate?.passport_no} · SL{" "}
-                    {savedCandidate?.sl ?? "—"}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Medical ID: {savedMedicalId ?? "No Medical linked"}
-                  </p>
-                </div>
+              <>
+                <DocumentDropzone
+                  title="MOFA document"
+                  hint="MOFA application copy"
+                  icon={FileCheck}
+                  scan={scans.mofa}
+                  disabled={saving || mofaSaved}
+                  onFile={(file) => void handleScan("mofa", file)}
+                />
 
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="mofa-number">Application Number</Label>
-                    <Input
-                      id="mofa-number"
-                      placeholder="Enter application number"
-                      value={applicationNumber}
-                      onChange={(event) =>
-                        setApplicationNumber(event.target.value)
-                      }
-                      disabled={saving || mofaSaved}
-                    />
-                  </div>
+                <Separator />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="mofa-date">Application Date *</Label>
-                    <Input
-                      id="mofa-date"
-                      type="date"
-                      value={applicationDate}
-                      onChange={(event) =>
-                        setApplicationDate(event.target.value)
-                      }
-                      disabled={saving || mofaSaved}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="mofa-trade">Trade</Label>
-                    <Input
-                      id="mofa-trade"
-                      placeholder="Enter trade / profession"
-                      value={trade}
-                      onChange={(event) => setTrade(event.target.value)}
-                      disabled={saving || mofaSaved}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Agency</Label>
-                    <Select
-                      value={agencyId || "__none"}
-                      onValueChange={(value) =>
-                        setAgencyId(value === "__none" ? "" : value)
-                      }
-                      disabled={saving || mofaSaved}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select agency (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">No agency</SelectItem>
-                        {agencies.map((agency) => (
-                          <SelectItem key={agency.id} value={agency.id}>
-                            {agency.name}
-                            {agency.code ? ` (${agency.code})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>MOFA Stage</Label>
-                    <Select
-                      value={mofaStage}
-                      onValueChange={(value) =>
-                        setMofaStage(value as MofaStage)
-                      }
-                      disabled={saving || mofaSaved}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select stage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="assigned">Assigned</SelectItem>
-                        <SelectItem value="medupdated">
-                          Medical Updated
-                        </SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {mofaSaved && (
-                  <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
-                    <p className="font-medium">MOFA saved successfully</p>
-                    <p className="mt-1 text-muted-foreground">
-                      Candidate, Medical and MOFA registration steps are
-                      complete.
+                <form
+                  id="mofa-registration-form"
+                  onSubmit={handleMofaSubmit}
+                  className="space-y-6"
+                >
+                  <div className="rounded-lg border border-dashed bg-muted/30 p-4">
+                    <p className="text-sm font-medium">Selected Candidate</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {savedCandidate?.name} · {savedCandidate?.passport_no} ·
+                      SL {savedCandidate?.sl ?? "—"}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Medical ID: {savedMedicalId ?? "No Medical linked"}
                     </p>
                   </div>
-                )}
-              </form>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="mofa-number">Application Number</Label>
+                      <Input
+                        id="mofa-number"
+                        placeholder="Enter application number"
+                        value={applicationNumber}
+                        onChange={(event) =>
+                          setApplicationNumber(event.target.value)
+                        }
+                        disabled={saving || mofaSaved}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mofa-date">Application Date *</Label>
+                      <Input
+                        id="mofa-date"
+                        type="date"
+                        value={applicationDate}
+                        onChange={(event) =>
+                          setApplicationDate(event.target.value)
+                        }
+                        disabled={saving || mofaSaved}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mofa-trade">Trade</Label>
+                      <Input
+                        id="mofa-trade"
+                        placeholder="Enter trade / profession"
+                        value={trade}
+                        onChange={(event) => setTrade(event.target.value)}
+                        disabled={saving || mofaSaved}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Agency</Label>
+                      <Select
+                        value={agencyId || "__none"}
+                        onValueChange={(value) =>
+                          setAgencyId(value === "__none" ? "" : value)
+                        }
+                        disabled={saving || mofaSaved}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select agency (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">No agency</SelectItem>
+                          {agencies.map((agency) => (
+                            <SelectItem key={agency.id} value={agency.id}>
+                              {agency.name}
+                              {agency.code ? ` (${agency.code})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>MOFA Stage</Label>
+                      <Select
+                        value={mofaStage}
+                        onValueChange={(value) =>
+                          setMofaStage(value as MofaStage)
+                        }
+                        disabled={saving || mofaSaved}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select stage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="assigned">Assigned</SelectItem>
+                          <SelectItem value="medupdated">
+                            Medical Updated
+                          </SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {mofaSaved && (
+                    <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
+                      <p className="font-medium">MOFA saved successfully</p>
+                      <p className="mt-1 text-muted-foreground">
+                        Candidate, Medical and MOFA registration steps are
+                        complete.
+                      </p>
+                    </div>
+                  )}
+                </form>
+              </>
             )}
 
             {errorMessage && (
-              <Alert variant="destructive" className="mt-6">
+              <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{errorMessage}</AlertDescription>
@@ -728,7 +1255,7 @@ export function CandidateRegistrationPage() {
             )}
 
             {successMessage && (
-              <Alert className="mt-6">
+              <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Success</AlertTitle>
                 <AlertDescription>{successMessage}</AlertDescription>
@@ -768,7 +1295,7 @@ export function CandidateRegistrationPage() {
               <Button
                 type="submit"
                 form="candidate-registration-form"
-                disabled={saving || !!savedCandidate}
+                disabled={saving || anyScanning || !!savedCandidate}
               >
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -783,7 +1310,9 @@ export function CandidateRegistrationPage() {
               <Button
                 type="submit"
                 form="medical-registration-form"
-                disabled={saving || medicalSaved || !savedCandidate}
+                disabled={
+                  saving || anyScanning || medicalSaved || !savedCandidate
+                }
               >
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -802,7 +1331,9 @@ export function CandidateRegistrationPage() {
               <Button
                 type="submit"
                 form="mofa-registration-form"
-                disabled={saving || mofaSaved || !savedCandidate}
+                disabled={
+                  saving || anyScanning || mofaSaved || !savedCandidate
+                }
               >
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
