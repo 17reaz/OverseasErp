@@ -42,8 +42,10 @@ import { cn } from "@/lib/utils";
 
 import {
   createCandidate,
+  findCandidateByPassport,
   type Candidate,
   type CandidateInput,
+  type ExistingCandidateInfo,
 } from "./candidate-service";
 
 import {
@@ -89,6 +91,30 @@ const countryValues: Record<string, string> = {
   japan: "Japan",
   malaysia: "Malaysia",
 };
+
+/* ─────────────────────────────────────────────────────────────
+ * Helpers
+ * ───────────────────────────────────────────────────────────── */
+
+function normalizePassport(value: string) {
+  return value.replace(/\s+/g, "").toUpperCase();
+}
+
+function normalizeName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+async function lookupPassport(value: string) {
+  const result = await findCandidateByPassport(value);
+
+  if (result.error) {
+    // Not blocking: the DB unique constraint is the last line of defence.
+    console.error("Passport lookup failed:", result.error);
+    return null;
+  }
+
+  return result.data;
+}
 
 /* ─────────────────────────────────────────────────────────────
  * Dummy OCR (UI only). Replace buildDummyOcr() with the real OCR
@@ -292,7 +318,7 @@ function DocumentDropzone({
   const done = scan.status === "done";
   const locked = !!disabled || scanning;
 
-  function pick(files: FileList | null) {
+  function handleFiles(files: FileList | null) {
     const file = files?.[0];
     if (file) onFile(file);
   }
@@ -307,7 +333,7 @@ function DocumentDropzone({
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        if (!locked) pick(event.dataTransfer.files);
+        if (!locked) handleFiles(event.dataTransfer.files);
       }}
       className={cn(
         "rounded-lg border border-dashed p-4 transition-colors",
@@ -322,7 +348,7 @@ function DocumentDropzone({
         accept="image/*,application/pdf"
         className="hidden"
         onChange={(event) => {
-          pick(event.target.files);
+          handleFiles(event.target.files);
           event.target.value = "";
         }}
       />
@@ -440,6 +466,18 @@ export function CandidateRegistrationPage() {
   const [savedCandidate, setSavedCandidate] =
     useState<Candidate | null>(null);
 
+  // Duplicate / existing candidate
+  const [duplicate, setDuplicate] = useState<ExistingCandidateInfo | null>(
+    null,
+  );
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const [linkedExisting, setLinkedExisting] = useState(false);
+  const [existingRecords, setExistingRecords] = useState({
+    medical: false,
+    mofa: false,
+  });
+  const passportInputRef = useRef<HTMLInputElement>(null);
+
   // Medical
   const [medicalDate, setMedicalDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -481,6 +519,11 @@ export function CandidateRegistrationPage() {
     (scan) => scan.status === "scanning",
   );
 
+  const nameMismatch =
+    !!duplicate &&
+    !!name.trim() &&
+    normalizeName(name) !== normalizeName(duplicate.candidate.name);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -510,6 +553,88 @@ export function CandidateRegistrationPage() {
       cancelled = true;
     };
   }, []);
+
+  // Passport duplicate check (typed or filled by OCR)
+  useEffect(() => {
+    if (savedCandidate) {
+      setDuplicate(null);
+      setCheckingDuplicate(false);
+      return;
+    }
+
+    const normalized = normalizePassport(passportNo);
+
+    if (normalized.length < 6) {
+      setDuplicate(null);
+      setCheckingDuplicate(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingDuplicate(true);
+
+    const timer = setTimeout(async () => {
+      const info = await lookupPassport(normalized);
+
+      if (cancelled) return;
+
+      setDuplicate(info);
+      setCheckingDuplicate(false);
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [passportNo, savedCandidate]);
+
+  function linkExistingCandidate(info: ExistingCandidateInfo) {
+    const extra = info.candidate as unknown as {
+      country?: string | null;
+      received_date?: string | null;
+    };
+
+    const countryKey = Object.entries(countryValues).find(
+      ([, label]) => label === extra.country,
+    )?.[0];
+
+    setSavedCandidate(info.candidate);
+    setName(info.candidate.name);
+    setPassportNo(info.candidate.passport_no);
+    if (countryKey) setCountry(countryKey);
+    if (extra.received_date) setReceivedDate(extra.received_date.slice(0, 10));
+
+    setDuplicate(null);
+    setLinkedExisting(true);
+    setExistingRecords({ medical: !!info.medicalId, mofa: info.hasMofa });
+    setErrorMessage("");
+
+    if (info.medicalId) {
+      setSavedMedicalId(info.medicalId);
+      setMedicalSaved(true);
+    }
+
+    if (info.hasMofa) {
+      setMofaSaved(true);
+    }
+
+    if (info.medicalId && info.hasMofa) {
+      setSuccessMessage(
+        "Existing candidate linked. Medical and MOFA records already exist.",
+      );
+      setCurrentStep(3);
+    } else if (info.medicalId) {
+      setSuccessMessage(
+        "Existing candidate linked. Medical already exists — continue with MOFA.",
+      );
+      setCurrentStep(3);
+    } else {
+      setSuccessMessage(
+        "Existing candidate linked. Continue with the Medical record.",
+      );
+      setCurrentStep(2);
+    }
+  }
 
   async function handleScan(docType: DocType, file: File) {
     const isSupported =
@@ -609,6 +734,13 @@ export function CandidateRegistrationPage() {
       return;
     }
 
+    if (duplicate) {
+      setErrorMessage(
+        "This passport number is already registered. Use the existing candidate or change the passport number.",
+      );
+      return;
+    }
+
     setSaving(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -616,7 +748,7 @@ export function CandidateRegistrationPage() {
     try {
       const input: CandidateInput = {
         name: name.trim(),
-        passport_no: passportNo.trim().toUpperCase(),
+        passport_no: normalizePassport(passportNo),
         received_date: receivedDate || null,
         country: countryValues[country] ?? country,
         agent_id: null,
@@ -639,13 +771,19 @@ export function CandidateRegistrationPage() {
       const err = error as { message?: string; code?: string };
       const message = err.message || "Failed to save candidate.";
 
-      setErrorMessage(
+      const isDuplicateError =
         err.code === "23505" ||
-          message.toLowerCase().includes("duplicate") ||
-          message.toLowerCase().includes("unique")
-          ? "This passport number already exists."
-          : message,
+        message.toLowerCase().includes("duplicate") ||
+        message.toLowerCase().includes("unique");
+
+      setErrorMessage(
+        isDuplicateError ? "This passport number already exists." : message,
       );
+
+      // Someone else saved it a moment ago: show the existing candidate card.
+      if (isDuplicateError) {
+        setDuplicate(await lookupPassport(normalizePassport(passportNo)));
+      }
     } finally {
       setSaving(false);
     }
@@ -759,7 +897,9 @@ export function CandidateRegistrationPage() {
     : medicalSaved
       ? "Medical Saved"
       : savedCandidate
-        ? "Candidate Saved"
+        ? linkedExisting
+          ? "Existing Candidate"
+          : "Candidate Saved"
         : "Draft";
 
   return (
@@ -931,15 +1071,85 @@ export function CandidateRegistrationPage() {
                       <Label htmlFor="passport">Passport Number *</Label>
                       <Input
                         id="passport"
+                        ref={passportInputRef}
                         placeholder="Enter passport number"
                         value={passportNo}
                         onChange={(event) =>
                           setPassportNo(event.target.value.toUpperCase())
                         }
                         disabled={saving || !!savedCandidate}
+                        aria-invalid={!!duplicate}
                         required
                       />
+                      {checkingDuplicate && !savedCandidate && (
+                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Checking passport number…
+                        </p>
+                      )}
                     </div>
+
+                    {duplicate && !savedCandidate && (
+                      <Alert className="border-amber-500/50 bg-amber-500/5 text-amber-700 md:col-span-2 dark:text-amber-400 [&>svg]:text-amber-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>
+                          This passport number is already registered
+                        </AlertTitle>
+                        <AlertDescription className="space-y-3">
+                          <div className="space-y-1.5 text-foreground">
+                            <p className="text-sm font-medium">
+                              {duplicate.candidate.name} ·{" "}
+                              {duplicate.candidate.passport_no} · SL{" "}
+                              {duplicate.candidate.sl ?? "—"}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              <Badge
+                                variant={
+                                  duplicate.medicalId ? "secondary" : "outline"
+                                }
+                              >
+                                Medical {duplicate.medicalId ? "✓" : "—"}
+                              </Badge>
+                              <Badge
+                                variant={
+                                  duplicate.hasMofa ? "secondary" : "outline"
+                                }
+                              >
+                                MOFA {duplicate.hasMofa ? "✓" : "—"}
+                              </Badge>
+                            </div>
+                            {nameMismatch && (
+                              <p className="text-xs text-amber-700 dark:text-amber-400">
+                                The name on this form differs from the
+                                registered name. Check that the passport number
+                                is correct.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => linkExistingCandidate(duplicate)}
+                            >
+                              Use existing candidate
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                passportInputRef.current?.focus();
+                                passportInputRef.current?.select();
+                              }}
+                            >
+                              Change passport number
+                            </Button>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
                     <div className="space-y-2">
                       <Label htmlFor="received-date">Received Date</Label>
@@ -1010,7 +1220,11 @@ export function CandidateRegistrationPage() {
 
                   {savedCandidate && (
                     <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-                      <p className="text-sm font-medium">Candidate saved</p>
+                      <p className="text-sm font-medium">
+                        {linkedExisting
+                          ? "Existing candidate linked"
+                          : "Candidate saved"}
+                      </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {savedCandidate.name} · Passport:{" "}
                         {savedCandidate.passport_no}
@@ -1106,7 +1320,11 @@ export function CandidateRegistrationPage() {
 
                   {medicalSaved && (
                     <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
-                      <p className="font-medium">Medical saved successfully</p>
+                      <p className="font-medium">
+                        {existingRecords.medical
+                          ? "Existing medical record linked"
+                          : "Medical saved successfully"}
+                      </p>
                       <p className="mt-1 text-muted-foreground">
                         Medical ID: {savedMedicalId}
                       </p>
@@ -1235,10 +1453,15 @@ export function CandidateRegistrationPage() {
 
                   {mofaSaved && (
                     <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
-                      <p className="font-medium">MOFA saved successfully</p>
+                      <p className="font-medium">
+                        {existingRecords.mofa
+                          ? "This candidate already has a MOFA record"
+                          : "MOFA saved successfully"}
+                      </p>
                       <p className="mt-1 text-muted-foreground">
-                        Candidate, Medical and MOFA registration steps are
-                        complete.
+                        {existingRecords.mofa
+                          ? "No new MOFA record was created."
+                          : "Candidate, Medical and MOFA registration steps are complete."}
                       </p>
                     </div>
                   )}
@@ -1295,7 +1518,9 @@ export function CandidateRegistrationPage() {
               <Button
                 type="submit"
                 form="candidate-registration-form"
-                disabled={saving || anyScanning || !!savedCandidate}
+                disabled={
+                  saving || anyScanning || !!savedCandidate || !!duplicate
+                }
               >
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

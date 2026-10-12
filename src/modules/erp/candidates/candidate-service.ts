@@ -963,3 +963,48 @@ export async function checkPassportDuplicate(
 
   return !!data;
 }
+export type ExistingCandidateInfo = {
+  candidate: Candidate;
+  medicalId: string | null; // latest medical, null if none
+  hasMofa: boolean;
+};
+
+export async function findCandidateByPassport(
+  passportNo: string,
+): Promise<{ data: ExistingCandidateInfo | null; error: unknown }> {
+  const normalized = passportNo.replace(/\s+/g, "").toUpperCase();
+
+  const { data: candidate, error } = await supabase
+    .from("candidates")
+    .select("*")
+    .ilike("passport_no", normalized)
+    .maybeSingle();
+
+  if (error) return { data: null, error };
+  if (!candidate) return { data: null, error: null };
+
+  const [medicalResult, mofaResult] = await Promise.all([
+    supabase
+      .from("medicals")
+      .select("id")
+      .eq("candidate_id", candidate.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("mofa")
+      .select("id")
+      .eq("candidate_id", candidate.id)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  return {
+    data: {
+      candidate: candidate as Candidate,
+      medicalId: medicalResult.data?.id ?? null,
+      hasMofa: !!mofaResult.data,
+    },
+    error: null,
+  };
+}
