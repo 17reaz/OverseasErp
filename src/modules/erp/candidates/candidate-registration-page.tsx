@@ -59,7 +59,15 @@ import {
   type MofaAgency,
   type MofaStage,
 } from "../mofa/mofa-service";
-
+const countries = [
+  "Saudi Arabia",
+  "Mauritius",
+  "Laos",
+  "Malaysia",
+  "Belarus",
+  "Fiji",
+  "UAE",
+] as const;
 const steps = [
   {
     id: 1,
@@ -1152,33 +1160,37 @@ export function CandidateRegistrationPage() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Country *</Label>
-                      <Select
-                        value={country}
-                        onValueChange={setCountry}
-                        disabled={saving || !!savedCandidate}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="saudi-arabia">
-                            Saudi Arabia
-                          </SelectItem>
-                          <SelectItem value="qatar">Qatar</SelectItem>
-                          <SelectItem value="uae">
-                            United Arab Emirates
-                          </SelectItem>
-                          <SelectItem value="kuwait">Kuwait</SelectItem>
-                          <SelectItem value="oman">Oman</SelectItem>
-                          <SelectItem value="bahrain">Bahrain</SelectItem>
-                          <SelectItem value="japan">Japan</SelectItem>
-                          <SelectItem value="malaysia">Malaysia</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                   <div className="space-y-1.5">
+  <Label>Country *</Label>
+
+  <div className="flex flex-wrap gap-1.5">
+    {countries.map((item) => {
+      const selected = country === item;
+
+      return (
+        <button
+          key={item}
+          type="button"
+          onClick={() => setCountry(item)}
+          className={cn(
+            "rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+            selected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-background text-foreground hover:bg-muted",
+          )}
+        >
+          {item}
+        </button>
+      );
+    })}
+  </div>
+
+  {!country && (
+    <p className="text-xs text-muted-foreground">
+      Select a country.
+    </p>
+  )}
+</div>
 
                     <div className="space-y-2">
                       <Label>Agent</Label>
