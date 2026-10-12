@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
+import { createVisa } from "../visa/visa-service";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -422,7 +422,14 @@ export function CandidateRegistrationPage() {
   const [mofaCrossCheck, setMofaCrossCheck] = useState<MofaCrossCheck | null>(
     null,
   );
-
+  // Visa
+const [visaNo, setVisaNo] = useState("");
+const [visaDate, setVisaDate] = useState("");
+const [visaExpiryDate, setVisaExpiryDate] = useState("");
+const [visaType, setVisaType] = useState("");
+const [visaStatus, setVisaStatus] = useState("issued");
+const [visaRemarks, setVisaRemarks] = useState("");
+const [visaSaved, setVisaSaved] = useState(false);
   // Shared
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -659,6 +666,13 @@ export function CandidateRegistrationPage() {
     setMofaStage("new");
     setMofaSaved(false);
     setMofaCrossCheck(null);
+    setVisaNo("");
+setVisaDate("");
+setVisaExpiryDate("");
+setVisaType("");
+setVisaStatus("issued");
+setVisaRemarks("");
+setVisaSaved(false);
     setScans({
       passport: idleScan,
       medical: idleScan,
@@ -766,6 +780,37 @@ export function CandidateRegistrationPage() {
     setSuccessMessage(`${candidateLabel}. MOFA record saved.`);
     return resolved;
   }
+
+async function saveVisaFor(
+  rawPassport: string,
+  rawName: string,
+) {
+  const resolved = await resolveCandidate(rawPassport, rawName);
+  applyCandidate(resolved);
+
+  const result = await createVisa({
+    candidate_id: resolved.info.candidate.id,
+    mofa_id: null,
+    visa_no: visaNo.trim() || null,
+    visa_date: visaDate || null,
+    expiry_date: visaExpiryDate || null,
+    visa_type: visaType.trim() || "amel_id",
+    status: visaStatus,
+    agency_id: agencyId || null,
+    remarks: visaRemarks.trim() || null,
+  });
+
+  if (!result) {
+    throw new Error("Visa record was not returned after saving.");
+  }
+
+  setVisaSaved(true);
+  setSuccessMessage(
+    resolved.created
+      ? "New candidate and Visa record saved successfully."
+      : "Visa record saved successfully.",
+  );
+}
 
   /* ───────── OCR ───────── */
 
@@ -1005,7 +1050,22 @@ export function CandidateRegistrationPage() {
     base: { fileName: string; fileSize: number },
   ) {
     const result = await extractKsaVisa(file);
-
+    // Fill the editable Visa registration form from OCR.
+setVisaNo(result.visaNo || "");
+setVisaDate(toInputDate(result.validFrom));
+setVisaExpiryDate(toInputDate(result.validUntil));
+setVisaType(result.visaType || "");
+setVisaRemarks(
+  [
+    result.occupation ? `Occupation: ${result.occupation}` : "",
+    result.employerName ? `Employer: ${result.employerName}` : "",
+    result.nationality ? `Nationality: ${result.nationality}` : "",
+    result.refNo ? `Reference No: ${result.refNo}` : "",
+    result.applicationNo ? `Application No: ${result.applicationNo}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n"),
+);
     const fields: OcrField[] = [
       field("Visa No.", result.visaNo),
       field("Valid From", result.validFrom),
@@ -1141,6 +1201,30 @@ export function CandidateRegistrationPage() {
     }
   }
 
+async function handleVisaSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  if (saving || visaSaved) return;
+
+  if (!passportNo.trim() || !name.trim()) {
+    setErrorMessage("Candidate name and passport number are required.");
+    return;
+  }
+
+  setSaving(true);
+  setErrorMessage("");
+  setSuccessMessage("");
+
+  try {
+    await saveVisaFor(passportNo, name);
+  } catch (error) {
+    console.error("Visa registration error:", error);
+    setErrorMessage(errorText(error, "Failed to save Visa record."));
+  } finally {
+    setSaving(false);
+  }
+}
+
   function goToStep(step: number) {
     setErrorMessage("");
     setSuccessMessage("");
@@ -1250,7 +1334,7 @@ export function CandidateRegistrationPage() {
           </Badge>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="mt-3 grid grid-cols-4 gap-2">
           {steps.map((step) => {
             const Icon = step.icon;
             const active = currentStep === step.id;
@@ -1813,6 +1897,141 @@ export function CandidateRegistrationPage() {
               </>
             )}
 
+{/* ───── Step 4: Visa ───── */}
+{currentStep === 4 && (
+  <>
+    <DocumentDropzone
+      title="Saudi Visa document"
+      hint="Saudi Visa PDF"
+      icon={FileCheck}
+      scan={scans.visa}
+      disabled={saving || visaSaved}
+      onFile={(file) => void handleScan("visa", file)}
+    />
+
+    <Separator />
+
+    <form
+      id="visa-registration-form"
+      onSubmit={handleVisaSubmit}
+      className="space-y-6"
+    >
+      {selectedCandidateCard}
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="visa-number">Visa Number</Label>
+          <Input
+            id="visa-number"
+            value={visaNo}
+            onChange={(event) => setVisaNo(event.target.value)}
+            placeholder="Enter visa number"
+            disabled={saving || visaSaved}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="visa-date">Visa Date</Label>
+          <Input
+            id="visa-date"
+            type="date"
+            value={visaDate}
+            onChange={(event) => setVisaDate(event.target.value)}
+            disabled={saving || visaSaved}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="visa-expiry">Expiry Date</Label>
+          <Input
+            id="visa-expiry"
+            type="date"
+            value={visaExpiryDate}
+            onChange={(event) => setVisaExpiryDate(event.target.value)}
+            disabled={saving || visaSaved}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="visa-type">Visa Type</Label>
+          <Input
+            id="visa-type"
+            value={visaType}
+            onChange={(event) => setVisaType(event.target.value)}
+            placeholder="e.g. Work"
+            disabled={saving || visaSaved}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Visa Status</Label>
+          <Select
+            value={visaStatus}
+            onValueChange={setVisaStatus}
+            disabled={saving || visaSaved}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select Visa status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="processing">Processing</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Agency</Label>
+          <Select
+            value={agencyId || "__none"}
+            onValueChange={(value) =>
+              setAgencyId(value === "__none" ? "" : value)
+            }
+            disabled={saving || visaSaved}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select agency (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">No agency</SelectItem>
+              {agencies.map((agency) => (
+                <SelectItem key={agency.id} value={agency.id}>
+                  {agency.name}
+                  {agency.code ? ` (${agency.code})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="visa-remarks">Remarks</Label>
+          <Textarea
+            id="visa-remarks"
+            rows={3}
+            value={visaRemarks}
+            onChange={(event) => setVisaRemarks(event.target.value)}
+            placeholder="Occupation, employer, reference or other details"
+            disabled={saving || visaSaved}
+          />
+        </div>
+      </div>
+
+      {visaSaved && (
+        <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm">
+          <p className="font-medium">Visa saved successfully</p>
+          <p className="mt-1 text-muted-foreground">
+            Visa Number: {visaNo || "Not assigned"}
+          </p>
+        </div>
+      )}
+    </form>
+  </>
+)}
+
             {/* ───── Messages ───── */}
             {errorMessage && (
               <Alert variant="destructive">
@@ -1937,6 +2156,26 @@ export function CandidateRegistrationPage() {
                     : "Save MOFA"}
               </Button>
             )}
+            
+{currentStep === 4 && (
+  <Button
+    type="submit"
+    form="visa-registration-form"
+    disabled={saving || anyScanning || visaSaved}
+  >
+    {saving ? (
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+    ) : (
+      <Save className="mr-2 h-4 w-4" />
+    )}
+    {saving
+      ? "Saving Visa..."
+      : visaSaved
+        ? "Visa Saved"
+        : "Save Visa"}
+  </Button>
+)}
+
           </div>
         </div>
       </div>
