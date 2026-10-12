@@ -8,13 +8,15 @@ import {
 
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MotionValue } from "@/components/shared/motion";
 
 import type { DashboardData } from "../dashboard-service";
-import { MotionValue } from "@/components/shared/motion";
 
 interface DashboardStatsProps {
   stats: DashboardData["stats"];
 }
+
+const GRID_CLASS = "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5";
 
 export function DashboardStats({ stats }: DashboardStatsProps) {
   const items = [
@@ -51,28 +53,25 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className={GRID_CLASS}>
       {items.map((item) => {
         const Icon = item.icon;
 
         return (
-          <Card
-            key={item.title}
-            className="gap-1 px-4 py-3"
-          >
+          <Card key={item.title} className="gap-0.5 px-3 py-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 {item.title}
               </span>
 
-              <Icon className="size-4 text-muted-foreground" />
+              <Icon className="size-3.5 text-muted-foreground" />
             </div>
 
-            <div className="text-xl font-semibold leading-tight tracking-tight">
+            <div className="text-xl font-semibold leading-tight tracking-tight tabular-nums">
               <MotionValue value={item.value} />
             </div>
 
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="truncate text-[11px] text-muted-foreground">
               {item.description}
             </p>
           </Card>
@@ -84,20 +83,15 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
 
 export function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className={GRID_CLASS}>
       {Array.from({ length: 5 }).map((_, index) => (
-        <Card
-          key={index}
-          className="gap-1 px-4 py-3"
-        >
+        <Card key={index} className="gap-0.5 px-3 py-2">
           <div className="flex items-center justify-between">
-            <Skeleton className="h-4 w-12" />
-
-            <Skeleton className="size-4 rounded-full" />
+            <Skeleton className="h-3.5 w-12" />
+            <Skeleton className="size-3.5 rounded-full" />
           </div>
 
           <Skeleton className="h-6 w-12" />
-
           <Skeleton className="h-3 w-24" />
         </Card>
       ))}

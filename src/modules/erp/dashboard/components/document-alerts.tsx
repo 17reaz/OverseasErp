@@ -19,34 +19,34 @@ export function DashboardDocumentAlerts({ alerts }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* HEADER */}
-      <div className="mb-2 flex shrink-0 items-start justify-between gap-3">
+      {/* Header */}
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <FileWarning className="size-4 text-muted-foreground" />
+            <FileWarning className="size-3.5 text-muted-foreground" />
 
-            <h2 className="text-sm font-semibold">Document Alerts</h2>
+            <h2 className="text-sm font-semibold leading-none">
+              Document Alerts
+            </h2>
           </div>
 
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            Documents currently blocking processing.
+          <p className="mt-1 truncate text-[11px] text-muted-foreground">
+            Documents currently blocking processing
           </p>
         </div>
 
-        <div className="shrink-0 text-right leading-tight">
-          <div className="flex items-center justify-end gap-1">
-            <ShieldAlert className="size-4 text-destructive" />
+        <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-destructive/20 bg-destructive/5 px-2 py-1">
+          <ShieldAlert className="size-3.5 text-destructive" />
 
-            <span className="text-base font-semibold text-destructive">
-              {criticalCount}
-            </span>
-          </div>
+          <span className="text-sm font-semibold tabular-nums text-destructive">
+            {criticalCount}
+          </span>
 
-          <p className="text-[10px] text-muted-foreground">critical</p>
+          <span className="text-[10px] text-muted-foreground">critical</span>
         </div>
       </div>
 
-      {/* LIST */}
+      {/* List */}
       <div className="min-h-0 flex-1 overflow-auto rounded-md border">
         {alerts.map((item) => {
           const Icon =
@@ -60,48 +60,48 @@ export function DashboardDocumentAlerts({ alerts }: Props) {
             <button
               key={item.title}
               type="button"
-              className="group flex w-full items-center gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-muted/50"
+              className="group flex w-full items-center gap-2.5 border-b px-2.5 py-2 text-left transition-colors last:border-b-0 hover:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/30">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/30">
                 <Icon
                   className={
                     item.level === "critical"
-                      ? "size-4 text-destructive"
-                      : "size-4 text-muted-foreground"
+                      ? "size-3.5 text-destructive"
+                      : "size-3.5 text-muted-foreground"
                   }
                 />
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{item.title}</p>
+                <p className="truncate text-xs font-medium leading-tight">
+                  {item.title}
+                </p>
 
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                <p className="truncate text-[11px] text-muted-foreground">
                   {item.description}
                 </p>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="inline-flex min-w-7 items-center justify-center rounded-md border px-2 py-0.5 text-xs font-semibold">
-                  {item.count}
-                </span>
+              <span className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold tabular-nums">
+                {item.count}
+              </span>
 
-                <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-              </div>
+              <ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
             </button>
           );
         })}
       </div>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <div className="mt-2 flex shrink-0 items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CheckCircle2 className="size-3.5" />
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <CheckCircle2 className="size-3" />
           Document monitoring active
         </span>
 
         <button
           type="button"
-          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
         >
           View all
         </button>

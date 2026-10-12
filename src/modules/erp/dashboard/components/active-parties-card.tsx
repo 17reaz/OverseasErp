@@ -18,34 +18,37 @@ export function ActivePartiesCard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const loadStats = useCallback(async (isCancelled: () => boolean = () => false) => {
-    setLoading(true);
-    setError(false);
+  const loadStats = useCallback(
+    async (isCancelled: () => boolean = () => false) => {
+      setLoading(true);
+      setError(false);
 
-    try {
-      const [agenciesResult, agentsResult] = await Promise.all([
-        supabase
-          .from("agencies")
-          .select("id", { count: "exact", head: true })
-          .eq("is_active", true),
-        supabase.from("agents").select("id", { count: "exact", head: true }),
-      ]);
+      try {
+        const [agenciesResult, agentsResult] = await Promise.all([
+          supabase
+            .from("agencies")
+            .select("id", { count: "exact", head: true })
+            .eq("is_active", true),
+          supabase.from("agents").select("id", { count: "exact", head: true }),
+        ]);
 
-      if (agenciesResult.error) throw agenciesResult.error;
-      if (agentsResult.error) throw agentsResult.error;
-      if (isCancelled()) return;
+        if (agenciesResult.error) throw agenciesResult.error;
+        if (agentsResult.error) throw agentsResult.error;
+        if (isCancelled()) return;
 
-      setStats({
-        activeAgencies: agenciesResult.count ?? 0,
-        totalAgents: agentsResult.count ?? 0,
-      });
-    } catch (err) {
-      console.error("Failed to load agency and agent stats:", err);
-      if (!isCancelled()) setError(true);
-    } finally {
-      if (!isCancelled()) setLoading(false);
-    }
-  }, []);
+        setStats({
+          activeAgencies: agenciesResult.count ?? 0,
+          totalAgents: agentsResult.count ?? 0,
+        });
+      } catch (err) {
+        console.error("Failed to load agency and agent stats:", err);
+        if (!isCancelled()) setError(true);
+      } finally {
+        if (!isCancelled()) setLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +60,7 @@ export function ActivePartiesCard() {
 
   if (loading) {
     return (
-      <Card className="flex flex-row items-center gap-2 px-3 py-2">
+      <Card className="flex flex-row items-center gap-2 px-2 py-2">
         <Skeleton className="h-9 flex-1" />
         <Skeleton className="h-9 flex-1" />
       </Card>
@@ -67,9 +70,10 @@ export function ActivePartiesCard() {
   if (error) {
     return (
       <Card className="flex flex-row items-center justify-between gap-3 px-3 py-2">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Unable to load agency & agent stats.
         </p>
+
         <button
           type="button"
           onClick={() => void loadStats()}
@@ -98,9 +102,10 @@ export function ActivePartiesCard() {
   ];
 
   return (
-    <Card className="flex flex-row items-center gap-2 px-3 py-2">
+    <Card className="flex flex-row items-center gap-2 px-2 py-2">
       {items.map((item) => {
         const Icon = item.icon;
+
         return (
           <div
             key={item.label}
@@ -111,9 +116,11 @@ export function ActivePartiesCard() {
             >
               <Icon className="size-4" />
             </span>
+
             <span className="truncate text-xs text-muted-foreground">
               {item.label}
             </span>
+
             <span className="ml-auto text-sm font-semibold tabular-nums">
               {item.value.toLocaleString()}
             </span>

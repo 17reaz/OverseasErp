@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { CalendarDays, Filter, RotateCcw } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,8 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { Button } from "@/components/ui/button";
 
 export type DashboardDateRange = "all" | "7" | "30" | "90";
 
@@ -56,10 +55,7 @@ export function DashboardFilters({ filters, countries, onChange }: Props) {
     filters.stage !== "all";
 
   function update(patch: Partial<DashboardFiltersState>) {
-    onChange({
-      ...filters,
-      ...patch,
-    });
+    onChange({ ...filters, ...patch });
   }
 
   function reset() {
@@ -73,23 +69,17 @@ export function DashboardFilters({ filters, countries, onChange }: Props) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
+      initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut", delay: 0.08 }}
+      transition={{ duration: 0.3, ease: "easeOut", delay: 0.05 }}
       className="flex h-12 shrink-0 items-center gap-2 overflow-x-auto rounded-xl border bg-card px-3"
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-        <motion.span
-          animate={hasFilters ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="flex"
-        >
-          <Filter
-            className={`h-4 w-4 ${
-              hasFilters ? "text-primary" : "text-muted-foreground"
-            }`}
-          />
-        </motion.span>
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <Filter
+          className={`size-4 ${
+            hasFilters ? "text-primary" : "text-muted-foreground"
+          }`}
+        />
       </div>
 
       {/* Date */}
@@ -100,8 +90,7 @@ export function DashboardFilters({ filters, countries, onChange }: Props) {
         }
       >
         <SelectTrigger className={`${triggerClass} w-[125px]`}>
-          <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-
+          <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
           <SelectValue placeholder="Date range" />
         </SelectTrigger>
 
@@ -179,10 +168,10 @@ export function DashboardFilters({ filters, countries, onChange }: Props) {
       <AnimatePresence>
         {hasFilters && (
           <motion.div
-            initial={{ opacity: 0, width: 0, x: -6 }}
-            animate={{ opacity: 1, width: "auto", x: 0 }}
-            exit={{ opacity: 0, width: 0, x: -6 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: "auto" }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.15 }}
             className="shrink-0 overflow-hidden"
           >
             <Button
@@ -192,7 +181,7 @@ export function DashboardFilters({ filters, countries, onChange }: Props) {
               className="h-8 gap-1.5 px-2 text-xs"
               onClick={reset}
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="size-3.5" />
               Reset
             </Button>
           </motion.div>

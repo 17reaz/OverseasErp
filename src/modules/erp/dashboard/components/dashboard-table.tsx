@@ -1,5 +1,3 @@
-// src/modules/erp/dashboard/components/dashboard-table.tsx
-
 import { ArrowUpRight, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,34 +29,31 @@ function getStageLabel(stage: string | null) {
 }
 
 export function DashboardTable({ candidates, loading = false }: Props) {
-  /* LOADING */
   if (loading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {Array.from({ length: MAX_ROWS }).map((_, index) => (
           <div
             key={index}
-            className="h-12 animate-pulse rounded-lg border bg-muted/40"
+            className="h-11 animate-pulse rounded-md border bg-muted/40"
           />
         ))}
       </div>
     );
   }
 
-  /* EMPTY */
   if (candidates.length === 0) {
     return (
       <div className="py-6 text-center">
-        <p className="text-sm font-medium">No candidates yet</p>
+        <p className="text-xs font-medium">No candidates yet</p>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
           Candidate records will appear here.
         </p>
       </div>
     );
   }
 
-  /* LIST */
   return (
     <ul className="divide-y">
       {candidates.slice(0, MAX_ROWS).map((candidate) => (
@@ -66,14 +61,12 @@ export function DashboardTable({ candidates, loading = false }: Props) {
           key={candidate.id}
           className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0"
         >
-          {/* Avatar */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted">
-            <UserRound className="h-4 w-4 text-muted-foreground" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border bg-muted">
+            <UserRound className="size-4 text-muted-foreground" />
           </div>
 
-          {/* Left: name + id/passport */}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium leading-tight">
+            <p className="truncate text-xs font-medium leading-tight">
               {candidate.name}
             </p>
 
@@ -88,7 +81,6 @@ export function DashboardTable({ candidates, loading = false }: Props) {
             </p>
           </div>
 
-          {/* Middle: stage + received date */}
           <div className="hidden min-w-0 shrink-0 text-right sm:block">
             <p className="truncate text-xs font-medium leading-tight">
               {getStageLabel(candidate.current_stage)}
@@ -99,7 +91,6 @@ export function DashboardTable({ candidates, loading = false }: Props) {
             </p>
           </div>
 
-          {/* Right: status + open */}
           <div className="flex shrink-0 items-center gap-1">
             <Badge
               variant={candidate.is_returned ? "destructive" : "secondary"}
@@ -108,8 +99,13 @@ export function DashboardTable({ candidates, loading = false }: Props) {
               {candidate.is_returned ? "Returned" : "Active"}
             </Badge>
 
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <ArrowUpRight className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label={`Open ${candidate.name}`}
+            >
+              <ArrowUpRight className="size-4" />
             </Button>
           </div>
         </li>

@@ -1,15 +1,4 @@
-import {
-  CalendarClock,
-  ChevronRight,
-  Plane,
-} from "lucide-react";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CalendarClock, ChevronRight, Plane } from "lucide-react";
 
 import type { DashboardDeadline } from "../services/dashboard-deadlines-service";
 
@@ -17,50 +6,27 @@ interface Props {
   deadlines: DashboardDeadline[];
 }
 
-function formatDate(
-  date: string,
-): string {
-  return new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    },
-  ).format(
-    new Date(
-      `${date}T00:00:00`,
-    ),
-  );
+function formatDate(date: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${date}T00:00:00`));
 }
 
-function getStatusText(
-  deadline: DashboardDeadline,
-): string {
-  if (
-    deadline.status ===
-    "today"
-  ) {
+function getStatusText(deadline: DashboardDeadline): string {
+  if (deadline.status === "today") {
     return "Today";
   }
 
-  if (
-    deadline.status ===
-    "soon"
-  ) {
-    return `${deadline.daysUntil} ${
-      deadline.daysUntil === 1
-        ? "day"
-        : "days"
-    }`;
+  if (deadline.status === "soon") {
+    return `${deadline.daysUntil} ${deadline.daysUntil === 1 ? "day" : "days"}`;
   }
 
   return `${deadline.daysUntil} days`;
 }
 
-function getStatusClass(
-  status: DashboardDeadline["status"],
-): string {
+function getStatusClass(status: DashboardDeadline["status"]): string {
   switch (status) {
     case "overdue":
       return "border-destructive/30 bg-destructive/5 text-destructive";
@@ -76,109 +42,83 @@ function getStatusClass(
   }
 }
 
-export function DashboardUpcomingDeadlines({
-  deadlines,
-}: Props) {
+export function DashboardUpcomingDeadlines({ deadlines }: Props) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-muted-foreground" />
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <CalendarClock className="size-3.5 text-muted-foreground" />
 
-              <CardTitle className="text-base">
-                Upcoming Deadlines
-              </CardTitle>
-            </div>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Important operational deadlines for the next 30 days.
-            </p>
+            <h2 className="text-sm font-semibold leading-none">
+              Upcoming Deadlines
+            </h2>
           </div>
 
-          {deadlines.length > 0 && (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
-              {deadlines.length}
-            </span>
-          )}
+          <p className="mt-1 truncate text-[11px] text-muted-foreground">
+            Operational deadlines for the next 30 days
+          </p>
         </div>
-      </CardHeader>
 
-      <CardContent className="p-0">
-        {deadlines.length === 0 ? (
-          <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-              <CalendarClock className="h-5 w-5 text-muted-foreground" />
-            </div>
-
-            <p className="text-sm font-medium">
-              No upcoming deadlines
-            </p>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              There are no scheduled deadlines in the next 30 days.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {deadlines.map(
-              (deadline) => (
-                <div
-                  key={deadline.id}
-                  className="group flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/40"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <Plane className="h-4 w-4 text-muted-foreground" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium">
-                        {
-                          deadline.candidateName
-                        }
-                      </p>
-
-                      <span className="hidden text-xs text-muted-foreground sm:inline">
-                        {deadline.passportNo}
-                      </span>
-                    </div>
-
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {deadline.title}
-                      </span>
-
-                      <span className="text-muted-foreground">
-                        •
-                      </span>
-
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(
-                          deadline.date,
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusClass(
-                      deadline.status,
-                    )}`}
-                  >
-                    {getStatusText(
-                      deadline,
-                    )}
-                  </div>
-
-                  <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:block" />
-                </div>
-              ),
-            )}
-          </div>
+        {deadlines.length > 0 && (
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium tabular-nums">
+            {deadlines.length}
+          </span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Body */}
+      {deadlines.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+          <CalendarClock className="mb-1.5 size-4 text-muted-foreground" />
+
+          <p className="text-xs font-medium">No upcoming deadlines</p>
+
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Nothing scheduled in the next 30 days.
+          </p>
+        </div>
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-auto rounded-md border">
+          {deadlines.map((deadline) => (
+            <li
+              key={deadline.id}
+              className="group flex items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-muted/40"
+            >
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
+                <Plane className="size-3.5 text-muted-foreground" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-xs font-medium leading-tight">
+                    {deadline.candidateName}
+                  </p>
+
+                  <span className="hidden truncate text-[11px] text-muted-foreground sm:inline">
+                    {deadline.passportNo}
+                  </span>
+                </div>
+
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {deadline.title} · {formatDate(deadline.date)}
+                </p>
+              </div>
+
+              <span
+                className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${getStatusClass(
+                  deadline.status,
+                )}`}
+              >
+                {getStatusText(deadline)}
+              </span>
+
+              <ChevronRight className="hidden size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:block" />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

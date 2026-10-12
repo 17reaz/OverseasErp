@@ -28,36 +28,17 @@ interface ActivityConfig {
 }
 
 const ACTIVITY_CONFIG: ActivityConfig[] = [
-  {
-    key: "candidates",
-    label: "Candidates",
-    icon: UserPlus,
-  },
-  {
-    key: "medical",
-    label: "Medical",
-    icon: CheckCircle2,
-  },
-  {
-    key: "mofa",
-    label: "MOFA",
-    icon: FileCheck2,
-  },
-  {
-    key: "visa",
-    label: "Visa",
-    icon: FileCheck2,
-  },
-  {
-    key: "flights",
-    label: "Flights",
-    icon: Plane,
-  },
-  {
-    key: "payments",
-    label: "Payments",
-    icon: CreditCard,
-  },
+  { key: "candidates", label: "Candidates", icon: UserPlus },
+  { key: "medical", label: "Medical", icon: CheckCircle2 },
+  { key: "mofa", label: "MOFA", icon: FileCheck2 },
+  { key: "visa", label: "Visa", icon: FileCheck2 },
+  { key: "flights", label: "Flights", icon: Plane },
+  { key: "payments", label: "Payments", icon: CreditCard },
+];
+
+const PERIODS: { key: ActivityPeriod; label: string }[] = [
+  { key: "today", label: "Today" },
+  { key: "week", label: "Week" },
 ];
 
 interface DashboardActivityProps {
@@ -72,19 +53,22 @@ export function DashboardActivity({ activity }: DashboardActivityProps) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      {/* HEADER */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-[11px] text-muted-foreground">
-          {period === "today"
-            ? "Today's operational activity"
-            : "Activity from the last 7 days"}
+          {period === "today" ? "Today's activity" : "Last 7 days"}
         </p>
 
-        <div className="flex shrink-0 rounded-md border bg-muted/30 p-0.5">
-          {(["today", "week"] as const).map((key) => (
+        <div
+          role="tablist"
+          className="flex shrink-0 rounded-md border bg-muted/30 p-0.5"
+        >
+          {PERIODS.map(({ key, label }) => (
             <button
               key={key}
               type="button"
+              role="tab"
+              aria-selected={period === key}
               onClick={() => setPeriod(key)}
               className={[
                 "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
@@ -93,13 +77,13 @@ export function DashboardActivity({ activity }: DashboardActivityProps) {
                   : "text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
-              {key === "today" ? "Today" : "Week"}
+              {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ONE ROW */}
+      {/* Counters */}
       <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
         {ACTIVITY_CONFIG.map((item) => {
           const Icon = item.icon;
@@ -110,7 +94,7 @@ export function DashboardActivity({ activity }: DashboardActivityProps) {
               title={item.label}
               className="flex min-w-0 flex-col items-center rounded-md border px-1 py-1"
             >
-              <span className="flex items-center gap-1 text-sm font-semibold leading-tight">
+              <span className="flex items-center gap-1 text-sm font-semibold leading-tight tabular-nums">
                 <Icon className="size-3 shrink-0 text-muted-foreground" />
                 {data[item.key]}
               </span>

@@ -51,49 +51,50 @@ export function DashboardShortcuts() {
   const navigate = useNavigate();
 
   return (
-    <div className="rounded-lg border bg-background">
-      <div className="border-b px-5 py-4">
-        <h2 className="font-semibold">
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="shrink-0">
+        <h2 className="text-sm font-semibold leading-none">
           Operational Shortcuts
         </h2>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          Quickly jump to frequently used modules
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Jump to frequently used modules
         </p>
       </div>
 
-      <div className="divide-y">
+      <ul className="min-h-0 flex-1 divide-y overflow-auto rounded-md border">
         {shortcuts.map((item) => {
           const Icon = item.icon;
 
           return (
-            <button
-              key={item.path}
-              type="button"
-              onClick={() => navigate(item.path)}
-              className="group flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/50"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/30">
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </div>
+            <li key={item.path}>
+              <button
+                type="button"
+                onClick={() => navigate(item.path)}
+                className="group flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors hover:bg-muted/50"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/30">
+                  <Icon className="size-3.5 text-muted-foreground" />
+                </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">
-                  {item.label}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium leading-tight">
+                    {item.label}
+                  </p>
 
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {item.description}
-                </p>
-              </div>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
 
-              <span className="text-lg text-muted-foreground transition-transform group-hover:translate-x-0.5">
-                →
-              </span>
-            </button>
+                <span className="text-sm text-muted-foreground transition-transform group-hover:translate-x-0.5">
+                  →
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }

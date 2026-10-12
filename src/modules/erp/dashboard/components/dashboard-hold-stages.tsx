@@ -1,5 +1,3 @@
-// src/modules/erp/dashboard/components/dashboard-hold-stages.tsx
-
 import {
   AlertTriangle,
   FileCheck2,
@@ -7,13 +5,6 @@ import {
   Stethoscope,
   UserRound,
 } from "lucide-react";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 interface HoldReason {
   reason: string;
@@ -36,170 +27,122 @@ const stageConfig: Record<
 > = {
   medical_expired: {
     label: "Medical",
-    description: "Medical validity expired",
+    description: "Validity expired",
     icon: Stethoscope,
   },
-
   mofa_expired: {
     label: "MOFA",
-    description: "MOFA validity expired",
+    description: "Validity expired",
     icon: FileCheck2,
   },
-
   visa_expired: {
     label: "Visa",
-    description: "Visa validity expired",
+    description: "Validity expired",
     icon: ShieldAlert,
   },
-
   iqama_overdue: {
     label: "Iqama",
-    description: "Iqama follow-up overdue",
+    description: "Follow-up overdue",
     icon: UserRound,
   },
-
   manual_hold: {
     label: "Manual Hold",
-    description: "Manually placed on hold",
+    description: "Placed on hold manually",
     icon: AlertTriangle,
   },
 };
 
-export function DashboardHoldStages({
-  reasons,
-  total,
-}: Props) {
-  const knownReasons = reasons.filter(
-    (item) => stageConfig[item.reason],
-  );
-
-  const unknownReasons = reasons.filter(
-    (item) => !stageConfig[item.reason],
-  );
-
+export function DashboardHoldStages({ reasons, total }: Props) {
+  // known reasons first, then unknown ones
   const items = [
-    ...knownReasons,
-    ...unknownReasons,
+    ...reasons.filter((item) => stageConfig[item.reason]),
+    ...reasons.filter((item) => !stageConfig[item.reason]),
   ];
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <CardTitle>Hold / Failed Stages</CardTitle>
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold leading-none">
+            Hold / Failed Stages
+          </h2>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Candidates blocked or failed at each workflow stage.
-            </p>
-          </div>
+          <p className="mt-1 truncate text-[11px] text-muted-foreground">
+            Candidates blocked at each workflow stage
+          </p>
+        </div>
 
-          <div className="rounded-md border px-3 py-1.5 text-right">
-            <p className="text-lg font-semibold leading-none">
-              {total}
-            </p>
+        <div className="shrink-0 rounded-md border px-2.5 py-1 text-right leading-none">
+          <p className="text-base font-semibold tabular-nums">{total}</p>
 
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              On hold
+          <p className="mt-0.5 text-[10px] text-muted-foreground">On hold</p>
+        </div>
+      </div>
+
+      {/* Body */}
+      {items.length === 0 ? (
+        <div className="flex min-h-24 flex-1 items-center justify-center rounded-md border border-dashed">
+          <div className="text-center">
+            <ShieldAlert className="mx-auto mb-1.5 size-4 text-muted-foreground" />
+
+            <p className="text-xs font-medium">No failed stages</p>
+
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              No active candidates are on hold.
             </p>
           </div>
         </div>
-      </CardHeader>
+      ) : (
+        <div className="grid min-h-0 flex-1 auto-rows-min content-start gap-2 overflow-auto sm:grid-cols-2">
+          {items.map((item) => {
+            const config = stageConfig[item.reason];
+            const Icon = config?.icon ?? AlertTriangle;
+            const label = config?.label ?? item.label;
+            const description = config?.description ?? item.label;
 
-      <CardContent>
-        {items.length === 0 ? (
-          <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed">
-            <div className="text-center">
-              <ShieldAlert className="mx-auto mb-2 h-4 w-4 text-muted-foreground" />
+            const percentage =
+              total > 0 ? Math.round((item.count / total) * 100) : 0;
 
-              <p className="text-sm font-medium">
-                No failed stages
-              </p>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                No active candidates are currently on hold.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {items.map((item) => {
-              const config =
-                stageConfig[item.reason];
-
-              const Icon =
-                config?.icon ?? AlertTriangle;
-
-              const label =
-                config?.label ?? item.label;
-
-              const description =
-                config?.description ?? item.label;
-
-              const percentage =
-                total > 0
-                  ? Math.round(
-                      (item.count / total) * 100,
-                    )
-                  : 0;
-
-              return (
-                <div
-                  key={item.reason}
-                  className="rounded-md border px-3 py-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {label}
-                        </p>
-
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {description}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {percentage}%
-                    </span>
+            return (
+              <div key={item.reason} className="rounded-md border p-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
+                    <Icon className="size-3.5 text-muted-foreground" />
                   </div>
 
-                  <div className="mt-3 flex items-end justify-between">
-                    <span className="text-2xl font-semibold tracking-tight">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium leading-tight">
+                      {label}
+                    </p>
+
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {description}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 text-right leading-none">
+                    <p className="text-lg font-semibold tabular-nums">
                       {item.count}
-                    </span>
+                    </p>
 
-                    <span className="text-[11px] text-muted-foreground">
-                      candidate
-                      {item.count === 1
-                        ? ""
-                        : "s"}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-destructive/70 transition-all"
-                      style={{
-                        width: `${Math.min(
-                          percentage,
-                          100,
-                        )}%`,
-                      }}
-                    />
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {percentage}%
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-destructive/70 transition-all"
+                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   type DashboardVisaWarning,
 } from "../dashboard-visa-monitor-service";
 
+const MAX_VISIBLE = 4;
+
 interface VisaStatus {
   label: string;
   className: string;
@@ -55,22 +57,15 @@ function getRemainingLabel(daysRemaining: number) {
     return days === 1 ? "Expired 1 day ago" : `Expired ${days} days ago`;
   }
 
-  if (daysRemaining === 0) {
-    return "Expires today";
-  }
-
-  if (daysRemaining === 1) {
-    return "1 day left";
-  }
+  if (daysRemaining === 0) return "Expires today";
+  if (daysRemaining === 1) return "1 day left";
 
   return `${daysRemaining} days left`;
 }
 
 export function DashboardVisaMonitor() {
   const [visas, setVisas] = useState<DashboardVisaWarning[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
   const loadWarnings = useCallback(async () => {
@@ -107,19 +102,19 @@ export function DashboardVisaMonitor() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* HEADER */}
+      {/* Header */}
       <div className="mb-1 flex shrink-0 items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          Expired & upcoming expiry
+        <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          Visa expiry
           {visas.length > 0 && (
-            <span className="rounded-full bg-amber-500/10 px-1.5 py-px text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+            <span className="rounded-full bg-amber-500/10 px-1.5 py-px text-[10px] font-semibold tabular-nums text-amber-600 dark:text-amber-400">
               {visas.length}
             </span>
           )}
         </p>
 
         {!loading && !error && visas.length > 0 && (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
             {expiredCount > 0 && (
               <StatusBadge
                 value={expiredCount}
@@ -147,15 +142,15 @@ export function DashboardVisaMonitor() {
         )}
       </div>
 
-      {/* BODY */}
+      {/* Body */}
       <div className="min-h-0 flex-1 overflow-auto">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
             Loading visa warnings...
           </div>
         ) : error ? (
-          <div className="flex items-center gap-2 py-3 text-xs text-destructive">
+          <div className="flex items-center gap-2 py-2 text-xs text-destructive">
             <AlertTriangle className="size-3.5 shrink-0" />
 
             <span className="truncate">Unable to load visa warnings</span>
@@ -172,18 +167,16 @@ export function DashboardVisaMonitor() {
             </button>
           </div>
         ) : visas.length === 0 ? (
-          <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               ✓
             </span>
-
             No visa expiry warnings
           </div>
         ) : (
           <ul className="divide-y divide-border/50">
-            {visas.slice(0, 4).map((visa) => {
+            {visas.slice(0, MAX_VISIBLE).map((visa) => {
               const status = getVisaStatus(visa.daysRemaining);
-
               const StatusIcon = status.icon;
 
               return (
@@ -221,7 +214,6 @@ export function DashboardVisaMonitor() {
                       {visa.visaNo !== "—" && (
                         <>
                           <span>·</span>
-
                           <span className="truncate">{visa.visaNo}</span>
                         </>
                       )}
@@ -245,14 +237,11 @@ export function DashboardVisaMonitor() {
         )}
       </div>
 
-      {/* FOOTER */}
-      {!loading && !error && visas.length > 4 && (
-        <button
-          type="button"
-          className="mt-1 w-full shrink-0 text-center text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          +{visas.length - 4} more visa warnings
-        </button>
+      {/* Footer */}
+      {!loading && !error && visas.length > MAX_VISIBLE && (
+        <p className="mt-1 shrink-0 text-center text-[10px] font-medium text-muted-foreground">
+          +{visas.length - MAX_VISIBLE} more visa warnings
+        </p>
       )}
     </div>
   );
@@ -268,14 +257,13 @@ function StatusBadge({ value, label, className }: StatusBadgeProps) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-1 text-[9px] font-medium",
+        "inline-flex items-center gap-1 text-[10px] font-medium",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="font-semibold">{value}</span>
-
+      <span className="font-semibold tabular-nums">{value}</span>
       {label}
     </span>
   );

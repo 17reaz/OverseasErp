@@ -145,39 +145,12 @@ function getEventIconClass(type: LiveTraceEvent["type"]) {
       return "text-muted-foreground";
   }
 }
+const STAGE_LABELS: Record<string, string> = {
+  "Police Clearance": "PCC",
+};
 
 function getStageLabel(stage: string) {
-  switch (stage) {
-    case "Medical":
-      return "Medical";
-
-    case "MOFA":
-      return "MOFA";
-
-    case "Finger":
-      return "Finger";
-
-    case "Police Clearance":
-      return "PCC";
-
-    case "Takamul":
-      return "Takamul";
-
-    case "Visa":
-      return "Visa";
-
-    case "BMET":
-      return "BMET";
-
-    case "Flight":
-      return "Flight";
-
-    case "Iqama":
-      return "Iqama";
-
-    default:
-      return stage;
-  }
+  return STAGE_LABELS[stage] ?? stage;
 }
 
 export function DashboardLiveTrace() {
@@ -208,52 +181,40 @@ export function DashboardLiveTrace() {
 
           return (
             <li
-              key={event.id}
-              title={event.description}
-              className="flex h-7 items-center gap-2 px-1 transition-colors hover:bg-muted/40"
-            >
-              {/* Time */}
-              <span className="w-[58px] shrink-0 text-muted-foreground">
-                {event.createdAt}
-              </span>
+  key={event.id}
+  title={event.description}
+  className="flex h-7 items-center gap-2 px-1 transition-colors hover:bg-muted/40"
+>
+  <span className="w-[58px] shrink-0 tabular-nums text-muted-foreground">
+    {event.createdAt}
+  </span>
 
-              {/* Icon */}
-              <Icon
-                className={`size-3 shrink-0 ${getEventIconClass(event.type)}`}
-              />
+  <Icon className={`size-3 shrink-0 ${getEventIconClass(event.type)}`} />
 
-              {/* SL */}
-              <span className="w-10 shrink-0 text-muted-foreground">
-                {event.sl !== null ? `#${event.sl}` : "—"}
-              </span>
+  <span className="w-10 shrink-0 tabular-nums text-muted-foreground">
+    {event.sl !== null ? `#${event.sl}` : "—"}
+  </span>
 
-              {/* Name */}
-              <span className="w-24 shrink-0 truncate font-medium">
-                {event.candidateName}
-              </span>
+  <span className="w-24 shrink-0 truncate font-medium">
+    {event.candidateName}
+  </span>
 
-              {/* Message */}
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                {event.title}
-              </span>
+  <span className="min-w-0 flex-1 truncate text-muted-foreground">
+    {event.title}
+  </span>
 
-              {/* Stage change badge */}
-              {event.type === "stage_changed" &&
-                event.fromStage &&
-                event.toStage && (
-                  <span className="hidden shrink-0 items-center gap-1 rounded border bg-muted/30 px-1.5 py-px sm:inline-flex">
-                    <span className="text-muted-foreground">
-                      {getStageLabel(event.fromStage)}
-                    </span>
+  {event.type === "stage_changed" && event.fromStage && event.toStage && (
+    <span className="hidden shrink-0 items-center gap-1 rounded border bg-muted/30 px-1.5 py-px sm:inline-flex">
+      <span className="text-muted-foreground">
+        {getStageLabel(event.fromStage)}
+      </span>
 
-                    <ArrowRight className="size-2.5 text-muted-foreground" />
+      <ArrowRight className="size-2.5 text-muted-foreground" />
 
-                    <span className="font-medium">
-                      {getStageLabel(event.toStage)}
-                    </span>
-                  </span>
-                )}
-            </li>
+      <span className="font-medium">{getStageLabel(event.toStage)}</span>
+    </span>
+  )}
+</li>
           );
         })}
       </ul>

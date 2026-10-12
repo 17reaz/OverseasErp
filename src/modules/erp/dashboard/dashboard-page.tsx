@@ -1,33 +1,32 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  getDashboardData,
-  type DashboardData,
-} from "./dashboard-service";
+
 import { ActionCenter } from "@/modules/erp/action-center";
-import { DashboardHoldStages } from "./components/dashboard-hold-stages";
-import { DashboardStats,DashboardStatsSkeleton } from "./components/dashboard-stats";
-import { DashboardTable } from "./components/dashboard-table";
-import { DashboardCharts } from "./components/dashboard-charts";
-import { DashboardDocumentAlerts } from "./components/document-alerts";
-import { DashboardShortcuts } from "./components/dashboard-shortcuts";
-import { DashboardPipeline } from "./components/dashboard-pipeline";
-import { DashboardCountryPassports } from "./components/dashboard-country-passports";
-import { DashboardUpcomingDeadlines } from "./components/dashboard-upcoming-deadlines";
-import { DashboardLiveTrace } from "./components/dashboard-live-trace";
+
+import { getDashboardData, type DashboardData } from "./dashboard-service";
 import { ActivePartiesCard } from "./components/active-parties-card";
+import { DashboardActivity } from "./components/dashboard-activity";
+import { DashboardCharts } from "./components/dashboard-charts";
+import { DashboardCountryPassports } from "./components/dashboard-country-passports";
+import { DashboardDocumentAlerts } from "./components/document-alerts";
 import {
   DashboardFilters,
   type DashboardFiltersState,
 } from "./components/dashboard-filters";
 import { DashboardGreeting } from "./components/dashboard-greeting";
+import { DashboardHoldStages } from "./components/dashboard-hold-stages";
+import { DashboardLiveTrace } from "./components/dashboard-live-trace";
+import { DashboardPipeline } from "./components/dashboard-pipeline";
+import { DashboardShortcuts } from "./components/dashboard-shortcuts";
+import {
+  DashboardStats,
+  DashboardStatsSkeleton,
+} from "./components/dashboard-stats";
+import { DashboardTable } from "./components/dashboard-table";
+import { DashboardUpcomingDeadlines } from "./components/dashboard-upcoming-deadlines";
 import { DashboardVisaMonitor } from "./components/dashboard-visa-monitor";
-import { DashboardActivity } from "./components/dashboard-activity";
 
-/* =======================================================
-   MODULE LEVEL CACHE
-   Dashboard theke ber hoye fire ashle ager data, filters
-   ar tab selection sathe sathe dekhabe.
-======================================================= */
+/* Module-level cache: dashboard theke ber hoye fire ashle
+   ager data, filters ar tab selection sathe sathe dekhabe. */
 
 const DEFAULT_FILTERS: DashboardFiltersState = {
   dateRange: "all",
@@ -40,9 +39,7 @@ let cachedDashboard: DashboardData | null = null;
 let cachedFilters: DashboardFiltersState = DEFAULT_FILTERS;
 const cachedTabs: Record<string, string> = {};
 
-/* =======================================================
-   SMALL TAB PANEL (no extra dependency)
-======================================================= */
+/* Small tab panel */
 
 type TabItem = {
   key: string;
@@ -60,25 +57,34 @@ function TabPanel({ id, tabs }: { id: string; tabs: TabItem[] }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-background">
-      <div className="flex shrink-0 gap-1 overflow-x-auto border-b p-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => select(tab.key)}
-            className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              tab.key === current.key
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background">
+      <div
+        role="tablist"
+        className="flex shrink-0 gap-0.5 overflow-x-auto border-b bg-muted/20 p-1"
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.key === current.key;
+
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => select(tab.key)}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                isActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-2">
+      <div role="tabpanel" className="min-h-0 flex-1 overflow-auto p-2">
         <div className="h-full min-h-[200px]">{current.content}</div>
       </div>
     </div>
@@ -127,10 +133,7 @@ export function DashboardPage() {
 
   const countries = useMemo<string[]>(() => data?.countries ?? [], [data]);
 
-  /* ======================= LOADING ======================= */
-
-  /*ata ekta demo commnet ar por theke ux chagne hobe arki*/
-
+  /* LOADING */
 
   if (loading) {
     return (
@@ -140,29 +143,32 @@ export function DashboardPage() {
         <DashboardStatsSkeleton />
 
         <div className="grid gap-3 lg:grid-cols-3">
-          <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />
-          <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />
-          <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-64 animate-pulse rounded-lg border bg-muted/40"
+            />
+          ))}
         </div>
       </div>
     );
   }
 
-  /* ======================= ERROR ======================= */
+  /* ERROR */
 
   if (error) {
     return (
       <div className="rounded-lg border border-destructive/30 p-6">
-        <p className="font-medium">Failed to load dashboard</p>
+        <p className="text-sm font-medium">Failed to load dashboard</p>
 
-        <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{error}</p>
 
         <button
           type="button"
           onClick={() => {
             void loadDashboard();
           }}
-          className="mt-4 text-sm font-medium underline underline-offset-4"
+          className="mt-3 text-xs font-medium underline underline-offset-4"
         >
           Try again
         </button>
@@ -170,7 +176,7 @@ export function DashboardPage() {
     );
   }
 
-  /* ======================= NO DATA ======================= */
+  /* NO DATA */
 
   if (!data) {
     return (
@@ -180,13 +186,13 @@ export function DashboardPage() {
     );
   }
 
-  /* ======================= DASHBOARD ======================= */
+  /* DASHBOARD */
 
   return (
     // lg e screen height lock: page scroll hobe na.
-    // Header/padding onujayi 7rem ta adjust korte paro.
+    // Header/padding onujayi 7rem adjust korte paro.
     <div className="flex flex-col gap-3 lg:h-[calc(100vh-7rem)] lg:overflow-hidden">
-      {/* GREETING + FILTERS (ek line) */}
+      {/* Greeting + filters */}
       <div className="flex shrink-0 flex-col gap-2 xl:flex-row xl:items-stretch">
         <DashboardGreeting />
 
@@ -197,122 +203,127 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* KPI STATS */}
+      {/* KPI stats */}
       <div className="shrink-0">
         <DashboardStats stats={data.stats} />
       </div>
 
-      {/* MAIN 3 COLUMNS */}
-      {/* MAIN AREA */}
-<div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
-  {/* LEFT: Column 1 + Column 2 + Pipeline strip */}
-  <div className="flex min-h-0 flex-col gap-3 lg:col-span-2">
-    <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
-      {/* Column 1 */}
-      <div className="flex min-h-0 flex-col">
-        <TabPanel
-          id="col1"
-          tabs={[
-            {
-              key: "charts",
-              label: "Charts",
-              content: (
-                <DashboardCharts
-                  pipeline={data.pipeline}
-                  trend={data.trend}
-                />
-              ),
-            },
-            {
-              key: "hold",
-              label: "Hold Stages",
-              content: (
-                <DashboardHoldStages
-                  reasons={data.stats.holdReasons}
-                  total={data.stats.holdCandidates}
-                />
-              ),
-            },
-          ]}
-        />
-      </div>
+      {/* Main area */}
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
+        {/* Left: column 1 + column 2 + pipeline strip */}
+        <div className="flex min-h-0 flex-col gap-3 lg:col-span-2">
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+            {/* Column 1 */}
+            <div className="flex min-h-0 flex-col">
+              <TabPanel
+                id="col1"
+                tabs={[
+                  {
+                    key: "charts",
+                    label: "Charts",
+                    content: (
+                      <DashboardCharts
+                        pipeline={data.pipeline}
+                        trend={data.trend}
+                      />
+                    ),
+                  },
+                  {
+                    key: "hold",
+                    label: "Hold Stages",
+                    content: (
+                      <DashboardHoldStages
+                        reasons={data.stats.holdReasons}
+                        total={data.stats.holdCandidates}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </div>
 
-      {/* Column 2 */}
-      <div className="flex min-h-0 flex-col gap-3">
-        <div className="shrink-0 rounded-lg border bg-background p-2">
-          <DashboardActivity activity={data.activity} />
+            {/* Column 2 */}
+            <div className="flex min-h-0 flex-col gap-3">
+              <div className="shrink-0 rounded-lg border bg-background p-2">
+                <DashboardActivity activity={data.activity} />
+              </div>
+
+              <TabPanel
+                id="col2"
+                tabs={[
+                  {
+                    key: "candidates",
+                    label: "Recent",
+                    content: (
+                      <DashboardTable candidates={data.recentCandidates} />
+                    ),
+                  },
+                  {
+                    key: "passports",
+                    label: "Countries",
+                    content: (
+                      <DashboardCountryPassports
+                        data={data.countryPassports}
+                      />
+                    ),
+                  },
+                  {
+                    key: "deadlines",
+                    label: "Deadlines",
+                    content: (
+                      <DashboardUpcomingDeadlines
+                        deadlines={data.upcomingDeadlines}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Pipeline strip */}
+          <div className="shrink-0">
+            <DashboardPipeline data={data.pipeline} />
+          </div>
         </div>
 
-        <TabPanel
-          id="col2"
-          tabs={[
-            {
-              key: "candidates",
-              label: "Recent Candidates",
-              content: <DashboardTable candidates={data.recentCandidates} />,
-            },
-            {
-              key: "passports",
-              label: "Country Passports",
-              content: (
-                <DashboardCountryPassports data={data.countryPassports} />
-              ),
-            },
-            {
-              key: "deadlines",
-              label: "Deadlines",
-              content: (
-                <DashboardUpcomingDeadlines
-                  deadlines={data.upcomingDeadlines}
-                />
-              ),
-            },
-          ]}
-        />
-              
+        {/* Right: column 3 */}
+        <div className="flex min-h-0 flex-col gap-3">
+          <ActivePartiesCard />
+
+          <div className="shrink-0 rounded-lg border bg-background p-2">
+            <DashboardVisaMonitor />
+          </div>
+
+          <TabPanel
+            id="col3"
+            tabs={[
+              {
+                key: "actions",
+                label: "Actions",
+                content: <ActionCenter />,
+              },
+              {
+                key: "alerts",
+                label: "Alerts",
+                content: (
+                  <DashboardDocumentAlerts alerts={data.documentAlerts} />
+                ),
+              },
+              {
+                key: "shortcuts",
+                label: "Shortcuts",
+                content: <DashboardShortcuts />,
+              },
+              {
+                key: "trace",
+                label: "Live",
+                content: <DashboardLiveTrace />,
+              },
+            ]}
+          />
+        </div>
       </div>
-    </div>
-
-    {/* Pipeline: Column 1 + 2 er niche fixed line */}
-    <div className="shrink-0">
-      <DashboardPipeline data={data.pipeline} />
-    </div>
-  </div>
-
-  {/* RIGHT: Column 3 (ager moto full height) */}
-  <div className="flex min-h-0 flex-col gap-3">
-    <ActivePartiesCard />
-    <div className="shrink-0 rounded-lg border bg-background p-2">
-      <DashboardVisaMonitor />
-    </div>
-          
-    <TabPanel
-      id="col3"
-      tabs={[
-        {
-          key: "actions",
-          label: "Action Center",
-          content: <ActionCenter />,
-        },
-        {
-          key: "alerts",
-          label: "Document Alerts",
-          content: <DashboardDocumentAlerts alerts={data.documentAlerts} />,
-        },
-        {
-          key: "shortcuts",
-          label: "Shortcuts",
-          content: <DashboardShortcuts />,
-        },
-        {
-          key: "trace",
-          label: "Live Trace",
-          content: <DashboardLiveTrace />,
-        },
-      ]}
-    />
-  </div>
-</div>
     </div>
   );
 }

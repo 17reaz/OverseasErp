@@ -1,5 +1,3 @@
-// src/modules/erp/dashboard/components/dashboard-pipeline.tsx
-
 import {
   Activity,
   BadgeCheck,
@@ -46,33 +44,23 @@ const stageOrder = [
 
 export function DashboardPipeline({ data }: Props) {
   /*
-   * The dashboard service keeps the "active" pipeline item
-   * for backward compatibility.
-   *
-   * It now represents PROCESSING candidates only.
+   * The "active" pipeline item is kept for backward compatibility
+   * and represents PROCESSING candidates only.
    */
   const processingCount =
     data.find((item) => item.label === "Active")?.value ??
     data.find((item) => item.label === "Processing")?.value ??
     0;
 
-  /*
-   * Remove the old "Active" compatibility item from the
-   * visible pipeline and keep only actual workflow stages.
-   */
-  const pipelineData = stageOrder.map((stage) => {
-    const existing = data.find((item) => item.label === stage);
-
-    return {
-      label: stage,
-      value: existing?.value ?? 0,
-    };
-  });
+  const pipelineData = stageOrder.map((stage) => ({
+    label: stage,
+    value: data.find((item) => item.label === stage)?.value ?? 0,
+  }));
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-background p-2 sm:flex-row sm:items-stretch sm:gap-3">
-      {/* LEFT: processing total (highlight) */}
-      <div className="flex shrink-0 items-center gap-2.5 rounded-md bg-primary px-3 py-2 text-primary-foreground sm:min-w-[110px]">
+    <div className="flex flex-col gap-2 rounded-lg border bg-background p-2 sm:flex-row sm:items-stretch">
+      {/* Processing total */}
+      <div className="flex shrink-0 items-center gap-2.5 rounded-md bg-primary px-3 py-1.5 text-primary-foreground sm:min-w-[110px]">
         <Activity className="size-5 shrink-0" />
 
         <div className="leading-tight">
@@ -80,13 +68,13 @@ export function DashboardPipeline({ data }: Props) {
             Processing
           </p>
 
-          <p className="text-2xl font-bold tracking-tight">
+          <p className="text-2xl font-bold tabular-nums tracking-tight">
             {processingCount}
           </p>
         </div>
       </div>
 
-      {/* RIGHT: stages (no scrollbar, wraps responsively) */}
+      {/* Stages */}
       {processingCount === 0 ? (
         <p className="flex min-w-0 flex-1 items-center text-xs text-muted-foreground">
           No candidates in processing. Hold candidates are excluded from the
@@ -98,22 +86,21 @@ export function DashboardPipeline({ data }: Props) {
             const Icon =
               stageIcons[item.label as keyof typeof stageIcons] ?? Activity;
 
-            const percentage =
-              processingCount > 0
-                ? Math.round((item.value / processingCount) * 100)
-                : 0;
+            const percentage = Math.round(
+              (item.value / processingCount) * 100,
+            );
 
             const hasValue = item.value > 0;
+            const shortLabel =
+              item.label === "Police Clearance" ? "PCC" : item.label;
 
             return (
               <div
                 key={item.label}
                 title={`${item.label}: ${item.value} (${percentage}%)`}
                 className={[
-                  "flex min-w-0 flex-col justify-center gap-1 rounded-md border px-2 py-1.5 transition-colors",
-                  hasValue
-                    ? "border-primary/30 bg-primary/5"
-                    : "bg-muted/20",
+                  "flex min-w-0 flex-col justify-center gap-0.5 rounded-md border px-2 py-1.5 transition-colors",
+                  hasValue ? "border-primary/30 bg-primary/5" : "bg-muted/20",
                 ].join(" ")}
               >
                 <div className="flex items-center gap-1 text-muted-foreground">
@@ -125,26 +112,24 @@ export function DashboardPipeline({ data }: Props) {
                   />
 
                   <span className="truncate text-[10px] font-medium">
-                    {item.label === "Police Clearance" ? "PCC" : item.label}
+                    {shortLabel}
                   </span>
                 </div>
 
                 <div className="flex items-baseline justify-between gap-1">
                   <span
                     className={[
-                      "text-lg font-bold leading-none tracking-tight",
+                      "text-lg font-bold leading-none tabular-nums tracking-tight",
                       hasValue ? "text-foreground" : "text-muted-foreground",
                     ].join(" ")}
                   >
                     {item.value}
                   </span>
 
-                  <span className="text-[9px] text-muted-foreground">
+                  <span className="text-[9px] tabular-nums text-muted-foreground">
                     {percentage}%
                   </span>
                 </div>
-
-                
               </div>
             );
           })}
