@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { extractWafidMedical } from "../ocr/new/services/wafid-reder";
+import { extractKsaVisa } from "../ocr/new/services/kisa-visa";
 import {
   getAgents,
 } from "../agents/agents-service";
@@ -134,7 +135,7 @@ async function lookupPassport(value: string) {
 }
 
 
-type DocType = "passport" | "medical" | "mofa";
+type DocType = "passport" | "medical" | "mofa" | "visa";
 
 type OcrField = {
   label: string;
@@ -248,11 +249,13 @@ function DocumentDropzone({
           </div>
         </div>
 
-        {done ? (
-          <Badge variant="secondary" className="shrink-0">
-            {scan.confidence}% match
-          </Badge>
-        ) : null}
+       {done ? (
+  <Badge variant="secondary" className="shrink-0">
+    {scan.confidence == null
+      ? "Read complete"
+      : `${scan.confidence}% match`}
+  </Badge>
+) : null}
       </div>
 
       {scan.status === "idle" && (
@@ -392,6 +395,7 @@ const [mofaCrossCheck, setMofaCrossCheck] = useState<{
     passport: idleScan,
     medical: idleScan,
     mofa: idleScan,
+     visa: idleScan,
   });
 
   const anyScanning = Object.values(scans).some(
@@ -666,7 +670,10 @@ async function handleScan(docType: DocType, file: File) {
     setErrorMessage("MOFA OCR-এর জন্য PDF, JPG অথবা PNG file দাও।");
     return;
   }
-
+if (docType === "visa" && !isPdf) {
+  setErrorMessage("Saudi Visa OCR-এর জন্য PDF ফাইল upload করো।");
+  return;
+}
   setErrorMessage("");
   setSuccessMessage("");
 
@@ -744,7 +751,68 @@ async function handleScan(docType: DocType, file: File) {
 
       return;
     }
+// ───────── Saudi Visa OCR ─────────
+if (docType === "visa") {
+  const result = await extractKsaVisa(file);
 
+  const fields: OcrField[] = [
+    { label: "Visa No.", value: result.visaNo || "Not detected" },
+    { label: "Valid From", value: result.validFrom || "Not detected" },
+    { label: "Valid Until", value: result.validUntil || "Not detected" },
+    {
+      label: "Duration of Stay",
+      value: result.durationOfStay || "Not detected",
+    },
+    {
+      label: "Place of Issue",
+      value: result.placeOfIssue || "Not detected",
+    },
+    { label: "Visa Type", value: result.visaType || "Not detected" },
+    { label: "Skill Level", value: result.skillLevel || "Not detected" },
+    { label: "Name", value: result.name || "Not detected" },
+    { label: "Nationality", value: result.nationality || "Not detected" },
+    { label: "Birth Date", value: result.birthDate || "Not detected" },
+    { label: "Passport No.", value: result.passportNo || "Not detected" },
+    { label: "Reference No.", value: result.refNo || "Not detected" },
+    { label: "Reference Date", value: result.refDate || "Not detected" },
+    { label: "Occupation", value: result.occupation || "Not detected" },
+    {
+      label: "Employer",
+      value: result.employerName || "Not detected",
+    },
+    { label: "Visa Fees", value: result.visaFees || "Not detected" },
+    {
+      label: "Application No.",
+      value: result.applicationNo || "Not detected",
+    },
+    ...(result.mrz.length > 0
+      ? [{ label: "MRZ", value: result.mrz.join(" | ") }]
+      : []),
+  ];
+
+  const detectedCount = fields.filter(
+    (field) => field.value !== "Not detected",
+  ).length;
+
+  setScans((prev) => ({
+    ...prev,
+    visa: {
+      status: "done",
+      progress: 100,
+      fileName: file.name,
+      fileSize: file.size,
+      fields,
+    },
+  }));
+
+  setSuccessMessage(
+    detectedCount > 0
+      ? `Visa PDF read complete. ${detectedCount} field(s) detected. Please verify the extracted details.`
+      : "Visa PDF opened, but no fields were detected. Please check the PDF.",
+  );
+
+  return;
+}
     // ───────── MOFA OCR ─────────
     const result = await readMofa(file);
 
@@ -1158,6 +1226,14 @@ OCR-এর তথ্য যাচাই করে তারপর Candidate save
                       disabled={saving || !!savedCandidate}
                       onFile={(file) => void handleScan("mofa", file)}
                     />
+                    <DocumentDropzone
+  title="Saudi Visa document"
+  hint="Upload Saudi Visa PDF"
+  icon={FileCheck}
+  scan={scans.visa}
+  disabled={saving}
+  onFile={(file) => void handleScan("visa", file)}
+/>
                   </div>
                 </div>
 
