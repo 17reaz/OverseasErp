@@ -42,7 +42,8 @@ import {
   crossCheckWithPassport,
   readMofa,
 } from "../ocr/new/services/mofa-reader";
-import { readPassport } from "../ocr/new/services/passport-ocr-service";
+// import { readPassport } from "../ocr/new/services/passport-ocr-service";
+import { readPassportDocument } from "../ocr/new/services/passport-ocr-provider";
 import { extractWafidMedical } from "../ocr/new/services/wafid-reder";
 import { createMedical, type MedicalStatus } from "../medical/medical-service";
 import {
@@ -878,12 +879,16 @@ async function saveVisaFor(
     file: File,
     base: { fileName: string; fileSize: number },
   ) {
-    const result = await readPassport(file, (progress) => {
-      setScans((prev) => ({
-        ...prev,
-        passport: { ...prev.passport, status: "scanning", progress, ...base },
-      }));
-    });
+    const result = await readPassportDocument(file, (progress) => {
+  setScans((prev) => ({
+    ...prev,
+    passport: {
+      ...prev.passport,
+      status: "scanning",
+      progress,
+    },
+  }));
+});
 
     setName(result.name);
     setPassportNo(result.passportNo);
