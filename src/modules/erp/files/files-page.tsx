@@ -97,13 +97,22 @@ function useFilePreviews(files: FileWithCandidate[]) {
           3600,
         );
 
-      if (error || !data) return;
+      if (error || !data) {
+        console.error("createSignedUrls failed:", error);
+        return;
+      }
 
       const next: Record<number, string> = {};
 
       data.forEach((row, index) => {
         if (row.signedUrl && !row.error) {
           next[withPath[index].id] = row.signedUrl;
+        } else {
+          console.warn(
+            "Signed URL missing for:",
+            withPath[index].file_location,
+            row.error,
+          );
         }
       });
 
@@ -147,11 +156,12 @@ function FileCard({
             onError={() => setFailed(true)}
           />
         ) : showReal && kind === "pdf" ? (
-  <PdfThumbnail
-    url={url!}
-    title={`${file.doc_type} - ${title}`}
-  />
-) : (
+          <PdfThumbnail
+            url={url!}
+            cacheKey={file.file_location}
+            title={`${file.doc_type} - ${title}`}
+          />
+        ) : (
           <>
             <img
               src={SAMPLE_PREVIEW}
@@ -329,8 +339,6 @@ export function FilesPage() {
 
   return (
     <div className="space-y-6">
-      
-
       <FilesToolbar
         search={search}
         onSearchChange={setSearch}
