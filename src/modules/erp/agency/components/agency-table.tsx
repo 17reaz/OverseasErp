@@ -3,6 +3,12 @@ import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -65,7 +71,8 @@ export function AgencyTable({
       key: "agency",
       header: "Agency",
       cell: (agency) => (
-        <div className="flex min-w-0 items-start gap-3">
+        // <div className="flex min-w-0 max-w-[220px] items-start gap-3 sm:max-w-[300px] lg:max-w-[380px]">
+          <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted/30">
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </div>
@@ -79,9 +86,20 @@ export function AgencyTable({
             </Link>
 
             {agency.address && (
-              <p className="truncate text-xs text-muted-foreground">
-                {agency.address}
-              </p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="block cursor-default truncate text-xs text-muted-foreground">
+                    {agency.address}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  className="max-w-xs break-words"
+                >
+                  {agency.address}
+                </TooltipContent>
+              </Tooltip>
             )}
 
             {/* Mobile only: details of the hidden columns */}
@@ -199,18 +217,20 @@ export function AgencyTable({
   ];
 
   return (
-    <DataTable
-      columns={columns}
-      data={agencies}
-      getRowKey={(agency) => agency.id}
-      loading={loading}
-      emptyTitle="No agencies found"
-      emptyDescription="Create an agency to get started."
-      pageSize={pageSize}
-      page={page}
-      onPageChange={onPageChange}
-      total={total}
-      serverPagination={typeof total === "number" && total !== agencies.length}
-    />
+    <TooltipProvider delayDuration={200}>
+      <DataTable
+        columns={columns}
+        data={agencies}
+        getRowKey={(agency) => agency.id}
+        loading={loading}
+        emptyTitle="No agencies found"
+        emptyDescription="Create an agency to get started."
+        pageSize={pageSize}
+        page={page}
+        onPageChange={onPageChange}
+        total={total}
+        serverPagination={typeof total === "number" && total !== agencies.length}
+      />
+    </TooltipProvider>
   );
 }

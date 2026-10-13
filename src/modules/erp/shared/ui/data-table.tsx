@@ -245,7 +245,7 @@ export function DataTable<T>({
           =================================================== */}
 
       <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:thin] [&>[data-slot=table-container]]:overflow-visible">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               {columns.map(
