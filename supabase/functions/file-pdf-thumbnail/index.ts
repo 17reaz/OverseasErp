@@ -9,6 +9,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const SOURCE_BUCKET = "passports";
+const THUMBNAIL_BUCKET = "file-thumbnails";
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
+const BATCH_SIZE = 3;
+
 function respond(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -19,127 +25,60 @@ function respond(data: unknown, status = 200) {
   });
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+type FileRow = {
+  id: number;
+  tenant_id: string;
+  file_location: string;
+  thumbnail_location: string | null;
+};
 
-  if (req.method !== "POST") {
-    return respond({ error: "Method not allowed" }, 405);
-  }
-
-  let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | undefined;
+async function generateThumbnail(
+  admin: ReturnType<typeof createClient>,
+  file: FileRow,
+) {
+  let loadingTask:
+    | ReturnType<typeof pdfjsLib.getDocument>
+    | undefined;
 
   try {
-    const authorization = req.headers.get("Authorization");
-
-    if (!authorization?.startsWith("Bearer ")) {
-      return respond({ error: "Authentication required" }, 401);
+    if (!file.file_location?.toLowerCase().endsWith(".pdf")) {
+      return {
+        fileId: file.id,
+        success: false,
+        error: "Not a PDF",
+      };
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !anonKey || !serviceKey) {
-      return respond(
-        { error: "Edge Function environment is not configured" },
-        503,
-      );
-    }
-
-    // Validate the logged-in user.
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: {
-        headers: { Authorization: authorization },
-      },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
-
-    const token = authorization.slice("Bearer ".length);
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser(token);
-
-    if (authError || !user) {
-      return respond({ error: "Invalid session" }, 401);
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const fileId = Number(body.fileId);
-
-    if (!Number.isSafeInteger(fileId) || fileId <= 0) {
-      return respond({ error: "Valid fileId is required" }, 400);
-    }
-
-    // Respect the user's existing files-table RLS policies.
-    const { data: file, error: fileError } = await userClient
-      .from("files")
-      .select("id, tenant_id, file_location, thumbnail_location")
-      .eq("id", fileId)
-      .maybeSingle();
-
-    if (fileError) {
-      console.error("File lookup failed:", fileError.message);
-      return respond({ error: "Could not read file record" }, 500);
-    }
-
-    if (!file) {
-      return respond({ error: "File not found or access denied" }, 404);
-    }
-
-    if (!file.file_location.toLowerCase().endsWith(".pdf")) {
-      return respond({ error: "This file is not a PDF" }, 415);
-    }
-
-    // Server-side client: never expose this key to the frontend.
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
-
-    // Return the existing thumbnail if one is already available.
+    // Return cached thumbnail when it already exists.
     if (file.thumbnail_location) {
       const { data: cached } = await admin.storage
-        .from("file-thumbnails")
+        .from(THUMBNAIL_BUCKET)
         .createSignedUrl(file.thumbnail_location, 3600);
 
       if (cached?.signedUrl) {
-        return respond({
+        return {
+          fileId: file.id,
           success: true,
-          fileId,
-          thumbnailPath: file.thumbnail_location,
-          thumbnailUrl: cached.signedUrl,
           cached: true,
-        });
+          thumbnailUrl: cached.signedUrl,
+        };
       }
     }
 
-    // Download the original without moving or modifying it.
+    // Download original PDF without modifying it.
     const { data: original, error: downloadError } =
-      await userClient.storage
-        .from("passports")
+      await admin.storage
+        .from(SOURCE_BUCKET)
         .download(file.file_location);
 
     if (downloadError || !original) {
-      console.error("Original download failed:", downloadError?.message);
-      return respond(
-        { error: "Could not download the original PDF" },
-        502,
+      throw new Error(
+        `Original PDF download failed: ${downloadError?.message ?? "No file returned"}`,
       );
     }
 
-    if (original.size > 20 * 1024 * 1024) {
-      return respond(
-        { error: "PDF exceeds the 20 MB thumbnail limit" },
-        413,
-      );
+    if (original.size > MAX_PDF_BYTES) {
+      throw new Error("PDF exceeds the 20 MB processing limit");
     }
 
     const pdfBytes = new Uint8Array(await original.arrayBuffer());
@@ -153,7 +92,6 @@ Deno.serve(async (req: Request) => {
     const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
 
-    // Render a small first-page preview.
     const baseViewport = page.getViewport({ scale: 1 });
     const scale = Math.min(1.5, 480 / baseViewport.width);
     const viewport = page.getViewport({ scale });
@@ -179,18 +117,14 @@ Deno.serve(async (req: Request) => {
       quality: 0.78,
     });
 
-    if (jpeg.size > 2 * 1024 * 1024) {
-      return respond(
-        { error: "Generated thumbnail exceeds the 2 MB limit" },
-        413,
-      );
+    if (jpeg.size > MAX_THUMBNAIL_BYTES) {
+      throw new Error("Generated thumbnail exceeds the 2 MB limit");
     }
 
     const thumbnailPath = `${file.tenant_id}/${file.id}.jpg`;
 
-    // Save the thumbnail in its own private bucket.
     const { error: uploadError } = await admin.storage
-      .from("file-thumbnails")
+      .from(THUMBNAIL_BUCKET)
       .upload(thumbnailPath, jpeg, {
         contentType: "image/jpeg",
         cacheControl: "3600",
@@ -198,11 +132,9 @@ Deno.serve(async (req: Request) => {
       });
 
     if (uploadError) {
-      console.error("Thumbnail upload failed:", uploadError.message);
-      return respond({ error: "Could not save thumbnail" }, 502);
+      throw new Error(`Thumbnail upload failed: ${uploadError.message}`);
     }
 
-    // Store only the object path in the database.
     const { error: updateError } = await admin
       .from("files")
       .update({ thumbnail_location: thumbnailPath })
@@ -210,40 +142,184 @@ Deno.serve(async (req: Request) => {
       .eq("tenant_id", file.tenant_id);
 
     if (updateError) {
-      console.error("Thumbnail path update failed:", updateError.message);
-      return respond(
-        { error: "Thumbnail saved, but database update failed" },
-        502,
-      );
+      throw new Error(`Database update failed: ${updateError.message}`);
     }
 
     const { data: signed, error: signedError } = await admin.storage
-      .from("file-thumbnails")
+      .from(THUMBNAIL_BUCKET)
       .createSignedUrl(thumbnailPath, 3600);
 
     if (signedError || !signed?.signedUrl) {
-      return respond(
-        { error: "Thumbnail generated, but signed URL creation failed" },
-        502,
-      );
+      throw new Error("Could not create thumbnail signed URL");
     }
 
-    return respond({
+    return {
+      fileId: file.id,
       success: true,
-      fileId,
+      cached: false,
       thumbnailPath,
       thumbnailUrl: signed.signedUrl,
-      cached: false,
-    });
+    };
   } catch (error) {
-    console.error("PDF thumbnail generation failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Unknown error";
 
-    return respond({
-      error: "Thumbnail generation failed. The original file is unchanged.",
-    }, 500);
+    console.error(`Thumbnail generation failed for file ${file.id}:`, message);
+
+    return {
+      fileId: file.id,
+      success: false,
+      error: message,
+    };
   } finally {
     if (loadingTask) {
       await loadingTask.destroy().catch(() => {});
     }
+  }
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return respond({ error: "Method not allowed" }, 405);
+  }
+
+  try {
+    const authorization = req.headers.get("Authorization");
+
+    if (!authorization?.startsWith("Bearer ")) {
+      return respond({ error: "Authentication required" }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      return respond({ error: "Function environment is not configured" }, 503);
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authorization } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const token = authorization.slice("Bearer ".length);
+
+    const {
+      data: { user },
+      error: authError,
+    } = await userClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return respond({ error: "Invalid session" }, 401);
+    }
+
+    const body = await req.json().catch(() => ({}));
+
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // Determine the logged-in user's tenant.
+    const { data: profile, error: profileError } = await userClient
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile?.tenant_id) {
+      return respond({ error: "Tenant not found for current user" }, 403);
+    }
+
+    const tenantId = profile.tenant_id as string;
+
+    // Mode 1: generate a thumbnail for one existing PDF.
+    if (body.fileId !== undefined) {
+      const fileId = Number(body.fileId);
+
+      if (!Number.isSafeInteger(fileId) || fileId <= 0) {
+        return respond({ error: "Valid fileId is required" }, 400);
+      }
+
+      const { data: file, error: fileError } = await userClient
+        .from("files")
+        .select("id, tenant_id, file_location, thumbnail_location")
+        .eq("id", fileId)
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+
+      if (fileError) {
+        return respond({ error: "Could not read file record" }, 500);
+      }
+
+      if (!file) {
+        return respond({ error: "File not found or access denied" }, 404);
+      }
+
+      const result = await generateThumbnail(admin, file as FileRow);
+
+      return respond(result, result.success ? 200 : 422);
+    }
+
+    // Mode 2: generate thumbnails for existing PDFs missing thumbnails.
+    if (body.action === "generate-missing") {
+      const { data: files, error: filesError } = await userClient
+        .from("files")
+        .select("id, tenant_id, file_location, thumbnail_location")
+        .eq("tenant_id", tenantId)
+        .ilike("file_location", "%.pdf")
+        .is("thumbnail_location", null)
+        .order("id", { ascending: true })
+        .limit(BATCH_SIZE);
+
+      if (filesError) {
+        console.error("PDF list query failed:", filesError.message);
+        return respond({ error: "Could not list existing PDFs" }, 500);
+      }
+
+      const results = [];
+
+      // Process sequentially to reduce resource usage.
+      for (const file of (files ?? []) as FileRow[]) {
+        results.push(await generateThumbnail(admin, file));
+      }
+
+      const { count: remaining, error: countError } = await userClient
+        .from("files")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .ilike("file_location", "%.pdf")
+        .is("thumbnail_location", null);
+
+      if (countError) {
+        console.error("Remaining PDF count failed:", countError.message);
+      }
+
+      return respond({
+        success: true,
+        processed: results.length,
+        succeeded: results.filter((item) => item.success).length,
+        failed: results.filter((item) => !item.success).length,
+        remaining: countError ? null : remaining,
+        results,
+      });
+    }
+
+    return respond({
+      error: "Send fileId or action: generate-missing",
+    }, 400);
+  } catch (error) {
+    console.error("file-pdf-thumbnail failed:", error);
+
+    return respond({
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unexpected thumbnail generation error",
+    }, 500);
   }
 });

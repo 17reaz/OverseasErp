@@ -12,9 +12,10 @@ import type { DocType, OcrField, ScanBase, ScanState } from "../types";
 import {
   errorText,
   field,
+  lookupPassport,
   normalizePassport,
   toInputDate,
-  toMedicalStatus,lookupPassport,
+  toMedicalStatus,
   validateScanFile,
 } from "../utils/registration-utils";
 import type { Registration } from "./useCandidateRegistration";
@@ -126,7 +127,11 @@ export function useRegistrationOcr(reg: Registration) {
   }
 
   async function scanMedical(file: File, base: ScanBase) {
-    setScan("medical", { status: "scanning", progress: 25, ...base });
+    setScan("medical", {
+      status: "scanning",
+      progress: 25,
+      ...base,
+    });
 
     const result = await extractWafidMedical(file);
 
@@ -136,9 +141,7 @@ export function useRegistrationOcr(reg: Registration) {
       .filter(Boolean)
       .join(" ");
 
-    if (extractedDate) reg.setMedicalDate(extractedDate);
-    reg.setMedicalStatus(extractedStatus);
-
+    // Show extracted fields so the user can review them.
     setScan("medical", {
       status: "done",
       progress: 100,
@@ -161,19 +164,26 @@ export function useRegistrationOcr(reg: Registration) {
       return;
     }
 
+    // Populate the form only. Do not save to the database during OCR.
     if (!reg.savedCandidate) {
-      reg.setName(fullName);
+      if (fullName) {
+        reg.setName(fullName);
+      }
+
       reg.setPassportNo(normalizePassport(result.passportNo));
     }
 
-    await reg.saveMedicalFor(result.passportNo, fullName, {
-      medicalDate: extractedDate || reg.medicalDate,
-      fitDate: reg.fitDate,
-      status: extractedStatus,
-    });
+    // Do not modify Medical Date from OCR.
+    // For FIT, the Wafid examination date becomes the Fit Date.
+    // For UNFIT or other statuses, clear Fit Date.
+    reg.setMedicalStatus(extractedStatus);
+    reg.setFitDate(extractedStatus === "fit" ? extractedDate : "");
+
+    reg.setSuccessMessage(
+      "Wafid Medical OCR completed. Review the information and save when ready.",
+    );
   }
 
-  
   async function scanMofa(file: File, base: ScanBase) {
     const result = await readMofa(file);
 
@@ -215,6 +225,10 @@ export function useRegistrationOcr(reg: Registration) {
       return;
     }
 
+    const reviewSuffix = result.reviewFields.length
+      ? " Please verify the OCR fields marked for review."
+      : "";
+
     // Look up the candidate without creating a MOFA record.
     const resolved = await lookupPassport(result.passportNo);
 
@@ -231,7 +245,7 @@ export function useRegistrationOcr(reg: Registration) {
       }
 
       reg.setSuccessMessage(
-        "MOFA OCR complete. Existing candidate found. Review the extracted fields and click Save MOFA.",
+        `MOFA OCR complete. Existing candidate found. Review the extracted fields and click Save MOFA.${reviewSuffix}`,
       );
     } else {
       reg.setName(result.name || "");
@@ -239,17 +253,10 @@ export function useRegistrationOcr(reg: Registration) {
       reg.setMofaCrossCheck(null);
 
       reg.setSuccessMessage(
-        "MOFA OCR complete. Candidate not found. Review the details before saving.",
-      );
-    }
-
-    if (result.reviewFields.length) {
-      reg.setSuccessMessage((prev) =>
-        `${prev} Please verify the OCR fields marked for review.`,
+        `MOFA OCR complete. Candidate not found. Review the details before saving.${reviewSuffix}`,
       );
     }
   }
-
 
   async function scanVisa(file: File, base: ScanBase) {
     const result = await extractKsaVisa(file);
@@ -258,7 +265,7 @@ export function useRegistrationOcr(reg: Registration) {
     reg.setVisaNo(result.visaNo || "");
     reg.setVisaDate(toInputDate(result.validFrom));
     reg.setVisaExpiryDate(toInputDate(result.validUntil));
-   reg.setVisaType(result.visaType || "");
+    reg.setVisaType(result.visaType || "");
 
     reg.setVisaRemarks(
       [
@@ -266,9 +273,7 @@ export function useRegistrationOcr(reg: Registration) {
         result.employerName ? `Employer: ${result.employerName}` : "",
         result.nationality ? `Nationality: ${result.nationality}` : "",
         result.refNo ? `Reference No: ${result.refNo}` : "",
-        result.applicationNo
-          ? `Application No: ${result.applicationNo}`
-          : "",
+        result.applicationNo ? `Application No: ${result.applicationNo}` : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -310,23 +315,8 @@ export function useRegistrationOcr(reg: Registration) {
       fields,
     });
 
-    // Match the Visa document to the candidate using passport number.
-    // Match only by passport number, then verify the candidate name.
-// Never create a candidate automatically from Visa OCR.
-if (result.passportNo) {
-  await reg.findVisaCandidateByPassport(
-    result.passportNo,
-    result.name,
-  );
-} else {
-  reg.setPassportNo("");
-  reg.setName(result.name || "");
-
-  reg.setSuccessMessage(
-    "Visa PDF read successfully, but passport number was not detected. Enter it manually and verify the candidate.",
-  );
-}
-
+    // Set the generic message first so any message from the candidate
+    // lookup below is not overwritten.
     reg.setSuccessMessage(
       detectedCount > 0
         ? result.passportNo
@@ -334,8 +324,16 @@ if (result.passportNo) {
           : `Visa PDF read successfully. ${detectedCount} field(s) detected. Passport number was not detected; select or enter the correct candidate before saving.`
         : "Visa PDF opened, but no fields were detected. Check the PDF.",
     );
-  }
 
+    // Match only by passport number, then verify the candidate name.
+    // Never create a candidate automatically from Visa OCR.
+    if (result.passportNo) {
+      await reg.findVisaCandidateByPassport(result.passportNo, result.name);
+    } else {
+      reg.setPassportNo("");
+      reg.setName(result.name || "");
+    }
+  }
 
   return { scans, anyScanning, handleScan, resetScans };
 }
