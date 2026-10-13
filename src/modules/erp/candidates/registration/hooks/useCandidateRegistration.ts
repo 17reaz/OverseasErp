@@ -32,7 +32,7 @@ export function useCandidateRegistration() {
   const [notes, setNotes] = useState("");
   const [savedCandidate, setSavedCandidate] = useState<Candidate | null>(null);
   const passportInputRef = useRef<HTMLInputElement>(null);
-
+  
   // Duplicate / existing candidate
   const [duplicate, setDuplicate] = useState<ExistingCandidateInfo | null>(
     null,
@@ -66,14 +66,18 @@ export function useCandidateRegistration() {
   );
 
   // Visa
-  const [visaNo, setVisaNo] = useState("");
-  const [visaDate, setVisaDate] = useState("");
-  const [visaExpiryDate, setVisaExpiryDate] = useState("");
-  const [visaType, setVisaType] = useState("");
-  const [visaStatus, setVisaStatus] = useState("issued");
-  const [visaRemarks, setVisaRemarks] = useState("");
-  const [visaSaved, setVisaSaved] = useState(false);
+ // Visa
+const [visaNo, setVisaNo] = useState("");
+const [visaDate, setVisaDate] = useState("");
+const [visaExpiryDate, setVisaExpiryDate] = useState("");
+const [visaType, setVisaType] = useState("amel_id");
+const [visaStatus, setVisaStatus] = useState("processing");
+const [visaRemarks, setVisaRemarks] = useState("");
+const [visaSaved, setVisaSaved] = useState(false);
 
+const [visaCandidateNotFound, setVisaCandidateNotFound] = useState(false);
+const [visaCandidateNameMismatch, setVisaCandidateNameMismatch] =
+  useState(false);
   // Shared
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -198,6 +202,7 @@ export function useCandidateRegistration() {
     setSavedMedicalId(info.medicalId ?? null);
     setMedicalSaved(!!info.medicalId);
     setMofaSaved(info.hasMofa);
+    setVisaCandidateNotFound(false);
   }
 
   function linkExistingCandidate(info: ExistingCandidateInfo) {
@@ -227,6 +232,8 @@ export function useCandidateRegistration() {
     setCurrentStep(1);
     setName("");
     setPassportNo("");
+    setVisaCandidateNotFound(false);
+setVisaCandidateNameMismatch(false);
     setReceivedDate(today());
     setCountry("");
     setNotes("");
@@ -355,35 +362,134 @@ export function useCandidateRegistration() {
     setSuccessMessage(`${candidateLabel}. MOFA record saved.`);
     return resolved;
   }
+async function findVisaCandidateByPassport(
+  rawPassport: string,
+  rawName: string,
+) {
+  const passport = normalizePassport(rawPassport);
 
-  async function saveVisaFor(rawPassport: string, rawName: string) {
-    const resolved = await resolveCandidate(rawPassport, rawName);
-    applyCandidate(resolved);
+  setErrorMessage("");
+  setSuccessMessage("");
 
-    const result = await createVisa({
-      candidate_id: resolved.info.candidate.id,
-      mofa_id: null,
-      visa_no: visaNo.trim() || null,
-      visa_date: visaDate || null,
-      expiry_date: visaExpiryDate || null,
-      visa_type: visaType.trim() || "amel_id",
-      status: visaStatus,
-      agency_id: agencyId || null,
-      remarks: visaRemarks.trim() || null,
-    });
+  if (!passport) {
+    setVisaCandidateNotFound(false);
+    setVisaCandidateNameMismatch(false);
+    setErrorMessage(
+      "Passport number was not detected. Enter it manually first.",
+    );
+    return null;
+  }
 
-    if (!result) {
-      throw new Error("Visa record was not returned after saving.");
-    }
+  const info = await lookupPassport(passport);
 
-    setVisaSaved(true);
+  if (!info) {
+    setSavedCandidate(null);
+    setLinkedExisting(false);
+    setExistingRecords({ medical: false, mofa: false });
+    setSavedMedicalId(null);
+    setMedicalSaved(false);
+    setMofaSaved(false);
+
+    setPassportNo(passport);
+    setName(rawName.trim());
+    setVisaCandidateNotFound(true);
+    setVisaCandidateNameMismatch(false);
+
     setSuccessMessage(
-      resolved.created
-        ? "New candidate and Visa record saved successfully."
-        : "Visa record saved successfully.",
+      "Candidate not found. Click Add Candidate to register this person before saving the Visa.",
+    );
+
+    return null;
+  }
+
+  const nameMatches =
+    Boolean(rawName.trim()) &&
+    normalizeName(rawName) === normalizeName(info.candidate.name);
+
+  if (!nameMatches) {
+    // Keep OCR name visible and editable until verification is complete.
+    setSavedCandidate(null);
+    setPassportNo(passport);
+    setName(rawName.trim());
+    setVisaCandidateNotFound(false);
+    setVisaCandidateNameMismatch(true);
+
+    setErrorMessage(
+      `Passport matched ${info.candidate.name}, but the OCR name does not match. Verify the name before continuing.`,
+    );
+
+    return info;
+  }
+
+  applyCandidate({ info, created: false });
+
+  setVisaCandidateNotFound(false);
+  setVisaCandidateNameMismatch(false);
+  setErrorMessage("");
+  setSuccessMessage(
+    `Candidate verified: ${info.candidate.name}. Review the Visa details and save.`,
+  );
+
+  return info;
+}
+  async function saveVisaFor(rawPassport: string, rawName: string) {
+  if (visaCandidateNameMismatch) {
+    throw new Error(
+      "Candidate name does not match. Verify the Candidate before saving.",
     );
   }
 
+  const passport = normalizePassport(rawPassport);
+
+  if (!passport || !rawName.trim()) {
+    throw new Error("Candidate name and passport number are required.");
+  }
+
+  // Always verify against the existing database record before saving.
+  const info = await lookupPassport(passport);
+
+  if (!info) {
+    setVisaCandidateNotFound(true);
+
+    throw new Error(
+      "Candidate not found. Click Add Candidate first.",
+    );
+  }
+
+  if (normalizeName(rawName) !== normalizeName(info.candidate.name)) {
+    setVisaCandidateNameMismatch(true);
+
+    throw new Error(
+      "Passport matched, but the candidate name does not match.",
+    );
+  }
+
+  applyCandidate({ info, created: false });
+
+  const result = await createVisa({
+    candidate_id: info.candidate.id,
+    mofa_id: null,
+    visa_no: visaNo.trim() || null,
+    visa_date: visaDate || null,
+    expiry_date: visaExpiryDate || null,
+
+    // Must be a valid system enum value, never raw OCR text.
+    visa_type: visaType || "amel_id",
+
+    status: visaStatus || "processing",
+    agency_id: agencyId || null,
+    remarks: visaRemarks.trim() || null,
+  });
+
+  if (!result) {
+    throw new Error("Visa record was not returned after saving.");
+  }
+
+  setVisaSaved(true);
+  setVisaCandidateNotFound(false);
+  setVisaCandidateNameMismatch(false);
+  setSuccessMessage("Visa record saved successfully.");
+}
   /* ───────── Manual form submits ───────── */
 
   async function handleCandidateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -408,15 +514,21 @@ export function useCandidateRegistration() {
     setSuccessMessage("");
 
     try {
-      const resolved = await resolveCandidate(passportNo, name);
-      applyCandidate(resolved);
+      const returnToVisaAfterCreate = visaCandidateNotFound;
 
-      setSuccessMessage(
-        resolved.created
-          ? "Candidate saved successfully."
-          : "This passport is already registered — existing candidate linked.",
-      );
-      setCurrentStep(2);
+const resolved = await resolveCandidate(passportNo, name);
+applyCandidate(resolved);
+
+setVisaCandidateNotFound(false);
+setVisaCandidateNameMismatch(false);
+
+setSuccessMessage(
+  resolved.created
+    ? "Candidate saved successfully."
+    : "This passport is already registered — existing candidate linked.",
+);
+
+setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
     } catch (error) {
       console.error("Candidate registration error:", error);
 
@@ -515,7 +627,9 @@ export function useCandidateRegistration() {
 
   /* ───────── Derived UI ───────── */
 
-  const statusLabel = mofaSaved
+  const statusLabel = visaSaved
+  ? "Visa Saved"
+  : mofaSaved
     ? "Registration Complete"
     : medicalSaved
       ? "Medical Saved"
@@ -524,7 +638,6 @@ export function useCandidateRegistration() {
           ? "Existing Candidate"
           : "Candidate Saved"
         : "Draft";
-
   return {
     // navigation
     currentStep,
@@ -592,6 +705,9 @@ export function useCandidateRegistration() {
     visaRemarks,
     setVisaRemarks,
     visaSaved,
+    visaCandidateNotFound,
+visaCandidateNameMismatch,
+findVisaCandidateByPassport,
 
     // shared
     saving,

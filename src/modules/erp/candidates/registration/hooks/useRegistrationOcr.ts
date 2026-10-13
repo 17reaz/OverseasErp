@@ -255,7 +255,7 @@ export function useRegistrationOcr(reg: Registration) {
     reg.setVisaNo(result.visaNo || "");
     reg.setVisaDate(toInputDate(result.validFrom));
     reg.setVisaExpiryDate(toInputDate(result.validUntil));
-    reg.setVisaType(result.visaType || "");
+   reg.setVisaType(result.visaType || "");
 
     reg.setVisaRemarks(
       [
@@ -308,22 +308,21 @@ export function useRegistrationOcr(reg: Registration) {
     });
 
     // Match the Visa document to the candidate using passport number.
-    if (result.passportNo) {
-      reg.setPassportNo(normalizePassport(result.passportNo));
+    // Match only by passport number, then verify the candidate name.
+// Never create a candidate automatically from Visa OCR.
+if (result.passportNo) {
+  await reg.findVisaCandidateByPassport(
+    result.passportNo,
+    result.name,
+  );
+} else {
+  reg.setPassportNo("");
+  reg.setName(result.name || "");
 
-      if (result.name && !reg.savedCandidate) {
-        reg.setName(result.name);
-      }
-
-      if (result.name) {
-        const resolved = await reg.resolveCandidate(
-          result.passportNo,
-          result.name,
-        );
-
-        reg.applyCandidate(resolved);
-      }
-    }
+  reg.setSuccessMessage(
+    "Visa PDF read successfully, but passport number was not detected. Enter it manually and verify the candidate.",
+  );
+}
 
     reg.setSuccessMessage(
       detectedCount > 0
