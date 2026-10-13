@@ -1,6 +1,5 @@
 // src/modules/erp/mofa/components/mofa-table.tsx
 
-// import { CalendarDays,MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
   CalendarDays,
@@ -37,9 +36,9 @@ interface MofaTableProps {
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
-onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
-onOpenCopy?: (mofa: Mofa) => Promise<void>;
-onDownloadCopy?: (mofa: Mofa) => Promise<void>;
+  onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
+  onOpenCopy?: (mofa: Mofa) => Promise<void>;
+  onDownloadCopy?: (mofa: Mofa) => Promise<void>;
   onEdit?: (mofa: Mofa) => void;
   onDelete?: (mofa: Mofa) => void;
 }
@@ -123,7 +122,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 /* =========================================================
- * TABLE
+ * ROW ACTIONS
  * ========================================================= */
 
 function MofaRowActions({
@@ -229,10 +228,7 @@ function MofaRowActions({
             Download MOFA Copy
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            disabled={busy}
-            onSelect={() => onEdit?.(mofa)}
-          >
+          <DropdownMenuItem disabled={busy} onSelect={() => onEdit?.(mofa)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
@@ -251,6 +247,10 @@ function MofaRowActions({
   );
 }
 
+/* =========================================================
+ * TABLE
+ * ========================================================= */
+
 export function MofaTable({
   mofas,
   loading = false,
@@ -259,9 +259,9 @@ export function MofaTable({
   pageSize = 10,
   total,
   onPageChange,
-onUploadCopy,
-onOpenCopy,
-onDownloadCopy,
+  onUploadCopy,
+  onOpenCopy,
+  onDownloadCopy,
   onEdit,
   onDelete,
 }: MofaTableProps) {
@@ -273,33 +273,33 @@ onDownloadCopy,
       cell: (mofa, index) => mofa.sl ?? index + 1,
     },
     {
-  key: "candidate",
-  header: "Candidate",
-  cell: (mofa) => (
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <p className="truncate text-sm font-medium">
-          {mofa.candidate?.name ?? "Unknown candidate"}
-        </p>
-        {mofa.version > 1 && (
-          <span
-            title={`MOFA version ${mofa.version}`}
-            className="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold leading-none text-amber-600 dark:text-amber-400"
-          >
-            <RotateCw className="size-2.5" />
-            V{mofa.version}
-          </span>
-        )}
-      </div>
+      key: "candidate",
+      header: "Candidate",
+      cell: (mofa) => (
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-sm font-medium">
+              {mofa.candidate?.name ?? "Unknown candidate"}
+            </p>
+            {mofa.version > 1 && (
+              <span
+                title={`MOFA version ${mofa.version}`}
+                className="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] font-semibold leading-none text-amber-600 dark:text-amber-400"
+              >
+                <RotateCw className="size-2.5" />
+                V{mofa.version}
+              </span>
+            )}
+          </div>
 
-      {mofa.candidate?.agent?.name && (
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          Agent: {mofa.candidate.agent.name}
-        </p>
-      )}
-    </div>
-  ),
-},
+          {mofa.candidate?.agent?.name && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              Agent: {mofa.candidate.agent.name}
+            </p>
+          )}
+        </div>
+      ),
+    },
     {
       key: "passport",
       header: "Passport",
@@ -322,21 +322,6 @@ onDownloadCopy,
       ),
     },
     {
-      key: "date",
-      header: "Date",
-      className: "w-[140px]",
-      hideOnMobile: true,
-      cell: (mofa) =>
-        mofa.application_date ? (
-          <div className="flex items-center gap-2 text-sm">
-            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>{formatDate(mofa.application_date)}</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        ),
-    },
-    {
       key: "agency",
       header: "Agency",
       className: "w-[150px]",
@@ -345,24 +330,32 @@ onDownloadCopy,
         mofa.agency ? (
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{mofa.agency.name}</p>
-
-            {mofa.agency.code && (
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {mofa.agency.code}
-              </p>
-            )}
           </div>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         ),
     },
     {
-      key: "trade",
-      header: "Trade",
-      className: "w-[130px]",
+      key: "trade_date",
+      header: "Trade / Date",
+      className: "w-[170px]",
       hideOnMobile: true,
       cell: (mofa) => (
-        <span className="block truncate text-sm">{mofa.trade ?? "—"}</span>
+        <div className="min-w-0 max-w-[160px]">
+          <p
+            className="truncate text-sm font-medium"
+            title={mofa.trade ?? undefined}
+          >
+            {mofa.trade ?? "—"}
+          </p>
+
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {formatDate(mofa.application_date)}
+            </span>
+          </div>
+        </div>
       ),
     },
     {
@@ -389,23 +382,21 @@ onDownloadCopy,
         </span>
       ),
     },
-    
-{
-  key: "action",
-  header: "Action",
-  className: "w-[120px] text-right",
-  cell: (mofa) => (
-    <MofaRowActions
-      mofa={mofa}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      onUploadCopy={onUploadCopy}
-      onOpenCopy={onOpenCopy}
-      onDownloadCopy={onDownloadCopy}
-    />
-  ),
-},
-
+    {
+      key: "action",
+      header: "Action",
+      className: "w-[120px] text-right",
+      cell: (mofa) => (
+        <MofaRowActions
+          mofa={mofa}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onUploadCopy={onUploadCopy}
+          onOpenCopy={onOpenCopy}
+          onDownloadCopy={onDownloadCopy}
+        />
+      ),
+    },
   ];
 
   return (
