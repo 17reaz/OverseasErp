@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, LayoutGrid, List } from "lucide-react";
 
 import { supabase } from "@/lib/supabase/client";
 
@@ -37,6 +37,247 @@ interface FileWithCandidate extends FileRecord {
   candidate?: CandidateInfo;
 }
 
+/* ------------------------------------------------------------------ */
+/* Preview helpers (shudhu UI-r jonno, page logic-e hat deini)         */
+/* ------------------------------------------------------------------ */
+
+// Tomar storage bucket-er nam ekhane dao (record-e `bucket` field thakle oita use hobe)
+const DEFAULT_BUCKET = "candidate-files";
+
+// FileRecord-e file-er path/url je field-e thake, oi nam gulo ekhane (upor theke priority)
+const PATH_FIELDS = [
+  "file_path",
+  "storage_path",
+  "path",
+  "file_url",
+  "url",
+  "public_url",
+] as const;
+
+// Preview na thakle ei sample image dekhabe
+const SAMPLE_PREVIEW =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#f1f5f9"/>
+  <rect x="115" y="30" width="170" height="240" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="135" y="55" width="60" height="60" rx="6" fill="#e2e8f0"/>
+  <circle cx="165" cy="76" r="11" fill="#cbd5e1"/>
+  <path d="M141 110 L158 92 L172 104 L184 94 L190 110 Z" fill="#cbd5e1"/>
+  <rect x="207" y="58" width="63" height="8" rx="4" fill="#cbd5e1"/>
+  <rect x="207" y="74" width="48" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="207" y="90" width="55" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="135" y="136" width="135" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="135" y="154" width="120" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="135" y="172" width="130" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="135" y="190" width="95" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="135" y="224" width="70" height="26" rx="5" fill="#e2e8f0"/>
+</svg>`);
+
+function readField(file: FileWithCandidate, key: string): string {
+  const value = (file as unknown as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : "";
+}
+
+function getFileRef(file: FileWithCandidate): string {
+  for (const key of PATH_FIELDS) {
+    const value = readField(file, key);
+    if (value) return value;
+  }
+  return "";
+}
+
+function getBucket(file: FileWithCandidate): string {
+  return (
+    readField(file, "bucket") ||
+    readField(file, "bucket_name") ||
+    DEFAULT_BUCKET
+  );
+}
+
+type PreviewKind = "image" | "pdf" | "other";
+
+function getPreviewKind(file: FileWithCandidate): PreviewKind {
+  const mime = (
+    readField(file, "mime_type") ||
+    readField(file, "content_type") ||
+    readField(file, "file_type")
+  ).toLowerCase();
+
+  const name = (
+    readField(file, "file_name") ||
+    readField(file, "name") ||
+    getFileRef(file)
+  )
+    .toLowerCase()
+    .split("?")[0];
+
+  if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/.test(name)) {
+    return "image";
+  }
+  if (mime.includes("pdf") || name.endsWith(".pdf")) {
+    return "pdf";
+  }
+  return "other";
+}
+
+// files list theke preview URL (signed/public) ber kore: { [fileId]: url }
+function useFilePreviews(files: FileWithCandidate[]) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolve() {
+      const next: Record<string, string> = {};
+      const byBucket = new Map<string, { id: string; path: string }[]>();
+
+      for (const file of files) {
+        const ref = getFileRef(file);
+        if (!ref) continue;
+
+        if (/^https?:\/\//i.test(ref)) {
+          next[file.id] = ref;
+          continue;
+        }
+
+        const bucket = getBucket(file);
+        const list = byBucket.get(bucket) ?? [];
+        list.push({ id: file.id, path: ref });
+        byBucket.set(bucket, list);
+      }
+
+      await Promise.all(
+        [...byBucket.entries()].map(async ([bucket, items]) => {
+          const { data, error } = await supabase.storage
+            .from(bucket)
+            .createSignedUrls(
+              items.map((item) => item.path),
+              3600,
+            );
+
+          if (error || !data) return;
+
+          data.forEach((row, index) => {
+            if (row.signedUrl && !row.error) {
+              next[items[index].id] = row.signedUrl;
+            }
+          });
+        }),
+      );
+
+      if (!cancelled) setUrls(next);
+    }
+
+    void resolve().catch((err) => {
+      console.error("Failed to load file previews:", err);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [files]);
+
+  return urls;
+}
+
+function FileCard({
+  file,
+  url,
+}: {
+  file: FileWithCandidate;
+  url?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  const kind = getPreviewKind(file);
+  const showReal = Boolean(url) && !failed && kind !== "other";
+  const title = file.candidate?.name ?? "Unknown candidate";
+
+  return (
+    <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+        {showReal && kind === "image" ? (
+          <img
+            src={url}
+            alt={`${file.doc_type} - ${title}`}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
+          />
+        ) : showReal && kind === "pdf" ? (
+          <iframe
+            src={`${url}#toolbar=0&navpanes=0&view=FitH`}
+            title={`${file.doc_type} - ${title}`}
+            loading="lazy"
+            className="pointer-events-none h-full w-full bg-white"
+          />
+        ) : (
+          <>
+            <img
+              src={SAMPLE_PREVIEW}
+              alt="No preview available"
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
+              No preview
+            </span>
+          </>
+        )}
+
+        {/* click korle file notun tab-e khulbe */}
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open ${file.doc_type} for ${title}`}
+            className="absolute inset-0"
+          />
+        )}
+
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
+          {file.doc_type}
+        </span>
+
+        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
+          v{file.version}
+        </span>
+      </div>
+
+      <div className="space-y-1.5 p-3">
+        <p className="truncate text-sm font-medium" title={title}>
+          {title}
+        </p>
+
+        <p className="truncate font-mono text-xs text-muted-foreground">
+          {file.candidate?.passport_no ?? "-"}
+        </p>
+
+        <div className="flex items-center justify-between pt-1 text-xs">
+          {file.is_active ? (
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700 dark:text-emerald-400">
+              Active
+            </span>
+          ) : (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+              Previous
+            </span>
+          )}
+
+          <span className="text-muted-foreground">
+            {new Date(file.created_at).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
+
 export function FilesPage() {
   const [tenantId, setTenantId] = useState<string | null>(null);
 
@@ -51,6 +292,8 @@ export function FilesPage() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState("");
+
+  const [view, setView] = useState<"grid" | "table">("grid");
 
   async function loadTenant() {
     const {
@@ -143,6 +386,8 @@ export function FilesPage() {
     });
   }, [files, search, docType]);
 
+  const previewUrls = useFilePreviews(files);
+
   return (
     <div className="space-y-6">
       
@@ -168,8 +413,32 @@ export function FilesPage() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>All Files</CardTitle>
+
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="icon"
+              variant={view === "grid" ? "secondary" : "ghost"}
+              aria-label="Grid view"
+              aria-pressed={view === "grid"}
+              onClick={() => setView("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+
+            <Button
+              type="button"
+              size="icon"
+              variant={view === "table" ? "secondary" : "ghost"}
+              aria-label="Table view"
+              aria-pressed={view === "table"}
+              onClick={() => setView("table")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -205,6 +474,16 @@ export function FilesPage() {
                   Upload File
                 </Button>
               )}
+            </div>
+          ) : view === "grid" ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredFiles.map((file) => (
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  url={previewUrls[file.id]}
+                />
+              ))}
             </div>
           ) : (
             <div className="overflow-x-auto">
