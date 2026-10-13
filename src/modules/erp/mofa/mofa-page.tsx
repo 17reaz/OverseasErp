@@ -4,7 +4,11 @@ import {
   useMemo,
   useState,
 } from "react";
-
+import {
+  getActiveCandidateFile,
+  getCandidateMofaFileUrl,
+  uploadCandidateMofa,
+} from "../candidates/candidate-files-service";
 import {
   toast,
 } from "@/components/shared/toast/toast";
@@ -803,6 +807,62 @@ export function MofaPage() {
   }
 
 
+async function handleUploadMofaCopy(mofa: Mofa, file: File) {
+  if (!mofa.tenant_id || !mofa.candidate_id) {
+    throw new Error("MOFA tenant or candidate information is missing.");
+  }
+
+  if (!mofa.candidate) {
+    throw new Error("Candidate information was not found.");
+  }
+
+  await uploadCandidateMofa({
+    tenantId: mofa.tenant_id,
+    candidateId: mofa.candidate_id,
+    candidateSl: mofa.candidate.sl ?? mofa.sl,
+    candidateName: mofa.candidate.name,
+    passportNo: mofa.candidate.passport_no,
+    file,
+  });
+
+  toast.success(
+    "MOFA copy uploaded.",
+    "The document was uploaded successfully.",
+  );
+}
+
+async function getMofaCopyUrl(mofa: Mofa) {
+  const fileRecord = await getActiveCandidateFile(
+    mofa.candidate_id,
+    "mofa",
+  );
+
+  if (!fileRecord) {
+    throw new Error("No MOFA copy has been uploaded for this candidate.");
+  }
+
+  return getCandidateMofaFileUrl(fileRecord.file_location);
+}
+
+async function handleViewMofaCopy(mofa: Mofa) {
+  const url = await getMofaCopyUrl(mofa);
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+async function handleDownloadMofaCopy(mofa: Mofa) {
+  const url = await getMofaCopyUrl(mofa);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.download = `mofa-${mofa.application_number || mofa.sl}.pdf`;
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
   /* =======================================================
    * FORM SUCCESS
    * ======================================================= */
@@ -1014,7 +1074,9 @@ export function MofaPage() {
           onDelete={
             handleDelete
           }
-
+onUploadCopy={handleUploadMofaCopy}
+onOpenCopy={handleViewMofaCopy}
+onDownloadCopy={handleDownloadMofaCopy}
         />
 
       )}

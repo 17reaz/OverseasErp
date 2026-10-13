@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 
 const PASSPORT_BUCKET = "passports";
 const VISA_BUCKET = "visas";
-
+const MOFA_BUCKET = "mofas";
 export interface CandidateFile {
   id: number;
   tenant_id: string;
@@ -69,7 +69,7 @@ async function uploadCandidateDocument({
   file,
 }: {
   bucket: string;
-  docType: "passport" | "visa";
+  docType: "passport" | "visa" | "mofa";
   tenantId: string;
   candidateId: string;
   candidateSl: number;
@@ -265,6 +265,51 @@ export async function getCandidateVisaFileUrl(
 ): Promise<string> {
   const { data, error } = await supabase.storage
     .from(VISA_BUCKET)
+    .createSignedUrl(fileLocation, 60 * 10);
+
+  if (error) throw error;
+
+  return data.signedUrl;
+}
+
+/**
+ * Upload a MOFA copy to the separate mofas bucket.
+ */
+export async function uploadCandidateMofa({
+  tenantId,
+  candidateId,
+  candidateSl,
+  candidateName,
+  passportNo,
+  file,
+}: {
+  tenantId: string;
+  candidateId: string;
+  candidateSl: number;
+  candidateName: string;
+  passportNo: string;
+  file: File;
+}): Promise<CandidateFile> {
+  return uploadCandidateDocument({
+    bucket: MOFA_BUCKET,
+    docType: "mofa",
+    tenantId,
+    candidateId,
+    candidateSl,
+    candidateName,
+    passportNo,
+    file,
+  });
+}
+
+/**
+ * Create a signed URL for a MOFA file.
+ */
+export async function getCandidateMofaFileUrl(
+  fileLocation: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(MOFA_BUCKET)
     .createSignedUrl(fileLocation, 60 * 10);
 
   if (error) throw error;

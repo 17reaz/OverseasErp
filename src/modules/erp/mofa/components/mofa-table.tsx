@@ -1,12 +1,17 @@
 // src/modules/erp/mofa/components/mofa-table.tsx
 
 // import { CalendarDays,MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 import {
   CalendarDays,
   MoreVertical,
   Pencil,
   RotateCw,
   Trash2,
+  Upload,
+  Eye,
+  Download,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,7 +37,9 @@ interface MofaTableProps {
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
-
+onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
+onOpenCopy?: (mofa: Mofa) => Promise<void>;
+onDownloadCopy?: (mofa: Mofa) => Promise<void>;
   onEdit?: (mofa: Mofa) => void;
   onDelete?: (mofa: Mofa) => void;
 }
@@ -119,6 +126,131 @@ function formatDate(value: string | null | undefined) {
  * TABLE
  * ========================================================= */
 
+function MofaRowActions({
+  mofa,
+  onEdit,
+  onDelete,
+  onUploadCopy,
+  onOpenCopy,
+  onDownloadCopy,
+}: {
+  mofa: Mofa;
+  onEdit?: (mofa: Mofa) => void;
+  onDelete?: (mofa: Mofa) => void;
+  onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
+  onOpenCopy?: (mofa: Mofa) => Promise<void>;
+  onDownloadCopy?: (mofa: Mofa) => Promise<void>;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function runAction(action: () => Promise<void>) {
+    try {
+      setBusy(true);
+      await action();
+    } catch (error) {
+      console.error("MOFA document action failed:", error);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "MOFA document action failed.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFileChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !onUploadCopy) return;
+
+    await runAction(() => onUploadCopy(mofa, file));
+  }
+
+  return (
+    <div className="flex justify-end">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon">
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <MoreVertical className="h-4 w-4" />
+            )}
+            <span className="sr-only">Open MOFA actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            disabled={busy || !onUploadCopy}
+            onSelect={(event) => {
+              event.preventDefault();
+              fileInputRef.current?.click();
+            }}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Upload MOFA Copy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            disabled={busy || !onOpenCopy}
+            onSelect={() => {
+              if (onOpenCopy) {
+                void runAction(() => onOpenCopy(mofa));
+              }
+            }}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View MOFA Copy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            disabled={busy || !onDownloadCopy}
+            onSelect={() => {
+              if (onDownloadCopy) {
+                void runAction(() => onDownloadCopy(mofa));
+              }
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download MOFA Copy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            disabled={busy}
+            onSelect={() => onEdit?.(mofa)}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            disabled={busy}
+            onSelect={() => onDelete?.(mofa)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function MofaTable({
   mofas,
   loading = false,
@@ -127,7 +259,9 @@ export function MofaTable({
   pageSize = 10,
   total,
   onPageChange,
-
+onUploadCopy,
+onOpenCopy,
+onDownloadCopy,
   onEdit,
   onDelete,
 }: MofaTableProps) {
@@ -255,49 +389,23 @@ export function MofaTable({
         </span>
       ),
     },
-    {
+    
+{
   key: "action",
   header: "Action",
-  className: "w-[100px] text-right",
+  className: "w-[120px] text-right",
   cell: (mofa) => (
-    <div className="flex justify-end">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-          >
-            <MoreVertical className="h-4 w-4" />
-            <span className="sr-only">
-              Open actions
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          align="end"
-          className="w-36"
-        >
-          <DropdownMenuItem
-            onClick={() => onEdit?.(mofa)}
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={() => onDelete?.(mofa)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <MofaRowActions
+      mofa={mofa}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onUploadCopy={onUploadCopy}
+      onOpenCopy={onOpenCopy}
+      onDownloadCopy={onDownloadCopy}
+    />
   ),
 },
+
   ];
 
   return (
