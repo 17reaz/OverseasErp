@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, LayoutGrid, List } from "lucide-react";
-
+import { PdfThumbnail } from "./components/pdf-thumbnail";
 import { supabase } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -147,13 +147,11 @@ function FileCard({
             onError={() => setFailed(true)}
           />
         ) : showReal && kind === "pdf" ? (
-          <iframe
-            src={`${url}#toolbar=0&navpanes=0&view=FitH`}
-            title={`${file.doc_type} - ${title}`}
-            loading="lazy"
-            className="pointer-events-none h-full w-full bg-white"
-          />
-        ) : (
+  <PdfThumbnail
+    url={url!}
+    title={`${file.doc_type} - ${title}`}
+  />
+) : (
           <>
             <img
               src={SAMPLE_PREVIEW}
