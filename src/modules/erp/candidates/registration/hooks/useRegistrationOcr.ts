@@ -14,7 +14,7 @@ import {
   field,
   normalizePassport,
   toInputDate,
-  toMedicalStatus,
+  toMedicalStatus,lookupPassport,
   validateScanFile,
 } from "../utils/registration-utils";
 import type { Registration } from "./useCandidateRegistration";

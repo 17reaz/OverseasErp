@@ -732,6 +732,7 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
     mofaCrossCheck,
     setMofaCrossCheck,
     saveMofaFor,
+    existingMofaRecord,
 
     // visa
     visaNo,
