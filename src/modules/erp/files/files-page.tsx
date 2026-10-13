@@ -38,21 +38,10 @@ interface FileWithCandidate extends FileRecord {
 }
 
 /* ------------------------------------------------------------------ */
-/* Preview helpers (shudhu UI-r jonno, page logic-e hat deini)         */
+/* Preview helpers                                                     */
 /* ------------------------------------------------------------------ */
 
-// Tomar storage bucket-er nam ekhane dao (record-e `bucket` field thakle oita use hobe)
-const DEFAULT_BUCKET = "candidate-files";
-
-// FileRecord-e file-er path/url je field-e thake, oi nam gulo ekhane (upor theke priority)
-const PATH_FIELDS = [
-  "file_path",
-  "storage_path",
-  "path",
-  "file_url",
-  "url",
-  "public_url",
-] as const;
+const BUCKET = "passports"; // files-service.ts er BUCKET er shathe same
 
 // Preview na thakle ei sample image dekhabe
 const SAMPLE_PREVIEW =
@@ -74,97 +63,49 @@ const SAMPLE_PREVIEW =
   <rect x="135" y="224" width="70" height="26" rx="5" fill="#e2e8f0"/>
 </svg>`);
 
-function readField(file: FileWithCandidate, key: string): string {
-  const value = (file as unknown as Record<string, unknown>)[key];
-  return typeof value === "string" ? value : "";
-}
-
-function getFileRef(file: FileWithCandidate): string {
-  for (const key of PATH_FIELDS) {
-    const value = readField(file, key);
-    if (value) return value;
-  }
-  return "";
-}
-
-function getBucket(file: FileWithCandidate): string {
-  return (
-    readField(file, "bucket") ||
-    readField(file, "bucket_name") ||
-    DEFAULT_BUCKET
-  );
-}
-
 type PreviewKind = "image" | "pdf" | "other";
 
+// file_location er extension theke type bujhi
+// (upload-er somoy filename-e extension thake: ...-v1.jpg / .pdf)
 function getPreviewKind(file: FileWithCandidate): PreviewKind {
-  const mime = (
-    readField(file, "mime_type") ||
-    readField(file, "content_type") ||
-    readField(file, "file_type")
-  ).toLowerCase();
+  const name = (file.file_location ?? "").toLowerCase();
 
-  const name = (
-    readField(file, "file_name") ||
-    readField(file, "name") ||
-    getFileRef(file)
-  )
-    .toLowerCase()
-    .split("?")[0];
-
-  if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/.test(name)) {
-    return "image";
-  }
-  if (mime.includes("pdf") || name.endsWith(".pdf")) {
-    return "pdf";
-  }
+  if (/\.(png|jpe?g|webp|gif)$/.test(name)) return "image";
+  if (name.endsWith(".pdf")) return "pdf";
   return "other";
 }
 
-// files list theke preview URL (signed/public) ber kore: { [fileId]: url }
+// files list theke signed URL ber kore: { [fileId]: url }
 function useFilePreviews(files: FileWithCandidate[]) {
-  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [urls, setUrls] = useState<Record<number, string>>({});
 
   useEffect(() => {
     let cancelled = false;
 
     async function resolve() {
-      const next: Record<string, string> = {};
-      const byBucket = new Map<string, { id: string; path: string }[]>();
+      const withPath = files.filter((file) => file.file_location);
 
-      for (const file of files) {
-        const ref = getFileRef(file);
-        if (!ref) continue;
-
-        if (/^https?:\/\//i.test(ref)) {
-          next[file.id] = ref;
-          continue;
-        }
-
-        const bucket = getBucket(file);
-        const list = byBucket.get(bucket) ?? [];
-        list.push({ id: file.id, path: ref });
-        byBucket.set(bucket, list);
+      if (withPath.length === 0) {
+        if (!cancelled) setUrls({});
+        return;
       }
 
-      await Promise.all(
-        [...byBucket.entries()].map(async ([bucket, items]) => {
-          const { data, error } = await supabase.storage
-            .from(bucket)
-            .createSignedUrls(
-              items.map((item) => item.path),
-              3600,
-            );
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(
+          withPath.map((file) => file.file_location),
+          3600,
+        );
 
-          if (error || !data) return;
+      if (error || !data) return;
 
-          data.forEach((row, index) => {
-            if (row.signedUrl && !row.error) {
-              next[items[index].id] = row.signedUrl;
-            }
-          });
-        }),
-      );
+      const next: Record<number, string> = {};
+
+      data.forEach((row, index) => {
+        if (row.signedUrl && !row.error) {
+          next[withPath[index].id] = row.signedUrl;
+        }
+      });
 
       if (!cancelled) setUrls(next);
     }
