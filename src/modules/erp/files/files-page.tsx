@@ -3,12 +3,7 @@ import { FileText, LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 import {
   Table,
@@ -141,6 +136,10 @@ function FileCard({
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [thumbnailLoading, setThumbnailLoading] = useState(false);
 
+  const kind = getPreviewKind(file);
+  const showReal = Boolean(url) && !failed && kind !== "other";
+  const title = file.candidate?.name ?? "Unknown candidate";
+
   useEffect(() => {
     if (getPreviewKind(file) !== "pdf" || !url) return;
 
@@ -179,77 +178,72 @@ function FileCard({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.id, url]);
-
-  const kind = getPreviewKind(file);
-  const showReal = Boolean(url) && !failed && kind !== "other";
-  const title = file.candidate?.name ?? "Unknown candidate";
-
-  // নিচে তোমার existing return (...) থাকবে
 
   return (
     <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-  {showReal && kind === "image" ? (
-    <img
-      src={url}
-      alt={`${file.doc_type} - ${title}`}
-      loading="lazy"
-      className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
-    />
-  ) : showReal && kind === "pdf" ? (
-    thumbnailUrl ? (
-      <img
-        src={thumbnailUrl}
-        alt={`${file.doc_type} - ${title}`}
-        loading="lazy"
-        className="h-full w-full object-cover object-top"
-      />
-    ) : (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted">
-        <FileText className="size-10 text-muted-foreground" />
+        {showReal && kind === "image" ? (
+          <img
+            src={url}
+            alt={`${file.doc_type} - ${title}`}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
+          />
+        ) : showReal && kind === "pdf" ? (
+          thumbnailUrl ? (
+            <img
+              src={thumbnailUrl}
+              alt={`${file.doc_type} - ${title}`}
+              loading="lazy"
+              className="h-full w-full object-cover object-top"
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted">
+              <FileText className="size-10 text-muted-foreground" />
 
-        <span className="text-center text-xs text-muted-foreground">
-          {thumbnailLoading
-            ? "Preparing PDF thumbnail..."
-            : "PDF thumbnail unavailable"}
+              <span className="text-center text-xs text-muted-foreground">
+                {thumbnailLoading
+                  ? "Preparing PDF thumbnail..."
+                  : "PDF thumbnail unavailable"}
+              </span>
+            </div>
+          )
+        ) : (
+          <>
+            <img
+              src={SAMPLE_PREVIEW}
+              alt="No preview available"
+              className="h-full w-full object-cover"
+            />
+
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
+              No preview
+            </span>
+          </>
+        )}
+
+        {/* Original file open korar link */}
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open ${file.doc_type} for ${title}`}
+            className="absolute inset-0"
+          />
+        )}
+
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
+          {file.doc_type}
+        </span>
+
+        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
+          v{file.version}
         </span>
       </div>
-    )
-  ) : (
-    <>
-      <img
-        src={SAMPLE_PREVIEW}
-        alt="No preview available"
-        className="h-full w-full object-cover"
-      />
-
-      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
-        No preview
-      </span>
-    </>
-  )}
-
-  {/* Original file open করার link */}
-  {url && (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      aria-label={`Open ${file.doc_type} for ${title}`}
-      className="absolute inset-0"
-    />
-  )}
-
-  <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
-    {file.doc_type}
-  </span>
-
-  <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
-    v{file.version}
-  </span>
-</div>
 
       <div className="space-y-1.5 p-3">
         <p className="truncate text-sm font-medium" title={title}>
@@ -396,29 +390,24 @@ export function FilesPage() {
 
   return (
     <div className="space-y-6">
-      <FilesToolbar
-        search={search}
-        onSearchChange={setSearch}
-        docType={docType}
-        onDocTypeChange={setDocType}
-        onRefresh={() => {
-          setRefreshing(true);
-          void initialize();
-        }}
-        onCreate={() => setUploadOpen(true)}
-        refreshing={refreshing}
-        createDisabled={!tenantId || candidates.length === 0}
-      />
+      {/* Sticky header: scroll korleo upore thakbe */}
+      <div className="sticky top-0 z-20 -mx-4 space-y-4 bg-background/95 px-4 pb-4 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <FilesToolbar
+          search={search}
+          onSearchChange={setSearch}
+          docType={docType}
+          onDocTypeChange={setDocType}
+          onRefresh={() => {
+            setRefreshing(true);
+            void initialize();
+          }}
+          onCreate={() => setUploadOpen(true)}
+          refreshing={refreshing}
+          createDisabled={!tenantId || candidates.length === 0}
+        />
 
-      {error && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>All Files</CardTitle>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">All Files</h2>
 
           <div className="flex items-center gap-1">
             <Button
@@ -443,9 +432,17 @@ export function FilesPage() {
               <List className="h-4 w-4" />
             </Button>
           </div>
-        </CardHeader>
+        </div>
+      </div>
 
-        <CardContent>
+      {error && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <Card>
+        <CardContent className="pt-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <p className="text-sm text-muted-foreground">
