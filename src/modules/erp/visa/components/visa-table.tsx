@@ -7,6 +7,7 @@ import {
   Eye,
   Download,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Visa } from "../visa-service";
@@ -62,6 +64,23 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
+// Visa record-e copy ache kina check kore.
+// Tomar Visa type-e copy-er je field ache (path/url/boolean), oita ei list-e rakho.
+const COPY_FIELDS = [
+  "visa_copy_path",
+  "visa_copy_url",
+  "visa_copy",
+  "copy_path",
+  "copy_url",
+  "file_path",
+  "has_copy",
+] as const;
+
+function hasVisaCopy(record: Visa): boolean {
+  const data = record as unknown as Record<string, unknown>;
+  return COPY_FIELDS.some((field) => Boolean(data[field]));
+}
+
 function VisaActions({
   record,
   onEdit,
@@ -79,6 +98,10 @@ function VisaActions({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  // upload successful hole sathe sathe menu bodlanor jonno
+  const [uploadedNow, setUploadedNow] = useState(false);
+
+  const copyExists = hasVisaCopy(record) || uploadedNow;
 
   async function runAction(action: () => Promise<void>) {
     setBusy(true);
@@ -106,7 +129,10 @@ function VisaActions({
           event.currentTarget.value = "";
 
           if (file) {
-            void runAction(() => onUploadCopy(record, file));
+            void runAction(async () => {
+              await onUploadCopy(record, file);
+              setUploadedNow(true);
+            });
           }
         }}
       />
@@ -123,26 +149,39 @@ function VisaActions({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => fileInputRef.current?.click()}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Visa Copy
-          </DropdownMenuItem>
+          {copyExists ? (
+            <>
+              <DropdownMenuItem
+                onSelect={() => void runAction(() => onOpenCopy(record))}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Visa Copy
+              </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onSelect={() => void runAction(() => onOpenCopy(record))}
-          >
-            <Eye className="mr-2 h-4 w-4" />
-            View Visa Copy
-          </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => void runAction(() => onDownloadCopy(record))}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Visa Copy
+              </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onSelect={() => void runAction(() => onDownloadCopy(record))}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download Visa Copy
-          </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => fileInputRef.current?.click()}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Replace Visa Copy
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuItem
+              onSelect={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Visa Copy
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuSeparator />
 
           <DropdownMenuItem onSelect={() => onEdit(record)}>
             <Pencil className="mr-2 h-4 w-4" />
