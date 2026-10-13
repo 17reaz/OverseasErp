@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, LayoutGrid, List } from "lucide-react";
-import { PdfThumbnail } from "./components/pdf-thumbnail";
 import { supabase } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -139,60 +138,118 @@ function FileCard({
   url?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [thumbnailLoading, setThumbnailLoading] = useState(false);
+
+  useEffect(() => {
+    if (getPreviewKind(file) !== "pdf" || !url) return;
+
+    let cancelled = false;
+
+    async function loadThumbnail() {
+      setThumbnailLoading(true);
+
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "file-pdf-thumbnail",
+          {
+            body: { fileId: file.id },
+          },
+        );
+
+        if (error) {
+          console.error("Thumbnail unavailable:", error.message);
+          return;
+        }
+
+        if (!cancelled && data?.thumbnailUrl) {
+          setThumbnailUrl(data.thumbnailUrl);
+        }
+      } catch (error) {
+        console.error("Failed to load PDF thumbnail:", error);
+      } finally {
+        if (!cancelled) {
+          setThumbnailLoading(false);
+        }
+      }
+    }
+
+    void loadThumbnail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [file.id, url]);
 
   const kind = getPreviewKind(file);
   const showReal = Boolean(url) && !failed && kind !== "other";
   const title = file.candidate?.name ?? "Unknown candidate";
 
+  // নিচে তোমার existing return (...) থাকবে
+
   return (
     <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-        {showReal && kind === "image" ? (
-          <img
-            src={url}
-            alt={`${file.doc_type} - ${title}`}
-            loading="lazy"
-            className="h-full w-full object-cover"
-            onError={() => setFailed(true)}
-          />
-        ) : showReal && kind === "pdf" ? (
-          <PdfThumbnail
-            url={url!}
-            cacheKey={file.file_location}
-            title={`${file.doc_type} - ${title}`}
-          />
-        ) : (
-          <>
-            <img
-              src={SAMPLE_PREVIEW}
-              alt="No preview available"
-              className="h-full w-full object-cover"
-            />
-            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
-              No preview
-            </span>
-          </>
-        )}
+  {showReal && kind === "image" ? (
+    <img
+      src={url}
+      alt={`${file.doc_type} - ${title}`}
+      loading="lazy"
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  ) : showReal && kind === "pdf" ? (
+    thumbnailUrl ? (
+      <img
+        src={thumbnailUrl}
+        alt={`${file.doc_type} - ${title}`}
+        loading="lazy"
+        className="h-full w-full object-cover object-top"
+      />
+    ) : (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted">
+        <FileText className="size-10 text-muted-foreground" />
 
-        {/* click korle file notun tab-e khulbe */}
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Open ${file.doc_type} for ${title}`}
-            className="absolute inset-0"
-          />
-        )}
-
-        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
-          {file.doc_type}
-        </span>
-
-        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
-          v{file.version}
+        <span className="text-center text-xs text-muted-foreground">
+          {thumbnailLoading
+            ? "Preparing PDF thumbnail..."
+            : "PDF thumbnail unavailable"}
         </span>
       </div>
+    )
+  ) : (
+    <>
+      <img
+        src={SAMPLE_PREVIEW}
+        alt="No preview available"
+        className="h-full w-full object-cover"
+      />
+
+      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
+        No preview
+      </span>
+    </>
+  )}
+
+  {/* Original file open করার link */}
+  {url && (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Open ${file.doc_type} for ${title}`}
+      className="absolute inset-0"
+    />
+  )}
+
+  <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
+    {file.doc_type}
+  </span>
+
+  <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
+    v{file.version}
+  </span>
+</div>
 
       <div className="space-y-1.5 p-3">
         <p className="truncate text-sm font-medium" title={title}>
