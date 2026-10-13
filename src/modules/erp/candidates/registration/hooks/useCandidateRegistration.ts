@@ -5,7 +5,13 @@ import {
   createMedical,
   type MedicalStatus,
 } from "../../../medical/medical-service";
-import { createMofa, type MofaStage } from "../../../mofa/mofa-service";
+// import { createMofa, type MofaStage } from "../../../mofa/mofa-service";
+import {
+  createMofa,
+  getMofaByApplicationNumber,
+  type Mofa,
+  type MofaStage,
+} from "../../../mofa/mofa-service";
 import {
   createCandidate,
   type Candidate,
@@ -64,6 +70,8 @@ export function useCandidateRegistration() {
   const [mofaCrossCheck, setMofaCrossCheck] = useState<MofaCrossCheck | null>(
     null,
   );
+  const [existingMofaRecord, setExistingMofaRecord] =
+  useState<Mofa | null>(null);
 
   // Visa
  // Visa
@@ -255,6 +263,7 @@ setVisaCandidateNameMismatch(false);
     setMofaSaved(false);
     setMofaCrossCheck(null);
     setVisaNo("");
+    setExistingMofaRecord(null);
     setVisaDate("");
     setVisaExpiryDate("");
     setVisaType("");
@@ -323,6 +332,39 @@ setVisaCandidateNameMismatch(false);
     applyCandidate(resolved);
 
     const { info, created } = resolved;
+    
+const normalizedApplicationNumber =
+  values.applicationNumber.trim();
+
+if (normalizedApplicationNumber) {
+  const existingResult = await getMofaByApplicationNumber(
+    normalizedApplicationNumber,
+  );
+
+  if (existingResult.error) {
+    throw existingResult.error;
+  }
+
+  if (existingResult.data) {
+    const existingMofa = existingResult.data;
+
+    setExistingMofaRecord(existingMofa);
+    setMofaSaved(true);
+
+    if (existingMofa.candidate_id === info.candidate.id) {
+      setSuccessMessage(
+        `This Application Number already exists. Existing MOFA record #${existingMofa.sl} is displayed; no duplicate was created.`,
+      );
+    } else {
+      setErrorMessage(
+        `Application Number ${normalizedApplicationNumber} already belongs to another candidate. Existing MOFA record #${existingMofa.sl} is displayed. Verify the candidate before proceeding.`,
+      );
+    }
+
+    return resolved;
+  }
+}
+
     const candidateLabel = created
       ? "New candidate created"
       : "Existing candidate found";

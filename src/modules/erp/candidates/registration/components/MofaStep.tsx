@@ -44,6 +44,7 @@ export function MofaStep({
     setAgencyId,
     mofaStage,
     setMofaStage,
+    existingMofaRecord,
     existingRecords,
     handleMofaSubmit,
   } = reg;
@@ -68,6 +69,65 @@ export function MofaStep({
         className="space-y-6"
       >
         <SelectedCandidateCard reg={reg} onReset={onReset} />
+        
+{existingMofaRecord && (
+  <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+    <div className="flex items-center justify-between gap-2">
+      <h3 className="font-semibold">Existing MOFA Record</h3>
+      <span className="text-xs rounded-full border px-2 py-1">
+        Already Registered
+      </span>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div>
+        <p className="text-sm text-muted-foreground">
+          Application Number
+        </p>
+        <p className="font-medium">
+          {existingMofaRecord.application_number || "—"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-muted-foreground">
+          Application Date
+        </p>
+        <p className="font-medium">
+          {existingMofaRecord.application_date || "—"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-muted-foreground">Candidate</p>
+        <p className="font-medium">
+          {existingMofaRecord.candidate?.name || "—"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-muted-foreground">Passport Number</p>
+        <p className="font-medium">
+          {existingMofaRecord.candidate?.passport_no || "—"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-muted-foreground">Trade</p>
+        <p className="font-medium">
+          {existingMofaRecord.trade || "—"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-muted-foreground">Stage</p>
+        <p className="font-medium">
+          {existingMofaRecord.stage}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
 
         <div className="grid gap-5 md:grid-cols-2">
           <div className="space-y-2">

@@ -355,6 +355,39 @@ export async function getMofas() {
   }
 }
 
+export async function getMofaByApplicationNumber(
+  applicationNumber: string,
+) {
+  try {
+    const tenantId = await getCurrentTenantId();
+    const normalized = applicationNumber.trim();
+
+    if (!normalized) {
+      return { data: null, error: null };
+    }
+
+    const { data, error } = await supabase
+      .from("mofas")
+      .select(mofaSelect)
+      .eq("tenant_id", tenantId)
+      .eq("application_number", normalized)
+      .maybeSingle();
+
+    if (error) return { data: null, error };
+
+    if (!data) return { data: null, error: null };
+
+    const [mofa] = await attachMofaVisas([data as Mofa]);
+
+    return { data: mofa, error: null };
+  } catch (error) {
+    return {
+      data: null,
+      error: toError(error, "Failed to find existing MOFA."),
+    };
+  }
+}
+
 /**
  * Medical is optional. A candidate can have:
  *

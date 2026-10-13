@@ -173,10 +173,11 @@ export function useRegistrationOcr(reg: Registration) {
     });
   }
 
+  
   async function scanMofa(file: File, base: ScanBase) {
     const result = await readMofa(file);
 
-    // Fill the MOFA form fields.
+    // Fill the form only. Do not save MOFA during OCR.
     reg.setApplicationNumber(result.applicationNumber || "");
     reg.setApplicationDate(result.applicationDate || "");
     reg.setTrade(result.trade || "");
@@ -209,44 +210,46 @@ export function useRegistrationOcr(reg: Registration) {
 
     if (!result.passportNo) {
       reg.setSuccessMessage(
-        "MOFA read, but no passport number was detected. Enter the passport number and save manually.",
+        "MOFA OCR complete. Passport number was not detected. Enter it manually and review the form.",
       );
       return;
     }
 
-    if (!reg.savedCandidate) {
+    // Look up the candidate without creating a MOFA record.
+    const resolved = await lookupPassport(result.passportNo);
+
+    if (resolved) {
+      reg.applyCandidate({ info: resolved, created: false });
+
+      if (result.name) {
+        reg.setMofaCrossCheck(
+          crossCheckWithPassport(result, {
+            passportNo: resolved.candidate.passport_no,
+            name: resolved.candidate.name,
+          }),
+        );
+      }
+
+      reg.setSuccessMessage(
+        "MOFA OCR complete. Existing candidate found. Review the extracted fields and click Save MOFA.",
+      );
+    } else {
       reg.setName(result.name || "");
       reg.setPassportNo(normalizePassport(result.passportNo));
-    }
+      reg.setMofaCrossCheck(null);
 
-    const resolved = await reg.saveMofaFor(
-      result.passportNo,
-      result.name || "",
-      {
-        agencyId: reg.agencyId,
-        applicationNumber: result.applicationNumber || "",
-        applicationDate: result.applicationDate || "",
-        trade: result.trade || "",
-        stage: reg.mofaStage,
-      },
-    );
-
-    // Compare the extracted MOFA data with the candidate on record.
-    if (result.name) {
-      reg.setMofaCrossCheck(
-        crossCheckWithPassport(result, {
-          passportNo: resolved.info.candidate.passport_no,
-          name: resolved.info.candidate.name,
-        }),
+      reg.setSuccessMessage(
+        "MOFA OCR complete. Candidate not found. Review the details before saving.",
       );
     }
 
     if (result.reviewFields.length) {
-      reg.setSuccessMessage(
-        (prev) => `${prev} Review the highlighted MOFA fields.`,
+      reg.setSuccessMessage((prev) =>
+        `${prev} Please verify the OCR fields marked for review.`,
       );
     }
   }
+
 
   async function scanVisa(file: File, base: ScanBase) {
     const result = await extractKsaVisa(file);
