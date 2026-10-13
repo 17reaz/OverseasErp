@@ -1,0 +1,12 @@
+
+{
+  "name": "overseaserp-passport-ocr",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.mjs",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.900.0",
+    "@aws-sdk/client-textract": "^3.900.0",
+    "@supabase/supabase-js": "^2.57.0"
+  }
+}
