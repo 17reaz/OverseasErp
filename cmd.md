@@ -1,3 +1,3 @@
 git add .
-git commit --no-verify -m "ok"
+git commit --no-verify -m "test"
 git push origin main
