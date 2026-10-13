@@ -1,6 +1,13 @@
-// src/modules/erp/visa/components/visa-table.tsx
-
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Upload,
+  Eye,
+  Download,
+  Loader2,
+} from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,13 +16,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import type { Visa } from "../visa-service";
-
 import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
 interface CandidateOption {
   id: string;
+  tenant_id: string;
+  sl: number;
   name: string;
   passport_no: string;
 }
@@ -35,20 +42,124 @@ interface VisaTableProps {
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
-
   onEdit: (record: Visa) => void;
   onDelete: (record: Visa) => void;
+  onUploadCopy: (record: Visa, file: File) => Promise<void>;
+  onOpenCopy: (record: Visa) => Promise<void>;
+  onDownloadCopy: (record: Visa) => Promise<void>;
 }
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
+
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
+
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+function VisaActions({
+  record,
+  onEdit,
+  onDelete,
+  onUploadCopy,
+  onOpenCopy,
+  onDownloadCopy,
+}: {
+  record: Visa;
+  onEdit: (record: Visa) => void;
+  onDelete: (record: Visa) => void;
+  onUploadCopy: (record: Visa, file: File) => Promise<void>;
+  onOpenCopy: (record: Visa) => Promise<void>;
+  onDownloadCopy: (record: Visa) => Promise<void>;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function runAction(action: () => Promise<void>) {
+    setBusy(true);
+
+    try {
+      await action();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Something went wrong.";
+      window.alert(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex justify-end">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+
+          if (file) {
+            void runAction(() => onUploadCopy(record, file));
+          }
+        }}
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" disabled={busy}>
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <MoreHorizontal className="h-4 w-4" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => fileInputRef.current?.click()}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Visa Copy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onSelect={() => void runAction(() => onOpenCopy(record))}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View Visa Copy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onSelect={() => void runAction(() => onDownloadCopy(record))}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Visa Copy
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onSelect={() => onEdit(record)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={() => onDelete(record)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 export function VisaTable({
@@ -61,17 +172,19 @@ export function VisaTable({
   pageSize = 10,
   total,
   onPageChange,
-
   onEdit,
   onDelete,
+  onUploadCopy,
+  onOpenCopy,
+  onDownloadCopy,
 }: VisaTableProps) {
   function getCandidate(id: string) {
-    return candidates.find((c) => c.id === id);
+    return candidates.find((candidate) => candidate.id === id);
   }
 
   function getAgency(id: string | null) {
     if (!id) return null;
-    return agencies.find((a) => a.id === id);
+    return agencies.find((agency) => agency.id === id);
   }
 
   const columns: DataTableColumn<Visa>[] = [
@@ -100,15 +213,6 @@ export function VisaTable({
         </span>
       ),
     },
-    // {
-    //   key: "visa_no",
-    //   header: "Visa No",
-    //   cell: (record) => (
-    //     <span className="font-mono text-xs font-semibold">
-    //       {record.visa_no}
-    //     </span>
-    //   ),
-    // },
     {
       key: "type",
       header: "Type",
@@ -129,41 +233,34 @@ export function VisaTable({
       hideOnMobile: true,
       cell: (record) => formatDate(record.expiry_date),
     },
-   
-{
-  key: "manpower",
-  header: "Manpower",
-  hideOnMobile: true,
-  cell: (record) => {
-    const bmetRecord = bmetRecords.find(
-      (bmet) => bmet.visa_id === record.id,
-    );
+    {
+      key: "manpower",
+      header: "Manpower",
+      hideOnMobile: true,
+      cell: (record) => {
+        const bmetRecord = bmetRecords.find(
+          (item) => item.visa_id === record.id,
+        );
 
-    if (!bmetRecord) {
-      return (
-        <span className="text-muted-foreground">
-          —
-        </span>
-      );
-    }
+        if (!bmetRecord) {
+          return <span className="text-muted-foreground">—</span>;
+        }
 
-    const isComplete =
-      bmetRecord.bmet === true;
+        const isComplete = bmetRecord.bmet === true;
 
-    return (
-      <span
-        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
-          isComplete
-            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-            : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-        }`}
-      >
-        {isComplete ? "Complete" : "Pending"}
-      </span>
-    );
-  },
-},
-
+        return (
+          <span
+            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              isComplete
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            }`}
+          >
+            {isComplete ? "Complete" : "Pending"}
+          </span>
+        );
+      },
+    },
     {
       key: "agency",
       header: "Agency",
@@ -185,26 +282,14 @@ export function VisaTable({
       header: "Actions",
       className: "w-[70px] text-right",
       cell: (record) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(record)}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => onDelete(record)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <VisaActions
+          record={record}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onUploadCopy={onUploadCopy}
+          onOpenCopy={onOpenCopy}
+          onDownloadCopy={onDownloadCopy}
+        />
       ),
     },
   ];

@@ -1,8 +1,9 @@
 import { supabase } from "@/lib/supabase/client";
 
-const BUCKET = "passports";
+const PASSPORT_BUCKET = "passports";
+const VISA_BUCKET = "visas";
 
-interface CandidateFile {
+export interface CandidateFile {
   id: number;
   tenant_id: string;
   candidate_id: string;
@@ -15,16 +16,13 @@ interface CandidateFile {
 }
 
 /**
- * Get the current active document
+ * Get the active document version.
  */
 export async function getActiveCandidateFile(
   candidateId: string,
   docType: string,
-) {
-  const {
-    data,
-    error,
-  } = await supabase
+): Promise<CandidateFile | null> {
+  const { data, error } = await supabase
     .from("files")
     .select("*")
     .eq("candidate_id", candidateId)
@@ -32,41 +30,160 @@ export async function getActiveCandidateFile(
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   return data as CandidateFile | null;
 }
 
 /**
- * Get all versions of a document
+ * Get document version history.
  */
 export async function getCandidateFileVersions(
   candidateId: string,
   docType: string,
-) {
-  const {
-    data,
-    error,
-  } = await supabase
+): Promise<CandidateFile[]> {
+  const { data, error } = await supabase
     .from("files")
     .select("*")
     .eq("candidate_id", candidateId)
     .eq("doc_type", docType)
-    .order("version", {
-      ascending: false,
-    });
+    .order("version", { ascending: false });
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   return (data ?? []) as CandidateFile[];
 }
 
 /**
- * Upload a new passport version
+ * Shared upload implementation.
+ * Uploads to the requested private bucket and records the version.
+ */
+async function uploadCandidateDocument({
+  bucket,
+  docType,
+  tenantId,
+  candidateId,
+  candidateSl,
+  candidateName,
+  passportNo,
+  file,
+}: {
+  bucket: string;
+  docType: "passport" | "visa";
+  tenantId: string;
+  candidateId: string;
+  candidateSl: number;
+  candidateName: string;
+  passportNo: string;
+  file: File;
+}): Promise<CandidateFile> {
+  if (!tenantId || !candidateId) {
+    throw new Error("Candidate tenant and ID are required.");
+  }
+
+  if (!file) {
+    throw new Error("Please select a file.");
+  }
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error("Only PDF, JPG, and PNG files are supported.");
+  }
+
+  // Keep the existing 5 MB limit consistent with Passport storage.
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("File size must not exceed 5 MB.");
+  }
+
+  const { data: currentFiles, error: listError } = await supabase
+    .from("files")
+    .select("*")
+    .eq("candidate_id", candidateId)
+    .eq("doc_type", docType)
+    .order("version", { ascending: false });
+
+  if (listError) throw listError;
+
+  const versions = (currentFiles ?? []) as CandidateFile[];
+  const currentFile = versions.find((item) => item.is_active) ?? null;
+  const nextVersion =
+    versions.reduce((max, item) => Math.max(max, item.version ?? 0), 0) + 1;
+
+  const safeName =
+    candidateName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "candidate";
+
+  const safePassportNo =
+    passportNo.trim().replace(/[^a-zA-Z0-9_-]/g, "") || "passport";
+
+  const extension =
+    file.name.split(".").pop()?.toLowerCase() || "bin";
+
+  const fileName =
+    `${candidateSl}-${safeName}-${safePassportNo}-${docType}-v${nextVersion}.${extension}`;
+
+  const filePath = `${tenantId}/${candidateId}/${fileName}`;
+
+  // 1. Upload the new file first.
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type,
+    });
+
+  if (uploadError) throw uploadError;
+
+  // 2. Insert the new document record.
+  const { data, error: insertError } = await supabase
+    .from("files")
+    .insert({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      doc_type: docType,
+      file_location: filePath,
+      version: nextVersion,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    // Best-effort cleanup if the database insert fails.
+    await supabase.storage.from(bucket).remove([filePath]);
+    throw insertError;
+  }
+
+  // 3. Mark previous active version inactive.
+  if (currentFile) {
+    const { error: updateError } = await supabase
+      .from("files")
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", currentFile.id);
+
+    if (updateError) {
+      // Keep the new record; report that version activation needs attention.
+      throw updateError;
+    }
+  }
+
+  return data as CandidateFile;
+}
+
+/**
+ * Upload a Passport copy to the existing passports bucket.
  */
 export async function uploadCandidatePassport({
   tenantId,
@@ -82,137 +199,75 @@ export async function uploadCandidatePassport({
   candidateName: string;
   passportNo: string;
   file: File;
-}) {
-  /*
-   * 1. Get current active version
-   */
-
-  const currentFile =
-    await getActiveCandidateFile(
-      candidateId,
-      "passport",
-    );
-
-  const nextVersion =
-    currentFile?.version
-      ? currentFile.version + 1
-      : 1;
-
-  /*
-   * 2. Make safe filename
-   */
-
-  const safeName = candidateName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  const safePassportNo = passportNo
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]/g, "");
-
-  const extension =
-    file.name.split(".").pop()?.toLowerCase() || "jpg";
-
-  const fileName =
-    `${candidateSl}-${safeName}-${safePassportNo}-passport-v${nextVersion}.${extension}`;
-
-  /*
-   * 3. Storage path
-   */
-
-  const filePath =
-    `${tenantId}/${candidateId}/${fileName}`;
-
-  /*
-   * 4. Upload to Supabase Storage
-   */
-
-  const {
-    error: uploadError,
-  } = await supabase.storage
-    .from(BUCKET)
-    .upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    throw uploadError;
-  }
-
-  /*
-   * 5. Disable previous active version
-   */
-
-  if (currentFile) {
-    const {
-      error: updateError,
-    } = await supabase
-      .from("files")
-      .update({
-        is_active: false,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", currentFile.id);
-
-    if (updateError) {
-      /*
-       * Upload succeeded but database update failed.
-       * Throw so caller knows something went wrong.
-       */
-      throw updateError;
-    }
-  }
-
-  /*
-   * 6. Insert new file record
-   */
-
-  const {
-    data,
-    error: insertError,
-  } = await supabase
-    .from("files")
-    .insert({
-      tenant_id: tenantId,
-      candidate_id: candidateId,
-      doc_type: "passport",
-      file_location: filePath,
-      version: nextVersion,
-      is_active: true,
-    })
-    .select()
-    .single();
-
-  if (insertError) {
-    throw insertError;
-  }
-
-  return data as CandidateFile;
+}): Promise<CandidateFile> {
+  return uploadCandidateDocument({
+    bucket: PASSPORT_BUCKET,
+    docType: "passport",
+    tenantId,
+    candidateId,
+    candidateSl,
+    candidateName,
+    passportNo,
+    file,
+  });
 }
 
 /**
- * Create a temporary signed URL
- * for viewing/downloading private files.
+ * Upload a Visa copy to the separate visas bucket.
+ */
+export async function uploadCandidateVisa({
+  tenantId,
+  candidateId,
+  candidateSl,
+  candidateName,
+  passportNo,
+  file,
+}: {
+  tenantId: string;
+  candidateId: string;
+  candidateSl: number;
+  candidateName: string;
+  passportNo: string;
+  file: File;
+}): Promise<CandidateFile> {
+  return uploadCandidateDocument({
+    bucket: VISA_BUCKET,
+    docType: "visa",
+    tenantId,
+    candidateId,
+    candidateSl,
+    candidateName,
+    passportNo,
+    file,
+  });
+}
+
+/**
+ * Create a signed URL for a Passport file.
  */
 export async function getCandidateFileUrl(
   fileLocation: string,
-) {
-  const {
-    data,
-    error,
-  } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(
-      fileLocation,
-      60 * 10,
-    );
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(PASSPORT_BUCKET)
+    .createSignedUrl(fileLocation, 60 * 10);
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
+
+  return data.signedUrl;
+}
+
+/**
+ * Create a signed URL for a Visa file.
+ */
+export async function getCandidateVisaFileUrl(
+  fileLocation: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(VISA_BUCKET)
+    .createSignedUrl(fileLocation, 60 * 10);
+
+  if (error) throw error;
 
   return data.signedUrl;
 }

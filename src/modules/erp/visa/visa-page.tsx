@@ -4,6 +4,11 @@ import { VisaPending } from "./components/visa-pending";
 import { VisaTable } from "./components/visa-table";
 import { VisaGrid } from "./components/visa-grid";
 import {
+  getActiveCandidateFile,
+  getCandidateVisaFileUrl,
+  uploadCandidateVisa,
+} from "../candidates/candidate-files-service";
+import {
   getBmetRecords,
   type BmetRecord,
 } from "../bmet/bmet-service";
@@ -201,6 +206,61 @@ const handleRefresh = useCallback(async () => {
       console.error("Failed to delete visa:", error);
     }
   }
+  async function handleUploadVisaCopy(record: Visa, file: File) {
+    const candidate = candidates.find(
+      (item) => item.id === record.candidate_id,
+    );
+
+    if (!candidate) {
+      throw new Error("Candidate information was not found.");
+    }
+
+    if (!candidate.tenant_id || !candidate.sl) {
+      throw new Error("Candidate tenant ID or SL is missing.");
+    }
+
+    await uploadCandidateVisa({
+      tenantId: candidate.tenant_id,
+      candidateId: candidate.id,
+      candidateSl: candidate.sl,
+      candidateName: candidate.name,
+      passportNo: candidate.passport_no,
+      file,
+    });
+
+    window.alert("Visa copy uploaded successfully.");
+  }
+
+  async function getVisaCopyUrl(record: Visa) {
+    const fileRecord = await getActiveCandidateFile(
+      record.candidate_id,
+      "visa",
+    );
+
+    if (!fileRecord) {
+      throw new Error("No Visa copy uploaded for this candidate yet.");
+    }
+
+    return getCandidateVisaFileUrl(fileRecord.file_location);
+  }
+
+  async function handleViewVisaCopy(record: Visa) {
+    const url = await getVisaCopyUrl(record);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleDownloadVisaCopy(record: Visa) {
+    const url = await getVisaCopyUrl(record);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.download = `visa-${record.visa_no || record.sl}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
 
   function handleFormSuccess(savedRecord: Visa) {
     setRecords((prev) => {
@@ -254,6 +314,9 @@ const handleRefresh = useCallback(async () => {
       bmetRecords={bmetRecords}
       onEdit={handleEdit}
       onDelete={handleDelete}
+      onUploadCopy={handleUploadVisaCopy}
+      onOpenCopy={handleViewVisaCopy}
+      onDownloadCopy={handleDownloadVisaCopy}
     />
   )}
 </div>
