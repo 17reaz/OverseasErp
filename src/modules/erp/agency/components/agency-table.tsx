@@ -1,19 +1,16 @@
-import { MoreHorizontal,Building2, Mail, Pencil, Phone, Trash2 } from "lucide-react";
+import { Building2, Mail, MoreHorizontal, Pencil, Phone, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Agency } from "../agency-service";
+import { cn } from "@/lib/utils";
 
-import {
-  DataTable,
-  type DataTableColumn,
-} from "../../shared/ui/data-table";
+import type { Agency } from "../agency-service";
+import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
 interface AgencyTableProps {
   agencies: Agency[];
@@ -26,6 +23,21 @@ interface AgencyTableProps {
 
   onEdit?: (agency: Agency) => void;
   onDelete?: (agency: Agency) => void;
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium sm:px-2.5 sm:py-1",
+        active
+          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground",
+      )}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
 }
 
 export function AgencyTable({
@@ -45,6 +57,7 @@ export function AgencyTable({
       key: "sl",
       header: "SL",
       className: "w-[70px]",
+      hideOnMobile: true,
       cell: (agency, index) => agency.sl ?? index + 1,
     },
 
@@ -52,12 +65,12 @@ export function AgencyTable({
       key: "agency",
       header: "Agency",
       cell: (agency) => (
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted/30">
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <Link
               to={`/app/agencies/${agency.id}`}
               className="block truncate text-sm font-medium hover:underline"
@@ -70,6 +83,25 @@ export function AgencyTable({
                 {agency.address}
               </p>
             )}
+
+            {/* Mobile only: details of the hidden columns */}
+            <div className="mt-1 space-y-0.5 text-xs text-muted-foreground md:hidden">
+              {agency.code && (
+                <p className="truncate">Code: {agency.code}</p>
+              )}
+              {agency.phone && (
+                <p className="flex min-w-0 items-center gap-1.5">
+                  <Phone className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{agency.phone}</span>
+                </p>
+              )}
+              {agency.email && (
+                <p className="flex min-w-0 items-center gap-1.5">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{agency.email}</span>
+                </p>
+              )}
+            </div>
           </div>
         </div>
       ),
@@ -80,11 +112,7 @@ export function AgencyTable({
       header: "Code",
       className: "w-[140px]",
       hideOnMobile: true,
-      cell: (agency) => (
-        <span className="block truncate">
-          {agency.code}
-        </span>
-      ),
+      cell: (agency) => <span className="block truncate">{agency.code}</span>,
     },
 
     {
@@ -96,15 +124,10 @@ export function AgencyTable({
         agency.phone ? (
           <div className="flex min-w-0 items-center gap-2">
             <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
-
-            <span className="truncate">
-              {agency.phone}
-            </span>
+            <span className="truncate">{agency.phone}</span>
           </div>
         ) : (
-          <span className="text-muted-foreground">
-            —
-          </span>
+          <span className="text-muted-foreground">—</span>
         ),
     },
 
@@ -117,80 +140,62 @@ export function AgencyTable({
         agency.email ? (
           <div className="flex min-w-0 items-center gap-2">
             <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-
-            <span className="truncate">
-              {agency.email}
-            </span>
+            <span className="truncate">{agency.email}</span>
           </div>
         ) : (
-          <span className="text-muted-foreground">
-            —
-          </span>
+          <span className="text-muted-foreground">—</span>
         ),
     },
 
     {
       key: "status",
       header: "Status",
-      className: "w-[120px]",
-      cell: (agency) => (
-        <span
-          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${
-            agency.is_active
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {agency.is_active ? "Active" : "Inactive"}
-        </span>
-      ),
+      className: "w-[84px] sm:w-[120px]",
+      cell: (agency) => <StatusBadge active={!!agency.is_active} />,
     },
 
     {
-  key: "action",
-  header: "Action",
-  className: "w-[100px] text-right",
-  cell: (agency) => (
-    <div className="flex items-center justify-end">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            title="More actions"
-            aria-label="More agency actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
+      key: "action",
+      header: "Action",
+      className: "w-[56px] text-right sm:w-[100px]",
+      cell: (agency) => (
+        <div className="flex items-center justify-end">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="More actions"
+                aria-label="More agency actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
 
-        <PopoverContent
-          align="end"
-          className="w-44 p-1"
-        >
-          <button
-            type="button"
-            onClick={() => onEdit?.(agency)}
-            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-            Edit agency
-          </button>
+            <PopoverContent align="end" className="w-44 p-1">
+              <button
+                type="button"
+                onClick={() => onEdit?.(agency)}
+                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit agency
+              </button>
 
-          <button
-            type="button"
-            onClick={() => onDelete?.(agency)}
-            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete agency
-          </button>
-        </PopoverContent>
-      </Popover>
-    </div>
-  ),
-},
+              <button
+                type="button"
+                onClick={() => onDelete?.(agency)}
+                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete agency
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -205,10 +210,7 @@ export function AgencyTable({
       page={page}
       onPageChange={onPageChange}
       total={total}
-      serverPagination={
-        typeof total === "number" &&
-        total !== agencies.length
-      }
+      serverPagination={typeof total === "number" && total !== agencies.length}
     />
   );
 }
