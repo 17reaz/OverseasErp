@@ -251,23 +251,27 @@ export function useRegistrationOcr(reg: Registration) {
   async function scanVisa(file: File, base: ScanBase) {
     const result = await extractKsaVisa(file);
 
-    // Fill the editable Visa registration form from OCR.
+    // Fill Visa registration form from the extracted PDF.
     reg.setVisaNo(result.visaNo || "");
     reg.setVisaDate(toInputDate(result.validFrom));
     reg.setVisaExpiryDate(toInputDate(result.validUntil));
     reg.setVisaType(result.visaType || "");
+
     reg.setVisaRemarks(
       [
         result.occupation ? `Occupation: ${result.occupation}` : "",
         result.employerName ? `Employer: ${result.employerName}` : "",
         result.nationality ? `Nationality: ${result.nationality}` : "",
         result.refNo ? `Reference No: ${result.refNo}` : "",
-        result.applicationNo ? `Application No: ${result.applicationNo}` : "",
+        result.applicationNo
+          ? `Application No: ${result.applicationNo}`
+          : "",
       ]
         .filter(Boolean)
         .join("\n"),
     );
 
+    // Show all extracted fields for verification.
     const fields: OcrField[] = [
       field("Visa No.", result.visaNo),
       field("Valid From", result.validFrom),
@@ -295,14 +299,41 @@ export function useRegistrationOcr(reg: Registration) {
       (item) => item.value !== NOT_DETECTED,
     ).length;
 
-    setScan("visa", { status: "done", progress: 100, ...base, fields });
+    // Keep OCR results visible even if candidate matching needs attention.
+    setScan("visa", {
+      status: "done",
+      progress: 100,
+      ...base,
+      fields,
+    });
+
+    // Match the Visa document to the candidate using passport number.
+    if (result.passportNo) {
+      reg.setPassportNo(normalizePassport(result.passportNo));
+
+      if (result.name && !reg.savedCandidate) {
+        reg.setName(result.name);
+      }
+
+      if (result.name) {
+        const resolved = await reg.resolveCandidate(
+          result.passportNo,
+          result.name,
+        );
+
+        reg.applyCandidate(resolved);
+      }
+    }
 
     reg.setSuccessMessage(
       detectedCount > 0
-        ? `Visa PDF read complete. ${detectedCount} field(s) detected. Verify the extracted details.`
+        ? result.passportNo
+          ? `Visa PDF read successfully. ${detectedCount} field(s) detected. Verify the details and save the Visa.`
+          : `Visa PDF read successfully. ${detectedCount} field(s) detected. Passport number was not detected; select or enter the correct candidate before saving.`
         : "Visa PDF opened, but no fields were detected. Check the PDF.",
     );
   }
+
 
   return { scans, anyScanning, handleScan, resetScans };
 }

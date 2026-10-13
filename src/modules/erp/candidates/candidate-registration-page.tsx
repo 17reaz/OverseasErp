@@ -85,9 +85,10 @@ export function CandidateRegistrationPage() {
             const Icon = step.icon;
             const active = currentStep === step.id;
             const completed =
-              (step.id === 1 && !!savedCandidate) ||
-              (step.id === 2 && medicalSaved) ||
-              (step.id === 3 && mofaSaved);
+  (step.id === 1 && !!savedCandidate) ||
+  (step.id === 2 && medicalSaved) ||
+  (step.id === 3 && mofaSaved) ||
+  (step.id === 4 && reg.visaSaved);
 
             return (
               <button
