@@ -392,10 +392,10 @@ const currentMofa = useMemo(
     label: agency.name,
   }));
 
-  const mofaOptions = availableMofas.map((mofa) => ({
-    value: mofa.id,
-    label: mofa.application_number ?? "No application number",
-  }));
+  // const mofaOptions = availableMofas.map((mofa) => ({
+  //   value: mofa.id,
+  //   label: mofa.application_number ?? "No application number",
+  // }));
 
   /* =======================================================
      RENDER
