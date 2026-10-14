@@ -40,11 +40,11 @@ previewFileName?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-
+  const [compareOpen, setCompareOpen] = useState(true);
   const scanning = scan.status === "scanning";
   const done = scan.status === "done";
   const locked = !!disabled || scanning;
-  const [previewOpen, setPreviewOpen] = useState(false);
+  // const [previewOpen, setPreviewOpen] = useState(false);
   function handleFiles(files: FileList | null) {
     const file = files?.[0];
     if (file) onFile(file);
@@ -178,30 +178,62 @@ previewFileName?: string;
         </div>
       )}
    {(file || previewUrl) && (
-        <>
-          <div className="mt-3 flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPreviewOpen((open) => !open)}
-            >
-              {previewOpen ? "Hide preview" : "Preview document"}
-            </Button>
-          </div>
+  <div className="mt-3 space-y-3">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        {previewUrl && (
+          <Badge variant="secondary">Old · Saved</Badge>
+        )}
+        {file && (
+          <Badge variant="default">New · Uploaded</Badge>
+        )}
+      </div>
 
-          {previewOpen && (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setCompareOpen((open) => !open)}
+      >
+        {compareOpen ? "Hide comparison" : "Compare files"}
+      </Button>
+    </div>
+
+    {compareOpen && (
+      <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
+        {previewUrl && (
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm font-medium">
+              Old Visa · Cloud file
+            </p>
+
             <DocumentPreviewPanel
-              file={file ?? null}
+              file={null}
               sourceUrl={previewUrl}
-              fileName={file?.name ?? previewFileName}
-              title={title}
-              onClose={() => setPreviewOpen(false)}
-              className="mt-3 h-[28rem]"
+              fileName={previewFileName}
+              title="Previously saved Visa"
+              className="h-[28rem]"
             />
-          )}
-        </>
-      )}
+          </div>
+        )}
+
+        {file && (
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm font-medium">
+              New Visa · Selected file
+            </p>
+
+            <DocumentPreviewPanel
+              file={file}
+              title="Newly uploaded Visa"
+              className="h-[28rem]"
+            />
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
     </div>
   );
 }
