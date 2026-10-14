@@ -589,3 +589,96 @@ export async function deleteMofa(id: string) {
 
   return { error };
 }
+export async function reactivateMofa(id: string) {
+  try {
+    if (!id) {
+      throw new Error("MOFA ID is required.");
+    }
+
+    // Load the latest MOFA and its linked medical.
+    const { data, error } = await supabase
+      .from("mofas")
+      .select(mofaSelect)
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+
+    const mofa = data as unknown as Mofa;
+
+    if (mofa.validity_status !== "invalid") {
+      throw new Error("Only invalid MOFA records can be reactivated.");
+    }
+
+    if (!mofa.medical_id || !mofa.medical) {
+      throw new Error(
+        "Please link a medical record before reactivating this MOFA.",
+      );
+    }
+
+    if (mofa.medical.status !== "fit") {
+      throw new Error("The linked medical must have Fit status.");
+    }
+
+    if (!mofa.medical.fit_date) {
+      throw new Error("The linked medical has no fit date.");
+    }
+
+    const fitTime = new Date(mofa.medical.fit_date).getTime();
+    const now = Date.now();
+    const validityMs = 90 * 24 * 60 * 60 * 1000;
+
+    if (
+      Number.isNaN(fitTime) ||
+      fitTime > now ||
+      now - fitTime >= validityMs
+    ) {
+      throw new Error(
+        "The linked medical is expired or has an invalid fit date.",
+      );
+    }
+
+    // A MOFA already linked to a visa cannot be reactivated.
+    const { data: linkedVisa, error: visaError } = await supabase
+      .from("visas")
+      .select("id")
+      .eq("mofa_id", id)
+      .limit(1);
+
+    if (visaError) throw visaError;
+
+    if (linkedVisa && linkedVisa.length > 0) {
+      throw new Error(
+        "This MOFA is already linked to a visa and cannot be reactivated.",
+      );
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from("mofas")
+      .update({
+        validity_status: "active",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("validity_status", "invalid")
+      .select("id")
+      .maybeSingle();
+
+    if (updateError) throw updateError;
+
+    if (!updated) {
+      throw new Error(
+        "MOFA status changed or the record could not be updated. Refresh and try again.",
+      );
+    }
+
+    return { error: null };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error
+          : new Error("Failed to reactivate MOFA."),
+    };
+  }
+}

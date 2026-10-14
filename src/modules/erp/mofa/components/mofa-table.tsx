@@ -31,10 +31,10 @@ import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 interface MofaTableProps {
   mofas: Mofa[];
   loading?: boolean;
-
   page?: number;
   pageSize?: number;
   total?: number;
+  onReactivate?: (mofa: Mofa) => Promise<void>;
   onPageChange?: (page: number) => void;
   onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
   onOpenCopy?: (mofa: Mofa) => Promise<void>;
@@ -129,6 +129,7 @@ function MofaRowActions({
   mofa,
   onEdit,
   onDelete,
+  onReactivate,
   onUploadCopy,
   onOpenCopy,
   onDownloadCopy,
@@ -136,6 +137,7 @@ function MofaRowActions({
   mofa: Mofa;
   onEdit?: (mofa: Mofa) => void;
   onDelete?: (mofa: Mofa) => void;
+  onReactivate?: (mofa: Mofa) => Promise<void>;
   onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
   onOpenCopy?: (mofa: Mofa) => Promise<void>;
   onDownloadCopy?: (mofa: Mofa) => Promise<void>;
@@ -227,7 +229,19 @@ function MofaRowActions({
             <Download className="mr-2 h-4 w-4" />
             Download MOFA Copy
           </DropdownMenuItem>
-
+            {mofa.validity_status === "invalid" && (
+  <DropdownMenuItem
+    disabled={busy || !onReactivate}
+    onSelect={() => {
+      if (onReactivate) {
+        void runAction(() => onReactivate(mofa));
+      }
+    }}
+  >
+    <RotateCw className="mr-2 h-4 w-4" />
+    Reactivate MOFA
+  </DropdownMenuItem>
+)}
           <DropdownMenuItem disabled={busy} onSelect={() => onEdit?.(mofa)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
@@ -264,6 +278,7 @@ export function MofaTable({
   onDownloadCopy,
   onEdit,
   onDelete,
+  onReactivate,
 }: MofaTableProps) {
   const columns: DataTableColumn<Mofa>[] = [
     {
@@ -394,6 +409,7 @@ export function MofaTable({
           onUploadCopy={onUploadCopy}
           onOpenCopy={onOpenCopy}
           onDownloadCopy={onDownloadCopy}
+          onReactivate={onReactivate}
         />
       ),
     },

@@ -41,6 +41,7 @@ import {
   getFitMedicalsWithoutMofa,
   getMofaCandidates,
   getMofas,
+  reactivateMofa,
   type Mofa,
   type MofaCandidate,
   type MofaPendingMedical,
@@ -806,7 +807,29 @@ export function MofaPage() {
 
   }
 
+async function handleReactivateMofa(mofa: Mofa) {
+  const confirmed = window.confirm(
+    `Reactivate MOFA for ${
+      mofa.candidate?.name ?? "this candidate"
+    }?`,
+  );
 
+  if (!confirmed) return;
+
+  const { error } = await reactivateMofa(mofa.id);
+
+  if (error) {
+    toast.error("Could not reactivate MOFA.", error.message);
+    return;
+  }
+
+  toast.success(
+    "MOFA reactivated.",
+    "The MOFA validity status is now active.",
+  );
+
+  await loadMofas();
+}
 async function handleUploadMofaCopy(mofa: Mofa, file: File) {
   if (!mofa.tenant_id || !mofa.candidate_id) {
     throw new Error("MOFA tenant or candidate information is missing.");
@@ -1070,7 +1093,7 @@ async function handleDownloadMofaCopy(mofa: Mofa) {
           onEdit={
             handleEdit
           }
-
+onReactivate={handleReactivateMofa}
           onDelete={
             handleDelete
           }
