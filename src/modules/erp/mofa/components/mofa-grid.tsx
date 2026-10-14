@@ -436,25 +436,48 @@ export function MofaGrid({ items, loading = false, onOpen }: MofaGridProps) {
   const [filter, setFilter] = useState<Filter>("all");
 
   // kom din baki age (urgent upore)
-  const rows = useMemo<Row[]>(() => {
-    if (loading) return [];
+ const rows = useMemo<Row[]>(() => {
+  if (loading) return [];
 
-    return items
-      .map((item) => {
-        const f = getFields(item);
-        const remaining = getRemaining(f);
+  return items
+  .filter((item) => {
+    const f = getFields(item);
 
-        return {
-          item,
-          id: String(item.id),
-          f,
-          days: getFitDays(f.fitDate),
-          remaining,
-          tone: getTone(remaining),
-        };
-      })
-      .sort((a, b) => a.remaining - b.remaining);
-  }, [items, loading]);
+    // Database status: active only
+    if (item.validity_status !== "active") {
+      return false;
+    }
+
+    // Medical fit date must exist
+    const fitTime = toTime(f.fitDate);
+
+    if (fitTime === null) {
+      return false;
+    }
+
+    // Future fit date is invalid
+    if (fitTime > Date.now()) {
+      return false;
+    }
+
+    // Medical validity: 90 days
+    return Date.now() - fitTime < MEDICAL_VALIDITY_DAYS * DAY_MS;
+  })
+  .map((item) => {
+    const f = getFields(item);
+    const remaining = getRemaining(f);
+
+    return {
+      item,
+      id: String(item.id),
+      f,
+      days: getFitDays(f.fitDate),
+      remaining,
+      tone: getTone(remaining),
+    };
+  })
+  .sort((a, b) => a.remaining - b.remaining);
+}, [items, loading]);
 
   const counts = useMemo(
     () => ({
