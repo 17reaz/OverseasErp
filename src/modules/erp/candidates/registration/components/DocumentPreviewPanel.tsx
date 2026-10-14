@@ -18,12 +18,22 @@ const ZOOM_STEP = 0.25;
 
 type PreviewKind = "image" | "pdf" | "other";
 
-function getPreviewKind(file: File): PreviewKind {
-  if (file.type.startsWith("image/")) return "image";
+function getPreviewKind(
+  file: File | null,
+  fileName?: string,
+): PreviewKind {
+  const name = (file?.name ?? fileName ?? "").toLowerCase();
 
   if (
-    file.type === "application/pdf" ||
-    file.name.toLowerCase().endsWith(".pdf")
+    file?.type.startsWith("image/") ||
+    /\.(png|jpe?g|webp|gif|bmp)$/i.test(name)
+  ) {
+    return "image";
+  }
+
+  if (
+    file?.type === "application/pdf" ||
+    name.endsWith(".pdf")
   ) {
     return "pdf";
   }
@@ -36,6 +46,8 @@ interface DocumentPreviewPanelProps {
   title: string;
   onClose?: () => void;
   className?: string;
+  sourceUrl?: string | null;
+  fileName?: string;
 }
 
 export function DocumentPreviewPanel({
@@ -43,18 +55,23 @@ export function DocumentPreviewPanel({
   title,
   onClose,
   className,
+  sourceUrl,
+  fileName,
 }: DocumentPreviewPanelProps) {
-  const url = useFilePreviewUrl(file);
+  const localUrl = useFilePreviewUrl(file);
+  const url = localUrl ?? sourceUrl ?? null;
+
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
 
-  // New file -> start from a clean view
   useEffect(() => {
     setZoom(1);
     setRotation(0);
-  }, [file]);
+  }, [file, sourceUrl]);
 
-  const kind = file ? getPreviewKind(file) : null;
+  const kind = file || fileName
+    ? getPreviewKind(file, fileName)
+    : null;
 
   return (
     <div
@@ -69,11 +86,11 @@ export function DocumentPreviewPanel({
           <FileText className="h-4 w-4 shrink-0 text-primary" />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{title}</p>
-            {file && (
-              <p className="truncate text-xs text-muted-foreground">
-                {file.name}
-              </p>
-            )}
+            {(file || fileName) && (
+  <p className="truncate text-xs text-muted-foreground">
+    {file?.name ?? fileName}
+  </p>
+)}
           </div>
         </div>
 
@@ -189,9 +206,12 @@ export function DocumentPreviewPanel({
           <div className="flex h-full min-h-48 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
             <p>Preview is not available for this file type.</p>
             <Button variant="outline" size="sm" asChild>
-              <a href={url} download={file.name}>
-                Download file
-              </a>
+              <a
+  href={url}
+  download={file?.name ?? fileName ?? "document"}
+>
+  Download file
+</a>
             </Button>
           </div>
         )}

@@ -1,5 +1,10 @@
 import { AlertTriangle, FileCheck, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import {
+  getActiveCandidateFile,
+  getCandidateVisaFileUrl,
+} from "../../candidate-files-service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,15 +66,59 @@ export function VisaStep({
   } = reg;
 
   const { agencies } = lookups;
+const [savedVisaPreview, setSavedVisaPreview] = useState<{
+  url: string;
+  fileName: string;
+} | null>(null);
 
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadSavedVisa() {
+    setSavedVisaPreview(null);
+
+    const candidate = reg.savedCandidate;
+    if (!candidate?.id) return;
+
+    try {
+      const activeFile = await getActiveCandidateFile(
+        candidate.id,
+        "visa",
+      );
+
+      if (!activeFile) return;
+
+      const url = await getCandidateVisaFileUrl(
+        activeFile.file_location,
+      );
+
+      if (cancelled) return;
+
+      const fileName =
+        activeFile.file_location.split("/").pop() || "visa.pdf";
+
+      setSavedVisaPreview({ url, fileName });
+    } catch (error) {
+      console.error("Could not load saved Visa preview:", error);
+    }
+  }
+
+  void loadSavedVisa();
+
+  return () => {
+    cancelled = true;
+  };
+}, [reg.savedCandidate?.id]);
   return (
     <>
-      <DocumentDropzone
+     <DocumentDropzone
   title="Saudi Visa document"
   hint="Saudi Visa PDF"
   icon={FileCheck}
   scan={scans.visa}
   file={files.visa}
+  previewUrl={savedVisaPreview?.url}
+  previewFileName={savedVisaPreview?.fileName}
   disabled={saving || visaSaved}
   onFile={(file) => void onScan("visa", file)}
 />

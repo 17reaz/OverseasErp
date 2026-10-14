@@ -16,12 +16,14 @@ import type { ScanState } from "../types";
 import { formatSize } from "../utils/registration-utils";
 import { DocumentPreviewPanel } from "./DocumentPreviewPanel";
 export function DocumentDropzone({
-  title,
+   title,
   hint,
   icon: Icon,
   scan,
   file,
   disabled,
+  previewUrl,
+  previewFileName,
   compact,
   onFile,
 }: {
@@ -31,6 +33,8 @@ export function DocumentDropzone({
   scan: ScanState;
   file?: File | null;
   disabled?: boolean;
+  previewUrl?: string | null;
+previewFileName?: string;
   compact?: boolean;
   onFile: (file: File) => void;
 }) {
@@ -173,7 +177,7 @@ export function DocumentDropzone({
           </div>
         </div>
       )}
-      {file && (
+   {(file || previewUrl) && (
   <>
     <div className="mt-3 flex justify-end">
       <Button
@@ -188,7 +192,9 @@ export function DocumentDropzone({
 
     {previewOpen && (
       <DocumentPreviewPanel
-        file={file}
+        file={file ?? null}
+        sourceUrl={previewUrl}
+        fileName={file?.name ?? previewFileName}
         title={title}
         onClose={() => setPreviewOpen(false)}
         className="mt-3 h-[28rem]"
