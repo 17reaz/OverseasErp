@@ -50,8 +50,8 @@ function MofaCrossCheckAlert({ result }: { result: MofaCrossCheckResult }) {
 export function CandidateRegistrationPage() {
   const reg = useCandidateRegistration();
   const lookups = useRegistrationLookups();
-  const { scans, anyScanning, handleScan, resetScans } =
-    useRegistrationOcr(reg);
+  const { scans, files, anyScanning, handleScan, resetScans } =
+  useRegistrationOcr(reg);
 
   const {
     currentStep,
@@ -78,6 +78,7 @@ export function CandidateRegistrationPage() {
   const stepProps = {
     reg,
     scans,
+    files,
     onScan: handleScan,
     onReset: handleReset,
   };

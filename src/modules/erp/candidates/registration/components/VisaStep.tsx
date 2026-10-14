@@ -28,6 +28,7 @@ export function VisaStep({
 }: {
   reg: Registration;
   lookups: RegistrationLookups;
+  files: Record<DocType, File | null>;
   scans: Record<DocType, ScanState>;
   onScan: (docType: DocType, file: File) => void;
   onReset: () => void;

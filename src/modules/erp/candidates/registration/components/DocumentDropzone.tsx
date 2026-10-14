@@ -14,12 +14,13 @@ import { cn } from "@/lib/utils";
 
 import type { ScanState } from "../types";
 import { formatSize } from "../utils/registration-utils";
-
+import { DocumentPreviewPanel } from "./DocumentPreviewPanel";
 export function DocumentDropzone({
   title,
   hint,
   icon: Icon,
   scan,
+  file,
   disabled,
   compact,
   onFile,
@@ -28,6 +29,7 @@ export function DocumentDropzone({
   hint: string;
   icon: LucideIcon;
   scan: ScanState;
+  file?: File | null;
   disabled?: boolean;
   compact?: boolean;
   onFile: (file: File) => void;
@@ -38,7 +40,7 @@ export function DocumentDropzone({
   const scanning = scan.status === "scanning";
   const done = scan.status === "done";
   const locked = !!disabled || scanning;
-
+  const [previewOpen, setPreviewOpen] = useState(false);
   function handleFiles(files: FileList | null) {
     const file = files?.[0];
     if (file) onFile(file);
@@ -171,6 +173,29 @@ export function DocumentDropzone({
           </div>
         </div>
       )}
+      {file && (
+  <>
+    <div className="mt-3 flex justify-end">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setPreviewOpen((open) => !open)}
+      >
+        {previewOpen ? "Hide preview" : "Preview document"}
+      </Button>
+    </div>
+
+    {previewOpen && (
+      <DocumentPreviewPanel
+        file={file}
+        title={title}
+        onClose={() => setPreviewOpen(false)}
+        className="mt-3 h-[28rem]"
+      />
+    )}
+  </>
+)}
     </div>
   );
 }

@@ -26,17 +26,25 @@ const initialScans: Record<DocType, ScanState> = {
   mofa: idleScan,
   visa: idleScan,
 };
-
+const initialFiles: Record<DocType, File | null> = {
+  passport: null,
+  medical: null,
+  mofa: null,
+  visa: null,
+};
 export function useRegistrationOcr(reg: Registration) {
   const [scans, setScans] = useState<Record<DocType, ScanState>>(initialScans);
-
+  const [files, setFiles] = useState<Record<DocType, File | null>>(
+  initialFiles,
+);
   const anyScanning = Object.values(scans).some(
     (scan) => scan.status === "scanning",
   );
 
   function resetScans() {
-    setScans(initialScans);
-  }
+  setScans(initialScans);
+  setFiles(initialFiles);
+}
 
   function setScan(docType: DocType, scan: ScanState) {
     setScans((prev) => ({ ...prev, [docType]: scan }));
@@ -48,7 +56,10 @@ export function useRegistrationOcr(reg: Registration) {
       reg.setErrorMessage(validationError);
       return;
     }
-
+    setFiles((prev) => ({
+  ...prev,
+  [docType]: file,
+}));
     reg.setErrorMessage("");
     reg.setSuccessMessage("");
     if (docType === "mofa") reg.setMofaCrossCheck(null);
@@ -343,5 +354,11 @@ async function scanMofa(file: File, base: ScanBase) {
     }
   }
 
-  return { scans, anyScanning, handleScan, resetScans };
+  return {
+  scans,
+  files,
+  anyScanning,
+  handleScan,
+  resetScans,
+};
 }
