@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { AlertCircle, Check, ChevronsUpDown, Lock } from "lucide-react";
-
+import {
+  AlertCircle,
+  Building2,
+  CalendarDays,
+  Check,
+  ChevronsUpDown,
+  FileText,
+  Lock,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,6 +61,25 @@ interface MofaOption {
   id: string;
   candidate_id: string;
   application_number: string | null;
+  application_date?: string | null;
+  version?: number;
+  stage?: string | null;
+  validity_status?: string | null;
+
+  candidate?: {
+    name: string;
+    passport_no: string;
+  } | null;
+
+  medical?: {
+    medical_date: string | null;
+    fit_date: string | null;
+    status: string;
+  } | null;
+
+  agency?: {
+    name: string;
+  } | null;
 }
 
 interface VisaFormProps {
@@ -198,6 +224,7 @@ export function VisaForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [candidateOpen, setCandidateOpen] = useState(false);
+  const [mofaOpen, setMofaOpen] = useState(false);
   const [advanceStage, setAdvanceStage] = useState(true);
 
   const isEdit = Boolean(record);
@@ -285,7 +312,12 @@ export function VisaForm({
 
     return filtered;
   }, [mofas, form.candidate_id, form.mofa_id]);
-
+const currentMofa = useMemo(
+  () =>
+    availableMofas.find((mofa) => mofa.id === form.mofa_id) ??
+    null,
+  [availableMofas, form.mofa_id],
+);
   /* =======================================================
      UPDATE FIELD
   ======================================================= */
@@ -614,18 +646,183 @@ export function VisaForm({
             options={agencyOptions}
           />
 
-          <FormSelect
-            label="MOFA Application"
-            placeholder={
-              form.candidate_id
-                ? "Select MOFA (optional)"
-                : "Select candidate first"
-            }
-            value={form.mofa_id}
-            onValueChange={(value) => updateField("mofa_id", value)}
-            disabled={saving || !form.candidate_id}
-            options={mofaOptions}
-          />
+          
+<div className="space-y-2">
+  <Label htmlFor="visa-mofa">MOFA Application</Label>
+
+  <Popover open={mofaOpen} onOpenChange={setMofaOpen}>
+    <PopoverTrigger asChild>
+      <Button
+        id="visa-mofa"
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={mofaOpen}
+        disabled={saving || !form.candidate_id}
+        className="h-auto min-h-14 w-full justify-between gap-3 py-2.5 text-left font-normal"
+      >
+        {currentMofa ? (
+          <div className="min-w-0 flex-1 space-y-1 text-left">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate text-sm font-semibold">
+                {currentMofa.application_number || "No application number"}
+              </span>
+              {currentMofa.version != null && (
+                <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">
+                  V{currentMofa.version}
+                </span>
+              )}
+            </div>
+
+            <p className="truncate text-xs text-muted-foreground">
+              {currentMofa.candidate?.name || currentCandidate?.name || "Candidate"}
+              {" · Passport: "}
+              {currentMofa.candidate?.passport_no || currentCandidate?.passport_no || "—"}
+            </p>
+
+            <p className="truncate text-xs text-muted-foreground">
+              Medical: {currentMofa.medical?.status || "—"}
+              {currentMofa.medical?.fit_date
+                ? ` · Fit: ${currentMofa.medical.fit_date}`
+                : ""}
+            </p>
+
+            {currentMofa.agency?.name && (
+              <p className="truncate text-xs text-muted-foreground">
+                Agency: {currentMofa.agency.name}
+              </p>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            {form.candidate_id
+              ? "Select MOFA application (optional)"
+              : "Select candidate first"}
+          </span>
+        )}
+
+        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+
+    <PopoverContent
+      align="start"
+      className="w-[var(--radix-popover-trigger-width)] p-0"
+    >
+      <Command>
+        <CommandInput placeholder="Search MOFA, candidate or passport..." />
+
+        <CommandList>
+          <CommandEmpty>No MOFA application found.</CommandEmpty>
+
+          <CommandGroup>
+            <CommandItem
+              value="no mofa"
+              onSelect={() => {
+                updateField("mofa_id", "");
+                setMofaOpen(false);
+              }}
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  !form.mofa_id ? "opacity-100" : "opacity-0",
+                )}
+              />
+              No MOFA linked
+            </CommandItem>
+
+            {availableMofas.map((mofa) => (
+              <CommandItem
+                key={mofa.id}
+                value={[
+                  mofa.application_number || "No application number",
+                  mofa.candidate?.name || currentCandidate?.name || "",
+                  mofa.candidate?.passport_no || currentCandidate?.passport_no || "",
+                  mofa.agency?.name || "",
+                ].join(" ")}
+                onSelect={() => {
+                  updateField("mofa_id", mofa.id);
+                  setMofaOpen(false);
+                }}
+                className="items-start py-3"
+              >
+                <Check
+                  className={cn(
+                    "mr-2 mt-1 h-4 w-4 shrink-0",
+                    form.mofa_id === mofa.id
+                      ? "opacity-100"
+                      : "opacity-0",
+                  )}
+                />
+
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-all text-sm font-semibold">
+                      {mofa.application_number || "No application number"}
+                    </span>
+
+                    {mofa.version != null && (
+                      <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">
+                        V{mofa.version}
+                      </span>
+                    )}
+
+                    {mofa.validity_status && (
+                      <span className="rounded-full border px-2 py-0.5 text-[10px] capitalize">
+                        {mofa.validity_status}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    {mofa.candidate?.name || currentCandidate?.name || "Candidate"}
+                    {" · Passport: "}
+                    {mofa.candidate?.passport_no || currentCandidate?.passport_no || "—"}
+                  </p>
+
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {mofa.application_date && (
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {mofa.application_date}
+                      </span>
+                    )}
+
+                    {mofa.medical?.status && (
+                      <span className="capitalize">
+                        Medical: {mofa.medical.status}
+                      </span>
+                    )}
+
+                    {mofa.medical?.fit_date && (
+                      <span>Fit: {mofa.medical.fit_date}</span>
+                    )}
+                  </div>
+
+                  {mofa.agency?.name && (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{mofa.agency.name}</span>
+                    </p>
+                  )}
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </PopoverContent>
+  </Popover>
+
+  {form.candidate_id && availableMofas.length === 0 && (
+    <p className="text-xs text-muted-foreground">
+      No MOFA applications available for this candidate.
+    </p>
+  )}
+</div>
+
         </div>
       </FormSection>
 

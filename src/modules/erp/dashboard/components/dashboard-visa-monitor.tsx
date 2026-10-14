@@ -7,10 +7,9 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  getDashboardVisaWarnings,
   type DashboardVisaWarning,
 } from "../dashboard-visa-monitor-service";
-
+import { orchestrator } from "@/lib/data/orchestrator";
 const MAX_VISIBLE = 4;
 
 interface VisaStatus {
@@ -72,7 +71,7 @@ export function DashboardVisaMonitor() {
     try {
       setError(null);
 
-      const data = await getDashboardVisaWarnings();
+      const data = await orchestrator.dashboard.getVisaWarnings();
 
       setVisas(data);
     } catch (err) {
