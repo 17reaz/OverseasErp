@@ -23,6 +23,7 @@ export function VisaStep({
   reg,
   lookups,
   scans,
+  files,
   onScan,
   onReset,
 }: {
@@ -64,13 +65,14 @@ export function VisaStep({
   return (
     <>
       <DocumentDropzone
-        title="Saudi Visa document"
-        hint="Saudi Visa PDF"
-        icon={FileCheck}
-        scan={scans.visa}
-        disabled={saving || visaSaved}
-        onFile={(file) => void onScan("visa", file)}
-      />
+  title="Saudi Visa document"
+  hint="Saudi Visa PDF"
+  icon={FileCheck}
+  scan={scans.visa}
+  file={files.visa}
+  disabled={saving || visaSaved}
+  onFile={(file) => void onScan("visa", file)}
+/>
 
       <Separator />
 
