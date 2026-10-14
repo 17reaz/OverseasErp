@@ -146,16 +146,7 @@ const [unreadCount,setUnreadCount] = useState(0);
             </kbd>
           </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            aria-label="Search"
-            onClick={() => setGlobalSearchOpen(true)}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
+          
 <Button
   type="button"
   variant="ghost"
