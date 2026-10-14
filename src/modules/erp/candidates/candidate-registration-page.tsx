@@ -24,6 +24,29 @@ import { useCandidateRegistration } from "./registration/hooks/useCandidateRegis
 import { useRegistrationLookups } from "./registration/hooks/useRegistrationLookups";
 import { useRegistrationOcr } from "./registration/hooks/useRegistrationOcr";
 
+type MofaCrossCheckResult = NonNullable<
+  ReturnType<typeof useCandidateRegistration>["mofaCrossCheck"]
+>;
+
+function MofaCrossCheckAlert({ result }: { result: MofaCrossCheckResult }) {
+  const allMatch = result.passportNoMatches && result.nameMatches;
+
+  return (
+    <Alert variant={allMatch ? "default" : "destructive"}>
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>MOFA / Passport Cross-check</AlertTitle>
+      <AlertDescription>
+        <p>
+          Passport Number:{" "}
+          {result.passportNoMatches ? "Matched" : "Does not match"}
+        </p>
+        <p>Name: {result.nameMatches ? "Matched" : "Does not match"}</p>
+        <p className="mt-1">Verify the details against both documents.</p>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 export function CandidateRegistrationPage() {
   const reg = useCandidateRegistration();
   const lookups = useRegistrationLookups();
@@ -34,13 +57,30 @@ export function CandidateRegistrationPage() {
     currentStep,
     goToStep,
     statusLabel,
-    mofaSaved,
-    medicalSaved,
     savedCandidate,
+    medicalSaved,
+    mofaSaved,
+    visaSaved,
     errorMessage,
     successMessage,
     mofaCrossCheck,
   } = reg;
+
+  // Step id -> has this step been completed?
+  const stepCompleted: Record<number, boolean> = {
+    1: !!savedCandidate,
+    2: medicalSaved,
+    3: mofaSaved,
+    4: visaSaved,
+  };
+
+  // Props shared by every step component
+  const stepProps = {
+    reg,
+    scans,
+    onScan: handleScan,
+    onReset: handleReset,
+  };
 
   function handleReset() {
     reg.resetRegistration();
@@ -84,11 +124,7 @@ export function CandidateRegistrationPage() {
           {steps.map((step) => {
             const Icon = step.icon;
             const active = currentStep === step.id;
-            const completed =
-  (step.id === 1 && !!savedCandidate) ||
-  (step.id === 2 && medicalSaved) ||
-  (step.id === 3 && mofaSaved) ||
-  (step.id === 4 && reg.visaSaved);
+            const completed = stepCompleted[step.id] ?? false;
 
             return (
               <button
@@ -137,42 +173,14 @@ export function CandidateRegistrationPage() {
 
           <CardContent className="space-y-6 pt-6">
             {currentStep === 1 && (
-              <CandidateStep
-                reg={reg}
-                lookups={lookups}
-                scans={scans}
-                onScan={handleScan}
-                onReset={handleReset}
-              />
+              <CandidateStep {...stepProps} lookups={lookups} />
             )}
-
-            {currentStep === 2 && (
-              <MedicalStep
-                reg={reg}
-                scans={scans}
-                onScan={handleScan}
-                onReset={handleReset}
-              />
-            )}
-
+            {currentStep === 2 && <MedicalStep {...stepProps} />}
             {currentStep === 3 && (
-              <MofaStep
-                reg={reg}
-                lookups={lookups}
-                scans={scans}
-                onScan={handleScan}
-                onReset={handleReset}
-              />
+              <MofaStep {...stepProps} lookups={lookups} />
             )}
-
             {currentStep === 4 && (
-              <VisaStep
-                reg={reg}
-                lookups={lookups}
-                scans={scans}
-                onScan={handleScan}
-                onReset={handleReset}
-              />
+              <VisaStep {...stepProps} lookups={lookups} />
             )}
 
             {/* ───── Messages ───── */}
@@ -192,33 +200,7 @@ export function CandidateRegistrationPage() {
               </Alert>
             )}
 
-            {mofaCrossCheck && (
-              <Alert
-                variant={
-                  mofaCrossCheck.passportNoMatches && mofaCrossCheck.nameMatches
-                    ? "default"
-                    : "destructive"
-                }
-              >
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>MOFA / Passport Cross-check</AlertTitle>
-                <AlertDescription>
-                  <p>
-                    Passport Number:{" "}
-                    {mofaCrossCheck.passportNoMatches
-                      ? "Matched"
-                      : "Does not match"}
-                  </p>
-                  <p>
-                    Name:{" "}
-                    {mofaCrossCheck.nameMatches ? "Matched" : "Does not match"}
-                  </p>
-                  <p className="mt-1">
-                    Verify the details against both documents.
-                  </p>
-                </AlertDescription>
-              </Alert>
-            )}
+            {mofaCrossCheck && <MofaCrossCheckAlert result={mofaCrossCheck} />}
           </CardContent>
         </Card>
       </div>
