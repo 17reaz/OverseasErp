@@ -178,30 +178,30 @@ previewFileName?: string;
         </div>
       )}
    {(file || previewUrl) && (
-  <>
-    <div className="mt-3 flex justify-end">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setPreviewOpen((open) => !open)}
-      >
-        {previewOpen ? "Hide preview" : "Preview document"}
-      </Button>
-    </div>
+        <>
+          <div className="mt-3 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewOpen((open) => !open)}
+            >
+              {previewOpen ? "Hide preview" : "Preview document"}
+            </Button>
+          </div>
 
-    {previewOpen && (
-      <DocumentPreviewPanel
-        file={file ?? null}
-        sourceUrl={previewUrl}
-        fileName={file?.name ?? previewFileName}
-        title={title}
-        onClose={() => setPreviewOpen(false)}
-        className="mt-3 h-[28rem]"
-      />
-    )}
-  </>
-)}
+          {previewOpen && (
+            <DocumentPreviewPanel
+              file={file ?? null}
+              sourceUrl={previewUrl}
+              fileName={file?.name ?? previewFileName}
+              title={title}
+              onClose={() => setPreviewOpen(false)}
+              className="mt-3 h-[28rem]"
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
