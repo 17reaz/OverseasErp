@@ -13,7 +13,9 @@ import {
   Users,
   UsersRound,
 } from "lucide-react";
-
+import {
+  SettingsPageHeader,
+} from "./settings-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -169,15 +171,11 @@ export function BillingPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <Receipt className="size-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold tracking-tight">Billing</h1>
-        </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Manage your subscription, billing information, invoices, and payments.
-        </p>
-      </div>
+      <SettingsPageHeader
+  icon={Receipt}
+  title="Billing"
+  description="Manage your subscription, billing information, invoices, and payments."
+/>
 
       <Card className="divide-y overflow-hidden">
         {/* ---------------------------------------------------------------- */}

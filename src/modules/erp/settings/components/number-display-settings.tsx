@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Check, Hash, Info } from "lucide-react";
-
+import { Check, Hash, Info, Binary } from "lucide-react";
+import {
+  SettingsPageHeader,
+} from "./settings-ui";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -80,12 +82,11 @@ export function NumberDisplaySettings() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h2 className="text-lg font-semibold">Number Display</h2>
-        <p className="text-sm text-muted-foreground">
-          Control how large numbers are displayed across your ERP.
-        </p>
-      </div>
+      <SettingsPageHeader
+  icon={Binary}
+  title="Number Display"
+  description="Control how large numbers are displayed across your ERP."
+/> 
 
       <Card className="divide-y overflow-hidden">
         {/* ------------------------------------------------------------ */}

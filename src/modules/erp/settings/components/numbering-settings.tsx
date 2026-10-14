@@ -6,7 +6,9 @@ import {
   Loader2,
   Save,
 } from "lucide-react";
-
+import {
+  SettingsPageHeader,
+} from "./settings-ui";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -226,12 +228,11 @@ export function NumberingSettings() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h2 className="text-lg font-semibold">Numbering</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage serial number sequences used across your ERP.
-        </p>
-      </div>
+      <SettingsPageHeader
+  icon={Hash}
+  title="Numbering"
+  description="Manage serial number sequences used across your ERP."
+/>
 
       <Card className="divide-y overflow-hidden">
         <NumberingRow

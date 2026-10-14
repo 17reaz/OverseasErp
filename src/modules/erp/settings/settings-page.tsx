@@ -19,12 +19,10 @@ import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./components/settings-ui";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { usePermissions } from "@/lib/permissions/use-permissions";
 import { cn } from "@/lib/utils";
@@ -219,50 +217,33 @@ const PRICING_PLANS = [
 /* -------------------------------------------------------------------------- */
 /* Section components (unchanged behaviour)                                   */
 /* -------------------------------------------------------------------------- */
-
 function ComingSoonSection({ section }: { section: SettingsSection }) {
-  const Icon = section.icon;
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Icon className="size-4" />
-          {section.label}
-        </CardTitle>
-        <CardDescription>{section.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">
-          This section is coming soon.
-        </p>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={section.icon}
+        title={section.label}
+        description={section.description}
+      />
+      <SettingsCard>
+        <SettingsSection>
+          <p className="text-sm text-muted-foreground">
+            This section is coming soon.
+          </p>
+        </SettingsSection>
+      </SettingsCard>
+    </div>
   );
 }
-
 function OrganizationSection() {
   return (
-    <div className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="size-4" />
-            Organization
-          </CardTitle>
-          <CardDescription>
-            Manage your organization profile, locale, and available countries.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Organization-level settings are tenant-specific.
-          </p>
-        </CardContent>
-      </Card>
-      <div className="mt-6">
-        <TenantSettingsPlaceholders />
-      </div>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={Building2}
+        title="Organization"
+        description="Manage your organization profile, locale, and available countries."
+      />
+      <TenantSettingsPlaceholders />
     </div>
   );
 }
@@ -277,31 +258,36 @@ function WorkflowSection() {
 
 function PricingSection() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Pricing</h2>
-        <p className="text-sm text-muted-foreground">
-          Choose the plan that fits your agency.
-        </p>
-      </div>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={CreditCard}
+        title="Pricing"
+        description="Choose the plan that fits your agency."
+      />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {PRICING_PLANS.map((plan) => (
-          <Card key={plan.name}>
-            <CardHeader>
-              <CardTitle>{plan.name}</CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
-              <div className="pt-2 text-2xl font-semibold">{plan.price}</div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Plan details and subscription management will be available
-                here.
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <SettingsCard>
+        <SettingsSection>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {PRICING_PLANS.map((plan) => (
+              <div key={plan.name} className="rounded-lg border p-4">
+                <h3 className="text-sm font-semibold">{plan.name}</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {plan.description}
+                </p>
+                <p className="mt-3 text-xl font-semibold tracking-tight">
+                  {plan.price}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SettingsSection>
+
+        <SettingsSection muted className="py-3">
+          <p className="text-xs text-muted-foreground">
+            Plan details and subscription management will be available here.
+          </p>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   );
 }
