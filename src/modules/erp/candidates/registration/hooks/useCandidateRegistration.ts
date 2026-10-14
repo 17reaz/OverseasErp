@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { uploadCandidateMofa } from "../../candidate-files-service";
 import { createVisa } from "../../../visa/visa-service";
+import {
+  uploadCandidateMofa,
+  uploadCandidateVisa,
+} from "../../candidate-files-service";
 import {
   createMedical,
   type MedicalStatus,
@@ -83,7 +86,9 @@ const [visaType, setVisaType] = useState("amel_id");
 const [visaStatus, setVisaStatus] = useState("processing");
 const [visaRemarks, setVisaRemarks] = useState("");
 const [visaSaved, setVisaSaved] = useState(false);
-
+const [visaRecordSaved, setVisaRecordSaved] = useState(false);
+const [visaUploadFile, setVisaUploadFile] =
+  useState<File | null>(null);
 const [visaCandidateNotFound, setVisaCandidateNotFound] = useState(false);
 const [visaCandidateNameMismatch, setVisaCandidateNameMismatch] =
   useState(false);
@@ -268,8 +273,11 @@ setVisaCandidateNameMismatch(false);
     setExistingMofaRecord(null);
     setVisaDate("");
     setVisaExpiryDate("");
+    setVisaRecordSaved(false);
+setVisaUploadFile(null);
     setVisaType("");
     setVisaStatus("issued");
+    
     setVisaRemarks("");
     setVisaSaved(false);
     setErrorMessage("");
@@ -509,6 +517,33 @@ async function findVisaCandidateByPassport(
 
   return info;
 }
+
+async function uploadVisaFileFor(candidate: Candidate) {
+  if (!visaUploadFile) return false;
+
+  if (
+    !candidate.tenant_id ||
+    !candidate.id ||
+    candidate.sl == null
+  ) {
+    throw new Error(
+      "Candidate information is incomplete. Visa document was not uploaded.",
+    );
+  }
+
+  await uploadCandidateVisa({
+    tenantId: candidate.tenant_id,
+    candidateId: candidate.id,
+    candidateSl: candidate.sl,
+    candidateName: candidate.name,
+    passportNo: candidate.passport_no,
+    file: visaUploadFile,
+  });
+
+  setVisaUploadFile(null);
+  return true;
+}
+
   async function saveVisaFor(rawPassport: string, rawName: string) {
   if (visaCandidateNameMismatch) {
     throw new Error(
@@ -543,16 +578,15 @@ async function findVisaCandidateByPassport(
 
   applyCandidate({ info, created: false });
 
+  
+if (!visaRecordSaved) {
   const result = await createVisa({
     candidate_id: info.candidate.id,
     mofa_id: null,
     visa_no: visaNo.trim() || null,
     visa_date: visaDate || null,
     expiry_date: visaExpiryDate || null,
-
-    // Must be a valid system enum value, never raw OCR text.
     visa_type: visaType || "amel_id",
-
     status: visaStatus || "processing",
     agency_id: agencyId || null,
     remarks: visaRemarks.trim() || null,
@@ -562,10 +596,21 @@ async function findVisaCandidateByPassport(
     throw new Error("Visa record was not returned after saving.");
   }
 
-  setVisaSaved(true);
-  setVisaCandidateNotFound(false);
-  setVisaCandidateNameMismatch(false);
-  setSuccessMessage("Visa record saved successfully.");
+  setVisaRecordSaved(true);
+}
+
+const uploaded = await uploadVisaFileFor(info.candidate);
+
+setVisaSaved(true);
+setVisaCandidateNotFound(false);
+setVisaCandidateNameMismatch(false);
+
+setSuccessMessage(
+  uploaded
+    ? "Visa record saved and original Visa document uploaded."
+    : "Visa record saved successfully.",
+);
+
 }
   /* ───────── Manual form submits ───────── */
 
@@ -743,7 +788,9 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
     nameMismatch,
     agentId,
     setAgentId,
-
+visaRecordSaved,
+visaUploadFile,
+setVisaUploadFile,
     // medical
     medicalDate,
     setMedicalDate,

@@ -264,7 +264,10 @@ async function scanMofa(file: File, base: ScanBase) {
   }
 
   async function scanVisa(file: File, base: ScanBase) {
-    const result = await extractKsaVisa(file);
+  // Keep the original Visa document for Save Visa.
+  reg.setVisaUploadFile(file);
+
+  const result = await extractKsaVisa(file);
 
     // Fill Visa registration form from the extracted PDF.
     reg.setVisaNo(result.visaNo || "");
