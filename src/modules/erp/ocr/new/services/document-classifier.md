@@ -1,8 +1,8 @@
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-import type { DocType } from "../../../registration/types"; // path ta tomar project onujayi thik koro
-
+// import type { DocType } from "../../../registration/types"; // path ta tomar project onujayi thik koro
+import type { DocType } from "../../types";
 // Jodi onno jaygay already workerSrc set kora thake, ei 3 line remove kore dao.
 if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
