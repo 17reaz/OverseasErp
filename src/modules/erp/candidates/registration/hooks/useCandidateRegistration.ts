@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { createVisa } from "../../../visa/visa-service";
+import { createVisa, getVisas } from "../../../visa/visa-service";
 import {
   uploadCandidateMofa,
   uploadCandidateVisa,
+  getActiveCandidateFile,
 } from "../../candidate-files-service";
 import {
   createMedical,
   type MedicalStatus,
 } from "../../../medical/medical-service";
-// import { createMofa, type MofaStage } from "../../../mofa/mofa-service";
 import {
   createMofa,
   getMofaByApplicationNumber,
@@ -30,6 +30,9 @@ import {
   today,
 } from "../utils/registration-utils";
 
+const DEFAULT_VISA_TYPE = "amel_id";
+const DEFAULT_VISA_STATUS = "processing";
+
 export function useCandidateRegistration() {
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -41,7 +44,7 @@ export function useCandidateRegistration() {
   const [notes, setNotes] = useState("");
   const [savedCandidate, setSavedCandidate] = useState<Candidate | null>(null);
   const passportInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Duplicate / existing candidate
   const [duplicate, setDuplicate] = useState<ExistingCandidateInfo | null>(
     null,
@@ -62,8 +65,7 @@ export function useCandidateRegistration() {
   const [medicalStatus, setMedicalStatus] = useState<MedicalStatus>("new");
   const [savedMedicalId, setSavedMedicalId] = useState<string | null>(null);
   const [medicalSaved, setMedicalSaved] = useState(false);
-  const [mofaUploadFile, setMofaUploadFile] =
-  useState<File | null>(null);
+
   // MOFA
   const [agencyId, setAgencyId] = useState("");
   const [applicationNumber, setApplicationNumber] = useState("");
@@ -71,27 +73,28 @@ export function useCandidateRegistration() {
   const [trade, setTrade] = useState("");
   const [mofaStage, setMofaStage] = useState<MofaStage>("new");
   const [mofaSaved, setMofaSaved] = useState(false);
+  const [mofaUploadFile, setMofaUploadFile] = useState<File | null>(null);
   const [mofaCrossCheck, setMofaCrossCheck] = useState<MofaCrossCheck | null>(
     null,
   );
-  const [existingMofaRecord, setExistingMofaRecord] =
-  useState<Mofa | null>(null);
+  const [existingMofaRecord, setExistingMofaRecord] = useState<Mofa | null>(
+    null,
+  );
 
   // Visa
- // Visa
-const [visaNo, setVisaNo] = useState("");
-const [visaDate, setVisaDate] = useState("");
-const [visaExpiryDate, setVisaExpiryDate] = useState("");
-const [visaType, setVisaType] = useState("amel_id");
-const [visaStatus, setVisaStatus] = useState("processing");
-const [visaRemarks, setVisaRemarks] = useState("");
-const [visaSaved, setVisaSaved] = useState(false);
-const [visaRecordSaved, setVisaRecordSaved] = useState(false);
-const [visaUploadFile, setVisaUploadFile] =
-  useState<File | null>(null);
-const [visaCandidateNotFound, setVisaCandidateNotFound] = useState(false);
-const [visaCandidateNameMismatch, setVisaCandidateNameMismatch] =
-  useState(false);
+  const [visaNo, setVisaNo] = useState("");
+  const [visaDate, setVisaDate] = useState("");
+  const [visaExpiryDate, setVisaExpiryDate] = useState("");
+  const [visaType, setVisaType] = useState(DEFAULT_VISA_TYPE);
+  const [visaStatus, setVisaStatus] = useState(DEFAULT_VISA_STATUS);
+  const [visaRemarks, setVisaRemarks] = useState("");
+  const [visaSaved, setVisaSaved] = useState(false);
+  const [visaRecordSaved, setVisaRecordSaved] = useState(false);
+  const [visaUploadFile, setVisaUploadFile] = useState<File | null>(null);
+  const [visaCandidateNotFound, setVisaCandidateNotFound] = useState(false);
+  const [visaCandidateNameMismatch, setVisaCandidateNameMismatch] =
+    useState(false);
+
   // Shared
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -244,10 +247,10 @@ const [visaCandidateNameMismatch, setVisaCandidateNameMismatch] =
   /** Resets all form state. Scan cards are reset separately by the OCR hook. */
   function resetRegistration() {
     setCurrentStep(1);
+
+    // Candidate
     setName("");
     setPassportNo("");
-    setVisaCandidateNotFound(false);
-setVisaCandidateNameMismatch(false);
     setReceivedDate(today());
     setCountry("");
     setNotes("");
@@ -256,11 +259,15 @@ setVisaCandidateNameMismatch(false);
     setLinkedExisting(false);
     setExistingRecords({ medical: false, mofa: false });
     setAgentId("");
+
+    // Medical
     setMedicalDate(today());
     setFitDate("");
     setMedicalStatus("new");
     setSavedMedicalId(null);
     setMedicalSaved(false);
+
+    // MOFA
     setAgencyId("");
     setApplicationNumber("");
     setApplicationDate(today());
@@ -269,46 +276,93 @@ setVisaCandidateNameMismatch(false);
     setMofaSaved(false);
     setMofaUploadFile(null);
     setMofaCrossCheck(null);
-    setVisaNo("");
     setExistingMofaRecord(null);
+
+    // Visa
+    setVisaNo("");
     setVisaDate("");
     setVisaExpiryDate("");
-    setVisaRecordSaved(false);
-setVisaUploadFile(null);
-    setVisaType("");
-    setVisaStatus("issued");
-    
+    setVisaType(DEFAULT_VISA_TYPE);
+    setVisaStatus(DEFAULT_VISA_STATUS);
     setVisaRemarks("");
     setVisaSaved(false);
+    setVisaRecordSaved(false);
+    setVisaUploadFile(null);
+    setVisaCandidateNotFound(false);
+    setVisaCandidateNameMismatch(false);
+
+    // Shared
     setErrorMessage("");
     setSuccessMessage("");
   }
 
-async function uploadMofaFileFor(candidate: Candidate) {
-  if (!mofaUploadFile) return false;
+  /* ───────── Document uploads ───────── */
 
-  if (
-    !candidate.tenant_id ||
-    !candidate.id ||
-    candidate.sl == null
-  ) {
-    throw new Error(
-      "Candidate information is incomplete. MOFA document was not uploaded.",
-    );
+  /**
+   * Uploads the selected MOFA document unless the candidate already has an
+   * active MOFA document. Returns true only when a new file was uploaded.
+   */
+  async function uploadMofaFileFor(candidate: Candidate) {
+    if (!mofaUploadFile) return false;
+
+    if (!candidate.tenant_id || !candidate.id || candidate.sl == null) {
+      throw new Error(
+        "Candidate information is incomplete. MOFA document was not uploaded.",
+      );
+    }
+
+    const activeDocument = await getActiveCandidateFile(candidate.id, "mofa");
+
+    if (activeDocument) {
+      setMofaUploadFile(null);
+      return false;
+    }
+
+    await uploadCandidateMofa({
+      tenantId: candidate.tenant_id,
+      candidateId: candidate.id,
+      candidateSl: candidate.sl,
+      candidateName: candidate.name,
+      passportNo: candidate.passport_no,
+      file: mofaUploadFile,
+    });
+
+    setMofaUploadFile(null);
+    return true;
   }
 
-  await uploadCandidateMofa({
-    tenantId: candidate.tenant_id,
-    candidateId: candidate.id,
-    candidateSl: candidate.sl,
-    candidateName: candidate.name,
-    passportNo: candidate.passport_no,
-    file: mofaUploadFile,
-  });
+  /**
+   * Uploads the selected Visa document unless the candidate already has an
+   * active Visa document. Returns true only when a new file was uploaded.
+   */
+  async function uploadVisaFileFor(candidate: Candidate) {
+    if (!visaUploadFile) return false;
 
-  setMofaUploadFile(null);
-  return true;
-}
+    if (!candidate.tenant_id || !candidate.id || candidate.sl == null) {
+      throw new Error(
+        "Candidate information is incomplete. Visa document was not uploaded.",
+      );
+    }
+
+    const activeDocument = await getActiveCandidateFile(candidate.id, "visa");
+
+    if (activeDocument) {
+      setVisaUploadFile(null);
+      return false;
+    }
+
+    await uploadCandidateVisa({
+      tenantId: candidate.tenant_id,
+      candidateId: candidate.id,
+      candidateSl: candidate.sl,
+      candidateName: candidate.name,
+      passportNo: candidate.passport_no,
+      file: visaUploadFile,
+    });
+
+    setVisaUploadFile(null);
+    return true;
+  }
 
   /* ───────── Record savers (shared by OCR + manual forms) ───────── */
 
@@ -368,57 +422,70 @@ async function uploadMofaFileFor(candidate: Candidate) {
     applyCandidate(resolved);
 
     const { info, created } = resolved;
-    
-const normalizedApplicationNumber =
-  values.applicationNumber.trim();
-
-if (normalizedApplicationNumber) {
-  const existingResult = await getMofaByApplicationNumber(
-    normalizedApplicationNumber,
-  );
-
-  if (existingResult.error) {
-    throw existingResult.error;
-  }
-
-  if (existingResult.data) {
-    const existingMofa = existingResult.data;
-
-    setExistingMofaRecord(existingMofa);
-    setMofaSaved(true);
-
-    if (existingMofa.candidate_id === info.candidate.id) {
-      setSuccessMessage(
-        `This Application Number already exists. Existing MOFA record #${existingMofa.sl} is displayed; no duplicate was created.`,
-      );
-    } else {
-      setErrorMessage(
-        `Application Number ${normalizedApplicationNumber} already belongs to another candidate. Existing MOFA record #${existingMofa.sl} is displayed. Verify the candidate before proceeding.`,
-      );
-    }
-    
-    return resolved;
-  }
-}
-
     const candidateLabel = created
       ? "New candidate created"
       : "Existing candidate found";
+    const applicationNo = values.applicationNumber.trim();
 
+    // 1) Same application number already exists
+    if (applicationNo) {
+      const existingResult = await getMofaByApplicationNumber(applicationNo);
+
+      if (existingResult.error) throw existingResult.error;
+
+      const existingMofa = existingResult.data;
+
+      if (existingMofa) {
+        setExistingMofaRecord(existingMofa);
+
+        // Never attach a document to a different candidate's MOFA.
+        if (existingMofa.candidate_id !== info.candidate.id) {
+          setMofaSaved(true);
+          setErrorMessage(
+            `Application Number ${applicationNo} already belongs to another candidate. Existing MOFA record #${existingMofa.sl} is displayed. Verify the candidate before proceeding.`,
+          );
+          return resolved;
+        }
+
+        // Same candidate: keep the record, only add a missing document.
+        const hadFile = Boolean(mofaUploadFile);
+        const uploaded = await uploadMofaFileFor(info.candidate);
+
+        setMofaSaved(true);
+
+        if (uploaded) {
+          setSuccessMessage(
+            `Existing MOFA record #${existingMofa.sl} kept unchanged. MOFA document uploaded successfully.`,
+          );
+        } else if (hadFile) {
+          setSuccessMessage(
+            `Existing MOFA record #${existingMofa.sl} and its document already exist. No duplicate record or document was created.`,
+          );
+        } else {
+          setSuccessMessage(
+            `Existing MOFA record #${existingMofa.sl} found. No duplicate record was created.`,
+          );
+        }
+
+        return resolved;
+      }
+    }
+
+    // 2) Candidate already has a MOFA record
     if (info.hasMofa) {
-  const uploaded = await uploadMofaFileFor(info.candidate);
+      const uploaded = await uploadMofaFileFor(info.candidate);
 
-  setMofaSaved(true);
+      setMofaSaved(true);
+      setSuccessMessage(
+        uploaded
+          ? `${candidateLabel}. Existing MOFA record kept; original MOFA document uploaded.`
+          : `${candidateLabel}. A MOFA record already exists, so no new one was added.`,
+      );
 
-  setSuccessMessage(
-    uploaded
-      ? `${candidateLabel}. Existing MOFA record kept; original MOFA document uploaded.`
-      : `${candidateLabel}. A MOFA record already exists, so no new one was added.`,
-  );
+      return resolved;
+    }
 
-  return resolved;
-}
-
+    // 3) New MOFA record
     if (
       (values.stage === "medupdated" || values.stage === "approved") &&
       !info.medicalId
@@ -432,7 +499,7 @@ if (normalizedApplicationNumber) {
       candidate_id: info.candidate.id,
       medical_id: info.medicalId ?? null,
       agency_id: values.agencyId || null,
-      application_number: values.applicationNumber.trim() || null,
+      application_number: applicationNo || null,
       application_date: values.applicationDate || null,
       trade: values.trade.trim() || null,
       stage: values.stage,
@@ -447,171 +514,179 @@ if (normalizedApplicationNumber) {
     setSuccessMessage(`${candidateLabel}. MOFA record saved.`);
     return resolved;
   }
-async function findVisaCandidateByPassport(
-  rawPassport: string,
-  rawName: string,
-) {
-  const passport = normalizePassport(rawPassport);
 
-  setErrorMessage("");
-  setSuccessMessage("");
+  async function findVisaCandidateByPassport(
+    rawPassport: string,
+    rawName: string,
+  ) {
+    const passport = normalizePassport(rawPassport);
 
-  if (!passport) {
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!passport) {
+      setVisaCandidateNotFound(false);
+      setVisaCandidateNameMismatch(false);
+      setErrorMessage(
+        "Passport number was not detected. Enter it manually first.",
+      );
+      return null;
+    }
+
+    const info = await lookupPassport(passport);
+
+    if (!info) {
+      setSavedCandidate(null);
+      setLinkedExisting(false);
+      setExistingRecords({ medical: false, mofa: false });
+      setSavedMedicalId(null);
+      setMedicalSaved(false);
+      setMofaSaved(false);
+
+      setPassportNo(passport);
+      setName(rawName.trim());
+      setVisaCandidateNotFound(true);
+      setVisaCandidateNameMismatch(false);
+
+      setSuccessMessage(
+        "Candidate not found. Click Add Candidate to register this person before saving the Visa.",
+      );
+
+      return null;
+    }
+
+    const nameMatches =
+      Boolean(rawName.trim()) &&
+      normalizeName(rawName) === normalizeName(info.candidate.name);
+
+    if (!nameMatches) {
+      // Keep OCR name visible and editable until verification is complete.
+      setSavedCandidate(null);
+      setPassportNo(passport);
+      setName(rawName.trim());
+      setVisaCandidateNotFound(false);
+      setVisaCandidateNameMismatch(true);
+
+      setErrorMessage(
+        `Passport matched ${info.candidate.name}, but the OCR name does not match. Verify the name before continuing.`,
+      );
+
+      return info;
+    }
+
+    applyCandidate({ info, created: false });
+
     setVisaCandidateNotFound(false);
     setVisaCandidateNameMismatch(false);
-    setErrorMessage(
-      "Passport number was not detected. Enter it manually first.",
-    );
-    return null;
-  }
-
-  const info = await lookupPassport(passport);
-
-  if (!info) {
-    setSavedCandidate(null);
-    setLinkedExisting(false);
-    setExistingRecords({ medical: false, mofa: false });
-    setSavedMedicalId(null);
-    setMedicalSaved(false);
-    setMofaSaved(false);
-
-    setPassportNo(passport);
-    setName(rawName.trim());
-    setVisaCandidateNotFound(true);
-    setVisaCandidateNameMismatch(false);
-
+    setErrorMessage("");
     setSuccessMessage(
-      "Candidate not found. Click Add Candidate to register this person before saving the Visa.",
-    );
-
-    return null;
-  }
-
-  const nameMatches =
-    Boolean(rawName.trim()) &&
-    normalizeName(rawName) === normalizeName(info.candidate.name);
-
-  if (!nameMatches) {
-    // Keep OCR name visible and editable until verification is complete.
-    setSavedCandidate(null);
-    setPassportNo(passport);
-    setName(rawName.trim());
-    setVisaCandidateNotFound(false);
-    setVisaCandidateNameMismatch(true);
-
-    setErrorMessage(
-      `Passport matched ${info.candidate.name}, but the OCR name does not match. Verify the name before continuing.`,
+      `Candidate verified: ${info.candidate.name}. Review the Visa details and save.`,
     );
 
     return info;
   }
 
-  applyCandidate({ info, created: false });
-
-  setVisaCandidateNotFound(false);
-  setVisaCandidateNameMismatch(false);
-  setErrorMessage("");
-  setSuccessMessage(
-    `Candidate verified: ${info.candidate.name}. Review the Visa details and save.`,
-  );
-
-  return info;
-}
-
-async function uploadVisaFileFor(candidate: Candidate) {
-  if (!visaUploadFile) return false;
-
-  if (
-    !candidate.tenant_id ||
-    !candidate.id ||
-    candidate.sl == null
-  ) {
-    throw new Error(
-      "Candidate information is incomplete. Visa document was not uploaded.",
-    );
-  }
-
-  await uploadCandidateVisa({
-    tenantId: candidate.tenant_id,
-    candidateId: candidate.id,
-    candidateSl: candidate.sl,
-    candidateName: candidate.name,
-    passportNo: candidate.passport_no,
-    file: visaUploadFile,
-  });
-
-  setVisaUploadFile(null);
-  return true;
-}
-
   async function saveVisaFor(rawPassport: string, rawName: string) {
-  if (visaCandidateNameMismatch) {
-    throw new Error(
-      "Candidate name does not match. Verify the Candidate before saving.",
+    if (visaCandidateNameMismatch) {
+      throw new Error(
+        "Candidate name does not match. Verify the Candidate before saving.",
+      );
+    }
+
+    const passport = normalizePassport(rawPassport);
+
+    if (!passport || !rawName.trim()) {
+      throw new Error("Candidate name and passport number are required.");
+    }
+
+    // Always verify the candidate against the database.
+    const info = await lookupPassport(passport);
+
+    if (!info) {
+      setVisaCandidateNotFound(true);
+      throw new Error("Candidate not found. Click Add Candidate first.");
+    }
+
+    if (normalizeName(rawName) !== normalizeName(info.candidate.name)) {
+      setVisaCandidateNameMismatch(true);
+      throw new Error("Passport matched, but the candidate name does not match.");
+    }
+
+    applyCandidate({ info, created: false });
+
+    // Check existing Visa records before creating anything.
+    const existingVisas = await getVisas();
+    const normalizedVisaNo = visaNo.trim().toUpperCase();
+
+    // The same Visa number must never be attached to another candidate.
+    if (normalizedVisaNo) {
+      const visaNumberOwner = existingVisas.find(
+        (visa) =>
+          visa.visa_no?.trim().toUpperCase() === normalizedVisaNo &&
+          visa.candidate_id !== info.candidate.id,
+      );
+
+      if (visaNumberOwner) {
+        throw new Error(
+          `Visa number ${normalizedVisaNo} already belongs to another candidate. No record or document was created.`,
+        );
+      }
+    }
+
+    // An existing Visa for this candidate is treated as existing data;
+    // never create a duplicate or update its fields here.
+    const existingVisa = existingVisas.find(
+      (visa) => visa.candidate_id === info.candidate.id,
     );
+
+    let createdNewRecord = false;
+
+    if (!visaRecordSaved && !existingVisa) {
+      const result = await createVisa({
+        candidate_id: info.candidate.id,
+        mofa_id: null,
+        visa_no: visaNo.trim() || null,
+        visa_date: visaDate || null,
+        expiry_date: visaExpiryDate || null,
+        visa_type: visaType || DEFAULT_VISA_TYPE,
+        status: visaStatus || DEFAULT_VISA_STATUS,
+        agency_id: agencyId || null,
+        remarks: visaRemarks.trim() || null,
+      });
+
+      if (!result) {
+        throw new Error("Visa record was not returned after saving.");
+      }
+
+      createdNewRecord = true;
+    }
+
+    setVisaRecordSaved(true);
+
+    // Upload only if the candidate has no active Visa document yet.
+    const uploaded = await uploadVisaFileFor(info.candidate);
+
+    setVisaSaved(true);
+    setVisaCandidateNotFound(false);
+    setVisaCandidateNameMismatch(false);
+
+    if (uploaded && !createdNewRecord && existingVisa) {
+      setSuccessMessage(
+        `Existing Visa record #${existingVisa.sl} kept unchanged. Missing Visa document uploaded.`,
+      );
+    } else if (uploaded) {
+      setSuccessMessage("Visa record saved and original Visa document uploaded.");
+    } else if (existingVisa) {
+      setSuccessMessage(
+        `Existing Visa record #${existingVisa.sl} kept unchanged. No duplicate record or document was created.`,
+      );
+    } else {
+      setSuccessMessage(
+        "Visa record saved successfully. No additional document was uploaded.",
+      );
+    }
   }
 
-  const passport = normalizePassport(rawPassport);
-
-  if (!passport || !rawName.trim()) {
-    throw new Error("Candidate name and passport number are required.");
-  }
-
-  // Always verify against the existing database record before saving.
-  const info = await lookupPassport(passport);
-
-  if (!info) {
-    setVisaCandidateNotFound(true);
-
-    throw new Error(
-      "Candidate not found. Click Add Candidate first.",
-    );
-  }
-
-  if (normalizeName(rawName) !== normalizeName(info.candidate.name)) {
-    setVisaCandidateNameMismatch(true);
-
-    throw new Error(
-      "Passport matched, but the candidate name does not match.",
-    );
-  }
-
-  applyCandidate({ info, created: false });
-
-  
-if (!visaRecordSaved) {
-  const result = await createVisa({
-    candidate_id: info.candidate.id,
-    mofa_id: null,
-    visa_no: visaNo.trim() || null,
-    visa_date: visaDate || null,
-    expiry_date: visaExpiryDate || null,
-    visa_type: visaType || "amel_id",
-    status: visaStatus || "processing",
-    agency_id: agencyId || null,
-    remarks: visaRemarks.trim() || null,
-  });
-
-  if (!result) {
-    throw new Error("Visa record was not returned after saving.");
-  }
-
-  setVisaRecordSaved(true);
-}
-
-const uploaded = await uploadVisaFileFor(info.candidate);
-
-setVisaSaved(true);
-setVisaCandidateNotFound(false);
-setVisaCandidateNameMismatch(false);
-
-setSuccessMessage(
-  uploaded
-    ? "Visa record saved and original Visa document uploaded."
-    : "Visa record saved successfully.",
-);
-
-}
   /* ───────── Manual form submits ───────── */
 
   async function handleCandidateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -638,19 +713,19 @@ setSuccessMessage(
     try {
       const returnToVisaAfterCreate = visaCandidateNotFound;
 
-const resolved = await resolveCandidate(passportNo, name);
-applyCandidate(resolved);
+      const resolved = await resolveCandidate(passportNo, name);
+      applyCandidate(resolved);
 
-setVisaCandidateNotFound(false);
-setVisaCandidateNameMismatch(false);
+      setVisaCandidateNotFound(false);
+      setVisaCandidateNameMismatch(false);
 
-setSuccessMessage(
-  resolved.created
-    ? "Candidate saved successfully."
-    : "This passport is already registered — existing candidate linked.",
-);
+      setSuccessMessage(
+        resolved.created
+          ? "Candidate saved successfully."
+          : "This passport is already registered — existing candidate linked.",
+      );
 
-setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
+      setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
     } catch (error) {
       console.error("Candidate registration error:", error);
 
@@ -711,9 +786,13 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
       });
     } catch (error) {
       console.error("MOFA registration error:", error);
+
+      // applyCandidate() may have marked MOFA as saved before the upload
+      // failed; unlock the form so the user can retry the upload.
       if (mofaUploadFile) {
-  setMofaSaved(false);
-}
+        setMofaSaved(false);
+      }
+
       setErrorMessage(errorText(error, "Failed to save MOFA record."));
     } finally {
       setSaving(false);
@@ -753,16 +832,17 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
   /* ───────── Derived UI ───────── */
 
   const statusLabel = visaSaved
-  ? "Visa Saved"
-  : mofaSaved
-    ? "Registration Complete"
-    : medicalSaved
-      ? "Medical Saved"
-      : savedCandidate
-        ? linkedExisting
-          ? "Existing Candidate"
-          : "Candidate Saved"
-        : "Draft";
+    ? "Visa Saved"
+    : mofaSaved
+      ? "Registration Complete"
+      : medicalSaved
+        ? "Medical Saved"
+        : savedCandidate
+          ? linkedExisting
+            ? "Existing Candidate"
+            : "Candidate Saved"
+          : "Draft";
+
   return {
     // navigation
     currentStep,
@@ -788,9 +868,7 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
     nameMismatch,
     agentId,
     setAgentId,
-visaRecordSaved,
-visaUploadFile,
-setVisaUploadFile,
+
     // medical
     medicalDate,
     setMedicalDate,
@@ -819,7 +897,8 @@ setVisaUploadFile,
     saveMofaFor,
     existingMofaRecord,
     mofaUploadFile,
-setMofaUploadFile,
+    setMofaUploadFile,
+
     // visa
     visaNo,
     setVisaNo,
@@ -834,9 +913,12 @@ setMofaUploadFile,
     visaRemarks,
     setVisaRemarks,
     visaSaved,
+    visaRecordSaved,
+    visaUploadFile,
+    setVisaUploadFile,
     visaCandidateNotFound,
-visaCandidateNameMismatch,
-findVisaCandidateByPassport,
+    visaCandidateNameMismatch,
+    findVisaCandidateByPassport,
 
     // shared
     saving,
