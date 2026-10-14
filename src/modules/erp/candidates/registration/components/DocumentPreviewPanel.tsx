@@ -179,11 +179,11 @@ export function DocumentPreviewPanel({
 
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-auto bg-muted/30">
-        {!file || !url ? (
-          <div className="flex h-full min-h-48 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            No document selected.
-          </div>
-        ) : kind === "image" ? (
+        {!url ? (
+  <div className="flex h-full min-h-48 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+    No document selected.
+  </div>
+) : kind === "image" ? (
           <div className="flex min-h-full items-center justify-center p-3">
             <img
               src={url}
