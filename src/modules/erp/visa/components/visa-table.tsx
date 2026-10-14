@@ -19,7 +19,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Visa } from "../visa-service";
-import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/ui/data-table";
 
 interface CandidateOption {
   id: string;
@@ -43,6 +46,7 @@ interface VisaTableProps {
   page?: number;
   pageSize?: number;
   total?: number;
+  visaCopyCandidateIds: ReadonlySet<string>;
   onPageChange?: (page: number) => void;
   onEdit: (record: Visa) => void;
   onDelete: (record: Visa) => void;
@@ -64,8 +68,6 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
-// Visa record-e copy ache kina check kore.
-// Tomar Visa type-e copy-er je field ache (path/url/boolean), oita ei list-e rakho.
 const COPY_FIELDS = [
   "visa_copy_path",
   "visa_copy_url",
@@ -83,6 +85,7 @@ function hasVisaCopy(record: Visa): boolean {
 
 function VisaActions({
   record,
+  hasStoredCopy,
   onEdit,
   onDelete,
   onUploadCopy,
@@ -90,6 +93,7 @@ function VisaActions({
   onDownloadCopy,
 }: {
   record: Visa;
+  hasStoredCopy: boolean;
   onEdit: (record: Visa) => void;
   onDelete: (record: Visa) => void;
   onUploadCopy: (record: Visa, file: File) => Promise<void>;
@@ -98,10 +102,10 @@ function VisaActions({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  // upload successful hole sathe sathe menu bodlanor jonno
   const [uploadedNow, setUploadedNow] = useState(false);
 
-  const copyExists = hasVisaCopy(record) || uploadedNow;
+  const copyExists =
+    hasVisaCopy(record) || hasStoredCopy || uploadedNow;
 
   async function runAction(action: () => Promise<void>) {
     setBusy(true);
@@ -110,7 +114,10 @@ function VisaActions({
       await action();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Something went wrong.";
+        error instanceof Error
+          ? error.message
+          : "Something went wrong.";
+
       window.alert(message);
     } finally {
       setBusy(false);
@@ -152,14 +159,18 @@ function VisaActions({
           {copyExists ? (
             <>
               <DropdownMenuItem
-                onSelect={() => void runAction(() => onOpenCopy(record))}
+                onSelect={() =>
+                  void runAction(() => onOpenCopy(record))
+                }
               >
                 <Eye className="mr-2 h-4 w-4" />
                 View Visa Copy
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onSelect={() => void runAction(() => onDownloadCopy(record))}
+                onSelect={() =>
+                  void runAction(() => onDownloadCopy(record))
+                }
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download Visa Copy
@@ -216,6 +227,7 @@ export function VisaTable({
   onUploadCopy,
   onOpenCopy,
   onDownloadCopy,
+  visaCopyCandidateIds,
 }: VisaTableProps) {
   function getCandidate(id: string) {
     return candidates.find((candidate) => candidate.id === id);
@@ -282,7 +294,9 @@ export function VisaTable({
         );
 
         if (!bmetRecord) {
-          return <span className="text-muted-foreground">—</span>;
+          return (
+            <span className="text-muted-foreground">—</span>
+          );
         }
 
         const isComplete = bmetRecord.bmet === true;
@@ -304,7 +318,8 @@ export function VisaTable({
       key: "agency",
       header: "Agency",
       hideOnMobile: true,
-      cell: (record) => getAgency(record.agency_id)?.name ?? "—",
+      cell: (record) =>
+        getAgency(record.agency_id)?.name ?? "—",
     },
     {
       key: "status",
@@ -323,6 +338,9 @@ export function VisaTable({
       cell: (record) => (
         <VisaActions
           record={record}
+          hasStoredCopy={visaCopyCandidateIds.has(
+            record.candidate_id,
+          )}
           onEdit={onEdit}
           onDelete={onDelete}
           onUploadCopy={onUploadCopy}
@@ -345,7 +363,9 @@ export function VisaTable({
       page={page}
       onPageChange={onPageChange}
       total={total}
-      serverPagination={typeof total === "number" && total !== records.length}
+      serverPagination={
+        typeof total === "number" && total !== records.length
+      }
     />
   );
 }

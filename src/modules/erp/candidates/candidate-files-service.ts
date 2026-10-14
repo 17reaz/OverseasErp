@@ -34,7 +34,23 @@ export async function getActiveCandidateFile(
 
   return data as CandidateFile | null;
 }
+/**
+ * Get active document records for the Visa table.
+ * File contents remain in the existing private Storage bucket.
+ */
+export async function getActiveCandidateFiles(
+  docType: string,
+): Promise<CandidateFile[]> {
+  const { data, error } = await supabase
+    .from("files")
+    .select("*")
+    .eq("doc_type", docType)
+    .eq("is_active", true);
 
+  if (error) throw error;
+
+  return (data ?? []) as CandidateFile[];
+}
 /**
  * Get document version history.
  */

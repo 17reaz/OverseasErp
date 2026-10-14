@@ -5,6 +5,7 @@ import { VisaTable } from "./components/visa-table";
 import { VisaGrid } from "./components/visa-grid";
 import {
   getActiveCandidateFile,
+  getActiveCandidateFiles,
   getCandidateVisaFileUrl,
   uploadCandidateVisa,
 } from "../candidates/candidate-files-service";
@@ -17,7 +18,6 @@ import {
   type VisaDisplayView,
   type VisaFilterView,
 } from "./components/visa-toolbar";
-
 import {
   deleteVisa,
   getApprovedMofasWithoutVisa,
@@ -26,35 +26,32 @@ import {
   type VisaEligibleMofa,
 } from "./visa-service";
 import { getCandidates } from "../candidates/candidate-service";
-// import { getMofas, type Mofa } from "../mofa/mofa-service";
 import {
   getMofas,
   getMofaAgencies,
   type Mofa,
   type MofaAgency,
 } from "../mofa/mofa-service";
+
 export function VisaPage() {
   const [records, setRecords] = useState<Visa[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [agencies, setAgencies] = useState<MofaAgency[]>([]);
-const [mofas, setMofas] = useState<Mofa[]>([]);  
+  const [mofas, setMofas] = useState<Mofa[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Visa | null>(null);
   const [displayView, setDisplayView] =
-  useState<VisaDisplayView>("list");
+    useState<VisaDisplayView>("list");
+  const [visaCopyCandidateIds, setVisaCopyCandidateIds] =
+    useState<Set<string>>(() => new Set());
   const [bmetRecords, setBmetRecords] = useState<BmetRecord[]>([]);
-  /* =======================================================
-   * VISAABLE — approved MOFA + finger completed +
-   * police clearance verified, no visa yet
-   * ======================================================= */
 
   const [view, setView] = useState<VisaFilterView>("all");
-
-  const [pendingMofas, setPendingMofas] = useState<VisaEligibleMofa[]>([]);
-
+  const [pendingMofas, setPendingMofas] =
+    useState<VisaEligibleMofa[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
 
   const [prefill, setPrefill] = useState<{
@@ -62,35 +59,42 @@ const [mofas, setMofas] = useState<Mofa[]>([]);
     mofa_id: string;
   } | null>(null);
 
-const loadData = useCallback(async () => {
-  try {
-    setLoading(true);
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    const [
-      visaList,
-      candidatesData,
-      mofaResult,
-      agencyResult,
-      bmetData,
-    ] = await Promise.all([
-      getVisas(),
-      getCandidates(),
-      getMofas(),
-      getMofaAgencies(),
-      getBmetRecords(),
-    ]);
+      const [
+        visaList,
+        candidatesData,
+        mofaResult,
+        agencyResult,
+        bmetData,
+        activeVisaFiles,
+      ] = await Promise.all([
+        getVisas(),
+        getCandidates(),
+        getMofas(),
+        getMofaAgencies(),
+        getBmetRecords(),
+        getActiveCandidateFiles("visa"),
+      ]);
 
-    setRecords(visaList);
-    setCandidates(candidatesData);
-    setMofas(mofaResult.data ?? []);
-    setAgencies(agencyResult.data ?? []);
-    setBmetRecords(bmetData);
-  } catch (error) {
-    console.error("Failed to load visa data:", error);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+      setRecords(visaList);
+      setCandidates(candidatesData);
+      setMofas(mofaResult.data ?? []);
+      setAgencies(agencyResult.data ?? []);
+      setBmetRecords(bmetData);
+
+      setVisaCopyCandidateIds(
+        new Set(activeVisaFiles.map((file) => file.candidate_id)),
+      );
+    } catch (error) {
+      console.error("Failed to load visa data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const loadPending = useCallback(async () => {
     try {
       setPendingLoading(true);
@@ -108,45 +112,44 @@ const loadData = useCallback(async () => {
       setPendingLoading(false);
     }
   }, []);
-const handleRefresh = useCallback(async () => {
-  setRefreshing(true);
 
-  try {
-    await Promise.all([
-      loadData(),
-      loadPending(),
-    ]);
-  } finally {
-    setRefreshing(false);
-  }
-}, [loadData, loadPending]);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      await Promise.all([loadData(), loadPending()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadData, loadPending]);
+
   useEffect(() => {
     void loadData();
     void loadPending();
   }, [loadData, loadPending]);
 
- const filteredRecords = useMemo(() => {
-  const query = search.trim().toLowerCase();
+  const filteredRecords = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-  return records.filter((record) => {
-    const candidate = candidates.find(
-      (c) => c.id === record.candidate_id,
-    );
+    return records.filter((record) => {
+      const candidate = candidates.find(
+        (item) => item.id === record.candidate_id,
+      );
 
-    const name = candidate?.name?.toLowerCase() ?? "";
-    const passport = candidate?.passport_no?.toLowerCase() ?? "";
-    const visaNo = record.visa_no?.toLowerCase() ?? "";
-    const visaType = record.visa_type?.toLowerCase() ?? "";
+      const name = candidate?.name?.toLowerCase() ?? "";
+      const passport = candidate?.passport_no?.toLowerCase() ?? "";
+      const visaNo = record.visa_no?.toLowerCase() ?? "";
+      const visaType = record.visa_type?.toLowerCase() ?? "";
 
-    return (
-      !query ||
-      name.includes(query) ||
-      passport.includes(query) ||
-      visaNo.includes(query) ||
-      visaType.includes(query)
-    );
-  });
-}, [records, candidates, search]);
+      return (
+        !query ||
+        name.includes(query) ||
+        passport.includes(query) ||
+        visaNo.includes(query) ||
+        visaType.includes(query)
+      );
+    });
+  }, [records, candidates, search]);
 
   const filteredPendingMofas = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -191,21 +194,31 @@ const handleRefresh = useCallback(async () => {
   }
 
   async function handleDelete(record: Visa) {
-    const candidate = candidates.find((c) => c.id === record.candidate_id);
+    const candidate = candidates.find(
+      (item) => item.id === record.candidate_id,
+    );
+
     const confirmed = window.confirm(
-      `Delete Visa #${record.visa_no}${candidate ? ` for ${candidate.name}` : ""}?`,
+      `Delete Visa #${record.visa_no}${
+        candidate ? ` for ${candidate.name}` : ""
+      }?`,
     );
 
     if (!confirmed) return;
 
     try {
       await deleteVisa(record.id);
-      setRecords((prev) => prev.filter((item) => item.id !== record.id));
+
+      setRecords((previous) =>
+        previous.filter((item) => item.id !== record.id),
+      );
+
       void loadPending();
     } catch (error) {
       console.error("Failed to delete visa:", error);
     }
   }
+
   async function handleUploadVisaCopy(record: Visa, file: File) {
     const candidate = candidates.find(
       (item) => item.id === record.candidate_id,
@@ -228,6 +241,12 @@ const handleRefresh = useCallback(async () => {
       file,
     });
 
+    setVisaCopyCandidateIds((previous) => {
+      const next = new Set(previous);
+      next.add(candidate.id);
+      return next;
+    });
+
     window.alert("Visa copy uploaded successfully.");
   }
 
@@ -238,7 +257,9 @@ const handleRefresh = useCallback(async () => {
     );
 
     if (!fileRecord) {
-      throw new Error("No Visa copy uploaded for this candidate yet.");
+      throw new Error(
+        "No Visa copy uploaded for this candidate yet.",
+      );
     }
 
     return getCandidateVisaFileUrl(fileRecord.file_location);
@@ -257,18 +278,25 @@ const handleRefresh = useCallback(async () => {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.download = `visa-${record.visa_no || record.sl}.pdf`;
+
     document.body.appendChild(link);
     link.click();
     link.remove();
   }
 
   function handleFormSuccess(savedRecord: Visa) {
-    setRecords((prev) => {
-      const exists = prev.some((item) => item.id === savedRecord.id);
+    setRecords((previous) => {
+      const exists = previous.some(
+        (item) => item.id === savedRecord.id,
+      );
+
       if (exists) {
-        return prev.map((item) => (item.id === savedRecord.id ? savedRecord : item));
+        return previous.map((item) =>
+          item.id === savedRecord.id ? savedRecord : item,
+        );
       }
-      return [savedRecord, ...prev];
+
+      return [savedRecord, ...previous];
     });
 
     void loadPending();
@@ -276,55 +304,55 @@ const handleRefresh = useCallback(async () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      
+      <VisaToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onRefresh={handleRefresh}
+        onCreate={handleCreate}
+        refreshing={refreshing}
+        view={view}
+        onViewChange={setView}
+        displayView={displayView}
+        onDisplayViewChange={setDisplayView}
+      />
 
-     <VisaToolbar
-  search={search}
-  onSearchChange={setSearch}
-  onRefresh={handleRefresh}
-  onCreate={handleCreate}
-  refreshing={refreshing}
-  view={view}
-  onViewChange={setView}
-  displayView={displayView}
-  onDisplayViewChange={setDisplayView}
-/>
-
-     <div className="min-h-0 flex-1">
-  {view === "visaable" ? (
-    <VisaPending
-      items={filteredPendingMofas}
-      loading={pendingLoading}
-      onAddVisa={handleAddVisa}
-    />
-  ) : displayView === "grid" ? (
-    <VisaGrid
-      records={filteredRecords}
-      candidates={candidates}
-      loading={loading}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-    />
-  ) : (
-    <VisaTable
-      records={filteredRecords}
-      candidates={candidates}
-      agencies={agencies}
-      loading={loading}
-      bmetRecords={bmetRecords}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-      onUploadCopy={handleUploadVisaCopy}
-      onOpenCopy={handleViewVisaCopy}
-      onDownloadCopy={handleDownloadVisaCopy}
-    />
-  )}
-</div>
+      <div className="min-h-0 flex-1">
+        {view === "visaable" ? (
+          <VisaPending
+            items={filteredPendingMofas}
+            loading={pendingLoading}
+            onAddVisa={handleAddVisa}
+          />
+        ) : displayView === "grid" ? (
+          <VisaGrid
+            records={filteredRecords}
+            candidates={candidates}
+            loading={loading}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ) : (
+          <VisaTable
+            records={filteredRecords}
+            candidates={candidates}
+            agencies={agencies}
+            loading={loading}
+            bmetRecords={bmetRecords}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onUploadCopy={handleUploadVisaCopy}
+            onOpenCopy={handleViewVisaCopy}
+            onDownloadCopy={handleDownloadVisaCopy}
+            visaCopyCandidateIds={visaCopyCandidateIds}
+          />
+        )}
+      </div>
 
       <VisaForm
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);
+
           if (!open) {
             setEditingRecord(null);
             setPrefill(null);
@@ -333,9 +361,8 @@ const handleRefresh = useCallback(async () => {
         record={editingRecord}
         candidates={candidates}
         agencies={agencies}
-         mofas={mofas}
+        mofas={mofas}
         prefill={prefill}
-
         onSuccess={handleFormSuccess}
       />
     </div>
