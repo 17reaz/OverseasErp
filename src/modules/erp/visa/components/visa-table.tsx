@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import {
-  MoreHorizontal,
+  
   Pencil,
   Trash2,
   Upload,
@@ -10,14 +10,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { RowActions } from "../../shared/ui/actions/row-actions";
+
 import type { Visa } from "../visa-service";
 import {
   DataTable,
@@ -144,70 +138,58 @@ function VisaActions({
         }}
       />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" disabled={busy}>
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <MoreHorizontal className="h-4 w-4" />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent align="end">
-          {copyExists ? (
-            <>
-              <DropdownMenuItem
-                onSelect={() =>
-                  void runAction(() => onOpenCopy(record))
-                }
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                View Visa Copy
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onSelect={() =>
-                  void runAction(() => onDownloadCopy(record))
-                }
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download Visa Copy
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onSelect={() => fileInputRef.current?.click()}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Replace Visa Copy
-              </DropdownMenuItem>
-            </>
-          ) : (
-            <DropdownMenuItem
-              onSelect={() => fileInputRef.current?.click()}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Visa Copy
-            </DropdownMenuItem>
-          )}
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onSelect={() => onEdit(record)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onSelect={() => onDelete(record)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActions
+        label={`Actions for visa ${record.visa_no ?? record.id}`}
+        disabled={busy}
+        triggerIcon={busy ? Loader2 : undefined}
+        actions={[
+          ...(copyExists
+            ? [
+                {
+                  key: "view-copy",
+                  label: "View Visa Copy",
+                  icon: Eye,
+                  onSelect: () =>
+                    void runAction(() => onOpenCopy(record)),
+                },
+                {
+                  key: "download-copy",
+                  label: "Download Visa Copy",
+                  icon: Download,
+                  onSelect: () =>
+                    void runAction(() => onDownloadCopy(record)),
+                },
+                {
+                  key: "replace-copy",
+                  label: "Replace Visa Copy",
+                  icon: RefreshCw,
+                  onSelect: () => fileInputRef.current?.click(),
+                },
+              ]
+            : [
+                {
+                  key: "upload-copy",
+                  label: "Upload Visa Copy",
+                  icon: Upload,
+                  onSelect: () => fileInputRef.current?.click(),
+                },
+              ]),
+          {
+            key: "edit",
+            label: "Edit",
+            icon: Pencil,
+            separatorBefore: true,
+            onSelect: () => onEdit(record),
+          },
+          {
+            key: "delete",
+            label: "Delete",
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => onDelete(record),
+          },
+        ]}
+      />
     </div>
   );
 }
