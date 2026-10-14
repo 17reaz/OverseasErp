@@ -71,7 +71,6 @@ export function DashboardTable({ candidates, loading = false }: Props) {
             </p>
 
             <p className="truncate text-[11px] text-muted-foreground">
-              <span className="font-mono">{candidate.id.slice(0, 8)}</span>
               {candidate.passport_no && (
                 <>
                   {" · "}
