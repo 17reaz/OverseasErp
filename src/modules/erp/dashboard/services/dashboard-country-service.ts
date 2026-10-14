@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase/client";
-
+import { orchestrator } from "@/lib/data/orchestrator";
+const supabase = orchestrator.supabase;
 export interface DashboardCountryPassport {
   country: string;
   passports: number;

@@ -1,5 +1,6 @@
-import { supabase } from "@/lib/supabase/client";
+import { orchestrator } from "@/lib/data/orchestrator";
 
+const supabase = orchestrator.supabase;
 import {
   getLiveWorkflowStates,
 } from "../../workflow/workflow-service";

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ActionCenter } from "@/modules/erp/action-center";
 
-import { getDashboardData, type DashboardData } from "./dashboard-service";
+// import { getDashboardData, type DashboardData } from "./dashboard-service";
+import { orchestrator } from "@/lib/data/orchestrator";
+import type { DashboardData } from "./dashboard-service";
 import { ActivePartiesCard } from "./components/active-parties-card";
 import { DashboardActivity } from "./components/dashboard-activity";
 import { DashboardCharts } from "./components/dashboard-charts";
@@ -109,7 +111,7 @@ export function DashboardPage() {
       if (!silent) setLoading(true);
       setError(null);
 
-      const result = await getDashboardData();
+      const result = await orchestrator.dashboard.getData();
 
       cachedDashboard = result;
       setData(result);

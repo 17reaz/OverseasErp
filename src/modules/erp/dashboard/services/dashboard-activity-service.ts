@@ -1,5 +1,6 @@
-// import { supabase } from "@/lib/supabase";
-import { supabase } from "@/lib/supabase/client";
+
+import { orchestrator } from "@/lib/data/orchestrator";
+const supabase = orchestrator.supabase;
 export interface DashboardActivityData {
   today: {
     candidates: number;
