@@ -16,6 +16,7 @@ interface VisaRow {
   candidate_id: string;
   sl: number | null;
   visa_no: string | null;
+  status: string | null;
   expiry_date: string | null;
   candidate:
     | {
@@ -68,6 +69,7 @@ export async function getDashboardVisaWarnings(): Promise<
       sl,
       visa_no,
       expiry_date,
+      status,
       candidate:candidates (
         id,
         name,
@@ -125,7 +127,9 @@ export async function getDashboardVisaWarnings(): Promise<
     if (visaIdsWithFlights.has(visa.id)) {
       continue;
     }
-
+     if (visa.status === "delivered") {
+    continue;
+  }
     if (!visa.expiry_date) {
       continue;
     }
