@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-
+import { uploadCandidateMofa } from "../../candidate-files-service";
 import { createVisa } from "../../../visa/visa-service";
 import {
   createMedical,
@@ -59,7 +59,8 @@ export function useCandidateRegistration() {
   const [medicalStatus, setMedicalStatus] = useState<MedicalStatus>("new");
   const [savedMedicalId, setSavedMedicalId] = useState<string | null>(null);
   const [medicalSaved, setMedicalSaved] = useState(false);
-
+  const [mofaUploadFile, setMofaUploadFile] =
+  useState<File | null>(null);
   // MOFA
   const [agencyId, setAgencyId] = useState("");
   const [applicationNumber, setApplicationNumber] = useState("");
@@ -261,6 +262,7 @@ setVisaCandidateNameMismatch(false);
     setTrade("");
     setMofaStage("new");
     setMofaSaved(false);
+    setMofaUploadFile(null);
     setMofaCrossCheck(null);
     setVisaNo("");
     setExistingMofaRecord(null);
@@ -273,6 +275,32 @@ setVisaCandidateNameMismatch(false);
     setErrorMessage("");
     setSuccessMessage("");
   }
+
+async function uploadMofaFileFor(candidate: Candidate) {
+  if (!mofaUploadFile) return false;
+
+  if (
+    !candidate.tenant_id ||
+    !candidate.id ||
+    candidate.sl == null
+  ) {
+    throw new Error(
+      "Candidate information is incomplete. MOFA document was not uploaded.",
+    );
+  }
+
+  await uploadCandidateMofa({
+    tenantId: candidate.tenant_id,
+    candidateId: candidate.id,
+    candidateSl: candidate.sl,
+    candidateName: candidate.name,
+    passportNo: candidate.passport_no,
+    file: mofaUploadFile,
+  });
+
+  setMofaUploadFile(null);
+  return true;
+}
 
   /* ───────── Record savers (shared by OCR + manual forms) ───────── */
 
@@ -360,7 +388,7 @@ if (normalizedApplicationNumber) {
         `Application Number ${normalizedApplicationNumber} already belongs to another candidate. Existing MOFA record #${existingMofa.sl} is displayed. Verify the candidate before proceeding.`,
       );
     }
-
+    
     return resolved;
   }
 }
@@ -370,11 +398,18 @@ if (normalizedApplicationNumber) {
       : "Existing candidate found";
 
     if (info.hasMofa) {
-      setSuccessMessage(
-        `${candidateLabel}. A MOFA record already exists, so no new one was added.`,
-      );
-      return resolved;
-    }
+  const uploaded = await uploadMofaFileFor(info.candidate);
+
+  setMofaSaved(true);
+
+  setSuccessMessage(
+    uploaded
+      ? `${candidateLabel}. Existing MOFA record kept; original MOFA document uploaded.`
+      : `${candidateLabel}. A MOFA record already exists, so no new one was added.`,
+  );
+
+  return resolved;
+}
 
     if (
       (values.stage === "medupdated" || values.stage === "approved") &&
@@ -631,6 +666,9 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
       });
     } catch (error) {
       console.error("MOFA registration error:", error);
+      if (mofaUploadFile) {
+  setMofaSaved(false);
+}
       setErrorMessage(errorText(error, "Failed to save MOFA record."));
     } finally {
       setSaving(false);
@@ -733,7 +771,8 @@ setCurrentStep(returnToVisaAfterCreate ? 4 : 2);
     setMofaCrossCheck,
     saveMofaFor,
     existingMofaRecord,
-
+    mofaUploadFile,
+setMofaUploadFile,
     // visa
     visaNo,
     setVisaNo,

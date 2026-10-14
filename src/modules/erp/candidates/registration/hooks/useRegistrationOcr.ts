@@ -184,8 +184,13 @@ export function useRegistrationOcr(reg: Registration) {
     );
   }
 
-  async function scanMofa(file: File, base: ScanBase) {
-    const result = await readMofa(file);
+  
+async function scanMofa(file: File, base: ScanBase) {
+  const result = await readMofa(file);
+
+  // Keep the original document for the explicit Save MOFA action.
+  reg.setMofaUploadFile(file);
+
 
     // Fill the form only. Do not save MOFA during OCR.
     reg.setApplicationNumber(result.applicationNumber || "");
