@@ -8,13 +8,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 import { toast } from "@/components/shared/toast/toast";
@@ -24,6 +17,8 @@ import {
   EXPORT_TYPE_LABELS,
   type ExportType,
 } from "../data-management-types";
+
+import { SectionTitle } from "./settings-ui";
 
 const MODULE_EXPORT_TYPES: ExportType[] = [
   "candidates",
@@ -70,23 +65,17 @@ export function ExportDataCard({ onExported }: ExportDataCardProps) {
   const isBusy = runningType !== null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileSpreadsheet className="size-4" />
-          Export Data
-        </CardTitle>
+    <div>
+      <SectionTitle
+        icon={FileSpreadsheet}
+        title="Export Data"
+        description="Generate an Excel (.xlsx) export of your tenant's data. Files are generated on the server and downloaded via a private, time-limited link."
+      />
 
-        <CardDescription>
-          Generate an Excel (.xlsx) export of your tenant's data. Files
-          are generated on the server and downloaded via a private,
-          time-limited link.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
+      <div className="space-y-4">
         <Button
           type="button"
+          size="sm"
           className="w-full sm:w-auto"
           disabled={isBusy}
           onClick={() => handleExport("all")}
@@ -120,7 +109,7 @@ export function ExportDataCard({ onExported }: ExportDataCardProps) {
             </Button>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

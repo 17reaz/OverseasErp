@@ -9,7 +9,12 @@ import {
   LogOut,
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  EmptyMessage,
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./components/settings-ui";
 import { getLoginSessions, type LoginSession } from "./login-session-service";
 
 function formatDate(value: string) {
@@ -125,158 +130,135 @@ export function LoginActivity() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">
-          Login Activity
-        </h2>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={Activity}
+        title="Login Activity"
+        description="See recent login sessions and device activity for your account."
+      />
 
-        <p className="text-sm text-muted-foreground">
-          See recent login sessions and device activity
-          for your account.
-        </p>
-      </div>
+      <SettingsCard>
+        {loading && (
+          <SettingsSection>
+            <EmptyMessage>Loading login activity...</EmptyMessage>
+          </SettingsSection>
+        )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="size-4" />
-            Recent Sessions
-          </CardTitle>
-        </CardHeader>
+        {!loading && error && (
+          <SettingsSection>
+            <EmptyMessage tone="error">{error}</EmptyMessage>
+          </SettingsSection>
+        )}
 
-        <CardContent className="p-0">
-          {loading && (
-            <div className="px-6 py-8 text-center text-sm text-muted-foreground">
-              Loading login activity...
-            </div>
-          )}
+        {!loading && !error && sessions.length === 0 && (
+          <SettingsSection>
+            <EmptyMessage>No login activity found.</EmptyMessage>
+          </SettingsSection>
+        )}
 
-          {!loading && error && (
-            <div className="px-6 py-8 text-center text-sm text-destructive">
-              {error}
-            </div>
-          )}
+        {!loading &&
+          !error &&
+          sessions.map((session) => {
+            const active =
+              isCurrentlyActive(session);
 
-          {!loading &&
-            !error &&
-            sessions.length === 0 && (
-              <div className="px-6 py-8 text-center text-sm text-muted-foreground">
-                No login activity found.
-              </div>
-            )}
+            return (
+              <SettingsSection key={session.id}>
+                <div className="flex items-start gap-4">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted">
+                    <DeviceIcon
+                      device={session.device}
+                    />
+                  </div>
 
-          {!loading &&
-            !error &&
-            sessions.length > 0 && (
-              <div className="divide-y">
-                {sessions.map((session) => {
-                  const active =
-                    isCurrentlyActive(session);
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">
+                        {session.browser ??
+                          "Unknown browser"}
+                      </p>
 
-                  return (
-                    <div
-                      key={session.id}
-                      className="px-6 py-5"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted">
-                          <DeviceIcon
-                            device={session.device}
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              {session.browser ??
-                                "Unknown browser"}
-                            </p>
-
-                            {active && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                <span className="size-1.5 rounded-full bg-emerald-500" />
-                                Current
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                            <span>
-                              {session.os ??
-                                "Unknown OS"}
-                            </span>
-
-                            <span>
-                              {session.device ??
-                                "Unknown device"}
-                            </span>
-
-                            {session.location && (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="size-3.5" />
-                                {session.location}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-                            <div className="flex items-center gap-2">
-                              <Clock3 className="size-3.5" />
-
-                              <span>
-                                Login:{" "}
-                                {formatDate(
-                                  session.login_at,
-                                )}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Clock3 className="size-3.5" />
-
-                              <span>
-                                Last seen:{" "}
-                                {formatDate(
-                                  session.last_seen_at,
-                                )}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Clock3 className="size-3.5" />
-
-                              <span>
-                                Duration:{" "}
-                                {formatDuration(
-                                  session.login_at,
-                                  session.logout_at,
-                                )}
-                              </span>
-                            </div>
-
-                            {session.logout_at && (
-                              <div className="flex items-center gap-2">
-                                <LogOut className="size-3.5" />
-
-                                <span>
-                                  Logged out:{" "}
-                                  {formatDate(
-                                    session.logout_at,
-                                  )}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      {active && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          Current
+                        </span>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-        </CardContent>
-      </Card>
+
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>
+                        {session.os ??
+                          "Unknown OS"}
+                      </span>
+
+                      <span>
+                        {session.device ??
+                          "Unknown device"}
+                      </span>
+
+                      {session.location && (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="size-3.5" />
+                          {session.location}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                      <div className="flex items-center gap-2">
+                        <Clock3 className="size-3.5" />
+
+                        <span>
+                          Login:{" "}
+                          {formatDate(
+                            session.login_at,
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Clock3 className="size-3.5" />
+
+                        <span>
+                          Last seen:{" "}
+                          {formatDate(
+                            session.last_seen_at,
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Clock3 className="size-3.5" />
+
+                        <span>
+                          Duration:{" "}
+                          {formatDuration(
+                            session.login_at,
+                            session.logout_at,
+                          )}
+                        </span>
+                      </div>
+
+                      {session.logout_at && (
+                        <div className="flex items-center gap-2">
+                          <LogOut className="size-3.5" />
+
+                          <span>
+                            Logged out:{" "}
+                            {formatDate(
+                              session.logout_at,
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SettingsSection>
+            );
+          })}
+      </SettingsCard>
     </div>
   );
 }

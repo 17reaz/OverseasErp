@@ -9,6 +9,7 @@ import {
   Gauge,
   GitCommit,
   MemoryStick,
+  MonitorCog,
   Network,
   RefreshCw,
   Server,
@@ -16,14 +17,15 @@ import {
   XCircle,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+
+import {
+  SectionTitle,
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./settings-ui";
 
 function MetricCard({
   icon: Icon,
@@ -37,29 +39,23 @@ function MetricCard({
   description: string;
 }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              {title}
-            </p>
+    <div className="rounded-lg border bg-card px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">{title}</p>
 
-            <p className="mt-2 text-2xl font-semibold tracking-tight">
-              {value}
-            </p>
+          <p className="mt-1 text-xl font-semibold tracking-tight">{value}</p>
 
-            <p className="mt-1 text-xs text-muted-foreground">
-              {description}
-            </p>
-          </div>
-
-          <div className="flex size-9 items-center justify-center rounded-md border bg-muted">
-            <Icon className="size-4" />
-          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {description}
+          </p>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted">
+          <Icon className="size-4" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -77,7 +73,7 @@ function StatusRow({
   const healthy = status === "healthy";
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b py-3 last:border-0">
+    <div className="flex items-center justify-between gap-4 border-b py-3 first:pt-0 last:border-0 last:pb-0">
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md border">
           <Icon className="size-4" />
@@ -85,15 +81,17 @@ function StatusRow({
 
         <div className="min-w-0">
           <p className="text-sm font-medium">{name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {detail}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">{detail}</p>
         </div>
       </div>
 
       <Badge
-        variant={healthy ? "secondary" : "outline"}
-        className="shrink-0 gap-1"
+        variant="outline"
+        className={
+          healthy
+            ? "shrink-0 gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+            : "shrink-0 gap-1"
+        }
       >
         {healthy ? (
           <CheckCircle2 className="size-3" />
@@ -107,103 +105,109 @@ function StatusRow({
   );
 }
 
+function InfoField({
+  label,
+  value,
+  mono = false,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  icon?: typeof Activity;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+
+      <p
+        className={`mt-0.5 flex items-center gap-1 truncate text-sm ${
+          mono ? "font-mono" : "font-medium"
+        }`}
+      >
+        {Icon && <Icon className="size-3.5" />}
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export function UsageMonitoring() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">
-            Usage & Monitoring
-          </h2>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={MonitorCog}
+        title="Usage & Monitoring"
+        description="Monitor application usage, performance, storage, network activity, and system health."
+        action={
+          <Button variant="outline" size="sm">
+            <RefreshCw className="mr-2 size-4" />
+            Refresh
+          </Button>
+        }
+      />
 
-          <p className="text-sm text-muted-foreground">
-            Monitor application usage, performance, storage,
-            network activity, and system health.
-          </p>
-        </div>
-
-        <Button variant="outline" size="sm">
-          <RefreshCw className="mr-2 size-4" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Demo notice */}
-      <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-        <div className="flex items-start gap-3">
-          <Activity className="mt-0.5 size-4 shrink-0" />
+      <SettingsCard>
+        {/* Demo notice */}
+        <SettingsSection muted className="flex items-start gap-3 py-4">
+          <Activity className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
           <div>
-            <p className="text-sm font-medium">
-              Monitoring Preview
-            </p>
+            <p className="text-sm font-medium">Monitoring Preview</p>
 
-            <p className="mt-1 text-xs text-muted-foreground">
-              The metrics shown here are demonstration values.
-              Real monitoring data will be connected later.
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              The metrics shown here are demonstration values. Real monitoring
+              data will be connected later.
             </p>
           </div>
-        </div>
-      </div>
+        </SettingsSection>
 
-      {/* Overview */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            Usage Overview
-          </h3>
-
-          <p className="text-xs text-muted-foreground">
-            Application resource and network usage.
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            icon={HardDrive}
-            title="Storage Used"
-            value="42 MB"
-            description="Browser storage"
+        {/* Usage overview */}
+        <SettingsSection>
+          <SectionTitle
+            title="Usage Overview"
+            description="Application resource and network usage."
           />
 
-          <MetricCard
-            icon={Network}
-            title="Network"
-            value="31.7 MB"
-            description="Data received"
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard
+              icon={HardDrive}
+              title="Storage Used"
+              value="42 MB"
+              description="Browser storage"
+            />
+
+            <MetricCard
+              icon={Network}
+              title="Network"
+              value="31.7 MB"
+              description="Data received"
+            />
+
+            <MetricCard
+              icon={Activity}
+              title="API Requests"
+              value="1,284"
+              description="Last 24 hours"
+            />
+
+            <MetricCard
+              icon={Gauge}
+              title="Avg Response"
+              value="126 ms"
+              description="API response time"
+            />
+          </div>
+        </SettingsSection>
+
+        {/* Application health */}
+        <SettingsSection>
+          <SectionTitle
+            title="Application Health"
+            description="Current status of application services."
           />
 
-          <MetricCard
-            icon={Activity}
-            title="API Requests"
-            value="1,284"
-            description="Last 24 hours"
-          />
-
-          <MetricCard
-            icon={Gauge}
-            title="Avg Response"
-            value="126 ms"
-            description="API response time"
-          />
-        </div>
-      </section>
-
-      {/* Application Health */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            Application Health
-          </h3>
-
-          <p className="text-xs text-muted-foreground">
-            Current status of application services.
-          </p>
-        </div>
-
-        <Card>
-          <CardContent className="p-5">
+          <div>
             <StatusRow
               icon={Activity}
               name="Application"
@@ -231,78 +235,61 @@ export function UsageMonitoring() {
               status="healthy"
               detail="No pending synchronization tasks"
             />
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </SettingsSection>
 
-      {/* Performance */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            Performance
-          </h3>
-
-          <p className="text-xs text-muted-foreground">
-            Application and infrastructure performance.
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            icon={Wifi}
-            title="Ping"
-            value="82 ms"
-            description="Demo latency"
+        {/* Performance */}
+        <SettingsSection>
+          <SectionTitle
+            title="Performance"
+            description="Application and infrastructure performance."
           />
 
-          <MetricCard
-            icon={Database}
-            title="Database"
-            value="46 ms"
-            description="Demo query latency"
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard
+              icon={Wifi}
+              title="Ping"
+              value="82 ms"
+              description="Demo latency"
+            />
+
+            <MetricCard
+              icon={Database}
+              title="Database"
+              value="46 ms"
+              description="Demo query latency"
+            />
+
+            <MetricCard
+              icon={Cpu}
+              title="CPU"
+              value="34%"
+              description="Demo server usage"
+            />
+
+            <MetricCard
+              icon={MemoryStick}
+              title="Memory"
+              value="2.1 GB"
+              description="Demo server memory"
+            />
+          </div>
+        </SettingsSection>
+
+        {/* Storage */}
+        <SettingsSection>
+          <SectionTitle
+            title="Storage"
+            description="Local application storage usage."
           />
 
-          <MetricCard
-            icon={Cpu}
-            title="CPU"
-            value="34%"
-            description="Demo server usage"
-          />
-
-          <MetricCard
-            icon={MemoryStick}
-            title="Memory"
-            value="2.1 GB"
-            description="Demo server memory"
-          />
-        </div>
-      </section>
-
-      {/* Storage */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            Storage
-          </h3>
-
-          <p className="text-xs text-muted-foreground">
-            Local application storage usage.
-          </p>
-        </div>
-
-        <Card>
-          <CardContent className="grid gap-4 p-5 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="flex items-center gap-3">
               <HardDrive className="size-4 text-muted-foreground" />
 
               <div>
-                <p className="text-sm font-medium">
-                  Browser Storage
-                </p>
-
-                <p className="text-xs text-muted-foreground">
-                  42 MB
-                </p>
+                <p className="text-sm font-medium">Browser Storage</p>
+                <p className="text-xs text-muted-foreground">42 MB</p>
               </div>
             </div>
 
@@ -310,13 +297,8 @@ export function UsageMonitoring() {
               <Database className="size-4 text-muted-foreground" />
 
               <div>
-                <p className="text-sm font-medium">
-                  IndexedDB / Dexie
-                </p>
-
-                <p className="text-xs text-muted-foreground">
-                  24 MB
-                </p>
+                <p className="text-sm font-medium">IndexedDB / Dexie</p>
+                <p className="text-xs text-muted-foreground">24 MB</p>
               </div>
             </div>
 
@@ -324,33 +306,21 @@ export function UsageMonitoring() {
               <Cloud className="size-4 text-muted-foreground" />
 
               <div>
-                <p className="text-sm font-medium">
-                  PWA Cache
-                </p>
-
-                <p className="text-xs text-muted-foreground">
-                  18 MB
-                </p>
+                <p className="text-sm font-medium">PWA Cache</p>
+                <p className="text-xs text-muted-foreground">18 MB</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </SettingsSection>
 
-      {/* Network */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            Network Activity
-          </h3>
+        {/* Network */}
+        <SettingsSection>
+          <SectionTitle
+            title="Network Activity"
+            description="Application network request statistics."
+          />
 
-          <p className="text-xs text-muted-foreground">
-            Application network request statistics.
-          </p>
-        </div>
-
-        <Card>
-          <CardContent className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               icon={Globe}
               title="Requests"
@@ -378,112 +348,42 @@ export function UsageMonitoring() {
               value="8.4 MB"
               description="Outbound traffic"
             />
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </SettingsSection>
 
-      {/* DevOps */}
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">
-            DevOps & Deployment
-          </h3>
+        {/* DevOps */}
+        <SettingsSection>
+          <SectionTitle
+            title="DevOps & Deployment"
+            description="Application build and deployment information."
+          />
 
-          <p className="text-xs text-muted-foreground">
-            Application build and deployment information.
-          </p>
-        </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <InfoField label="Environment" value="Production" />
+            <InfoField label="Application Version" value="v1.0.0" />
+            <InfoField label="Build" value="#184" icon={GitCommit} />
+            <InfoField label="Commit" value="a82f91c" mono />
+            <InfoField label="Deployment" value="Production" />
+            <InfoField label="Region" value="Demo Region" />
+          </div>
+        </SettingsSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Runtime Information
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Environment
-              </p>
-
-              <p className="mt-1 text-sm font-medium">
-                Production
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Application Version
-              </p>
-
-              <p className="mt-1 text-sm font-medium">
-                v1.0.0
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Build
-              </p>
-
-              <p className="mt-1 flex items-center gap-1 text-sm font-medium">
-                <GitCommit className="size-3.5" />
-                #184
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Commit
-              </p>
-
-              <p className="mt-1 font-mono text-sm">
-                a82f91c
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Deployment
-              </p>
-
-              <p className="mt-1 text-sm font-medium">
-                Production
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Region
-              </p>
-
-              <p className="mt-1 text-sm font-medium">
-                Demo Region
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Last deployment */}
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        {/* Last deployment */}
+        <SettingsSection
+          muted
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div>
-            <p className="text-sm font-medium">
-              Last Deployment
-            </p>
+            <p className="text-sm font-medium">Last Deployment</p>
 
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               October 2, 2026 at 11:42 PM
             </p>
           </div>
 
-          <Badge variant="secondary">
-            Demo Data
-          </Badge>
-        </CardContent>
-      </Card>
+          <Badge variant="secondary">Demo Data</Badge>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   );
 }

@@ -9,13 +9,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Tabs,
   TabsContent,
   TabsList,
@@ -23,6 +16,13 @@ import {
 } from "@/components/ui/tabs"
 import { toast } from "@/components/shared/toast/toast"
 import { cn } from "@/lib/utils"
+
+import {
+  SectionTitle,
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "../components/settings-ui"
 
 import { releases, type ChangeType } from "./releases"
 
@@ -75,7 +75,7 @@ function formatDate(value: string) {
   })
 }
 
-function CurrentVersionCard() {
+function CurrentVersionSection() {
   const [checking, setChecking] = useState(false)
 
   async function checkForUpdates() {
@@ -126,23 +126,18 @@ function CurrentVersionCard() {
   ]
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <History className="size-4" />
-          Current version
-        </CardTitle>
-        <CardDescription>
-          The version of Overseas ERP running on this device.
-        </CardDescription>
-      </CardHeader>
+    <SettingsSection>
+      <SectionTitle
+        title="Current version"
+        description="The version of Overseas ERP running on this device."
+      />
 
-      <CardContent className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
           {stats.map((stat) => (
             <div key={stat.label}>
               <dt className="text-xs text-muted-foreground">{stat.label}</dt>
-              <dd className={cn("text-sm font-medium", stat.mono && "font-mono")}>
+              <dd className={cn("mt-0.5 text-sm font-medium", stat.mono && "font-mono")}>
                 {stat.value}
               </dd>
             </div>
@@ -157,60 +152,56 @@ function CurrentVersionCard() {
           onClick={() => void checkForUpdates()}
         >
           {checking ? (
-            <Loader2 className="size-4 animate-spin" />
+            <Loader2 className="mr-2 size-4 animate-spin" />
           ) : (
-            <RefreshCw className="size-4" />
+            <RefreshCw className="mr-2 size-4" />
           )}
           Check for updates
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </SettingsSection>
   )
 }
 
 function UpdatesTab() {
   return (
-    <div className="space-y-4">
+    <div className="divide-y">
       {releases.map((release) => (
-        <Card key={release.version}>
-          <CardHeader>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="font-mono">
-                v{release.version}
-              </Badge>
+        <div key={release.version} className="py-4 first:pt-0 last:pb-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="font-mono">
+              v{release.version}
+            </Badge>
 
-              {release.version === __APP_VERSION__ && (
-                <Badge variant="outline">Current</Badge>
-              )}
+            {release.version === __APP_VERSION__ && (
+              <Badge variant="outline">Current</Badge>
+            )}
 
-              <span className="text-xs text-muted-foreground">
-                {formatDate(release.date)}
-              </span>
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(release.date)}
+            </span>
+          </div>
 
-            <CardTitle className="pt-1 text-base">{release.title}</CardTitle>
-          </CardHeader>
+          <h4 className="mt-2 text-sm font-semibold">{release.title}</h4>
 
-          <CardContent>
-            <ul className="space-y-2">
-              {release.changes.map((change, index) => {
-                const style = CHANGE_STYLES[change.type]
+          <ul className="mt-3 space-y-2">
+            {release.changes.map((change, index) => {
+              const style = CHANGE_STYLES[change.type]
 
-                return (
-                  <li key={index} className="flex items-start gap-3 text-sm">
-                    <Badge
-                      variant="outline"
-                      className={cn("mt-0.5 w-20 shrink-0 justify-center", style.className)}
-                    >
-                      {style.label}
-                    </Badge>
-                    <span>{change.text}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          </CardContent>
-        </Card>
+              return (
+                <li key={index} className="flex items-start gap-3 text-sm">
+                  <Badge
+                    variant="outline"
+                    className={cn("mt-0.5 w-20 shrink-0 justify-center", style.className)}
+                  >
+                    {style.label}
+                  </Badge>
+                  <span>{change.text}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       ))}
     </div>
   )
@@ -232,64 +223,60 @@ function CommitsTab() {
 
   if (__COMMITS__.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Commit history is not available in this build.
-        </CardContent>
-      </Card>
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Commit history is not available in this build.
+      </p>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {groups.map(([day, commits]) => (
         <div key={day} className="space-y-2">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <h4 className="text-xs font-medium text-muted-foreground">
             {formatDate(day)}
-          </h3>
+          </h4>
 
-          <Card>
-            <CardContent className="divide-y p-0">
-              {commits.map((commit) => {
-                const parsed = parseCommit(commit.subject)
+          <div className="divide-y rounded-lg border bg-card">
+            {commits.map((commit) => {
+              const parsed = parseCommit(commit.subject)
 
-                return (
-                  <div
-                    key={commit.hash}
-                    className="flex items-start gap-3 px-4 py-3"
-                  >
-                    <GitCommitHorizontal className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              return (
+                <div
+                  key={commit.hash}
+                  className="flex items-start gap-3 px-4 py-3"
+                >
+                  <GitCommitHorizontal className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-sm">
-                        {parsed.type && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "mr-2 align-middle",
-                              COMMIT_TYPE_STYLES[parsed.type],
-                            )}
-                          >
-                            {parsed.type}
-                            {parsed.scope ? ` · ${parsed.scope}` : ""}
-                          </Badge>
-                        )}
-                        {parsed.text}
-                      </p>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-sm">
+                      {parsed.type && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "mr-2 align-middle",
+                            COMMIT_TYPE_STYLES[parsed.type],
+                          )}
+                        >
+                          {parsed.type}
+                          {parsed.scope ? ` · ${parsed.scope}` : ""}
+                        </Badge>
+                      )}
+                      {parsed.text}
+                    </p>
 
-                      <p className="text-xs text-muted-foreground">
-                        {commit.author}
-                      </p>
-                    </div>
-
-                    <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                      {commit.hash}
-                    </code>
+                    <p className="text-xs text-muted-foreground">
+                      {commit.author}
+                    </p>
                   </div>
-                )
-              })}
-            </CardContent>
-          </Card>
+
+                  <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                    {commit.hash}
+                  </code>
+                </div>
+              )
+            })}
+          </div>
         </div>
       ))}
 
@@ -311,23 +298,33 @@ function CommitsTab() {
 
 export function UpdatesSection() {
   return (
-    <div className="space-y-6">
-      <CurrentVersionCard />
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={History}
+        title="Updates & History"
+        description="Release notes and commit history for Overseas ERP."
+      />
 
-      <Tabs defaultValue="updates">
-        <TabsList>
-          <TabsTrigger value="updates">Updates</TabsTrigger>
-          <TabsTrigger value="commits">Commits</TabsTrigger>
-        </TabsList>
+      <SettingsCard>
+        <CurrentVersionSection />
 
-        <TabsContent value="updates" className="mt-4">
-          <UpdatesTab />
-        </TabsContent>
+        <SettingsSection>
+          <Tabs defaultValue="updates">
+            <TabsList>
+              <TabsTrigger value="updates">Updates</TabsTrigger>
+              <TabsTrigger value="commits">Commits</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="commits" className="mt-4">
-          <CommitsTab />
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="updates" className="mt-4">
+              <UpdatesTab />
+            </TabsContent>
+
+            <TabsContent value="commits" className="mt-4">
+              <CommitsTab />
+            </TabsContent>
+          </Tabs>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   )
 }

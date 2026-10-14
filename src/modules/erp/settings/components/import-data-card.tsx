@@ -4,13 +4,6 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { Loader2, Upload, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -31,6 +24,7 @@ import {
 } from "../data-management-types";
 
 import { ImportPreviewSheet } from "./import-preview-sheet";
+import { SectionTitle } from "./settings-ui";
 
 const IMPORT_TYPES: ImportType[] = [
   "candidates",
@@ -125,20 +119,14 @@ export function ImportDataCard({ onImported }: ImportDataCardProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <UploadCloud className="size-4" />
-          Import Data
-        </CardTitle>
+    <div>
+      <SectionTitle
+        icon={UploadCloud}
+        title="Import Data"
+        description="Upload an Excel (.xlsx) file. Nothing is written to the database until you review the preview and explicitly commit."
+      />
 
-        <CardDescription>
-          Upload an Excel (.xlsx) file. Nothing is written to the
-          database until you review the preview and explicitly commit.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
+      <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Data type</Label>
@@ -202,6 +190,7 @@ export function ImportDataCard({ onImported }: ImportDataCardProps) {
 
         <Button
           type="button"
+          size="sm"
           onClick={handlePickFile}
           disabled={uploading}
           className="w-full sm:w-auto"
@@ -213,7 +202,7 @@ export function ImportDataCard({ onImported }: ImportDataCardProps) {
           )}
           {uploading ? "Uploading..." : "Choose File"}
         </Button>
-      </CardContent>
+      </div>
 
       <ImportPreviewSheet
         job={previewJob}
@@ -223,6 +212,6 @@ export function ImportDataCard({ onImported }: ImportDataCardProps) {
           onImported?.();
         }}
       />
-    </Card>
+    </div>
   );
 }

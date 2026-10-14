@@ -6,13 +6,6 @@ import { Download, History, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -32,6 +25,8 @@ import {
   type ExportJob,
   type ExportJobStatus,
 } from "../data-management-types";
+
+import { EmptyMessage, SectionTitle } from "./settings-ui";
 
 export interface ExportHistoryHandle {
   refresh: () => void;
@@ -96,80 +91,74 @@ export const ExportHistory = forwardRef<ExportHistoryHandle>(
     }
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <History className="size-4" />
-            Export History
-          </CardTitle>
-          <CardDescription>Recent exports for this tenant.</CardDescription>
-        </CardHeader>
+      <div>
+        <SectionTitle
+          icon={History}
+          title="Export History"
+          description="Recent exports for this tenant."
+        />
 
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
-            </div>
-          ) : jobs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No exports yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Format</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Records</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead className="text-right">Download</TableHead>
+        {loading ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+          </div>
+        ) : jobs.length === 0 ? (
+          <EmptyMessage>No exports yet.</EmptyMessage>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Format</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Records</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead className="text-right">Download</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {jobs.map((job) => (
+                  <TableRow key={job.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(job.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell>{EXPORT_TYPE_LABELS[job.export_type]}</TableCell>
+                    <TableCell className="uppercase">{job.format}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[job.status]}>
+                        {job.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{job.record_count ?? "—"}</TableCell>
+                    <TableCell>{formatFileSize(job.file_size)}</TableCell>
+                    <TableCell className="text-right">
+                      {job.status === "completed" && job.file_path && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={downloadingId === job.id}
+                          onClick={() => handleDownload(job)}
+                          aria-label="Download"
+                        >
+                          {downloadingId === job.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Download className="size-4" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(job.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell>{EXPORT_TYPE_LABELS[job.export_type]}</TableCell>
-                      <TableCell className="uppercase">{job.format}</TableCell>
-                      <TableCell>
-                        <Badge variant={STATUS_VARIANT[job.status]}>
-                          {job.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{job.record_count ?? "—"}</TableCell>
-                      <TableCell>{formatFileSize(job.file_size)}</TableCell>
-                      <TableCell className="text-right">
-                        {job.status === "completed" && job.file_path && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={downloadingId === job.id}
-                            onClick={() => handleDownload(job)}
-                            aria-label="Download"
-                          >
-                            {downloadingId === job.id ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Download className="size-4" />
-                            )}
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
     );
   },
 );

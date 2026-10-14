@@ -3,13 +3,6 @@ import { ChevronDown, ChevronRight, Loader2, ScrollText } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -27,6 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+
+import {
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "../components/settings-ui"
 
 import {
   AUDIT_PAGE_SIZE,
@@ -203,18 +202,15 @@ export function AuditSection() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ScrollText className="size-4" />
-            Activity Log
-          </CardTitle>
-          <CardDescription>
-            Who changed what, and when. Entries cannot be edited or deleted.
-          </CardDescription>
-        </CardHeader>
+      <SettingsPageHeader
+        icon={ScrollText}
+        title="Activity Log"
+        description="Who changed what, and when. Entries cannot be edited or deleted."
+      />
 
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <SettingsCard>
+        {/* Filters */}
+        <SettingsSection className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Input
             placeholder="Search record or user"
             value={searchInput}
@@ -268,11 +264,10 @@ export function AuditSection() {
               onChange={(event) => updateFilter("to", event.target.value)}
             />
           </div>
-        </CardContent>
-      </Card>
+        </SettingsSection>
 
-      <Card>
-        <CardContent className="p-0">
+        {/* Table */}
+        <SettingsSection flush className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -417,35 +412,39 @@ export function AuditSection() {
                 })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </SettingsSection>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          {total > 0 ? `Showing ${firstItem}–${lastItem} of ${total}` : ""}
-        </span>
+        {/* Pagination */}
+        <SettingsSection
+          muted
+          className="flex items-center justify-between py-3 text-sm text-muted-foreground"
+        >
+          <span>
+            {total > 0 ? `Showing ${firstItem}–${lastItem} of ${total}` : ""}
+          </span>
 
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page === 0 || loading}
-            onClick={() => setPage((current) => current - 1)}
-          >
-            Previous
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={lastItem >= total || loading}
-            onClick={() => setPage((current) => current + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={page === 0 || loading}
+              onClick={() => setPage((current) => current - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={lastItem >= total || loading}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   )
 }

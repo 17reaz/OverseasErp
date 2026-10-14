@@ -3,10 +3,14 @@ import type { ComponentType, ReactNode } from "react";
 import { Mail, Phone, UserRound } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
+
+import {
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./components/settings-ui";
 
 interface ProfileData {
   full_name: string;
@@ -21,12 +25,11 @@ interface ProfileData {
 
 function PageHeading() {
   return (
-    <div>
-      <h2 className="text-lg font-semibold">Profile</h2>
-      <p className="text-sm text-muted-foreground">
-        Manage your personal account information.
-      </p>
-    </div>
+    <SettingsPageHeader
+      icon={UserRound}
+      title="Profile"
+      description="Manage your personal account information."
+    />
   );
 }
 
@@ -40,7 +43,7 @@ function DetailRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid gap-1 px-6 py-4 sm:grid-cols-3 sm:items-center sm:gap-4">
+    <div className="grid gap-1 px-5 py-3 sm:grid-cols-3 sm:items-center sm:gap-4">
       <dt className="flex items-center gap-2 text-sm text-muted-foreground">
         <Icon className="size-4" />
         {label}
@@ -54,26 +57,24 @@ function DetailRow({
 
 function ProfileSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeading />
 
-      <Card>
-        <CardHeader className="flex-row items-center gap-4">
+      <SettingsCard>
+        <SettingsSection className="flex items-center gap-4">
           <Skeleton className="size-16 rounded-full" />
           <div className="space-y-2">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-52" />
           </div>
-        </CardHeader>
+        </SettingsSection>
 
-        <Separator />
-
-        <CardContent className="space-y-5 p-6">
+        <SettingsSection className="space-y-5">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
-        </CardContent>
-      </Card>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   );
 }
@@ -151,12 +152,12 @@ export function ProfilePage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeading />
 
-      <Card>
+      <SettingsCard>
         {/* Identity */}
-        <CardHeader className="flex-row items-center gap-4">
+        <SettingsSection className="flex items-center gap-4">
           <Avatar className="size-16 border">
             {profile.avatar_url ? (
               <AvatarImage
@@ -177,12 +178,10 @@ export function ProfilePage() {
               {profile.email || "Account profile"}
             </p>
           </div>
-        </CardHeader>
-
-        <Separator />
+        </SettingsSection>
 
         {/* Details */}
-        <CardContent className="p-0">
+        <SettingsSection flush>
           <dl className="divide-y">
             <DetailRow icon={UserRound} label="Full name">
               {profile.full_name || notAdded}
@@ -196,8 +195,8 @@ export function ProfilePage() {
               {profile.phone || notAdded}
             </DetailRow>
           </dl>
-        </CardContent>
-      </Card>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   );
 }

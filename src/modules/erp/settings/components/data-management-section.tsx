@@ -3,12 +3,11 @@
 import { useRef } from "react";
 import { Database } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
-
 import { ExportDataCard } from "./export-data-card";
 import { ExportHistory, type ExportHistoryHandle } from "./export-history";
 import { ImportDataCard } from "./import-data-card";
 import { ImportHistory, type ImportHistoryHandle } from "./import-history";
+import { SettingsCard, SettingsPageHeader } from "./settings-ui";
 
 export function DataManagementSection() {
   const exportHistoryRef = useRef<ExportHistoryHandle>(null);
@@ -16,18 +15,13 @@ export function DataManagementSection() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <Database className="size-4 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Data Management</h2>
-        </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Export your ERP data or import records from a file.
-        </p>
-      </div>
+      <SettingsPageHeader
+        icon={Database}
+        title="Data Management"
+        description="Export your ERP data or import records from a file."
+      />
 
-      <Card className="divide-y overflow-hidden">
+      <SettingsCard>
         {/* Export + Import */}
         <section className="grid lg:grid-cols-2 lg:divide-x">
           <div className="p-5">
@@ -45,15 +39,15 @@ export function DataManagementSection() {
 
         {/* Histories */}
         <section className="grid bg-muted/20 lg:grid-cols-2 lg:divide-x">
-          <div className="p-5">
+          <div className="min-w-0 p-5">
             <ExportHistory ref={exportHistoryRef} />
           </div>
 
-          <div className="p-5">
+          <div className="min-w-0 p-5">
             <ImportHistory ref={importHistoryRef} />
           </div>
         </section>
-      </Card>
+      </SettingsCard>
     </div>
   );
 }

@@ -17,17 +17,11 @@ import {
   Users,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
 
 import { Input } from "@/components/ui/input";
+
+import { Label } from "@/components/ui/label";
 
 import {
   Select,
@@ -44,6 +38,13 @@ import {
   type TenantMember,
   type CreateWorkspaceUserResult,
 } from "@/modules/auth/invitations/invitation-service";
+
+import {
+  SectionTitle,
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./settings-ui";
 
 
 function getRoleLabel(
@@ -109,7 +110,7 @@ function MemberRow({
   const name = getMemberName(member);
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b px-4 py-4 last:border-b-0">
+    <div className="flex items-center justify-between gap-4 px-5 py-3">
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-full border bg-muted">
           <UserRound className="size-4 text-muted-foreground" />
@@ -156,7 +157,7 @@ function MemberRow({
 }
 
 
-function TemporaryPasswordCard({
+function TemporaryPasswordSection({
   result,
   onClose,
 }: {
@@ -186,22 +187,14 @@ function TemporaryPasswordCard({
   };
 
   return (
-    <Card className="border-amber-500/30 bg-amber-500/5">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <KeyRound className="size-4" />
+    <SettingsSection className="bg-amber-500/5">
+      <SectionTitle
+        icon={KeyRound}
+        title="User Created"
+        description="Give this temporary password to the user securely. It will not be shown again after leaving this screen."
+      />
 
-          User Created
-        </CardTitle>
-
-        <CardDescription>
-          Give this temporary password to the user
-          securely. It will not be shown again after
-          leaving this screen.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
+      <div className="space-y-4">
         <div className="rounded-lg border bg-background p-4">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
@@ -265,6 +258,8 @@ function TemporaryPasswordCard({
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
+                className="h-9"
                 onClick={() => {
                   void handleCopy();
                 }}
@@ -294,13 +289,14 @@ function TemporaryPasswordCard({
         <div className="flex justify-end">
           <Button
             type="button"
+            size="sm"
             onClick={onClose}
           >
             Done
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </SettingsSection>
   );
 }
 
@@ -407,45 +403,25 @@ export function UsersSection() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={Users}
+        title="Team Members"
+        description="Manage people who have access to this workspace."
+      />
 
-      <div>
-        <h2 className="text-lg font-semibold">
-          Team Members
-        </h2>
+      <SettingsCard>
+        {/* Invite user */}
+        <SettingsSection>
+          <SectionTitle
+            icon={Send}
+            title="Invite User"
+            description="Create a user account and give them the temporary password to sign in."
+          />
 
-        <p className="text-sm text-muted-foreground">
-          Manage people who have access to this
-          workspace.
-        </p>
-      </div>
-
-
-      {/* Create User */}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Send className="size-4" />
-            Invite User
-          </CardTitle>
-
-          <CardDescription>
-            Create a user account and give them the
-            temporary password to sign in.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
           <div className="grid gap-4 md:grid-cols-[1fr_180px_auto]">
-
             <div className="space-y-2">
-              <label
-                htmlFor="invite-email"
-                className="text-sm font-medium"
-              >
-                Email
-              </label>
+              <Label htmlFor="invite-email">Email</Label>
 
               <Input
                 id="invite-email"
@@ -461,11 +437,8 @@ export function UsersSection() {
               />
             </div>
 
-
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Role
-              </label>
+              <Label>Role</Label>
 
               <Select
                 value={role}
@@ -498,11 +471,10 @@ export function UsersSection() {
               </Select>
             </div>
 
-
             <div className="flex items-end">
               <Button
                 type="button"
-                className="w-full md:w-auto"
+                className="h-9 w-full md:w-auto"
                 onClick={() => {
                   void handleCreateUser();
                 }}
@@ -524,56 +496,42 @@ export function UsersSection() {
                 )}
               </Button>
             </div>
-
           </div>
-
 
           {createError ? (
             <p className="mt-3 text-sm text-destructive">
               {createError}
             </p>
           ) : null}
+        </SettingsSection>
 
-        </CardContent>
-      </Card>
+        {/* Temporary password */}
+        {createdUser ? (
+          <TemporaryPasswordSection
+            result={createdUser}
+            onClose={handleCreatedUserClose}
+          />
+        ) : null}
 
-
-      {/* Temporary Password */}
-
-      {createdUser ? (
-        <TemporaryPasswordCard
-          result={createdUser}
-          onClose={handleCreatedUserClose}
-        />
-      ) : null}
-
-
-      {/* Members */}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="size-4" />
-            Members
-          </CardTitle>
-
-          <CardDescription>
-            Users currently belonging to your active
-            workspace.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="p-0">
+        {/* Members */}
+        <SettingsSection flush>
+          <div className="p-5 pb-3">
+            <SectionTitle
+              icon={Users}
+              title="Members"
+              description="Users currently belonging to your active workspace."
+            />
+          </div>
 
           {loading ? (
-            <div className="flex min-h-40 items-center justify-center">
+            <div className="flex min-h-40 items-center justify-center border-t">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
                 Loading team members...
               </div>
             </div>
           ) : error ? (
-            <div className="flex min-h-40 items-center justify-center px-6 text-center">
+            <div className="flex min-h-40 items-center justify-center border-t px-6 text-center">
               <div>
                 <p className="text-sm font-medium text-destructive">
                   Failed to load team members
@@ -585,7 +543,7 @@ export function UsersSection() {
               </div>
             </div>
           ) : members.length === 0 ? (
-            <div className="flex min-h-40 flex-col items-center justify-center px-6 text-center">
+            <div className="flex min-h-40 flex-col items-center justify-center border-t px-6 text-center">
               <div className="flex size-10 items-center justify-center rounded-full bg-muted">
                 <Users className="size-5 text-muted-foreground" />
               </div>
@@ -599,7 +557,7 @@ export function UsersSection() {
               </p>
             </div>
           ) : (
-            <div>
+            <div className="divide-y border-t">
               {members.map((member) => (
                 <MemberRow
                   key={member.id}
@@ -608,10 +566,8 @@ export function UsersSection() {
               ))}
             </div>
           )}
-
-        </CardContent>
-      </Card>
-
+        </SettingsSection>
+      </SettingsCard>
     </div>
   );
 }

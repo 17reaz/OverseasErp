@@ -10,13 +10,6 @@ import { History, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -33,6 +26,7 @@ import {
 } from "../data-management-types";
 
 import { ImportPreviewSheet } from "./import-preview-sheet";
+import { EmptyMessage, SectionTitle } from "./settings-ui";
 
 export interface ImportHistoryHandle {
   refresh: () => void;
@@ -88,76 +82,68 @@ export const ImportHistory = forwardRef<ImportHistoryHandle>(
     }
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <History className="size-4" />
-            Import History
-          </CardTitle>
-          <CardDescription>
-            Recent imports for this tenant. Click a row for details.
-          </CardDescription>
-        </CardHeader>
+      <div>
+        <SectionTitle
+          icon={History}
+          title="Import History"
+          description="Recent imports for this tenant. Click a row for details."
+        />
 
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
-            </div>
-          ) : jobs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No imports yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>File</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Valid</TableHead>
-                    <TableHead>Invalid</TableHead>
-                    <TableHead>Inserted</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead>Skipped</TableHead>
+        {loading ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+          </div>
+        ) : jobs.length === 0 ? (
+          <EmptyMessage>No imports yet.</EmptyMessage>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>File</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Valid</TableHead>
+                  <TableHead>Invalid</TableHead>
+                  <TableHead>Inserted</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead>Skipped</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {jobs.map((job) => (
+                  <TableRow
+                    key={job.id}
+                    className="cursor-pointer"
+                    onClick={() => handleRowClick(job)}
+                  >
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(job.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="max-w-40 truncate">
+                      {job.file_name}
+                    </TableCell>
+                    <TableCell>{IMPORT_TYPE_LABELS[job.import_type]}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[job.status]}>
+                        {job.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{job.total_rows}</TableCell>
+                    <TableCell>{job.valid_rows}</TableCell>
+                    <TableCell>{job.invalid_rows}</TableCell>
+                    <TableCell>{job.inserted_rows}</TableCell>
+                    <TableCell>{job.updated_rows}</TableCell>
+                    <TableCell>{job.skipped_rows}</TableCell>
                   </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow
-                      key={job.id}
-                      className="cursor-pointer"
-                      onClick={() => handleRowClick(job)}
-                    >
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(job.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="max-w-40 truncate">
-                        {job.file_name}
-                      </TableCell>
-                      <TableCell>{IMPORT_TYPE_LABELS[job.import_type]}</TableCell>
-                      <TableCell>
-                        <Badge variant={STATUS_VARIANT[job.status]}>
-                          {job.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{job.total_rows}</TableCell>
-                      <TableCell>{job.valid_rows}</TableCell>
-                      <TableCell>{job.invalid_rows}</TableCell>
-                      <TableCell>{job.inserted_rows}</TableCell>
-                      <TableCell>{job.updated_rows}</TableCell>
-                      <TableCell>{job.skipped_rows}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         <ImportPreviewSheet
           job={selectedJob}
@@ -167,7 +153,7 @@ export const ImportHistory = forwardRef<ImportHistoryHandle>(
             void load();
           }}
         />
-      </Card>
+      </div>
     );
   },
 );

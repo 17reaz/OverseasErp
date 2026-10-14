@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import {
-  
+  CheckCircle2,
   Pencil,
   Trash2,
   Upload,
@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
 import { RowActions } from "../../shared/ui/actions/row-actions";
-
 import type { Visa } from "../visa-service";
 import {
   DataTable,
@@ -40,6 +39,10 @@ interface VisaTableProps {
   page?: number;
   pageSize?: number;
   total?: number;
+  onStatusChange: (
+    record: Visa,
+    status: string,
+  ) => Promise<void>;
   visaCopyCandidateIds: ReadonlySet<string>;
   onPageChange?: (page: number) => void;
   onEdit: (record: Visa) => void;
@@ -53,6 +56,7 @@ function formatDate(value: string | null): string {
   if (!value) return "—";
 
   const date = new Date(`${value}T00:00:00`);
+
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("en-GB", {
@@ -72,9 +76,32 @@ const COPY_FIELDS = [
   "has_copy",
 ] as const;
 
+const VISA_STATUS_OPTIONS = [
+  { value: "processing", label: "Processing" },
+  { value: "active", label: "Active" },
+  { value: "expired", label: "Expired" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "delivered", label: "Delivered" },
+] as const;
+
 function hasVisaCopy(record: Visa): boolean {
   const data = record as unknown as Record<string, unknown>;
+
   return COPY_FIELDS.some((field) => Boolean(data[field]));
+}
+
+interface VisaActionsProps {
+  record: Visa;
+  hasStoredCopy: boolean;
+  onEdit: (record: Visa) => void;
+  onDelete: (record: Visa) => void;
+  onStatusChange: (
+    record: Visa,
+    status: string,
+  ) => Promise<void>;
+  onUploadCopy: (record: Visa, file: File) => Promise<void>;
+  onOpenCopy: (record: Visa) => Promise<void>;
+  onDownloadCopy: (record: Visa) => Promise<void>;
 }
 
 function VisaActions({
@@ -82,24 +109,21 @@ function VisaActions({
   hasStoredCopy,
   onEdit,
   onDelete,
+  onStatusChange,
   onUploadCopy,
   onOpenCopy,
   onDownloadCopy,
-}: {
-  record: Visa;
-  hasStoredCopy: boolean;
-  onEdit: (record: Visa) => void;
-  onDelete: (record: Visa) => void;
-  onUploadCopy: (record: Visa, file: File) => Promise<void>;
-  onOpenCopy: (record: Visa) => Promise<void>;
-  onDownloadCopy: (record: Visa) => Promise<void>;
-}) {
+}: VisaActionsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [uploadedNow, setUploadedNow] = useState(false);
 
   const copyExists =
     hasVisaCopy(record) || hasStoredCopy || uploadedNow;
+
+  const availableStatusOptions = VISA_STATUS_OPTIONS.filter(
+    (option) => option.value !== record.status,
+  );
 
   async function runAction(action: () => Promise<void>) {
     setBusy(true);
@@ -127,6 +151,7 @@ function VisaActions({
         className="hidden"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
+
           event.currentTarget.value = "";
 
           if (file) {
@@ -174,6 +199,18 @@ function VisaActions({
                   onSelect: () => fileInputRef.current?.click(),
                 },
               ]),
+
+          ...availableStatusOptions.map((option, index) => ({
+            key: `status-${option.value}`,
+            label: `Change Status to ${option.label}`,
+            icon: CheckCircle2,
+            separatorBefore: index === 0,
+            onSelect: () =>
+              void runAction(() =>
+                onStatusChange(record, option.value),
+              ),
+          })),
+
           {
             key: "edit",
             label: "Edit",
@@ -206,6 +243,7 @@ export function VisaTable({
   onPageChange,
   onEdit,
   onDelete,
+  onStatusChange,
   onUploadCopy,
   onOpenCopy,
   onDownloadCopy,
@@ -217,6 +255,7 @@ export function VisaTable({
 
   function getAgency(id: string | null) {
     if (!id) return null;
+
     return agencies.find((agency) => agency.id === id);
   }
 
@@ -325,6 +364,7 @@ export function VisaTable({
           )}
           onEdit={onEdit}
           onDelete={onDelete}
+          onStatusChange={onStatusChange}
           onUploadCopy={onUploadCopy}
           onOpenCopy={onOpenCopy}
           onDownloadCopy={onDownloadCopy}

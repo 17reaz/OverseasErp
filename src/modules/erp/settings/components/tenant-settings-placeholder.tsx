@@ -8,7 +8,9 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+import { SettingsCard, SettingsSection } from "./settings-ui";
 
 interface TenantSettingsPlaceholderProps {
   icon: LucideIcon;
@@ -22,32 +24,28 @@ function TenantSettingsPlaceholder({
   description,
 }: TenantSettingsPlaceholderProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-md border">
+    <SettingsSection className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted">
           <Icon className="size-4" />
         </div>
 
-        <div>
-          <CardTitle className="text-base">{title}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {description}
-          </p>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent>
-        <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Coming soon
-        </div>
-      </CardContent>
-    </Card>
+      <Badge variant="secondary" className="shrink-0">
+        Coming soon
+      </Badge>
+    </SettingsSection>
   );
 }
 
 export function TenantSettingsPlaceholders() {
   return (
-    <div className="grid gap-4">
+    <SettingsCard>
       <TenantSettingsPlaceholder
         icon={UserRound}
         title="Profile"
@@ -83,6 +81,6 @@ export function TenantSettingsPlaceholders() {
         title="Updates & History"
         description="View system updates and configuration history."
       />
-    </div>
+    </SettingsCard>
   );
 }

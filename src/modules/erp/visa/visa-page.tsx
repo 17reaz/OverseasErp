@@ -22,6 +22,7 @@ import {
   deleteVisa,
   getApprovedMofasWithoutVisa,
   getVisas,
+  updateVisa,
   type Visa,
   type VisaEligibleMofa,
 } from "./visa-service";
@@ -218,6 +219,35 @@ export function VisaPage() {
       console.error("Failed to delete visa:", error);
     }
   }
+  async function handleStatusChange(
+  record: Visa,
+  status: string,
+) {
+  if (record.status === status) return;
+
+  try {
+    const updatedRecord = await updateVisa(
+      record.id,
+      { status },
+    );
+
+    setRecords((previous) =>
+      previous.map((item) =>
+        item.id === updatedRecord.id
+          ? { ...item, ...updatedRecord }
+          : item,
+      ),
+    );
+  } catch (error) {
+    console.error("Failed to update visa status:", error);
+
+    window.alert(
+      error instanceof Error
+        ? error.message
+        : "Failed to update Visa status.",
+    );
+  }
+}
 
   async function handleUploadVisaCopy(record: Visa, file: File) {
     const candidate = candidates.find(
@@ -340,6 +370,7 @@ export function VisaPage() {
             bmetRecords={bmetRecords}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onStatusChange={handleStatusChange}
             onUploadCopy={handleUploadVisaCopy}
             onOpenCopy={handleViewVisaCopy}
             onDownloadCopy={handleDownloadVisaCopy}

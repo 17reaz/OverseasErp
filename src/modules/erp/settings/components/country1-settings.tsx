@@ -22,13 +22,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,11 +38,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 import { toast } from "@/components/shared/toast/toast";
+
+import {
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./settings-ui";
 
 /* =========================================================
  * TYPES
@@ -365,7 +363,7 @@ export function CountrySettings1() {
   }
 
   /* -------------------------------------------------------
-   * DELETE COUNTRY (confirmation is now an AlertDialog)
+   * DELETE COUNTRY (confirmation is an AlertDialog)
    * ------------------------------------------------------- */
 
   function deleteCountry(countryId: string) {
@@ -436,201 +434,192 @@ export function CountrySettings1() {
    * ------------------------------------------------------- */
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold leading-none tracking-tight">
-            Country configuration
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Choose the countries you operate in and the ERP modules available
-            for each one.
-          </p>
-        </div>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={Globe2}
+        title="Country configuration"
+        description="Choose the countries you operate in and the ERP modules available for each one."
+        action={
+          <Button type="button" size="sm" onClick={startAddCountry}>
+            <Plus className="mr-2 size-4" />
+            Add country
+          </Button>
+        }
+      />
 
-        <Button type="button" onClick={startAddCountry}>
-          <Plus className="size-4" />
-          Add country
-        </Button>
-      </div>
-
-      {/* Country list */}
-      {countries.length === 0 ? (
-        <Card>
-          <CardContent className="flex min-h-48 flex-col items-center justify-center text-center">
+      <SettingsCard>
+        {/* Empty state */}
+        {countries.length === 0 && (
+          <SettingsSection className="flex min-h-48 flex-col items-center justify-center text-center">
             <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted">
               <Globe2 className="size-5 text-muted-foreground" />
             </div>
 
-            <h3 className="font-medium">No countries configured</h3>
+            <h3 className="text-sm font-semibold">No countries configured</h3>
 
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
               Add your first operating country to set up its ERP modules.
             </p>
 
-            <Button type="button" className="mt-4" onClick={startAddCountry}>
-              <Plus className="size-4" />
+            <Button
+              type="button"
+              size="sm"
+              className="mt-4"
+              onClick={startAddCountry}
+            >
+              <Plus className="mr-2 size-4" />
               Add country
             </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {countries.map((country) => {
-            const isExpanded = expandedCountryId === country.id;
-            const enabledModuleCount = getEnabledModuleCount(country);
+          </SettingsSection>
+        )}
 
-            return (
-              <Card key={country.id}>
-                {/* Country header */}
-                <CardHeader className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      aria-expanded={isExpanded}
-                      className={cn(
-                        "flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        !country.enabled && "opacity-60",
-                      )}
-                      onClick={() =>
-                        setExpandedCountryId(isExpanded ? null : country.id)
-                      }
-                    >
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-2xl">
-                        {country.flag}
-                      </div>
+        {/* One section per country */}
+        {countries.map((country) => {
+          const isExpanded = expandedCountryId === country.id;
+          const enabledModuleCount = getEnabledModuleCount(country);
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <CardTitle className="text-base">
-                            {country.name}
-                          </CardTitle>
-
-                          <Badge variant="secondary">{country.code}</Badge>
-
-                          {!country.enabled && (
-                            <Badge variant="outline">Disabled</Badge>
-                          )}
-                        </div>
-
-                        <CardDescription className="mt-1">
-                          {enabledModuleCount} of {country.modules.length}{" "}
-                          modules enabled
-                        </CardDescription>
-                      </div>
-                    </button>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Switch
-                        checked={country.enabled}
-                        onCheckedChange={(checked) =>
-                          toggleCountry(country.id, checked)
-                        }
-                        aria-label={`Enable ${country.name}`}
-                        className="mr-1"
-                      />
-
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <Button type="button" variant="ghost" size="icon">
-                            <MoreHorizontal className="size-4" />
-                            <span className="sr-only">
-                              Actions for {country.name}
-                            </span>
-                          </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={() => startEditCountry(country)}
-                          >
-                            <Pencil className="size-4" />
-                            Edit
-                          </DropdownMenuItem>
-
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => setCountryToDelete(country)}
-                          >
-                            <Trash2 className="size-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setExpandedCountryId(isExpanded ? null : country.id)
-                        }
-                      >
-                        <ChevronDown
-                          className={cn(
-                            "size-4 transition-transform",
-                            isExpanded && "rotate-180",
-                          )}
-                        />
-                        <span className="sr-only">Toggle modules</span>
-                      </Button>
-                    </div>
+          return (
+            <SettingsSection key={country.id}>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    !country.enabled && "opacity-60",
+                  )}
+                  onClick={() =>
+                    setExpandedCountryId(isExpanded ? null : country.id)
+                  }
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-2xl">
+                    {country.flag}
                   </div>
-                </CardHeader>
 
-                {/* Modules */}
-                {isExpanded && (
-                  <CardContent className="px-4 pb-4 pt-0">
-                    <Separator className="mb-4" />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-semibold">{country.name}</h3>
 
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {country.modules.map((module) => (
-                        <div
-                          key={module.id}
-                          className={cn(
-                            "flex items-center justify-between gap-4 rounded-lg border p-3 transition-colors",
-                            module.enabled ? "bg-background" : "bg-muted/30",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">
-                              {module.label}
-                            </p>
+                      <Badge variant="secondary" className="text-[11px]">
+                        {country.code}
+                      </Badge>
 
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {module.description}
-                            </p>
-                          </div>
-
-                          <Switch
-                            checked={module.enabled}
-                            disabled={!country.enabled}
-                            onCheckedChange={(checked) =>
-                              toggleModule(country.id, module.id, checked)
-                            }
-                            aria-label={`${module.label} for ${country.name}`}
-                          />
-                        </div>
-                      ))}
+                      {!country.enabled && (
+                        <Badge variant="outline">Disabled</Badge>
+                      )}
                     </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Note */}
-      <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-        <Info className="mt-0.5 size-3.5 shrink-0" />
-        These settings control which modules each country can use. ERP
-        navigation and business logic will be connected to this configuration
-        later.
-      </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {enabledModuleCount} of {country.modules.length} modules
+                      enabled
+                    </p>
+                  </div>
+                </button>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  <Switch
+                    checked={country.enabled}
+                    onCheckedChange={(checked) =>
+                      toggleCountry(country.id, checked)
+                    }
+                    aria-label={`Enable ${country.name}`}
+                    className="mr-1"
+                  />
+
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon">
+                        <MoreHorizontal className="size-4" />
+                        <span className="sr-only">
+                          Actions for {country.name}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => startEditCountry(country)}
+                      >
+                        <Pencil className="size-4" />
+                        Edit
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => setCountryToDelete(country)}
+                      >
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setExpandedCountryId(isExpanded ? null : country.id)
+                    }
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-4 transition-transform",
+                        isExpanded && "rotate-180",
+                      )}
+                    />
+                    <span className="sr-only">Toggle modules</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Modules */}
+              {isExpanded && (
+                <div className="mt-4 grid gap-2 md:grid-cols-2">
+                  {country.modules.map((module) => (
+                    <div
+                      key={module.id}
+                      className={cn(
+                        "flex items-center justify-between gap-4 rounded-lg border p-3 transition-colors",
+                        module.enabled ? "bg-background" : "bg-muted/30",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{module.label}</p>
+
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {module.description}
+                        </p>
+                      </div>
+
+                      <Switch
+                        checked={module.enabled}
+                        disabled={!country.enabled}
+                        onCheckedChange={(checked) =>
+                          toggleModule(country.id, module.id, checked)
+                        }
+                        aria-label={`${module.label} for ${country.name}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SettingsSection>
+          );
+        })}
+
+        {/* Note */}
+        <SettingsSection muted className="py-3">
+          <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+            <Info className="mt-0.5 size-3.5 shrink-0" />
+            These settings control which modules each country can use. ERP
+            navigation and business logic will be connected to this
+            configuration later.
+          </p>
+        </SettingsSection>
+      </SettingsCard>
 
       {/* Add / edit dialog */}
       <Dialog

@@ -10,7 +10,24 @@ import {
   Send,
   type LucideIcon,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import {
+  SectionTitle,
+  SettingsCard,
+  SettingsPageHeader,
+  SettingsSection,
+} from "./components/settings-ui";
 
 /* =========================================================
  * EDIT THESE — your real support details
@@ -79,7 +96,7 @@ function ContactTile({
       rel="noreferrer"
       className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-muted/50"
     >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted">
         <Icon className="size-4" />
       </div>
 
@@ -91,7 +108,7 @@ function ContactTile({
   );
 }
 
-const fieldClass =
+const textareaClass =
   "w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /* =========================================================
@@ -138,216 +155,196 @@ function SupportPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* =========================================================
-          PAGE HEADER
-      ========================================================= */}
-      <div className="flex shrink-0 items-center justify-between border-b px-6 py-3">
-        <div>
-          <h1 className="text-lg font-semibold">Support</h1>
-
-          <p className="text-sm text-muted-foreground">
-            Tell us what went wrong and we will help you fix it.
-          </p>
-        </div>
-
-        <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
-          <Clock className="size-4" />
-          {SUPPORT_HOURS}
-        </div>
-      </div>
-
-      {/* =========================================================
-          CONTENT — fits the screen on lg+, scrolls on small screens
-      ========================================================= */}
-      <div className="grid min-h-0 flex-1 gap-4 overflow-auto p-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden">
-        {/* ---------- LEFT: TICKET FORM ---------- */}
-        <section className="flex min-h-0 flex-col rounded-lg border bg-card">
-          <div className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-              <LifeBuoy className="size-4" />
-            </div>
-
-            <div>
-              <h2 className="text-sm font-semibold">
-                Send a support request
-              </h2>
-
-              <p className="text-xs text-muted-foreground">
-                The more detail you give, the faster we can solve it.
-              </p>
-            </div>
+    <div className="space-y-4">
+      <SettingsPageHeader
+        icon={LifeBuoy}
+        title="Support"
+        description="Tell us what went wrong and we will help you fix it."
+        action={
+          <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
+            <Clock className="size-4" />
+            {SUPPORT_HOURS}
           </div>
+        }
+      />
 
-          {sent ? (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                <CheckCircle2 className="size-5" />
-              </div>
+      <SettingsCard>
+        {/* Ticket form + contacts */}
+        <section className="grid lg:grid-cols-[minmax(0,1fr)_320px] lg:divide-x">
+          {/* ---------- LEFT: TICKET FORM ---------- */}
+          <div className="p-5">
+            <SectionTitle
+              icon={Send}
+              title="Send a support request"
+              description="The more detail you give, the faster we can solve it."
+            />
 
-              <h3 className="mt-3 font-medium">
-                Your email app should be open
-              </h3>
-
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Press send there to deliver your request to{" "}
-                {SUPPORT_EMAIL}. Nothing is sent until you do.
-              </p>
-
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={resetForm}
-              >
-                Write another request
-              </Button>
-            </div>
-          ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4 [scrollbar-width:thin]"
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-medium">
-                    Topic
-                  </span>
-
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className={fieldClass}
-                  >
-                    {CATEGORIES.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="space-y-1.5">
-                  <span className="text-sm font-medium">
-                    Priority
-                  </span>
-
-                  <div
-                    role="radiogroup"
-                    aria-label="Priority"
-                    className="grid grid-cols-3 gap-1 rounded-md border bg-muted/40 p-1"
-                  >
-                    {PRIORITIES.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        role="radio"
-                        aria-checked={priority === item}
-                        onClick={() => setPriority(item)}
-                        className={
-                          priority === item
-                            ? "rounded bg-background px-2 py-1 text-sm font-medium shadow-sm"
-                            : "rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                        }
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
+            {sent ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                  <CheckCircle2 className="size-5" />
                 </div>
-              </div>
 
-              <label className="block space-y-1.5">
-                <span className="text-sm font-medium">Subject</span>
+                <h3 className="mt-3 text-sm font-semibold">
+                  Your email app should be open
+                </h3>
 
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="e.g. Cash balance does not match"
-                  className={fieldClass}
-                />
-              </label>
-
-              <label className="flex min-h-32 flex-1 flex-col space-y-1.5">
-                <span className="text-sm font-medium">
-                  What happened?
-                </span>
-
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Which page were you on, what did you do, and what did you expect to see?"
-                  className={`${fieldClass} min-h-24 flex-1 resize-none`}
-                />
-              </label>
-
-              <div className="flex shrink-0 items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">
-                  Opens your email app with the request filled in.
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                  Press send there to deliver your request to {SUPPORT_EMAIL}.
+                  Nothing is sent until you do.
                 </p>
 
-                <Button type="submit" disabled={!canSubmit}>
-                  <Send className="mr-2 size-4" />
-                  Send request
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={resetForm}
+                >
+                  Write another request
                 </Button>
               </div>
-            </form>
-          )}
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Topic</Label>
+
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {CATEGORIES.map((item) => (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Priority</Label>
+
+                    <div
+                      role="radiogroup"
+                      aria-label="Priority"
+                      className="grid grid-cols-3 gap-1 rounded-md border bg-muted/40 p-1"
+                    >
+                      {PRIORITIES.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          role="radio"
+                          aria-checked={priority === item}
+                          onClick={() => setPriority(item)}
+                          className={
+                            priority === item
+                              ? "rounded bg-background px-2 py-1 text-sm font-medium shadow-sm"
+                              : "rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                          }
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="support-subject">Subject</Label>
+
+                  <Input
+                    id="support-subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="e.g. Cash balance does not match"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="support-message">What happened?</Label>
+
+                  <textarea
+                    id="support-message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Which page were you on, what did you do, and what did you expect to see?"
+                    className={`${textareaClass} min-h-32 resize-none`}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Opens your email app with the request filled in.
+                  </p>
+
+                  <Button type="submit" size="sm" disabled={!canSubmit}>
+                    <Send className="mr-2 size-4" />
+                    Send request
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* ---------- RIGHT: CONTACT ---------- */}
+          <div className="bg-muted/20 p-5">
+            <SectionTitle
+              title="Need an answer right now?"
+              description="Reach us directly."
+            />
+
+            <div className="space-y-2">
+              <ContactTile
+                icon={MessageCircle}
+                label="WhatsApp"
+                value={SUPPORT_PHONE}
+                href={`https://wa.me/${SUPPORT_WHATSAPP}`}
+              />
+
+              <ContactTile
+                icon={Phone}
+                label="Phone"
+                value={SUPPORT_PHONE}
+                href={`tel:${SUPPORT_PHONE.replace(/\s|-/g, "")}`}
+              />
+
+              <ContactTile
+                icon={Mail}
+                label="Email"
+                value={SUPPORT_EMAIL}
+                href={`mailto:${SUPPORT_EMAIL}`}
+              />
+            </div>
+          </div>
         </section>
 
-        {/* ---------- RIGHT: CONTACT + FAQ ---------- */}
-        <div className="flex min-h-0 flex-col gap-4">
-          <section className="shrink-0 space-y-2">
-            <h2 className="text-sm font-semibold">
-              Need an answer right now?
-            </h2>
+        {/* ---------- FAQ ---------- */}
+        <SettingsSection>
+          <SectionTitle
+            title="Common questions"
+            description="Quick answers to the things we are asked most."
+          />
 
-            <ContactTile
-              icon={MessageCircle}
-              label="WhatsApp"
-              value={SUPPORT_PHONE}
-              href={`https://wa.me/${SUPPORT_WHATSAPP}`}
-            />
+          <div className="divide-y rounded-lg border bg-card">
+            {FAQS.map((item) => (
+              <details key={item.q} className="group px-4 py-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                  {item.q}
 
-            <ContactTile
-              icon={Phone}
-              label="Phone"
-              value={SUPPORT_PHONE}
-              href={`tel:${SUPPORT_PHONE.replace(/\s|-/g, "")}`}
-            />
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
 
-            <ContactTile
-              icon={Mail}
-              label="Email"
-              value={SUPPORT_EMAIL}
-              href={`mailto:${SUPPORT_EMAIL}`}
-            />
-          </section>
-
-          <section className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card">
-            <div className="shrink-0 border-b px-4 py-3">
-              <h2 className="text-sm font-semibold">
-                Common questions
-              </h2>
-            </div>
-
-            <div className="min-h-0 flex-1 divide-y overflow-auto [scrollbar-width:thin]">
-              {FAQS.map((item) => (
-                <details key={item.q} className="group px-4 py-3">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                    {item.q}
-
-                    <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-                  </summary>
-
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {item.a}
-                  </p>
-                </details>
-              ))}
-            </div>
-          </section>
-        </div>
-      </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </SettingsSection>
+      </SettingsCard>
     </div>
   );
 }
