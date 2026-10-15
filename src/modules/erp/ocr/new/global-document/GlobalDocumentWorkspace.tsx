@@ -6,6 +6,7 @@ import {
   Loader2,
   ScanLine,
   Upload,
+  UserPlus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 // import type { GlobalDocumentResult } from "./global-document-service";
@@ -161,6 +162,30 @@ const [extractedResult, setExtractedResult] =
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+useEffect(() => {
+  function handleGlobalDocumentDrop(event: Event) {
+    const customEvent = event as CustomEvent<File>;
+    const droppedFile = customEvent.detail;
+
+    if (!(droppedFile instanceof File)) return;
+
+    setOpen(true);
+    void selectFile(droppedFile);
+  }
+
+  window.addEventListener(
+    "overseas-erp:global-document-drop",
+    handleGlobalDocumentDrop,
+  );
+
+  return () => {
+    window.removeEventListener(
+      "overseas-erp:global-document-drop",
+      handleGlobalDocumentDrop,
+    );
+  };
+}, []);
+
   useEffect(() => {
     // Escape is handled by the Dialog itself.
     function handleKeyboard(event: KeyboardEvent) {
@@ -194,43 +219,80 @@ const [extractedResult, setExtractedResult] =
     setPanel("source");
   }
 
-  async function selectFile(nextFile?: File) {
-    setExtractedResult(null);
-    if (!nextFile) return;
-    resetWorkspace();
-    setFile(nextFile);
-    setError("");
-    setNotice("");
-    setClassifying(true);
+ 
+async function selectFile(nextFile?: File) {
+  if (!nextFile) return;
 
-    try {
-      const result = await suggestGlobalDocumentType(nextFile);
+  resetWorkspace();
+  setFile(nextFile);
+  setError("");
+  setNotice("Document captured. Identifying and reading…");
+  setClassifying(true);
 
-      if (result.docType) {
-        setDocType(result.docType);
-      }
+  try {
+    const classification = await suggestGlobalDocumentType(nextFile);
 
-      setClassificationReason(result.reason);
+    setClassificationReason(classification.reason);
 
+    if (!classification.docType) {
       setNotice(
-        result.docType
-          ? `Document type suggested: ${
-              DOCUMENTS.find(
-                (item) => item.value === result.docType,
-              )?.label
-            }. Please verify before extracting.`
-          : "Document type could not be confirmed. Select the correct type manually.",
+        "Document captured. Select its type, then click Extract.",
       );
-    } catch (cause) {
-      console.error("Document classification failed:", cause);
-      setClassificationReason(
-        "Automatic classification was unavailable.",
-      );
-      setNotice("Select the document type manually.");
-    } finally {
-      setClassifying(false);
+      return;
     }
+
+    const detectedType = classification.docType;
+
+    setDocType(detectedType);
+
+    const validationError = validateGlobalFile(
+      detectedType,
+      nextFile,
+    );
+
+    if (validationError) {
+      setNotice(
+        `Document type suggested: ${
+          DOCUMENTS.find((item) => item.value === detectedType)?.label
+        }. ${validationError} Please select the correct type.`,
+      );
+      return;
+    }
+
+    setNotice("Document identified. Reading fields in the background…");
+
+    setBusy(true);
+
+    const result = await extractGlobalDocument(
+      nextFile,
+      detectedType,
+    );
+
+    setExtractedResult(result);
+    setFields(result.fields);
+    setWarnings(result.warnings);
+    setCompleted(true);
+    setPanel("fields");
+
+    setNotice(
+      result.warnings.length > 0
+        ? `OCR completed. ${result.warnings.length} item(s) need review.`
+        : "OCR completed. Review the extracted fields before using them.",
+    );
+  } catch (cause) {
+    console.error("Global document OCR failed:", cause);
+
+    setError(
+      cause instanceof Error
+        ? cause.message
+        : "Could not read this document. You can retry using Extract.",
+    );
+  } finally {
+    setClassifying(false);
+    setBusy(false);
   }
+}
+
 
   async function runExtraction() {
     if (!file) {
@@ -522,28 +584,29 @@ function sendToCandidateRegistration() {
                 </div>
 
                 {fields.length > 0 && (
-                  <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void copyResults()}
-                  >
-                    <Clipboard className="size-4" />
-                    Copy JSON
-                  </Button>
-                  
-<button
-  type="button"
-  onClick={sendToCandidateRegistration}
-  disabled={!completed || !extractedResult}
-  className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
->
-  Use in Registration
-</button>
+  <div className="flex items-center gap-2">
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => void copyResults()}
+    >
+      <Clipboard className="size-4" />
+      Copy JSON
+    </Button>
 
-                  </div>
-                )}
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={sendToCandidateRegistration}
+      disabled={!completed || !extractedResult}
+    >
+      <UserPlus className="size-4" />
+      Use in Registration
+    </Button>
+  </div>
+)}
               </div>
 
               <ScrollArea className="min-h-0 flex-1">
