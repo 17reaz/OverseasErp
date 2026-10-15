@@ -8,7 +8,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { GlobalDocumentResult } from "./global-document-service";
+// import type { GlobalDocumentResult } from "./global-document-service";
 import { setGlobalDocumentPrefill } from "./global-document-prefill";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
