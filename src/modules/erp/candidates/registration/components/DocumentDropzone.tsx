@@ -53,15 +53,20 @@ previewFileName?: string;
   return (
     <div
       onDragOver={(event) => {
-        event.preventDefault();
-        if (!locked) setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(event) => {
-        event.preventDefault();
-        setDragging(false);
-        if (!locked) handleFiles(event.dataTransfer.files);
-      }}
+  event.preventDefault();
+  event.stopPropagation();
+  if (!locked) setDragging(true);
+}}
+onDragLeave={(event) => {
+  event.stopPropagation();
+  setDragging(false);
+}}
+onDrop={(event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  setDragging(false);
+  if (!locked) handleFiles(event.dataTransfer.files);
+}}
       className={cn(
         "rounded-lg border border-dashed p-4 transition-colors",
         dragging && "border-primary bg-primary/5",
