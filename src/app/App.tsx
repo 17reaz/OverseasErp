@@ -10,6 +10,7 @@ import {
   AppRouter,
 } from "./router";
 import { PwaUpdatePrompt } from "@/components/shared/pwa/pwa-update-prompt";
+import { GlobalDocumentWorkspace } from "@/modules/erp/ocr/new/global-document/GlobalDocumentWorkspace";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <ToastProvider>
         <PwaUpdatePrompt />
         <AppRouter />
+        <GlobalDocumentWorkspace />
       </ToastProvider>
     </AuthProvider>
   );

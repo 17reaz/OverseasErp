@@ -52,6 +52,11 @@ const RULES: Record<DocType, Rule[]> = {
     { pattern: /passport\s*(no|number)/, weight: 1 },
     { pattern: /date of birth/, weight: 1 },
     { pattern: /place of birth/, weight: 1 },
+  ],  police_clearance: [
+    { pattern: /\b(police clearance|police certificate|criminal record)\b/i, weight: 5 },
+  ],
+  nid: [
+    { pattern: /\b(national id|national identity|identity card|nid number)\b/i, weight: 5 },
   ],
 };
 
@@ -67,7 +72,14 @@ const MIN_SCORE = 4;
 const MIN_MARGIN = 2;
 
 function emptyScores(): Record<DocType, number> {
-  return { passport: 0, medical: 0, mofa: 0, visa: 0 };
+  return {
+  passport: 0,
+  medical: 0,
+  mofa: 0,
+  visa: 0,
+  police_clearance: 0,
+  nid: 0,
+};
 }
 
 function isPdf(file: File) {
@@ -78,29 +90,28 @@ function isImage(file: File) {
   return file.type.startsWith("image/");
 }
 
+
 async function extractPdfText(file: File): Promise<string> {
   const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjsLib.getDocument({ data }).promise;
 
-  try {
-    const pages = Math.min(pdf.numPages, MAX_PAGES);
-    const chunks: string[] = [];
+  const pages = Math.min(pdf.numPages, MAX_PAGES);
+  const chunks: string[] = [];
 
-    for (let i = 1; i <= pages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      chunks.push(
-        content.items
-          .map((item) => ("str" in item ? item.str : ""))
-          .join(" "),
-      );
-    }
+  for (let i = 1; i <= pages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
 
-    return chunks.join("\n").toLowerCase().replace(/\s+/g, " ");
-  } finally {
-    await pdf.destroy();
+    chunks.push(
+      content.items
+        .map((item) => ("str" in item ? item.str : ""))
+        .join(" "),
+    );
   }
+
+  return chunks.join("\n").toLowerCase().replace(/\s+/g, " ");
 }
+
 
 function scoreText(text: string): Record<DocType, number> {
   const scores = emptyScores();
