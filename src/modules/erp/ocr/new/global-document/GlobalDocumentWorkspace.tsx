@@ -1,97 +1,120 @@
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import {
-  FileSearch,
+  Check,
+  ChevronDown,
+  Clipboard,
   FileText,
-  Image as ImageIcon,
   LoaderCircle,
   ScanLine,
   Upload,
   X,
-  Copy,
-  Trash2,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  extractGlobalDocument,
+  suggestGlobalDocumentType,
+  type GlobalDocumentType,
+} from "@/modules/erp/ocr/new/global-document/global-document-service";
 
-import { classifyDocument } from "@/modules/erp/ocr/new/services/document-classifier";
-import { readPassportDocument } from "@/modules/erp/ocr/new/services/passport-ocr-provider";
-import { extractWafidMedical } from "@/modules/erp/ocr/new/services/wafid-reder";
-import { readMofa } from "@/modules/erp/ocr/new/services/mofa-reader";
-import { extractKsaVisa } from "@/modules/erp/ocr/new/services/kisa-visa";
+type ExtractedField = {
+  key: string;
+  label: string;
+  value: string;
+};
 
-type DocumentType = "passport" | "medical" | "mofa" | "visa";
-
-type ExtractedFields = Record<string, string>;
-
-const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = [
-  { value: "passport", label: "Passport" },
-  { value: "medical", label: "Medical / Wafid" },
-  { value: "mofa", label: "MOFA" },
-  { value: "visa", label: "Saudi Visa" },
+const DOCUMENTS: {
+  value: GlobalDocumentType;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "passport",
+    label: "Passport",
+    description: "JPG or PNG image",
+  },
+  {
+    value: "medical",
+    label: "Wafid Medical",
+    description: "Medical report PDF",
+  },
+  {
+    value: "mofa",
+    label: "MOFA",
+    description: "PDF or image",
+  },
+  {
+    value: "visa",
+    label: "Saudi Visa",
+    description: "Visa PDF",
+  },
 ];
 
-function toEditableFields(result: unknown): ExtractedFields {
-  if (!result || typeof result !== "object") {
-    return { result: String(result ?? "") };
+function validateGlobalFile(
+  docType: GlobalDocumentType,
+  file: File,
+): string | null {
+  const maxSize = 10 * 1024 * 1024;
+
+  if (file.size === 0) {
+    return "The selected file is empty.";
   }
 
-  return Object.fromEntries(
-    Object.entries(result as Record<string, unknown>)
-      .filter(
-        ([key]) =>
-          !["rawText", "mrz", "warnings", "checks", "reviewFields"].includes(
-            key,
-          ),
-      )
-      .map(([key, value]) => [
-        key,
-        Array.isArray(value)
-          ? value.join(", ")
-          : value == null
-            ? ""
-            : String(value),
-      ]),
-  );
-}
+  if (file.size > maxSize) {
+    return "File size must not exceed 10 MB.";
+  }
 
-function formatLabel(value: string) {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/^./, (character) => character.toUpperCase());
-}
+  const name = file.name.toLowerCase();
+  const isPdf =
+    file.type === "application/pdf" || name.endsWith(".pdf");
+  const isImage =
+    file.type.startsWith("image/") ||
+    /\.(jpg|jpeg|png)$/i.test(name);
 
-function isPdf(file: File) {
-  return (
-    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
-  );
-}
+  switch (docType) {
+    case "passport":
+      if (!isImage) {
+        return "Passport requires a JPG or PNG image.";
+      }
+      break;
 
-function isImage(file: File) {
-  return file.type.startsWith("image/");
+    case "medical":
+      if (!isPdf) {
+        return "Wafid Medical requires a PDF file.";
+      }
+      break;
+
+    case "mofa":
+      if (!isPdf && !isImage) {
+        return "MOFA requires a PDF, JPG or PNG file.";
+      }
+      break;
+
+    case "visa":
+      if (!isPdf) {
+        return "Saudi Visa requires a PDF file.";
+      }
+      break;
+  }
+
+  return null;
 }
 
 export function GlobalDocumentWorkspace() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [documentType, setDocumentType] =
-    useState<DocumentType>("passport");
-
-  const [classificationMessage, setClassificationMessage] = useState("");
-  const [fields, setFields] = useState<ExtractedFields>({});
-  const [rawText, setRawText] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
-
   const [previewUrl, setPreviewUrl] = useState("");
+  const [docType, setDocType] =
+    useState<GlobalDocumentType>("passport");
+  const [fields, setFields] = useState<ExtractedField[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [classifying, setClassifying] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [classificationReason, setClassificationReason] =
+    useState("");
+  const [completed, setCompleted] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     if (!file) {
@@ -105,141 +128,117 @@ export function GlobalDocumentWorkspace() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  // Ctrl + Shift + O opens the global OCR popup from any mounted page.
   useEffect(() => {
-    function handleShortcut(event: KeyboardEvent) {
+    function handleKeyboard(event: KeyboardEvent) {
       if (
         event.ctrlKey &&
         event.shiftKey &&
         event.key.toLowerCase() === "o"
       ) {
         event.preventDefault();
-        setOpen(true);
+        setOpen((current) => !current);
+      }
+
+      if (event.key === "Escape") {
+        setOpen(false);
       }
     }
 
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
+    window.addEventListener("keydown", handleKeyboard);
+
+    return () =>
+      window.removeEventListener("keydown", handleKeyboard);
   }, []);
 
-  function clearDocument() {
+  function resetWorkspace() {
     setFile(null);
-    setFields({});
-    setRawText("");
+    setFields([]);
+    setNotice("");
     setError("");
-    setProgress(0);
-    setClassificationMessage("");
+    setClassificationReason("");
+    setCompleted(false);
+    setBusy(false);
+    setClassifying(false);
+    setWarnings([]);
   }
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const selectedFile = event.target.files?.[0];
-    event.target.value = "";
+  async function selectFile(nextFile?: File) {
+    if (!nextFile) return;
 
-    if (!selectedFile) return;
+    resetWorkspace();
+    setFile(nextFile);
+    setError("");
+    setNotice("");
+    setClassifying(true);
 
-    if (!isPdf(selectedFile) && !isImage(selectedFile)) {
-      setError("শুধু PDF, JPG অথবা PNG file upload করো।");
+    try {
+      const result = await suggestGlobalDocumentType(nextFile);
+
+      if (result.docType) {
+        setDocType(result.docType);
+      }
+
+      setClassificationReason(result.reason);
+
+      setNotice(
+        result.docType
+          ? `Document type suggested: ${
+              DOCUMENTS.find(
+                (item) => item.value === result.docType,
+              )?.label
+            }. Please verify before extracting.`
+          : "Document type could not be confirmed. Select the correct type manually.",
+      );
+    } catch (cause) {
+      console.error("Document classification failed:", cause);
+      setClassificationReason(
+        "Automatic classification was unavailable.",
+      );
+      setNotice("Select the document type manually.");
+    } finally {
+      setClassifying(false);
+    }
+  }
+
+  async function runExtraction() {
+    if (!file) {
+      setError("First upload a document.");
       return;
     }
 
-    clearDocument();
-    setFile(selectedFile);
+    const validationError = validateGlobalFile(docType, file);
 
-    try {
-      const result = await classifyDocument(selectedFile);
-
-      if (result.docType) {
-        const supportedType = DOCUMENT_TYPES.some(
-          (item) => item.value === result.docType,
-        );
-
-        if (supportedType) {
-          setDocumentType(result.docType as DocumentType);
-        }
-      }
-
-      setClassificationMessage(
-        `${result.reason} Confidence: ${result.confidence}.`,
-      );
-    } catch {
-      setClassificationMessage(
-        "Automatic detection হয়নি। Document type নিজে select করো।",
-      );
-    }
-  }
-
-  async function extractDocumentData() {
-    if (!file) {
-      setError("প্রথমে একটি document upload করো।");
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setBusy(true);
     setError("");
-    setFields({});
-    setRawText("");
-    setProgress(5);
+    setNotice("");
+    setCompleted(false);
+    setFields([]);
+    setWarnings([]);
 
     try {
-      let result: unknown;
+      const result = await extractGlobalDocument(file, docType);
 
-      switch (documentType) {
-        case "passport": {
-          if (!isImage(file)) {
-            throw new Error(
-              "বর্তমান Passport OCR service JPG/PNG image নেয়, PDF নয়।",
-            );
-          }
+      setFields(result.fields);
+      setWarnings(result.warnings);
+      setCompleted(true);
 
-          const passportResult = await readPassportDocument(
-            file,
-            (value) => setProgress(value),
-          );
+      setNotice(
+        result.warnings.length > 0
+          ? `Extraction completed. ${result.warnings.length} warning(s) need review.`
+          : "Extraction completed. Review and edit the fields below.",
+      );
+    } catch (cause) {
+      console.error("Global document extraction failed:", cause);
 
-          result = passportResult;
-
-          if (passportResult.rawText) {
-            setRawText(passportResult.rawText);
-          }
-
-          break;
-        }
-
-        case "medical": {
-          if (!isPdf(file)) {
-            throw new Error(
-              "বর্তমান Wafid Medical OCR service-এর জন্য PDF file দাও।",
-            );
-          }
-
-          result = await extractWafidMedical(file);
-          break;
-        }
-
-        case "mofa": {
-          result = await readMofa(file);
-          break;
-        }
-
-        case "visa": {
-          if (!isPdf(file)) {
-            throw new Error(
-              "বর্তমান Saudi Visa parser-এর জন্য PDF file দাও।",
-            );
-          }
-
-          result = await extractKsaVisa(file);
-          break;
-        }
-      }
-
-      setFields(toEditableFields(result));
-      setProgress(100);
-    } catch (caught) {
       setError(
-        caught instanceof Error
-          ? caught.message
-          : "OCR করা যায়নি। আবার চেষ্টা করো।",
+        cause instanceof Error
+          ? cause.message
+          : "Could not read this document. Try another file.",
       );
     } finally {
       setBusy(false);
@@ -247,308 +246,363 @@ export function GlobalDocumentWorkspace() {
   }
 
   function updateField(key: string, value: string) {
-    setFields((previous) => ({ ...previous, [key]: value }));
+    setFields((current) =>
+      current.map((field) =>
+        field.key === key ? { ...field, value } : field,
+      ),
+    );
   }
 
-  async function copyJson() {
+  async function copyResults() {
+    const output = Object.fromEntries(
+      fields.map((field) => [field.key, field.value]),
+    );
+
     try {
       await navigator.clipboard.writeText(
-        JSON.stringify(
-          {
-            documentType,
-            fileName: file?.name ?? "",
-            fields,
-          },
-          null,
-          2,
-        ),
+        JSON.stringify(output, null, 2),
       );
+      setNotice("Extracted data copied as JSON.");
+      setError("");
     } catch {
-      setError("Clipboard-এ copy করা যায়নি। Browser permission check করো।");
+      setError(
+        "Clipboard access failed. Please copy the values manually.",
+      );
     }
   }
 
+  const isPdf =
+    file?.type === "application/pdf" ||
+    file?.name.toLowerCase().endsWith(".pdf");
+
   return (
     <>
-      {/* Floating global launcher */}
-      <Button
+      <button
         type="button"
-        size="icon-lg"
-        title="Global Document OCR · Ctrl + Shift + O"
-        aria-label="Open Global Document OCR"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-[80] rounded-full shadow-lg"
+        title="Global Document Workspace (Ctrl+Shift+O)"
+        aria-label="Open Document Workspace"
+        className="fixed bottom-5 right-5 z-[80] flex h-14 items-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white shadow-xl transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
       >
         <ScanLine className="h-5 w-5" />
-      </Button>
+      </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex h-[92dvh] w-[96vw] max-w-[1500px] flex-col gap-4 overflow-hidden p-4 sm:p-6">
-          <DialogHeader className="shrink-0 pr-8">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <FileSearch className="h-5 w-5" />
-              Global Document OCR
-            </DialogTitle>
-
-            <DialogDescription>
-              যেকোনো পেজ থেকে document upload, preview, extract ও review করো।
-              এখানে কোনো ERP record auto-save হবে না।
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:overflow-hidden">
-            {/* LEFT: FULL DOCUMENT PREVIEW */}
-            <section className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-xl border bg-muted/20">
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2">
-                <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                  {isPdf(file ?? new File([], "")) ? (
-                    <FileText className="h-4 w-4 shrink-0" />
-                  ) : (
-                    <ImageIcon className="h-4 w-4 shrink-0" />
-                  )}
-
-                  <span className="truncate">
-                    {file?.name ?? "Document preview"}
-                  </span>
+      {open && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-5"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setOpen(false);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Global Document Workspace"
+            className="flex h-[94dvh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          >
+            <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
+                  <ScanLine className="h-5 w-5" />
                 </div>
 
-                {file && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={clearDocument}
-                    title="Remove document"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <div>
+                  <h2 className="text-base font-bold text-slate-950">
+                    Global Document Workspace
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Upload · Extract · Review · Copy
+                  </p>
+                </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-muted/30 p-2">
-                {!file && (
-                  <label className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border border-dashed bg-background p-8 text-center">
-                    <Upload className="h-8 w-8 text-muted-foreground" />
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close workspace"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
 
-                    <span className="text-sm font-medium">
-                      PDF অথবা image upload করো
+            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:overflow-hidden">
+              <aside className="flex min-h-[340px] flex-col border-b border-slate-200 bg-slate-50 lg:min-h-0 lg:border-b-0 lg:border-r">
+                <div className="flex items-center justify-between px-4 py-3 sm:px-5">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Source document
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Preview the uploaded file
+                    </p>
+                  </div>
+
+                  {file && (
+                    <button
+                      type="button"
+                      onClick={resetWorkspace}
+                      className="text-xs font-medium text-slate-600 hover:text-red-600"
+                    >
+                      Remove file
+                    </button>
+                  )}
+                </div>
+
+                {!file ? (
+                  <label className="m-4 flex min-h-64 flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 text-center transition hover:border-slate-500 hover:bg-slate-50 sm:m-5">
+                    <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                      <Upload className="h-7 w-7" />
                     </span>
 
-                    <span className="text-xs text-muted-foreground">
-                      PDF, JPG, PNG
+                    <span className="text-sm font-semibold text-slate-900">
+                      Choose a document
+                    </span>
+
+                    <span className="mt-2 max-w-xs text-xs leading-5 text-slate-500">
+                      Passport image, Medical PDF, MOFA PDF/image or
+                      Saudi Visa PDF
+                    </span>
+
+                    <span className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
+                      Browse files
                     </span>
 
                     <input
                       type="file"
-                      accept=".pdf,image/*"
+                      accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf"
                       className="sr-only"
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                )}
-
-                {file && previewUrl && isPdf(file) && (
-                  <iframe
-                    title="Full document preview"
-                    src={previewUrl}
-                    className="h-full min-h-[420px] w-full rounded-md bg-background"
-                  />
-                )}
-
-                {file && previewUrl && isImage(file) && (
-                  <img
-                    src={previewUrl}
-                    alt="Uploaded document preview"
-                    className="max-h-full max-w-full object-contain"
-                  />
-                )}
-
-                {file && !isPdf(file) && !isImage(file) && (
-                  <p className="text-sm text-muted-foreground">
-                    এই file format preview করা যাচ্ছে না।
-                  </p>
-                )}
-              </div>
-
-              {file && (
-                <div className="shrink-0 border-t p-3">
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-accent">
-                    <Upload className="h-4 w-4" />
-                    Replace document
-
-                    <input
-                      type="file"
-                      accept=".pdf,image/*"
-                      className="sr-only"
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                </div>
-              )}
-            </section>
-
-            {/* RIGHT: OCR EXTRACTION AND REVIEW */}
-            <section className="flex min-h-[360px] min-w-0 flex-col overflow-hidden rounded-xl border">
-              <div className="shrink-0 space-y-3 border-b p-4">
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="global-document-type"
-                    className="block text-sm font-medium"
-                  >
-                    Document type
-                  </label>
-
-                  <select
-                    id="global-document-type"
-                    value={documentType}
-                    onChange={(event) =>
-                      setDocumentType(event.target.value as DocumentType)
-                    }
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                  >
-                    {DOCUMENT_TYPES.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {classificationMessage && (
-                  <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                    {classificationMessage}
-                  </p>
-                )}
-
-                <Button
-                  type="button"
-                  onClick={extractDocumentData}
-                  disabled={!file || busy}
-                  className="w-full"
-                >
-                  {busy ? (
-                    <>
-                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                      Reading document… {progress}%
-                    </>
-                  ) : (
-                    <>
-                      <ScanLine className="mr-2 h-4 w-4" />
-                      Extract data
-                    </>
-                  )}
-                </Button>
-
-                {busy && (
-                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, progress))}%`,
+                      onChange={(event) => {
+                        void selectFile(event.currentTarget.files?.[0]);
+                        event.currentTarget.value = "";
                       }}
                     />
-                  </div>
-                )}
-
-                {error && (
-                  <p
-                    role="alert"
-                    className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-                  >
-                    {error}
-                  </p>
-                )}
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                {Object.keys(fields).length === 0 ? (
-                  <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
-                    <FileSearch className="h-8 w-8" />
-
-                    <p>Extracted data এখানে দেখা যাবে।</p>
-
-                    <p className="text-xs">
-                      Extract করার পর প্রতিটি field edit করতে পারবে।
-                    </p>
-                  </div>
+                  </label>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold">
-                        Extracted data
-                      </h3>
-
-                      <span className="text-xs text-muted-foreground">
-                        {Object.keys(fields).length} fields
-                      </span>
-                    </div>
-
-                    {Object.entries(fields).map(([key, value]) => (
-                      <div key={key} className="space-y-1.5">
-                        <label
-                          htmlFor={`global-ocr-${key}`}
-                          className="block text-xs font-medium text-muted-foreground"
-                        >
-                          {formatLabel(key)}
-                        </label>
-
-                        <input
-                          id={`global-ocr-${key}`}
-                          value={value}
-                          onChange={(event) =>
-                            updateField(key, event.target.value)
-                          }
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        />
+                    <div className="mx-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:mx-5">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                        <FileText className="h-5 w-5" />
                       </div>
-                    ))}
 
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={copyJson}
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy JSON
-                      </Button>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setFields({});
-                          setRawText("");
-                        }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Clear fields
-                      </Button>
+                      <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                        Replace
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf"
+                          className="sr-only"
+                          onChange={(event) => {
+                            void selectFile(event.currentTarget.files?.[0]);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
                     </div>
 
-                    {rawText && (
-                      <details className="rounded-md border p-3">
-                        <summary className="cursor-pointer text-sm font-medium">
-                          Passport raw OCR text
-                        </summary>
-
-                        <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
-                          {rawText}
-                        </pre>
-                      </details>
-                    )}
-
-                    <p className="text-xs text-muted-foreground">
-                      Review workspace only. এখানে কোনো Candidate, Medical,
-                      MOFA অথবা Visa record save করা হয় না।
-                    </p>
+                    <div className="m-4 min-h-64 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white sm:m-5 lg:min-h-0">
+                      {previewUrl && isPdf ? (
+                        <iframe
+                          title="PDF document preview"
+                          src={previewUrl}
+                          className="h-full min-h-64 w-full"
+                        />
+                      ) : previewUrl ? (
+                        <div className="flex h-full min-h-64 items-center justify-center overflow-auto p-3">
+                          <img
+                            src={previewUrl}
+                            alt="Uploaded document preview"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   </>
                 )}
-              </div>
-            </section>
-          </div>
-        </DialogContent>
-      </Dialog>
+              </aside>
+
+              <main className="flex min-h-[420px] flex-col lg:min-h-0">
+                <div className="space-y-4 border-b border-slate-200 p-4 sm:p-5">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Extraction settings
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Automatic detection is a suggestion. Confirm the
+                      document type.
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <select
+                      value={docType}
+                      onChange={(event) => {
+                        setDocType(
+                          event.target.value as GlobalDocumentType,
+                        );
+                        setFields([]);
+                        setWarnings([]);
+                        setCompleted(false);
+                        setError("");
+                        setNotice("");
+                      }}
+                      className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-3 pr-10 text-sm font-medium text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    >
+                      {DOCUMENTS.map((document) => (
+                        <option
+                          key={document.value}
+                          value={document.value}
+                        >
+                          {document.label} — {document.description}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-500" />
+                  </div>
+
+                  {classificationReason && (
+                    <p className="text-xs leading-5 text-slate-500">
+                      {classifying
+                        ? "Identifying document…"
+                        : classificationReason}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => void runExtraction()}
+                    disabled={!file || busy || classifying}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {busy || classifying ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ScanLine className="h-4 w-4" />
+                    )}
+
+                    {classifying
+                      ? "Identifying document…"
+                      : busy
+                        ? "Extracting fields…"
+                        : "Extract document"}
+                  </button>
+
+                  {error && (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+                    >
+                      {error}
+                    </div>
+                  )}
+
+                  {notice && !error && (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
+                      {notice}
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        Extracted fields
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Edit any value before copying the results.
+                      </p>
+                    </div>
+
+                    {fields.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => void copyResults()}
+                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        <Clipboard className="h-4 w-4" />
+                        Copy JSON
+                      </button>
+                    )}
+                  </div>
+
+                  {warnings.length > 0 && (
+                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="mb-2 text-xs font-semibold text-amber-900">
+                        Please review
+                      </p>
+                      <ul className="list-inside list-disc space-y-1 text-xs leading-5 text-amber-800">
+                        {warnings.map((warning, index) => (
+                          <li key={`${index}-${warning}`}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {fields.length === 0 ? (
+                    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 text-center">
+                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
+                        <FileText className="h-5 w-5" />
+                      </div>
+
+                      <p className="text-sm font-medium text-slate-700">
+                        No extracted data yet
+                      </p>
+
+                      <p className="mt-1 max-w-xs text-xs leading-5 text-slate-500">
+                        Upload a file, select its type and run
+                        extraction to review the detected fields here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {completed && (
+                        <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
+                          <Check className="h-4 w-4" />
+                          Extraction finished · {fields.length} fields
+                        </div>
+                      )}
+
+                      {fields.map((field) => (
+                        <label key={field.key} className="block">
+                          <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                            {field.label}
+                          </span>
+
+                          <input
+                            value={field.value}
+                            onChange={(event) =>
+                              updateField(field.key, event.target.value)
+                            }
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+                    This workspace only extracts and reviews data. It
+                    does not create or update candidates, Medical, MOFA
+                    or Visa records.
+                  </p>
+                </div>
+              </main>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }
