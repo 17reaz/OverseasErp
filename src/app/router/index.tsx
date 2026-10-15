@@ -19,7 +19,7 @@ import { ErpLayout } from "@/modules/erp/layout/erp-layout";
 // -----------------------------------------------------------------------------
 // Lazy ERP Pages
 // -----------------------------------------------------------------------------
-
+import { GlobalDocumentWorkspace } from "@/modules/erp/ocr/new/global-document/GlobalDocumentWorkspace";
 const DashboardPage = lazy(() =>
   import("@/modules/erp/dashboard/dashboard-page").then((module) => ({
     default: module.DashboardPage,
@@ -555,6 +555,7 @@ function AppRouter() {
             element={<div>Not Found</div>}
           />
         </Routes>
+        <GlobalDocumentWorkspace />
       </Suspense>
     </BrowserRouter>
   );

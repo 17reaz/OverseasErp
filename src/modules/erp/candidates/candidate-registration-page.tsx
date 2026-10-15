@@ -23,10 +23,41 @@ import { steps } from "./registration/constants";
 import { useCandidateRegistration } from "./registration/hooks/useCandidateRegistration";
 import { useRegistrationLookups } from "./registration/hooks/useRegistrationLookups";
 import { useRegistrationOcr } from "./registration/hooks/useRegistrationOcr";
+import { useEffect } from "react";
 
+import { consumeGlobalDocumentPrefill } from "@/modules/erp/ocr/new/global-document/global-document-prefill";
+import { toMedicalStatus } from "./registration/utils/registration-utils";
 type MofaCrossCheckResult = NonNullable<
   ReturnType<typeof useCandidateRegistration>["mofaCrossCheck"]
 >;
+
+function toRegistrationDate(value: unknown): string {
+  if (typeof value !== "string") return "";
+
+  const input = value.trim();
+  if (!input) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    return input;
+  }
+
+  const match = input.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+
+  if (match) {
+    const [, day, month, year] = match;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  return "";
+}
+
+function readText(
+  data: Record<string, unknown>,
+  key: string,
+): string {
+  const value = data[key];
+  return typeof value === "string" ? value.trim() : "";
+}
 
 function MofaCrossCheckAlert({ result }: { result: MofaCrossCheckResult }) {
   const allMatch = result.passportNoMatches && result.nameMatches;
@@ -49,6 +80,80 @@ function MofaCrossCheckAlert({ result }: { result: MofaCrossCheckResult }) {
 
 export function CandidateRegistrationPage() {
   const reg = useCandidateRegistration();
+  
+useEffect(() => {
+  const draft = consumeGlobalDocumentPrefill();
+  if (!draft) return;
+
+  const data = draft.data;
+
+  // Candidate details are prefilled only when OCR found them.
+  const name =
+    draft.docType === "medical"
+      ? [
+          readText(data, "firstName"),
+          readText(data, "lastName"),
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : readText(data, "name");
+
+  const passportNo = readText(data, "passportNo");
+
+  if (name) reg.setName(name);
+  if (passportNo) reg.setPassportNo(passportNo.toUpperCase());
+
+  if (draft.docType === "medical") {
+    const medicalDate = toRegistrationDate(
+      data.medicalExamDate || data.medicalTestAt,
+    );
+
+    const status = toMedicalStatus(readText(data, "status"));
+
+    if (medicalDate) reg.setMedicalDate(medicalDate);
+
+    reg.setMedicalStatus(status);
+    reg.setFitDate(status === "fit" ? medicalDate : "");
+    reg.goToStep(2);
+  }
+
+  if (draft.docType === "mofa") {
+    const applicationDate = toRegistrationDate(data.applicationDate);
+
+    reg.setApplicationNumber(readText(data, "applicationNumber"));
+
+    if (applicationDate) {
+      reg.setApplicationDate(applicationDate);
+    }
+
+    reg.setTrade(readText(data, "trade"));
+    reg.setMofaUploadFile(draft.file);
+    reg.goToStep(3);
+  }
+
+  if (draft.docType === "visa") {
+    reg.setVisaNo(readText(data, "visaNo"));
+
+    const visaDate = toRegistrationDate(data.validFrom);
+    const expiryDate = toRegistrationDate(data.validUntil);
+
+    if (visaDate) reg.setVisaDate(visaDate);
+    if (expiryDate) reg.setVisaExpiryDate(expiryDate);
+
+    reg.setVisaUploadFile(draft.file);
+    reg.goToStep(4);
+  }
+
+  if (draft.docType === "passport") {
+    reg.goToStep(1);
+  }
+
+  reg.setErrorMessage("");
+  reg.setSuccessMessage(
+    `${draft.docType.toUpperCase()} OCR data prefilled. Review all fields before saving.`,
+  );
+}, [reg]);
+
   const lookups = useRegistrationLookups();
   const { scans, files, anyScanning, handleScan, resetScans } =
   useRegistrationOcr(reg);

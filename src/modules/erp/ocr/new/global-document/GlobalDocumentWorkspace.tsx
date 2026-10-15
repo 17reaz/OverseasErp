@@ -7,7 +7,9 @@ import {
   ScanLine,
   Upload,
 } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
+import type { GlobalDocumentResult } from "./global-document-service";
+import { setGlobalDocumentPrefill } from "./global-document-prefill";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
   extractGlobalDocument,
   suggestGlobalDocumentType,
   type GlobalDocumentType,
+   type GlobalDocumentResult,
 } from "@/modules/erp/ocr/new/global-document/global-document-service";
 
 type ExtractedField = {
@@ -129,6 +132,9 @@ export function GlobalDocumentWorkspace() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [docType, setDocType] =
     useState<GlobalDocumentType>("passport");
+    const navigate = useNavigate();
+const [extractedResult, setExtractedResult] =
+  useState<GlobalDocumentResult | null>(null);
   const [fields, setFields] = useState<ExtractedField[]>([]);
   const [busy, setBusy] = useState(false);
   const [classifying, setClassifying] = useState(false);
@@ -175,6 +181,7 @@ export function GlobalDocumentWorkspace() {
   }, []);
 
   function resetWorkspace() {
+    setExtractedResult(null);
     setFile(null);
     setFields([]);
     setNotice("");
@@ -188,8 +195,8 @@ export function GlobalDocumentWorkspace() {
   }
 
   async function selectFile(nextFile?: File) {
+    setExtractedResult(null);
     if (!nextFile) return;
-
     resetWorkspace();
     setFile(nextFile);
     setError("");
@@ -247,7 +254,7 @@ export function GlobalDocumentWorkspace() {
 
     try {
       const result = await extractGlobalDocument(file, docType);
-
+      setExtractedResult(result);
       setFields(result.fields);
       setWarnings(result.warnings);
       setCompleted(true);
@@ -270,6 +277,30 @@ export function GlobalDocumentWorkspace() {
       setBusy(false);
     }
   }
+
+function sendToCandidateRegistration() {
+  if (!file || !extractedResult) {
+    setError("First extract a document before continuing.");
+    return;
+  }
+
+  // Use the reviewed values, not the original unedited OCR values.
+  const reviewedData: Record<string, unknown> = {
+    ...extractedResult.raw,
+    ...Object.fromEntries(
+      fields.map((field) => [field.key, field.value]),
+    ),
+  };
+
+  setGlobalDocumentPrefill({
+    docType: extractedResult.docType,
+    data: reviewedData,
+    file,
+  });
+
+  setOpen(false);
+  navigate("/app/candidates/new");
+}
 
   function updateField(key: string, value: string) {
     setFields((current) =>
@@ -491,6 +522,7 @@ export function GlobalDocumentWorkspace() {
                 </div>
 
                 {fields.length > 0 && (
+                  <div>
                   <Button
                     type="button"
                     variant="outline"
@@ -500,6 +532,17 @@ export function GlobalDocumentWorkspace() {
                     <Clipboard className="size-4" />
                     Copy JSON
                   </Button>
+                  
+<button
+  type="button"
+  onClick={sendToCandidateRegistration}
+  disabled={!completed || !extractedResult}
+  className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+>
+  Use in Registration
+</button>
+
+                  </div>
                 )}
               </div>
 
