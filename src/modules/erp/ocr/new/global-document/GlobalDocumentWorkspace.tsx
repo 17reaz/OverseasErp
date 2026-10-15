@@ -1,15 +1,35 @@
-
 import { useEffect, useState } from "react";
 import {
   Check,
-  ChevronDown,
   Clipboard,
   FileText,
-  LoaderCircle,
+  Loader2,
   ScanLine,
   Upload,
-  X,
 } from "lucide-react";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 import {
   extractGlobalDocument,
@@ -49,6 +69,9 @@ const DOCUMENTS: {
     description: "Visa PDF",
   },
 ];
+
+const FILE_ACCEPT =
+  ".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf";
 
 function validateGlobalFile(
   docType: GlobalDocumentType,
@@ -116,6 +139,10 @@ export function GlobalDocumentWorkspace() {
   const [completed, setCompleted] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
 
+  // UI-only state: which panel is visible on small screens, and drag highlight.
+  const [panel, setPanel] = useState<"source" | "fields">("source");
+  const [dragging, setDragging] = useState(false);
+
   useEffect(() => {
     if (!file) {
       setPreviewUrl("");
@@ -129,6 +156,7 @@ export function GlobalDocumentWorkspace() {
   }, [file]);
 
   useEffect(() => {
+    // Escape is handled by the Dialog itself.
     function handleKeyboard(event: KeyboardEvent) {
       if (
         event.ctrlKey &&
@@ -137,10 +165,6 @@ export function GlobalDocumentWorkspace() {
       ) {
         event.preventDefault();
         setOpen((current) => !current);
-      }
-
-      if (event.key === "Escape") {
-        setOpen(false);
       }
     }
 
@@ -160,6 +184,7 @@ export function GlobalDocumentWorkspace() {
     setBusy(false);
     setClassifying(false);
     setWarnings([]);
+    setPanel("source");
   }
 
   async function selectFile(nextFile?: File) {
@@ -226,6 +251,7 @@ export function GlobalDocumentWorkspace() {
       setFields(result.fields);
       setWarnings(result.warnings);
       setCompleted(true);
+      setPanel("fields");
 
       setNotice(
         result.warnings.length > 0
@@ -275,334 +301,334 @@ export function GlobalDocumentWorkspace() {
     file?.type === "application/pdf" ||
     file?.name.toLowerCase().endsWith(".pdf");
 
+  const selectedDoc = DOCUMENTS.find((item) => item.value === docType);
+
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="icon"
         onClick={() => setOpen(true)}
-        title="Global Document Workspace (Ctrl+Shift+O)"
-        aria-label="Open Document Workspace"
-        className="fixed bottom-5 right-5 z-[80] flex h-14 items-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white shadow-xl transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+        title="Scan a document (Ctrl+Shift+O)"
+        aria-label="Scan a document"
+        className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 size-11 rounded-full bg-background shadow-md"
       >
-        <ScanLine className="h-5 w-5" />
-      </button>
+        <ScanLine className="size-5" />
+      </Button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-5"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setOpen(false);
-            }
-          }}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label="Global Document Workspace"
-            className="flex h-[94dvh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-          >
-            <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
-                  <ScanLine className="h-5 w-5" />
-                </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="flex h-dvh w-full max-w-none flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-5xl sm:rounded-lg">
+          <DialogHeader className="border-b px-4 py-3 pr-12 text-left sm:px-6">
+            <DialogTitle>Scan a document</DialogTitle>
+            <DialogDescription>
+              Upload a file, check its type, then review the fields.
+            </DialogDescription>
+          </DialogHeader>
 
-                <div>
-                  <h2 className="text-base font-bold text-slate-950">
-                    Global Document Workspace
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Upload · Extract · Review · Copy
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close workspace"
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </header>
-
-            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:overflow-hidden">
-              <aside className="flex min-h-[340px] flex-col border-b border-slate-200 bg-slate-50 lg:min-h-0 lg:border-b-0 lg:border-r">
-                <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      Source document
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Preview the uploaded file
-                    </p>
-                  </div>
-
-                  {file && (
-                    <button
-                      type="button"
-                      onClick={resetWorkspace}
-                      className="text-xs font-medium text-slate-600 hover:text-red-600"
+          {/* Panel switch, small screens only */}
+          <div className="border-b px-4 py-2 lg:hidden">
+            <Tabs
+              value={panel}
+              onValueChange={(value) =>
+                setPanel(value as "source" | "fields")
+              }
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="source">Document</TabsTrigger>
+                <TabsTrigger value="fields">
+                  Fields
+                  {fields.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-2 px-1.5 py-0 text-[10px]"
                     >
-                      Remove file
-                    </button>
+                      {fields.length}
+                    </Badge>
                   )}
-                </div>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
-                {!file ? (
-                  <label className="m-4 flex min-h-64 flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 text-center transition hover:border-slate-500 hover:bg-slate-50 sm:m-5">
-                    <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-                      <Upload className="h-7 w-7" />
-                    </span>
+          <div className="grid min-h-0 flex-1 lg:grid-cols-2">
+            {/* Source document */}
+            <section
+              className={cn(
+                "min-h-0 flex-col bg-muted/30 lg:flex lg:border-r",
+                panel === "source" ? "flex" : "hidden",
+              )}
+            >
+              {!file ? (
+                <label
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragging(false);
+                    void selectFile(event.dataTransfer.files?.[0]);
+                  }}
+                  className={cn(
+                    "m-4 flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-background px-6 text-center transition-colors",
+                    "hover:bg-muted/50 focus-within:ring-2 focus-within:ring-ring",
+                    dragging && "border-primary bg-muted/50",
+                  )}
+                >
+                  <Upload className="size-6 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Choose a document
+                  </span>
+                  <span className="max-w-xs text-xs text-muted-foreground">
+                    or drop it here. Passport image, Medical PDF, MOFA
+                    PDF or image, Saudi Visa PDF.
+                  </span>
+                  <input
+                    type="file"
+                    accept={FILE_ACCEPT}
+                    className="sr-only"
+                    onChange={(event) => {
+                      void selectFile(event.currentTarget.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              ) : (
+                <>
+                  <div className="m-4 mb-0 flex items-center gap-3 rounded-lg border bg-background p-3">
+                    <FileText className="size-5 shrink-0 text-muted-foreground" />
 
-                    <span className="text-sm font-semibold text-slate-900">
-                      Choose a document
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
 
-                    <span className="mt-2 max-w-xs text-xs leading-5 text-slate-500">
-                      Passport image, Medical PDF, MOFA PDF/image or
-                      Saudi Visa PDF
-                    </span>
-
-                    <span className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
-                      Browse files
-                    </span>
-
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf"
-                      className="sr-only"
-                      onChange={(event) => {
-                        void selectFile(event.currentTarget.files?.[0]);
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                ) : (
-                  <>
-                    <div className="mx-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:mx-5">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                        <FileText className="h-5 w-5" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900">
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-
-                      <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer"
+                    >
+                      <label>
                         Replace
                         <input
                           type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf"
+                          accept={FILE_ACCEPT}
                           className="sr-only"
                           onChange={(event) => {
-                            void selectFile(event.currentTarget.files?.[0]);
+                            void selectFile(
+                              event.currentTarget.files?.[0],
+                            );
                             event.currentTarget.value = "";
                           }}
                         />
                       </label>
-                    </div>
+                    </Button>
 
-                    <div className="m-4 min-h-64 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white sm:m-5 lg:min-h-0">
-                      {previewUrl && isPdf ? (
-                        <iframe
-                          title="PDF document preview"
-                          src={previewUrl}
-                          className="h-full min-h-64 w-full"
-                        />
-                      ) : previewUrl ? (
-                        <div className="flex h-full min-h-64 items-center justify-center overflow-auto p-3">
-                          <img
-                            src={previewUrl}
-                            alt="Uploaded document preview"
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  </>
-                )}
-              </aside>
-
-              <main className="flex min-h-[420px] flex-col lg:min-h-0">
-                <div className="space-y-4 border-b border-slate-200 p-4 sm:p-5">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      Extraction settings
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Automatic detection is a suggestion. Confirm the
-                      document type.
-                    </p>
-                  </div>
-
-                  <div className="relative">
-                    <select
-                      value={docType}
-                      onChange={(event) => {
-                        setDocType(
-                          event.target.value as GlobalDocumentType,
-                        );
-                        setFields([]);
-                        setWarnings([]);
-                        setCompleted(false);
-                        setError("");
-                        setNotice("");
-                      }}
-                      className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-3 pr-10 text-sm font-medium text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={resetWorkspace}
                     >
-                      {DOCUMENTS.map((document) => (
-                        <option
-                          key={document.value}
-                          value={document.value}
-                        >
-                          {document.label} — {document.description}
-                        </option>
-                      ))}
-                    </select>
-
-                    <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-500" />
+                      Remove
+                    </Button>
                   </div>
 
                   {classificationReason && (
-                    <p className="text-xs leading-5 text-slate-500">
+                    <p className="mx-4 mt-2 text-xs text-muted-foreground">
                       {classifying
                         ? "Identifying document…"
                         : classificationReason}
                     </p>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => void runExtraction()}
-                    disabled={!file || busy || classifying}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {busy || classifying ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ScanLine className="h-4 w-4" />
-                    )}
+                  <div className="m-4 min-h-0 flex-1 overflow-hidden rounded-lg border bg-background">
+                    {previewUrl && isPdf ? (
+                      <iframe
+                        title="PDF document preview"
+                        src={previewUrl}
+                        className="h-full min-h-64 w-full"
+                      />
+                    ) : previewUrl ? (
+                      <div className="flex h-full min-h-64 items-center justify-center overflow-auto p-3">
+                        <img
+                          src={previewUrl}
+                          alt="Uploaded document preview"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </section>
 
-                    {classifying
-                      ? "Identifying document…"
-                      : busy
-                        ? "Extracting fields…"
-                        : "Extract document"}
-                  </button>
-
-                  {error && (
-                    <div
-                      role="alert"
-                      className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
-                    >
-                      {error}
-                    </div>
-                  )}
-
-                  {notice && !error && (
-                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
-                      {notice}
-                    </div>
+            {/* Extracted fields */}
+            <section
+              className={cn(
+                "min-h-0 flex-col lg:flex",
+                panel === "fields" ? "flex" : "hidden",
+              )}
+            >
+              <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium">
+                    Extracted fields
+                  </h3>
+                  {completed && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Check className="size-3" />
+                      {fields.length}
+                    </Badge>
                   )}
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900">
-                        Extracted fields
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Edit any value before copying the results.
-                      </p>
-                    </div>
+                {fields.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void copyResults()}
+                  >
+                    <Clipboard className="size-4" />
+                    Copy JSON
+                  </Button>
+                )}
+              </div>
 
-                    {fields.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => void copyResults()}
-                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        <Clipboard className="h-4 w-4" />
-                        Copy JSON
-                      </button>
-                    )}
-                  </div>
-
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="space-y-4 p-4 sm:p-5">
                   {warnings.length > 0 && (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                      <p className="mb-2 text-xs font-semibold text-amber-900">
-                        Please review
-                      </p>
-                      <ul className="list-inside list-disc space-y-1 text-xs leading-5 text-amber-800">
-                        {warnings.map((warning, index) => (
-                          <li key={`${index}-${warning}`}>{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    <Alert>
+                      <AlertTitle>Please review</AlertTitle>
+                      <AlertDescription>
+                        <ul className="list-inside list-disc space-y-1">
+                          {warnings.map((warning, index) => (
+                            <li key={`${index}-${warning}`}>
+                              {warning}
+                            </li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
                   )}
 
                   {fields.length === 0 ? (
-                    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 text-center">
-                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
-                        <FileText className="h-5 w-5" />
-                      </div>
-
-                      <p className="text-sm font-medium text-slate-700">
-                        No extracted data yet
+                    <div className="flex min-h-56 flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-6 text-center">
+                      <FileText className="mb-2 size-5 text-muted-foreground" />
+                      <p className="text-sm font-medium">
+                        Nothing extracted yet
                       </p>
-
-                      <p className="mt-1 max-w-xs text-xs leading-5 text-slate-500">
-                        Upload a file, select its type and run
-                        extraction to review the detected fields here.
+                      <p className="max-w-xs text-xs text-muted-foreground">
+                        Choose a file, pick its type, then tap Extract.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {completed && (
-                        <div className="flex items-center gap-2 text-xs font-medium text-emerald-700">
-                          <Check className="h-4 w-4" />
-                          Extraction finished · {fields.length} fields
-                        </div>
-                      )}
-
+                    <div className="grid gap-4 sm:grid-cols-2">
                       {fields.map((field) => (
-                        <label key={field.key} className="block">
-                          <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                        <div key={field.key} className="space-y-1.5">
+                          <Label
+                            htmlFor={`field-${field.key}`}
+                            className="text-xs text-muted-foreground"
+                          >
                             {field.label}
-                          </span>
-
-                          <input
+                          </Label>
+                          <Input
+                            id={`field-${field.key}`}
                             value={field.value}
+                            placeholder="Not found"
+                            aria-invalid={!field.value.trim()}
                             onChange={(event) =>
                               updateField(field.key, event.target.value)
                             }
-                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                           />
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}
 
-                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+                  <p className="border-t pt-4 text-xs text-muted-foreground">
                     This workspace only extracts and reviews data. It
                     does not create or update candidates, Medical, MOFA
                     or Visa records.
                   </p>
                 </div>
-              </main>
+              </ScrollArea>
+            </section>
+          </div>
+
+          {/* Always-visible action bar */}
+          <div className="space-y-2 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6">
+            {error ? (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : (
+              notice && (
+                <p className="text-xs text-muted-foreground">{notice}</p>
+              )
+            )}
+
+            <div className="flex items-center gap-2">
+              <Select
+                value={docType}
+                onValueChange={(value) => {
+                  setDocType(value as GlobalDocumentType);
+                  setFields([]);
+                  setWarnings([]);
+                  setCompleted(false);
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                <SelectTrigger
+                  className="w-full flex-1 sm:max-w-xs"
+                  aria-label="Document type"
+                >
+                  <SelectValue>{selectedDoc?.label}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENTS.map((document) => (
+                    <SelectItem key={document.value} value={document.value}>
+                      <div className="flex flex-col text-left">
+                        <span>{document.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {document.description}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                type="button"
+                onClick={() => void runExtraction()}
+                disabled={!file || busy || classifying}
+                className="shrink-0"
+              >
+                {busy || classifying ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ScanLine className="size-4" />
+                )}
+                {classifying
+                  ? "Identifying…"
+                  : busy
+                    ? "Extracting…"
+                    : "Extract"}
+              </Button>
             </div>
-          </section>
-        </div>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
