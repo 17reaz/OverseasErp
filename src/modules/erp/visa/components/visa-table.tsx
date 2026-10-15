@@ -17,6 +17,8 @@ import {
   type DataTableColumn,
 } from "../../shared/ui/data-table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 interface CandidateOption {
   id: string;
   tenant_id: string;
@@ -84,6 +86,30 @@ const VISA_STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
   { value: "delivered", label: "Delivered" },
 ] as const;
+
+const VISA_STATUS_VARIANTS: Record<
+  string,
+  React.ComponentProps<typeof Badge>["variant"]
+> = {
+  processing: "secondary",
+  active: "default",
+  delivered: "outline",
+  expired: "destructive",
+  cancelled: "destructive",
+};
+
+function VisaStatusBadge({ status }: { status: string }) {
+  const label =
+    VISA_STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+    status;
+
+  return (
+    <Badge variant={VISA_STATUS_VARIANTS[status] ?? "outline"}>
+      {label}
+    </Badge>
+  );
+}
+
 
 function hasVisaCopy(record: Visa): boolean {
   const data = record as unknown as Record<string, unknown>;
@@ -360,15 +386,10 @@ export function VisaTable({
         getAgency(record.agency_id)?.name ?? "—",
     },
     {
-      key: "status",
-      header: "Status",
-      className: "capitalize",
-      cell: (record) => (
-        <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
-          {record.status}
-        </span>
-      ),
-    },
+  key: "status",
+  header: "Status",
+  cell: (record) => <VisaStatusBadge status={record.status} />,
+},
     {
       key: "action",
       header: "Actions",
