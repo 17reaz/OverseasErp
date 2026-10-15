@@ -9,6 +9,14 @@ import {
   getCandidateVisaFileUrl,
   uploadCandidateVisa,
 } from "../candidates/candidate-files-service";
+import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   getBmetRecords,
   type BmetRecord,
@@ -49,7 +57,10 @@ export function VisaPage() {
   const [visaCopyCandidateIds, setVisaCopyCandidateIds] =
     useState<Set<string>>(() => new Set());
   const [bmetRecords, setBmetRecords] = useState<BmetRecord[]>([]);
-
+const [previewVisa, setPreviewVisa] = useState<Visa | null>(null);
+const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+const [previewLoading, setPreviewLoading] = useState(false);
+const [previewError, setPreviewError] = useState("");
   const [view, setView] = useState<VisaFilterView>("all");
   const [pendingMofas, setPendingMofas] =
     useState<VisaEligibleMofa[]>([]);
@@ -299,7 +310,25 @@ export function VisaPage() {
     const url = await getVisaCopyUrl(record);
     window.open(url, "_blank", "noopener,noreferrer");
   }
+async function handlePreviewVisaCopy(record: Visa) {
+  setPreviewVisa(record);
+  setPreviewUrl(null);
+  setPreviewError("");
+  setPreviewLoading(true);
 
+  try {
+    const url = await getVisaCopyUrl(record);
+    setPreviewUrl(url);
+  } catch (error) {
+    setPreviewError(
+      error instanceof Error
+        ? error.message
+        : "Could not load this Visa copy.",
+    );
+  } finally {
+    setPreviewLoading(false);
+  }
+}
   async function handleDownloadVisaCopy(record: Visa) {
     const url = await getVisaCopyUrl(record);
 
@@ -367,6 +396,7 @@ export function VisaPage() {
             candidates={candidates}
             agencies={agencies}
             loading={loading}
+            onPreviewCopy={handlePreviewVisaCopy}
             bmetRecords={bmetRecords}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -378,7 +408,55 @@ export function VisaPage() {
           />
         )}
       </div>
+<Dialog
+  open={Boolean(previewVisa)}
+  onOpenChange={(open) => {
+    if (!open) {
+      setPreviewVisa(null);
+      setPreviewUrl(null);
+      setPreviewError("");
+      setPreviewLoading(false);
+    }
+  }}
+>
+  <DialogContent className="flex h-[85vh] w-[calc(100%-2rem)] max-w-5xl flex-col gap-4">
+    <DialogHeader>
+      <DialogTitle>
+        Visa Copy
+        {previewVisa?.visa_no
+          ? ` — ${previewVisa.visa_no}`
+          : ""}
+      </DialogTitle>
+      <DialogDescription>
+        Uploaded Visa document preview
+      </DialogDescription>
+    </DialogHeader>
 
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border bg-muted/20">
+      {previewLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Loading Visa copy…
+        </div>
+      ) : previewError ? (
+        <p className="px-6 text-center text-sm text-destructive">
+          {previewError}
+        </p>
+      ) : previewUrl ? (
+        <iframe
+          key={previewUrl}
+          src={previewUrl}
+          title={`Visa copy ${previewVisa?.visa_no ?? ""}`}
+          className="h-full w-full border-0 bg-background"
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No Visa document to preview.
+        </p>
+      )}
+    </div>
+  </DialogContent>
+</Dialog>
       <VisaForm
         open={formOpen}
         onOpenChange={(open) => {

@@ -16,7 +16,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../shared/ui/data-table";
-
+import { Button } from "@/components/ui/button";
 interface CandidateOption {
   id: string;
   tenant_id: string;
@@ -49,6 +49,7 @@ interface VisaTableProps {
   onDelete: (record: Visa) => void;
   onUploadCopy: (record: Visa, file: File) => Promise<void>;
   onOpenCopy: (record: Visa) => Promise<void>;
+  onPreviewCopy: (record: Visa) => Promise<void>;
   onDownloadCopy: (record: Visa) => Promise<void>;
 }
 
@@ -99,6 +100,7 @@ interface VisaActionsProps {
     record: Visa,
     status: string,
   ) => Promise<void>;
+  onPreviewCopy: (record: Visa) => Promise<void>;
   onUploadCopy: (record: Visa, file: File) => Promise<void>;
   onOpenCopy: (record: Visa) => Promise<void>;
   onDownloadCopy: (record: Visa) => Promise<void>;
@@ -113,6 +115,7 @@ function VisaActions({
   onUploadCopy,
   onOpenCopy,
   onDownloadCopy,
+  onPreviewCopy,
 }: VisaActionsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -143,7 +146,20 @@ function VisaActions({
   }
 
   return (
-    <div className="flex justify-end">
+  <div className="flex items-center justify-end gap-1">
+    {copyExists && (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        disabled={busy}
+        title="View Visa Copy"
+        aria-label={`View Visa Copy for ${record.visa_no ?? record.id}`}
+        onClick={() => void runAction(() => onPreviewCopy(record))}
+      >
+        <Download className="size-4" />
+      </Button>
+    )}
       <input
         ref={fileInputRef}
         type="file"
@@ -244,8 +260,9 @@ export function VisaTable({
   onEdit,
   onDelete,
   onStatusChange,
-  onUploadCopy,
+   onUploadCopy,
   onOpenCopy,
+  onPreviewCopy,
   onDownloadCopy,
   visaCopyCandidateIds,
 }: VisaTableProps) {
@@ -367,6 +384,7 @@ export function VisaTable({
           onStatusChange={onStatusChange}
           onUploadCopy={onUploadCopy}
           onOpenCopy={onOpenCopy}
+          onPreviewCopy={onPreviewCopy}
           onDownloadCopy={onDownloadCopy}
         />
       ),
