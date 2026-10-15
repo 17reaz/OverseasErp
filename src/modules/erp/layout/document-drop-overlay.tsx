@@ -1,37 +1,15 @@
-import { Outlet } from "react-router-dom";
-import { useUIStore } from "@/store/ui-store";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { ErpSidebar } from "./erp-sidebar";
-import { ErpHeader } from "./erp-header";
-import { PermissionGuard } from "./permission-guard";
-import { DocumentDropOverlay } from "./document-drop-overlay";
-import { useGlobalFileDrop } from "./use-global-file-drop";
+import { Upload } from "lucide-react";
 
-export function ErpLayout() {
-  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
-  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
-  const { active: dragActive, dragProps } = useGlobalFileDrop();
-
+export function DocumentDropOverlay() {
   return (
-    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <ErpSidebar />
-
-      <SidebarInset className="flex h-svh flex-col overflow-hidden">
-        <ErpHeader />
-
-        <main
-          className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
-          {...dragProps}
-        >
-          <div className="flex h-full min-h-0 flex-col px-6 pt-6 pb-3">
-            <PermissionGuard>
-              <Outlet />
-            </PermissionGuard>
-          </div>
-
-          {dragActive && <DocumentDropOverlay />}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/85 p-6 backdrop-blur-sm">
+      <div className="flex w-full max-w-lg flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-primary bg-background p-10 text-center shadow-xl">
+        <Upload className="size-10 text-primary" />
+        <p className="text-lg font-semibold">Drop document to scan</p>
+        <p className="text-sm text-muted-foreground">
+          PDF, JPG or PNG · Passport, Medical, MOFA or Visa
+        </p>
+      </div>
+    </div>
   );
 }
