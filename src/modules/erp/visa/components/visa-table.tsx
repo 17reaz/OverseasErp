@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ComponentProps } from "react";
 import {
   CheckCircle2,
   Pencil,
@@ -19,6 +19,17 @@ import {
 } from "../../shared/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+/* -------------------------------------------------------------------------- */
+/*  Types                                                                     */
+/* -------------------------------------------------------------------------- */
 
 interface CandidateOption {
   id: string;
@@ -42,12 +53,9 @@ interface VisaTableProps {
   page?: number;
   pageSize?: number;
   total?: number;
-  onStatusChange: (
-    record: Visa,
-    status: string,
-  ) => Promise<void>;
   visaCopyCandidateIds: ReadonlySet<string>;
   onPageChange?: (page: number) => void;
+  onStatusChange: (record: Visa, status: string) => Promise<void>;
   onEdit: (record: Visa) => void;
   onDelete: (record: Visa) => void;
   onUploadCopy: (record: Visa, file: File) => Promise<void>;
@@ -57,74 +65,11 @@ interface VisaTableProps {
   onManageManpower: (record: Visa) => void;
 }
 
-function getManpowerStatus(record?: BmetRecord | null) {
-  if (!record) {
-    return {
-      label: "Not Created",
-      className: "bg-muted text-muted-foreground",
-    };
-  }
+type RowAction = ComponentProps<typeof RowActions>["actions"][number];
 
-  if (record.bmet) {
-    return {
-      label: "Complete",
-      className:
-        "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    };
-  }
-
-  if (!record.pdo) {
-    return {
-      label: "PDO",
-      className:
-        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    };
-  }
-
-  if (!record.finger) {
-    return {
-      label: "Finger",
-      className:
-        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    };
-  }
-
-  if (!record.nominee) {
-    return {
-      label: "Nominee",
-      className:
-        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    };
-  }
-
-  if (!record.bank) {
-    return {
-      label: "Bank",
-      className:
-        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    };
-  }
-
-  return {
-    label: "Submitted",
-    className:
-      "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-  };
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-
-  const date = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
+/* -------------------------------------------------------------------------- */
+/*  Constants                                                                 */
+/* -------------------------------------------------------------------------- */
 
 const COPY_FIELDS = [
   "visa_copy_path",
@@ -146,7 +91,7 @@ const VISA_STATUS_OPTIONS = [
 
 const VISA_STATUS_VARIANTS: Record<
   string,
-  React.ComponentProps<typeof Badge>["variant"]
+  ComponentProps<typeof Badge>["variant"]
 > = {
   processing: "secondary",
   active: "default",
@@ -155,16 +100,61 @@ const VISA_STATUS_VARIANTS: Record<
   cancelled: "destructive",
 };
 
-function VisaStatusBadge({ status }: { status: string }) {
-  const label =
-    VISA_STATUS_OPTIONS.find((option) => option.value === status)
-      ?.label ?? status;
+const MANPOWER_STYLES = {
+  muted: "bg-muted text-muted-foreground",
+  success: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  warning: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  info: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  orange: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+} as const;
 
-  return (
-    <Badge variant={VISA_STATUS_VARIANTS[status] ?? "outline"}>
-      {label}
-    </Badge>
-  );
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+
+interface StatusDisplay {
+  label: string;
+  className: string;
+}
+
+function getManpowerStatus(record?: BmetRecord | null): StatusDisplay {
+  if (!record) {
+    return { label: "Not Created", className: MANPOWER_STYLES.muted };
+  }
+
+  if (record.bmet) {
+    return { label: "Complete", className: MANPOWER_STYLES.success };
+  }
+
+  // First missing step decides the label.
+  const pendingStep = (
+    [
+      ["pdo", "PDO"],
+      ["finger", "Finger"],
+      ["nominee", "Nominee"],
+      ["bank", "Bank"],
+    ] as const
+  ).find(([key]) => !record[key]);
+
+  if (pendingStep) {
+    return { label: pendingStep[1], className: MANPOWER_STYLES.warning };
+  }
+
+  return { label: "Submitted", className: MANPOWER_STYLES.info };
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return "—";
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 function hasVisaCopy(record: Visa): boolean {
@@ -173,15 +163,42 @@ function hasVisaCopy(record: Visa): boolean {
   return COPY_FIELDS.some((field) => Boolean(data[field]));
 }
 
+/** Joins action groups and puts a separator between each non-empty group. */
+function joinActionGroups(groups: RowAction[][]): RowAction[] {
+  return groups
+    .filter((group) => group.length > 0)
+    .flatMap((group, groupIndex) =>
+      group.map((action, index) => ({
+        ...action,
+        separatorBefore: groupIndex > 0 && index === 0,
+      })),
+    );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Status badge                                                              */
+/* -------------------------------------------------------------------------- */
+
+function VisaStatusBadge({ status }: { status: string }) {
+  const label =
+    VISA_STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+    status;
+
+  return (
+    <Badge variant={VISA_STATUS_VARIANTS[status] ?? "outline"}>{label}</Badge>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Row actions                                                               */
+/* -------------------------------------------------------------------------- */
+
 interface VisaActionsProps {
   record: Visa;
   hasStoredCopy: boolean;
   onEdit: (record: Visa) => void;
   onDelete: (record: Visa) => void;
-  onStatusChange: (
-    record: Visa,
-    status: string,
-  ) => Promise<void>;
+  onStatusChange: (record: Visa, status: string) => Promise<void>;
   onPreviewCopy: (record: Visa) => Promise<void>;
   onUploadCopy: (record: Visa, file: File) => Promise<void>;
   onOpenCopy: (record: Visa) => Promise<void>;
@@ -204,13 +221,9 @@ function VisaActions({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [uploadedNow, setUploadedNow] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
-  const copyExists =
-    hasVisaCopy(record) || hasStoredCopy || uploadedNow;
-
-  const availableStatusOptions = VISA_STATUS_OPTIONS.filter(
-    (option) => option.value !== record.status,
-  );
+  const copyExists = hasVisaCopy(record) || hasStoredCopy || uploadedNow;
 
   async function runAction(action: () => Promise<void>) {
     setBusy(true);
@@ -218,16 +231,101 @@ function VisaActions({
     try {
       await action();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Something went wrong.";
-
-      window.alert(message);
+      window.alert(
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
     } finally {
       setBusy(false);
     }
   }
+
+  const pickFile = () => fileInputRef.current?.click();
+
+  /* ---- Menu groups ------------------------------------------------------ */
+
+  // 1. Visa copy
+  const copyActions: RowAction[] = copyExists
+    ? [
+        {
+          key: "view-copy",
+          label: "View Visa Copy",
+          icon: Eye,
+          onSelect: () => void runAction(() => onOpenCopy(record)),
+        },
+        {
+          key: "download-copy",
+          label: "Download Visa Copy",
+          icon: Download,
+          onSelect: () => void runAction(() => onDownloadCopy(record)),
+        },
+        {
+          key: "replace-copy",
+          label: "Replace Visa Copy",
+          icon: RefreshCw,
+          onSelect: pickFile,
+        },
+      ]
+    : [
+        {
+          key: "upload-copy",
+          label: "Upload Visa Copy",
+          icon: Upload,
+          onSelect: pickFile,
+        },
+      ];
+
+  // 2. Manpower
+  const manpowerActions: RowAction[] = [
+    {
+      key: "manage-manpower",
+      label: "Manpower: Connect / Create",
+      icon: Users,
+      onSelect: () => onManageManpower(record),
+    },
+  ];
+
+  // 3. Status (single entry, options open in a dialog)
+  const availableStatusOptions = VISA_STATUS_OPTIONS.filter(
+    (option) => option.value !== record.status,
+  );
+
+  const statusActions: RowAction[] = [
+    {
+      key: "change-status",
+      label: "Change Status",
+      icon: CheckCircle2,
+      onSelect: () => setStatusDialogOpen(true),
+    },
+  ];
+
+  // 4. Edit
+  const editActions: RowAction[] = [
+    {
+      key: "edit",
+      label: "Edit",
+      icon: Pencil,
+      onSelect: () => onEdit(record),
+    },
+  ];
+
+  // 5. Danger zone
+  const dangerActions: RowAction[] = [
+    {
+      key: "delete",
+      label: "Delete",
+      icon: Trash2,
+      destructive: true,
+      onSelect: () => onDelete(record),
+    },
+  ];
+
+  const actions = joinActionGroups([
+    copyActions,
+    manpowerActions,
+    statusActions,
+    editActions,
+    dangerActions,
+  ]);
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -241,7 +339,7 @@ function VisaActions({
           aria-label={`View Visa Copy for ${record.visa_no ?? record.id}`}
           onClick={() => void runAction(() => onPreviewCopy(record))}
         >
-          <Download className="size-4" />
+          <Eye className="size-4" />
         </Button>
       )}
 
@@ -268,74 +366,44 @@ function VisaActions({
         label={`Actions for visa ${record.visa_no ?? record.id}`}
         disabled={busy}
         triggerIcon={busy ? Loader2 : undefined}
-        actions={[
-          ...(copyExists
-            ? [
-                {
-                  key: "view-copy",
-                  label: "View Visa Copy",
-                  icon: Eye,
-                  onSelect: () =>
-                    void runAction(() => onOpenCopy(record)),
-                },
-                {
-                  key: "download-copy",
-                  label: "Download Visa Copy",
-                  icon: Download,
-                  onSelect: () =>
-                    void runAction(() => onDownloadCopy(record)),
-                },
-                {
-                  key: "replace-copy",
-                  label: "Replace Visa Copy",
-                  icon: RefreshCw,
-                  onSelect: () => fileInputRef.current?.click(),
-                },
-              ]
-            : [
-                {
-                  key: "upload-copy",
-                  label: "Upload Visa Copy",
-                  icon: Upload,
-                  onSelect: () => fileInputRef.current?.click(),
-                },
-              ]),
-          {
-            key: "manage-manpower",
-            label: "Manpower: Connect / Create",
-            icon: Users,
-            separatorBefore: true,
-            onSelect: () => onManageManpower(record),
-          },
-          ...availableStatusOptions.map((option, index) => ({
-            key: `status-${option.value}`,
-            label: `Change Status to ${option.label}`,
-            icon: CheckCircle2,
-            separatorBefore: index === 0,
-            onSelect: () =>
-              void runAction(() =>
-                onStatusChange(record, option.value),
-              ),
-          })),
-          {
-            key: "edit",
-            label: "Edit",
-            icon: Pencil,
-            separatorBefore: true,
-            onSelect: () => onEdit(record),
-          },
-          {
-            key: "delete",
-            label: "Delete",
-            icon: Trash2,
-            destructive: true,
-            onSelect: () => onDelete(record),
-          },
-        ]}
+        actions={actions}
       />
+
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Change Status</DialogTitle>
+            <DialogDescription>
+              Current: <VisaStatusBadge status={record.status} />
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-2">
+            {availableStatusOptions.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                variant="outline"
+                className="justify-start"
+                disabled={busy}
+                onClick={() => {
+                  setStatusDialogOpen(false);
+                  void runAction(() => onStatusChange(record, option.value));
+                }}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Table                                                                     */
+/* -------------------------------------------------------------------------- */
 
 export function VisaTable({
   records,
@@ -346,6 +414,7 @@ export function VisaTable({
   page,
   pageSize = 10,
   total,
+  visaCopyCandidateIds,
   onPageChange,
   onEdit,
   onDelete,
@@ -355,16 +424,24 @@ export function VisaTable({
   onPreviewCopy,
   onDownloadCopy,
   onManageManpower,
-  visaCopyCandidateIds,
 }: VisaTableProps) {
-  function getCandidate(id: string) {
-    return candidates.find((candidate) => candidate.id === id);
-  }
+  const getCandidate = (id: string) =>
+    candidates.find((candidate) => candidate.id === id);
 
-  function getAgency(id: string | null) {
-    if (!id) return null;
+  const getAgency = (id: string | null) =>
+    id ? agencies.find((agency) => agency.id === id) : null;
 
-    return agencies.find((agency) => agency.id === id);
+  function getManpowerDisplay(record: Visa): StatusDisplay {
+    const linkedRecord = bmetRecords.find((item) => item.visa_id === record.id);
+    const candidateRecord = bmetRecords.find(
+      (item) => item.candidate_id === record.candidate_id,
+    );
+
+    if (!linkedRecord && candidateRecord) {
+      return { label: "Not Linked", className: MANPOWER_STYLES.orange };
+    }
+
+    return getManpowerStatus(linkedRecord ?? candidateRecord);
   }
 
   const columns: DataTableColumn<Visa>[] = [
@@ -418,34 +495,13 @@ export function VisaTable({
       header: "Manpower",
       hideOnMobile: true,
       cell: (record) => {
-        const bmetRecord = bmetRecords.find(
-          (item) => item.visa_id === record.id,
-        );
-
-        const candidateBmetRecord = bmetRecords.find(
-          (item) => item.candidate_id === record.candidate_id,
-        );
-
-        const isLinked = Boolean(bmetRecord);
-
-        const status = getManpowerStatus(
-          bmetRecord ?? candidateBmetRecord,
-        );
-
-        const displayStatus =
-          !isLinked && candidateBmetRecord
-            ? {
-                label: "Not Linked",
-                className:
-                  "bg-orange-500/10 text-orange-700 dark:text-orange-400",
-              }
-            : status;
+        const { label, className } = getManpowerDisplay(record);
 
         return (
           <span
-            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${displayStatus.className}`}
+            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
           >
-            {displayStatus.label}
+            {label}
           </span>
         );
       },
@@ -454,8 +510,7 @@ export function VisaTable({
       key: "agency",
       header: "Agency",
       hideOnMobile: true,
-      cell: (record) =>
-        getAgency(record.agency_id)?.name ?? "—",
+      cell: (record) => getAgency(record.agency_id)?.name ?? "—",
     },
     {
       key: "status",
@@ -469,9 +524,7 @@ export function VisaTable({
       cell: (record) => (
         <VisaActions
           record={record}
-          hasStoredCopy={visaCopyCandidateIds.has(
-            record.candidate_id,
-          )}
+          hasStoredCopy={visaCopyCandidateIds.has(record.candidate_id)}
           onEdit={onEdit}
           onDelete={onDelete}
           onStatusChange={onStatusChange}
