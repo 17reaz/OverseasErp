@@ -3,6 +3,8 @@ import { VisaForm } from "./components/visa-form";
 import { VisaPending } from "./components/visa-pending";
 import { VisaTable } from "./components/visa-table";
 import { VisaGrid } from "./components/visa-grid";
+import { BmetForm } from "../bmet/components/bmet-form";
+
 import {
   getActiveCandidateFile,
   getActiveCandidateFiles,
@@ -19,8 +21,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   getBmetRecords,
+  updateBmetRecord,
   type BmetRecord,
 } from "../bmet/bmet-service";
+import { Button } from "@/components/ui/button";
 import {
   VisaToolbar,
   type VisaDisplayView,
@@ -70,7 +74,11 @@ const [previewError, setPreviewError] = useState("");
     candidate_id: string;
     mofa_id: string;
   } | null>(null);
+  const [manpowerVisa, setManpowerVisa] =
+  useState<Visa | null>(null);
 
+const [bmetFormOpen, setBmetFormOpen] =
+  useState(false);
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -106,7 +114,82 @@ const [previewError, setPreviewError] = useState("");
       setLoading(false);
     }
   }, []);
+async function handleConnectManpower(
+  record: BmetRecord,
+) {
+  if (!manpowerVisa) return;
 
+  try {
+    // Ensure the existing manpower belongs to this candidate
+    // and is not already linked to another visa.
+    if (
+      record.candidate_id !== manpowerVisa.candidate_id ||
+      record.visa_id
+    ) {
+      throw new Error(
+        "This manpower record cannot be connected to this Visa.",
+      );
+    }
+
+    // Prevent linking a second manpower record to this Visa.
+    const alreadyLinked = bmetRecords.some(
+      (item) =>
+        item.visa_id === manpowerVisa.id &&
+        item.id !== record.id,
+    );
+
+    if (alreadyLinked) {
+      throw new Error(
+        "This Visa already has a manpower record.",
+      );
+    }
+
+    const updated = await updateBmetRecord(record.id, {
+      visa_id: manpowerVisa.id,
+    });
+
+    setBmetRecords((previous) =>
+      previous.map((item) =>
+        item.id === updated.id
+          ? { ...item, ...updated }
+          : item,
+      ),
+    );
+
+    setManpowerVisa(null);
+
+    window.alert(
+      "Manpower connected to Visa successfully.",
+    );
+  } catch (error) {
+    window.alert(
+      error instanceof Error
+        ? error.message
+        : "Failed to connect manpower.",
+    );
+  }
+}
+
+function handleManpowerFormSuccess(
+  savedRecord: BmetRecord,
+) {
+  setBmetRecords((previous) => {
+    const exists = previous.some(
+      (item) => item.id === savedRecord.id,
+    );
+
+    return exists
+      ? previous.map((item) =>
+          item.id === savedRecord.id
+            ? { ...item, ...savedRecord }
+            : item,
+        )
+      : [savedRecord, ...previous];
+  });
+
+  setBmetFormOpen(false);
+  setManpowerVisa(null);
+}
   const loadPending = useCallback(async () => {
     try {
       setPendingLoading(true);
@@ -374,7 +457,112 @@ async function handlePreviewVisaCopy(record: Visa) {
         displayView={displayView}
         onDisplayViewChange={setDisplayView}
       />
+        <Dialog
+  open={Boolean(manpowerVisa) && !bmetFormOpen}
+  onOpenChange={(open) => {
+    if (!open) setManpowerVisa(null);
+  }}
+>
+  <DialogContent className="max-w-lg">
+    <DialogHeader>
+      <DialogTitle>Manpower for Visa</DialogTitle>
 
+      <DialogDescription>
+        Select an existing manpower record or create a new one.
+      </DialogDescription>
+    </DialogHeader>
+
+    {manpowerVisa && (() => {
+      const linkedRecord = bmetRecords.find(
+        (item) => item.visa_id === manpowerVisa.id,
+      );
+
+      const existingRecords = bmetRecords.filter(
+        (item) =>
+          item.candidate_id === manpowerVisa.candidate_id &&
+          !item.visa_id,
+      );
+
+      if (linkedRecord) {
+        return (
+          <p className="rounded-lg border p-4 text-sm">
+            Manpower already connected —{" "}
+            {linkedRecord.bmet ? "Complete" : "Pending"}
+          </p>
+        );
+      }
+
+      return (
+        <div className="space-y-3">
+          <p className="text-sm font-medium">
+            Existing manpower records
+          </p>
+
+          {existingRecords.length === 0 ? (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              No unlinked manpower record found for this candidate.
+            </p>
+          ) : (
+            existingRecords.map((record) => (
+              <div
+                key={record.id}
+                className="flex items-center justify-between gap-3 rounded-lg border p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium">
+                    {record.bmet ? "BMET Complete" : "BMET Pending"}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    {record.pdo ? "PDO ✓" : "PDO —"} ·{" "}
+                    {record.finger ? "Finger ✓" : "Finger —"} ·{" "}
+                    {record.nominee ? "Nominee ✓" : "Nominee —"} ·{" "}
+                    {record.bank ? "Bank ✓" : "Bank —"}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() =>
+                    void handleConnectManpower(record)
+                  }
+                >
+                  Connect
+                </Button>
+              </div>
+            ))
+          )}
+
+          <div className="border-t pt-3">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => setBmetFormOpen(true)}
+            >
+              Create New Manpower
+            </Button>
+          </div>
+        </div>
+      );
+    })()}
+  </DialogContent>
+</Dialog>
+
+<BmetForm
+  open={bmetFormOpen}
+  onOpenChange={(open) => {
+    setBmetFormOpen(open);
+
+    if (!open) {
+      setManpowerVisa(null);
+    }
+  }}
+  candidates={candidates}
+  initialCandidateId={manpowerVisa?.candidate_id}
+  initialVisaId={manpowerVisa?.id}
+  onSuccess={handleManpowerFormSuccess}
+/>
       <div className="min-h-0 flex-1">
         {view === "visaable" ? (
           <VisaPending
@@ -404,6 +592,9 @@ async function handlePreviewVisaCopy(record: Visa) {
             onUploadCopy={handleUploadVisaCopy}
             onOpenCopy={handleViewVisaCopy}
             onDownloadCopy={handleDownloadVisaCopy}
+            onManageManpower={(record) =>
+  setManpowerVisa(record)
+}
             visaCopyCandidateIds={visaCopyCandidateIds}
           />
         )}

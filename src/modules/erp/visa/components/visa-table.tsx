@@ -6,6 +6,7 @@ import {
   Upload,
   Eye,
   Download,
+  Users,
   Loader2,
   RefreshCw,
 } from "lucide-react";
@@ -18,7 +19,7 @@ import {
 } from "../../shared/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-// import { cn } from "@/lib/utils";
+
 interface CandidateOption {
   id: string;
   tenant_id: string;
@@ -53,6 +54,62 @@ interface VisaTableProps {
   onOpenCopy: (record: Visa) => Promise<void>;
   onPreviewCopy: (record: Visa) => Promise<void>;
   onDownloadCopy: (record: Visa) => Promise<void>;
+  onManageManpower: (record: Visa) => void;
+}
+
+function getManpowerStatus(record?: BmetRecord | null) {
+  if (!record) {
+    return {
+      label: "Not Created",
+      className: "bg-muted text-muted-foreground",
+    };
+  }
+
+  if (record.bmet) {
+    return {
+      label: "Complete",
+      className:
+        "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    };
+  }
+
+  if (!record.pdo) {
+    return {
+      label: "PDO",
+      className:
+        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    };
+  }
+
+  if (!record.finger) {
+    return {
+      label: "Finger",
+      className:
+        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    };
+  }
+
+  if (!record.nominee) {
+    return {
+      label: "Nominee",
+      className:
+        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    };
+  }
+
+  if (!record.bank) {
+    return {
+      label: "Bank",
+      className:
+        "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    };
+  }
+
+  return {
+    label: "Submitted",
+    className:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  };
 }
 
 function formatDate(value: string | null): string {
@@ -100,8 +157,8 @@ const VISA_STATUS_VARIANTS: Record<
 
 function VisaStatusBadge({ status }: { status: string }) {
   const label =
-    VISA_STATUS_OPTIONS.find((option) => option.value === status)?.label ??
-    status;
+    VISA_STATUS_OPTIONS.find((option) => option.value === status)
+      ?.label ?? status;
 
   return (
     <Badge variant={VISA_STATUS_VARIANTS[status] ?? "outline"}>
@@ -109,7 +166,6 @@ function VisaStatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
-
 
 function hasVisaCopy(record: Visa): boolean {
   const data = record as unknown as Record<string, unknown>;
@@ -130,6 +186,7 @@ interface VisaActionsProps {
   onUploadCopy: (record: Visa, file: File) => Promise<void>;
   onOpenCopy: (record: Visa) => Promise<void>;
   onDownloadCopy: (record: Visa) => Promise<void>;
+  onManageManpower: (record: Visa) => void;
 }
 
 function VisaActions({
@@ -142,6 +199,7 @@ function VisaActions({
   onOpenCopy,
   onDownloadCopy,
   onPreviewCopy,
+  onManageManpower,
 }: VisaActionsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -172,20 +230,21 @@ function VisaActions({
   }
 
   return (
-  <div className="flex items-center justify-end gap-1">
-    {copyExists && (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        disabled={busy}
-        title="View Visa Copy"
-        aria-label={`View Visa Copy for ${record.visa_no ?? record.id}`}
-        onClick={() => void runAction(() => onPreviewCopy(record))}
-      >
-        <Download className="size-4" />
-      </Button>
-    )}
+    <div className="flex items-center justify-end gap-1">
+      {copyExists && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={busy}
+          title="View Visa Copy"
+          aria-label={`View Visa Copy for ${record.visa_no ?? record.id}`}
+          onClick={() => void runAction(() => onPreviewCopy(record))}
+        >
+          <Download className="size-4" />
+        </Button>
+      )}
+
       <input
         ref={fileInputRef}
         type="file"
@@ -241,7 +300,13 @@ function VisaActions({
                   onSelect: () => fileInputRef.current?.click(),
                 },
               ]),
-
+          {
+            key: "manage-manpower",
+            label: "Manpower: Connect / Create",
+            icon: Users,
+            separatorBefore: true,
+            onSelect: () => onManageManpower(record),
+          },
           ...availableStatusOptions.map((option, index) => ({
             key: `status-${option.value}`,
             label: `Change Status to ${option.label}`,
@@ -252,7 +317,6 @@ function VisaActions({
                 onStatusChange(record, option.value),
               ),
           })),
-
           {
             key: "edit",
             label: "Edit",
@@ -286,10 +350,11 @@ export function VisaTable({
   onEdit,
   onDelete,
   onStatusChange,
-   onUploadCopy,
+  onUploadCopy,
   onOpenCopy,
   onPreviewCopy,
   onDownloadCopy,
+  onManageManpower,
   visaCopyCandidateIds,
 }: VisaTableProps) {
   function getCandidate(id: string) {
@@ -357,23 +422,30 @@ export function VisaTable({
           (item) => item.visa_id === record.id,
         );
 
-        if (!bmetRecord) {
-          return (
-            <span className="text-muted-foreground">—</span>
-          );
-        }
+        const candidateBmetRecord = bmetRecords.find(
+          (item) => item.candidate_id === record.candidate_id,
+        );
 
-        const isComplete = bmetRecord.bmet === true;
+        const isLinked = Boolean(bmetRecord);
+
+        const status = getManpowerStatus(
+          bmetRecord ?? candidateBmetRecord,
+        );
+
+        const displayStatus =
+          !isLinked && candidateBmetRecord
+            ? {
+                label: "Not Linked",
+                className:
+                  "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+              }
+            : status;
 
         return (
           <span
-            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              isComplete
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-            }`}
+            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${displayStatus.className}`}
           >
-            {isComplete ? "Complete" : "Pending"}
+            {displayStatus.label}
           </span>
         );
       },
@@ -386,10 +458,10 @@ export function VisaTable({
         getAgency(record.agency_id)?.name ?? "—",
     },
     {
-  key: "status",
-  header: "Status",
-  cell: (record) => <VisaStatusBadge status={record.status} />,
-},
+      key: "status",
+      header: "Status",
+      cell: (record) => <VisaStatusBadge status={record.status} />,
+    },
     {
       key: "action",
       header: "Actions",
@@ -407,6 +479,7 @@ export function VisaTable({
           onOpenCopy={onOpenCopy}
           onPreviewCopy={onPreviewCopy}
           onDownloadCopy={onDownloadCopy}
+          onManageManpower={onManageManpower}
         />
       ),
     },
