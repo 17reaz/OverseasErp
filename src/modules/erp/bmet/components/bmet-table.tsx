@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Check,
   Copy,
@@ -15,18 +15,22 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-import {
-  DataTable,
-  type DataTableColumn,
-} from "../../shared/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../shared/ui/data-table";
 import type { BmetRecord } from "../bmet-service";
+
+/* -------------------------------------------------------------------------- */
+/*  Types                                                                     */
+/* -------------------------------------------------------------------------- */
 
 interface CandidateInfo {
   id: string;
@@ -38,20 +42,22 @@ interface BmetTableProps {
   records: BmetRecord[];
   candidates: CandidateInfo[];
   loading?: boolean;
-
   page?: number;
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
-
   onEdit: (record: BmetRecord) => void;
   onDelete: (record: BmetRecord) => void;
 }
 
+type ChecklistField = "pdo" | "finger" | "nominee" | "bank" | "bmet";
+
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+
 function formatDate(date: string | null) {
-  if (!date) {
-    return "—";
-  }
+  if (!date) return "—";
 
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -70,25 +76,23 @@ function isComplete(record: BmetRecord) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Small components                                                          */
+/* -------------------------------------------------------------------------- */
+
 function ChecklistBadge({ checked }: { checked: boolean }) {
-  return checked ? (
+  return (
     <span className="inline-flex items-center justify-center">
-      <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-    </span>
-  ) : (
-    <span className="inline-flex items-center justify-center">
-      <X className="h-4 w-4 text-muted-foreground" />
+      {checked ? (
+        <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <X className="h-4 w-4 text-muted-foreground" />
+      )}
     </span>
   );
 }
 
-function CopyButton({
-  value,
-  label,
-}: {
-  value: string;
-  label: string;
-}) {
+function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -169,16 +173,183 @@ function ContactCell({ record }: { record: BmetRecord }) {
   );
 }
 
+function VisaField({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className={className}>{children}</div>
+    </div>
+  );
+}
+
+function VisaCell({ record }: { record: BmetRecord }) {
+  const visa = record.visa;
+
+  if (!record.visa_id || !visa) {
+    return <span className="text-xs text-muted-foreground">No Visa</span>;
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex flex-col items-start gap-1 rounded-md p-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`View visa details for SL-${visa.sl}`}
+        >
+          {visa.visa_date && (
+            <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+              {visa.visa_date}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent align="start" className="w-72">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-semibold">Visa Information</p>
+            <p className="text-xs text-muted-foreground">
+              Complete visa details
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <VisaField label="SL" className="font-medium">
+              {visa.sl}
+            </VisaField>
+
+            <VisaField label="Visa No" className="break-all font-medium">
+              {visa.visa_no || "—"}
+            </VisaField>
+
+            <VisaField label="Visa Date">{visa.visa_date || "—"}</VisaField>
+
+            <VisaField label="Expiry Date">
+              {visa.expiry_date || "—"}
+            </VisaField>
+
+            <VisaField label="Type" className="capitalize">
+              {visa.visa_type || "—"}
+            </VisaField>
+
+            <VisaField label="Status">
+              <Badge variant="outline" className="mt-1">
+                {visa.status || "—"}
+              </Badge>
+            </VisaField>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function StatusBadge({ record }: { record: BmetRecord }) {
+  const complete = isComplete(record);
+
+  return (
+    <Badge
+      variant="outline"
+      className={
+        complete
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+      }
+    >
+      {complete ? "Complete" : "Pending"}
+    </Badge>
+  );
+}
+
+function BmetActions({
+  record,
+  onEdit,
+  onDelete,
+}: {
+  record: BmetRecord;
+  onEdit: (record: BmetRecord) => void;
+  onDelete: (record: BmetRecord) => void;
+}) {
+  return (
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="Open BMET actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end" className="w-36">
+          <DropdownMenuItem onClick={() => onEdit(record)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => onDelete(record)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Column factory for the PDO / Finger / Nominee / Bank / BMET checkmarks    */
+/* -------------------------------------------------------------------------- */
+
+function checklistColumn(
+  field: ChecklistField,
+  header: string,
+  widthClass: string,
+  hideOnMobile = false,
+): DataTableColumn<BmetRecord> {
+  return {
+    key: field,
+    header,
+    className: `${widthClass} text-center`,
+    hideOnMobile,
+    cell: (record) => (
+      <div className="flex justify-center">
+        <ChecklistBadge checked={record[field]} />
+      </div>
+    ),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Table                                                                     */
+/* -------------------------------------------------------------------------- */
+
 export function BmetTable({
   records,
   candidates,
   loading = false,
-
   page,
   pageSize = 10,
   total,
   onPageChange,
-
   onEdit,
   onDelete,
 }: BmetTableProps) {
@@ -192,12 +363,10 @@ export function BmetTable({
       header: "Candidate",
       cell: (record) => (
         <span className="font-medium">
-          {candidateMap.get(record.candidate_id)?.name ??
-            "Unknown candidate"}
+          {candidateMap.get(record.candidate_id)?.name ?? "Unknown candidate"}
         </span>
       ),
     },
-
     {
       key: "passport",
       header: "Passport",
@@ -208,7 +377,6 @@ export function BmetTable({
         </span>
       ),
     },
-
     {
       key: "contact",
       header: "Phone / Password",
@@ -216,165 +384,18 @@ export function BmetTable({
       cell: (record) => <ContactCell record={record} />,
     },
 
-    {
-      key: "pdo",
-      header: "PDO",
-      className: "w-[70px] text-center",
-      cell: (record) => (
-        <div className="flex justify-center">
-          <ChecklistBadge checked={record.pdo} />
-        </div>
-      ),
-    },
-
-    {
-      key: "finger",
-      header: "Finger",
-      className: "w-[80px] text-center",
-      cell: (record) => (
-        <div className="flex justify-center">
-          <ChecklistBadge checked={record.finger} />
-        </div>
-      ),
-    },
-
-    {
-      key: "nominee",
-      header: "Nominee",
-      className: "w-[85px] text-center",
-      hideOnMobile: true,
-      cell: (record) => (
-        <div className="flex justify-center">
-          <ChecklistBadge checked={record.nominee} />
-        </div>
-      ),
-    },
-
-    {
-      key: "bank",
-      header: "Bank",
-      className: "w-[70px] text-center",
-      hideOnMobile: true,
-      cell: (record) => (
-        <div className="flex justify-center">
-          <ChecklistBadge checked={record.bank} />
-        </div>
-      ),
-    },
+    checklistColumn("pdo", "PDO", "w-[70px]"),
+    checklistColumn("finger", "Finger", "w-[80px]"),
+    checklistColumn("nominee", "Nominee", "w-[85px]", true),
+    checklistColumn("bank", "Bank", "w-[70px]", true),
 
     {
       key: "visa",
       header: "Visa",
-      cell: (record) => {
-        const visa = record.visa;
-
-        if (!record.visa_id || !visa) {
-          return (
-            <span className="text-xs text-muted-foreground">
-              No Visa
-            </span>
-          );
-        }
-
-        return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex flex-col items-start gap-1 rounded-md p-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`View visa details for SL-${visa.sl}`}
-              >
-               
-
-                {visa.visa_date && (
-                  <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                    {visa.visa_date}
-                  </span>
-                )}
-
-                
-
-                
-              </button>
-            </PopoverTrigger>
-
-            <PopoverContent align="start" className="w-72">
-              <div className="flex flex-col gap-3">
-                <div>
-                  <p className="text-sm font-semibold">
-                    Visa Information
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Complete visa details
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      SL
-                    </p>
-                    <p className="font-medium">{visa.sl}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Visa No
-                    </p>
-                    <p className="break-all font-medium">
-                      {visa.visa_no || "—"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Visa Date
-                    </p>
-                    <p>{visa.visa_date || "—"}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Expiry Date
-                    </p>
-                    <p>{visa.expiry_date || "—"}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Type
-                    </p>
-                    <p className="capitalize">
-                      {visa.visa_type || "—"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Status
-                    </p>
-                    <Badge variant="outline" className="mt-1">
-                      {visa.status || "—"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        );
-      },
+      cell: (record) => <VisaCell record={record} />,
     },
 
-    {
-      key: "bmet",
-      header: "BMET",
-      className: "w-[70px] text-center",
-      cell: (record) => (
-        <div className="flex justify-center">
-          <ChecklistBadge checked={record.bmet} />
-        </div>
-      ),
-    },
+    checklistColumn("bmet", "BMET", "w-[70px]"),
 
     {
       key: "bmet_date",
@@ -382,63 +403,17 @@ export function BmetTable({
       hideOnMobile: true,
       cell: (record) => formatDate(record.bmet_date),
     },
-
     {
       key: "status",
       header: "Status",
-      cell: (record) => {
-        const complete = isComplete(record);
-
-        return (
-          <Badge
-            variant="outline"
-            className={
-              complete
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-            }
-          >
-            {complete ? "Complete" : "Pending"}
-          </Badge>
-        );
-      },
+      cell: (record) => <StatusBadge record={record} />,
     },
-
     {
       key: "action",
       header: "Actions",
       className: "w-[80px] text-right",
       cell: (record) => (
-        <div className="flex justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                aria-label="Open BMET actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end" className="w-36">
-              <DropdownMenuItem onClick={() => onEdit(record)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => onDelete(record)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <BmetActions record={record} onEdit={onEdit} onDelete={onDelete} />
       ),
     },
   ];
