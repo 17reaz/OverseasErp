@@ -291,10 +291,10 @@ function WorkflowSection() {
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold">Takamul Rules</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Configure which MOFA professions require Takamul.
-          </p>
+          <h3 className="text-sm font-semibold">Trade Profession</h3>
+<p className="mt-1 text-xs text-muted-foreground">
+  View and add professions to the shared global master list.
+</p>
         </div>
 
         <span className="text-sm text-muted-foreground">Open →</span>

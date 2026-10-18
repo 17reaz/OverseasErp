@@ -1,96 +1,73 @@
 
 import { supabase } from "@/lib/supabase/client";
 
-async function getCurrentTenantId(): Promise<string> {
-  const { data, error } = await supabase.rpc("get_my_tenant_id");
+export interface TradeProfession {
+  id: string;
+  code: string;
+  name: string;
+  is_active: boolean;
+}
+
+function normalizeCode(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+function normalizeName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+/** Read the global Trade Profession master list. */
+export async function getTradeProfessions(): Promise<TradeProfession[]> {
+  const { data, error } = await supabase
+    .schema("core")
+    .from("trade_professions")
+    .select("id, code, name, is_active")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
 
   if (error) throw error;
 
-  if (!data) {
-    throw new Error("Unable to determine current tenant.");
-  }
-
-  return data;
+  return (data ?? []) as TradeProfession[];
 }
 
-function normalizeTrades(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
+/** Add a profession to the shared global master list. */
+export async function addTradeProfession(
+  code: string,
+  name: string,
+): Promise<TradeProfession> {
+  const normalizedCode = normalizeCode(code);
+  const normalizedName = normalizeName(name);
 
-  const seen = new Set<string>();
-  const result: string[] = [];
-
-  for (const item of value) {
-    if (typeof item !== "string") continue;
-
-    const trade = item.trim();
-    const key = trade.toLocaleLowerCase();
-
-    if (!trade || seen.has(key)) continue;
-
-    seen.add(key);
-    result.push(trade);
+  if (!normalizedCode || !normalizedName) {
+    throw new Error("Profession code and name are required.");
   }
-
-  return result;
-}
-
-export async function getTakamulRequiredTrades(): Promise<string[]> {
-  const tenantId = await getCurrentTenantId();
 
   const { data, error } = await supabase
     .schema("core")
-    .from("tenant_settings")
-    .select("takamul_required_trades")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+    .from("trade_professions")
+    .insert({
+      code: normalizedCode,
+      name: normalizedName,
+    })
+    .select("id, code, name, is_active")
+    .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error(
+        "This profession code or name already exists.",
+      );
+    }
 
-  return normalizeTrades(data?.takamul_required_trades);
-}
-
-export async function saveTakamulRequiredTrades(
-  trades: string[],
-): Promise<string[]> {
-  const tenantId = await getCurrentTenantId();
-  const normalized = normalizeTrades(trades);
-
-  const { data: existing, error: lookupError } = await supabase
-    .schema("core")
-    .from("tenant_settings")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-
-  if (lookupError) throw lookupError;
-
-  if (existing) {
-    const { error } = await supabase
-      .schema("core")
-      .from("tenant_settings")
-      .update({ takamul_required_trades: normalized })
-      .eq("tenant_id", tenantId);
-
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .schema("core")
-      .from("tenant_settings")
-      .insert({
-        tenant_id: tenantId,
-        takamul_required_trades: normalized,
-      });
-
-    if (error) throw error;
+    throw error;
   }
 
-  return normalized;
+  return data as TradeProfession;
 }
 
 /**
- * Exact case-insensitive match.
- * No fuzzy matching: similar profession names should not
- * accidentally make Takamul mandatory.
+ * Exact case-insensitive match for the MOFA Trade field.
+ * This helper does not decide whether Takamul is required.
  */
 export function isTakamulRequiredForTrade(
   trade: string | null | undefined,
