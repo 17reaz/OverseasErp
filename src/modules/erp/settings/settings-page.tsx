@@ -11,12 +11,12 @@ import {
   Receipt,
   ShieldCheck,
   UserRound,
-  Users,
+  Users, ArrowLeft, ClipboardCheck,
   Workflow as WorkflowIcon,
   Binary,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-
+import { TakamulRulesSettings } from "./components/takamul-rules-settings";
 import { Button } from "@/components/ui/button";
 import {
   SettingsCard,
@@ -249,9 +249,56 @@ function OrganizationSection() {
 }
 
 function WorkflowSection() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const subsection = searchParams.get("subsection");
+
+  if (subsection === "takamul-rules") {
+    return (
+      <div className="space-y-4">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={() => setSearchParams({ section: "workflow" })}
+        >
+          <ArrowLeft className="mr-2 size-4" />
+          Back to Workflow
+        </Button>
+
+        <TakamulRulesSettings />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <NumberingSettings />
+
+      <button
+        type="button"
+        onClick={() =>
+          setSearchParams({
+            section: "workflow",
+            subsection: "takamul-rules",
+          })
+        }
+        className="flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors hover:bg-muted/50"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted">
+          <ClipboardCheck className="size-5" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold">Takamul Rules</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Configure which MOFA professions require Takamul.
+          </p>
+        </div>
+
+        <span className="text-sm text-muted-foreground">Open →</span>
+      </button>
     </div>
   );
 }
