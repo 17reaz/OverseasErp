@@ -56,43 +56,33 @@ export function VisaToolbar({
           VIEW MODE — LIST / GRID
           =================================================== */}
 
-      <div className="flex h-9 shrink-0 items-center rounded-lg border bg-muted/40 p-0.5">
+      <div className="inline-flex h-9 shrink-0 items-center rounded-md border bg-muted/30 p-0.5">
         <Button
           type="button"
-          variant="ghost"
+          variant={displayView === "list" ? "secondary" : "ghost"}
           size="sm"
-          className={
-            displayView === "list"
-              ? "h-8 rounded-md bg-background px-2.5 shadow-sm"
-              : "h-8 rounded-md px-2.5 text-muted-foreground hover:bg-background/60"
-          }
+          className="h-8 gap-1.5 px-2.5"
           onClick={() => onDisplayViewChange?.("list")}
           aria-label="List view"
+          aria-pressed={displayView === "list"}
+          title="List"
         >
           <List className="h-4 w-4" />
-
-          <span className="ml-1.5 hidden sm:inline">
-            List
-          </span>
+          <span className="hidden 2xl:inline">List</span>
         </Button>
 
         <Button
           type="button"
-          variant="ghost"
+          variant={displayView === "grid" ? "secondary" : "ghost"}
           size="sm"
-          className={
-            displayView === "grid"
-              ? "h-8 rounded-md bg-background px-2.5 shadow-sm"
-              : "h-8 rounded-md px-2.5 text-muted-foreground hover:bg-background/60"
-          }
+          className="h-8 gap-1.5 px-2.5"
           onClick={() => onDisplayViewChange?.("grid")}
           aria-label="Grid view"
+          aria-pressed={displayView === "grid"}
+          title="Grid"
         >
           <Grid2X2 className="h-4 w-4" />
-
-          <span className="ml-1.5 hidden sm:inline">
-            Grid
-          </span>
+          <span className="hidden 2xl:inline">Grid</span>
         </Button>
       </div>
 
