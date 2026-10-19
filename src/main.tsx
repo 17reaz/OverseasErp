@@ -1,108 +1,102 @@
-
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import App from "./app/App";
+import { AppErrorBoundary } from "./components/error-boundary";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { queryClient } from "./lib/tanstack/query-client";
 
 import "./index.css";
 
 const RELOAD_KEY = "oerp-chunk-reload-at";
-const RELOAD_COOLDOWN = 30_000;
+const RELOAD_COOLDOWN_MS = 30_000;
 
-window.addEventListener("vite:preloadError", (event) => {
-  event.preventDefault();
+/**
+ * After a new deploy, old chunks may 404. Reload once to pick up the new build,
+ * with a cooldown so a real failure can't cause a reload loop.
+ */
+function setupChunkReloadRecovery() {
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
 
-  const error = (
-    event as Event & { payload?: unknown }
-  ).payload;
-
-  console.error(
-    "[OverseasErp] Dynamic import failed:",
-    error,
-  );
-
-  const lastReload = Number(
-    sessionStorage.getItem(RELOAD_KEY) ?? 0,
-  );
-
-  // Prevent repeated reload loops.
-  if (Date.now() - lastReload < RELOAD_COOLDOWN) {
     console.error(
-      "[OverseasErp] Reload skipped: cooldown active.",
+      "[OverseasErp] Dynamic import failed:",
+      (event as Event & { payload?: unknown }).payload,
     );
-    return;
-  }
 
-  sessionStorage.setItem(
-    RELOAD_KEY,
-    String(Date.now()),
-  );
+    try {
+      const lastReload = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
 
-  // Keep Service Workers and caches intact.
-  window.location.reload();
-});
+      if (Date.now() - lastReload < RELOAD_COOLDOWN_MS) {
+        console.error("[OverseasErp] Reload skipped: cooldown active.");
+        return;
+      }
 
-console.info("[OERP lifecycle] document started", {
-  time: new Date().toISOString(),
-  navigationType:
-    performance.getEntriesByType("navigation")[0] &&
-    (
-      performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming
-    ).type,
-  visibility: document.visibilityState,
-});
+      sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+    } catch {
+      // sessionStorage unavailable; reload once anyway.
+    }
 
-window.addEventListener("pagehide", (event) => {
-  console.warn("[OERP lifecycle] pagehide", {
-    persisted: event.persisted,
-    time: new Date().toISOString(),
+    window.location.reload();
   });
-});
+}
 
-window.addEventListener("pageshow", (event) => {
-  console.info("[OERP lifecycle] pageshow", {
-    persisted: event.persisted,
-    time: new Date().toISOString(),
-  });
-});
+/** Dev-only page lifecycle logging, useful for debugging unexpected reloads. */
+function setupLifecycleLogging() {
+  if (!import.meta.env.DEV) return;
 
-document.addEventListener("visibilitychange", () => {
-  console.info("[OERP lifecycle] visibilitychange", {
+  const now = () => new Date().toISOString();
+  const navigation = performance.getEntriesByType(
+    "navigation",
+  )[0] as PerformanceNavigationTiming | undefined;
+
+  console.info("[OERP lifecycle] document started", {
+    time: now(),
+    navigationType: navigation?.type,
     visibility: document.visibilityState,
-    time: new Date().toISOString(),
   });
-});
 
-window.addEventListener("beforeunload", () => {
-  console.warn("[OERP lifecycle] beforeunload", {
-    time: new Date().toISOString(),
-    url: window.location.href,
+  window.addEventListener("pageshow", (event) => {
+    console.info("[OERP lifecycle] pageshow", {
+      persisted: event.persisted,
+      time: now(),
+    });
   });
-});
 
-window.addEventListener("pagehide", (event) => {
-  console.warn("[OERP lifecycle] pagehide", {
-    persisted: event.persisted,
-    time: new Date().toISOString(),
+  window.addEventListener("pagehide", (event) => {
+    console.warn("[OERP lifecycle] pagehide", {
+      persisted: event.persisted,
+      time: now(),
+    });
   });
-});
 
-window.addEventListener("pageshow", (event) => {
-  console.info("[OERP lifecycle] pageshow detail", {
-    persisted: event.persisted,
-    time: new Date().toISOString(),
+  document.addEventListener("visibilitychange", () => {
+    console.info("[OERP lifecycle] visibilitychange", {
+      visibility: document.visibilityState,
+      time: now(),
+    });
   });
-});
+
+  window.addEventListener("beforeunload", () => {
+    console.warn("[OERP lifecycle] beforeunload", {
+      url: window.location.href,
+      time: now(),
+    });
+  });
+}
+
+setupChunkReloadRecovery();
+setupLifecycleLogging();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <App />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <App />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   </StrictMode>,
 );
