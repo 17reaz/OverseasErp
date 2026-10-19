@@ -9,6 +9,7 @@ import {
   Users,
   Loader2,
   RefreshCw,
+  PlaneTakeoff,
 } from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
 import { RowActions } from "../../shared/ui/actions/row-actions";
@@ -63,6 +64,7 @@ interface VisaTableProps {
   onPreviewCopy: (record: Visa) => Promise<void>;
   onDownloadCopy: (record: Visa) => Promise<void>;
   onManageManpower: (record: Visa) => void;
+  onCreateFlight: (record: Visa) => void;
 }
 
 type RowAction = ComponentProps<typeof RowActions>["actions"][number];
@@ -204,6 +206,7 @@ interface VisaActionsProps {
   onOpenCopy: (record: Visa) => Promise<void>;
   onDownloadCopy: (record: Visa) => Promise<void>;
   onManageManpower: (record: Visa) => void;
+  onCreateFlight: (record: Visa) => void;
 }
 
 function VisaActions({
@@ -217,6 +220,7 @@ function VisaActions({
   onDownloadCopy,
   onPreviewCopy,
   onManageManpower,
+   onCreateFlight,
 }: VisaActionsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -283,7 +287,15 @@ function VisaActions({
       onSelect: () => onManageManpower(record),
     },
   ];
-
+    // Create Flight
+  const flightActions: RowAction[] = [
+    {
+      key: "create-flight",
+      label: "Create Flight",
+      icon: PlaneTakeoff,
+      onSelect: () => onCreateFlight(record),
+    },
+  ];
   // 3. Status (single entry, options open in a dialog)
   const availableStatusOptions = VISA_STATUS_OPTIONS.filter(
     (option) => option.value !== record.status,
@@ -322,6 +334,7 @@ function VisaActions({
   const actions = joinActionGroups([
     copyActions,
     manpowerActions,
+     flightActions,
     statusActions,
     editActions,
     dangerActions,
@@ -424,6 +437,7 @@ export function VisaTable({
   onPreviewCopy,
   onDownloadCopy,
   onManageManpower,
+    onCreateFlight,
 }: VisaTableProps) {
   const getCandidate = (id: string) =>
     candidates.find((candidate) => candidate.id === id);
@@ -533,6 +547,7 @@ export function VisaTable({
           onPreviewCopy={onPreviewCopy}
           onDownloadCopy={onDownloadCopy}
           onManageManpower={onManageManpower}
+                    onCreateFlight={onCreateFlight}
         />
       ),
     },

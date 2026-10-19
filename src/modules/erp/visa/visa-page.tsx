@@ -45,7 +45,11 @@ import {
   type Mofa,
   type MofaAgency,
 } from "../mofa/mofa-service";
-
+import { FlightForm } from "../flight/components/flight-form";
+import {
+  createFlight,
+  type Flight,
+} from "../flight/flight-service";
 export function VisaPage() {
   const [records, setRecords] = useState<Visa[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -76,7 +80,9 @@ const [previewError, setPreviewError] = useState("");
   } | null>(null);
   const [manpowerVisa, setManpowerVisa] =
   useState<Visa | null>(null);
-
+const [flightFormOpen, setFlightFormOpen] = useState(false);
+const [flightVisa, setFlightVisa] = useState<Visa | null>(null);
+const [flights, setFlights] = useState<Flight[]>([]);
 const [bmetFormOpen, setBmetFormOpen] =
   useState(false);
   const loadData = useCallback(async () => {
@@ -114,6 +120,21 @@ const [bmetFormOpen, setBmetFormOpen] =
       setLoading(false);
     }
   }, []);
+  function handleCreateFlight(record: Visa) {
+  const existingFlight = flights.find(
+    (flight) =>
+      flight.visa_id === record.id &&
+      flight.status !== "cancelled",
+  );
+
+  if (existingFlight) {
+    window.alert("A flight already exists for this Visa.");
+    return;
+  }
+
+  setFlightVisa(record);
+  setFlightFormOpen(true);
+}
 async function handleConnectManpower(
   record: BmetRecord,
 ) {
@@ -591,6 +612,7 @@ async function handlePreviewVisaCopy(record: Visa) {
             onStatusChange={handleStatusChange}
             onUploadCopy={handleUploadVisaCopy}
             onOpenCopy={handleViewVisaCopy}
+            onCreateFlight={handleCreateFlight}
             onDownloadCopy={handleDownloadVisaCopy}
             onManageManpower={(record) =>
   setManpowerVisa(record)

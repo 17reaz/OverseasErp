@@ -74,6 +74,7 @@ interface FlightFormProps {
   onOpenChange: (open: boolean) => void;
   record?: Flight | null;
   candidates: CandidateOption[];
+  initialVisaId?: string;
   visas: VisaOption[];
   onSuccess?: (record: Flight) => void;
   onComplete?: (candidateId: string) => void;
@@ -138,6 +139,7 @@ export function FlightForm({
   onOpenChange,
   record,
   candidates,
+  initialVisaId,
   visas,
   onSuccess,
   onComplete,
@@ -282,9 +284,19 @@ export function FlightForm({
        * Flight details open.
        * Iqama details closed.
        */
-      setForm({
-        ...DEFAULT_FORM,
-      });
+      const selectedVisa = visas.find(
+    (visa) => visa.id === initialVisaId,
+  );
+
+  setForm({
+    ...DEFAULT_FORM,
+    ...(selectedVisa
+      ? {
+          candidate_id: selectedVisa.candidate_id,
+          visa_id: selectedVisa.id,
+        }
+      : {}),
+  });
 
       setFlightDetailsOpen(true);
       setIqamaDetailsOpen(false);
@@ -292,8 +304,7 @@ export function FlightForm({
 
     setError("");
     setDirty(false);
-  }, [open, record]);
-
+}, [open, record, initialVisaId, visas]);
   /*
    * -------------------------------------------------------
    * FIELD UPDATE
