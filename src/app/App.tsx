@@ -5,7 +5,7 @@ import {
 import {
   ToastProvider,
 } from "@/components/shared/toast/toast-provider";
-
+import { WelcomePopup } from "@/components/shared/welcome-popup";
 import {
   AppRouter,
 } from "./router";
@@ -15,6 +15,7 @@ function App() {
     <AuthProvider>
       <ToastProvider>
         <PwaUpdatePrompt />
+        <WelcomePopup />
         <AppRouter />
       </ToastProvider>
     </AuthProvider>
