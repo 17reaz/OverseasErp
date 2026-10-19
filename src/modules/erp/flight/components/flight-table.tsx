@@ -90,7 +90,8 @@ function getIqamaStatus(record: Flight) {
       "inline-flex rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
   };
 }
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 export function FlightTable({
   records,
   candidates,
@@ -272,6 +273,7 @@ export function FlightTable({
       serverPagination={
         typeof total === "number" && total !== records.length
       }
+      className={TABLE_CLASS}
     />
   );
 }
