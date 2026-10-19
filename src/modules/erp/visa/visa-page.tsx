@@ -300,7 +300,8 @@ function handleManpowerFormSuccess(
     setEditingRecord(null);
     setPrefill({
       candidate_id: item.candidate_id,
-      mofa_id: item.id,
+      // mofa_id: item.id,
+      mofa_id: item.mofa_id ?? "",
     });
     setFormOpen(true);
   }

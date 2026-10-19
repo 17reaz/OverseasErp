@@ -145,25 +145,26 @@ export async function getApprovedMofasWithoutVisa() {
     (candidates ?? []).map((candidate) => [candidate.id, candidate]),
   );
 
-  // 3. MOFA records; candidates without MOFA are included too.
-  const { data: mofas, error: mofaError } = await supabase
-    .from("mofas")
-    .select(`
-      id,
-      candidate_id,
-      medical_id,
-      application_number,
-      stage,
-      validity_status,
-      version
-    `)
-    .in("candidate_id", candidateIds)
-    .eq("stage", "approved")
-    .eq("validity_status", "active");
+  // 3. Fetch MOFAs linked to the active medical candidates.
+// Exact Medical-to-MOFA matching happens below.
+const medicalIds = validMedicals.map((medical) => medical.id);
 
-  if (mofaError) {
-    return { data: null, error: mofaError };
-  }
+const { data: mofas, error: mofaError } = await supabase
+  .from("mofas")
+  .select(`
+    id,
+    candidate_id,
+    medical_id,
+    application_number,
+    stage,
+    validity_status,
+    version
+  `)
+  .in("medical_id", medicalIds);
+
+if (mofaError) {
+  return { data: null, error: mofaError };
+}
 
   const { data: visas, error: visaError } = await supabase
     .from("visas")
@@ -177,11 +178,7 @@ export async function getApprovedMofasWithoutVisa() {
     (visas ?? []).map((visa) => visa.candidate_id),
   );
 
-  const visaMofaIds = new Set(
-    (visas ?? [])
-      .map((visa) => visa.mofa_id)
-      .filter((id): id is string => Boolean(id)),
-  );
+ 
 
   // 4. Current completed finger records
   const { data: fingers, error: fingerError } = await supabase
@@ -226,19 +223,22 @@ export async function getApprovedMofasWithoutVisa() {
     (tradeTests ?? []).map((test) => test.candidate_id),
   );
 
-  // 7. Pick the newest approved MOFA for each candidate.
-  // A medical without an approved MOFA remains eligible.
-  const mofaByCandidate = new Map<string, (typeof mofas)[number]>();
+  // 7. Select the latest MOFA for each exact Medical ID.
+// Higher version = newer MOFA.
+const mofaByMedical = new Map<string, (typeof mofas)[number]>();
 
-  for (const mofa of mofas ?? []) {
-    if (visaMofaIds.has(mofa.id)) continue;
+for (const mofa of mofas ?? []) {
+  if (!mofa.medical_id) continue;
 
-    const existing = mofaByCandidate.get(mofa.candidate_id);
+  const existing = mofaByMedical.get(mofa.medical_id);
 
-    if (!existing || (mofa.version ?? 1) > (existing.version ?? 1)) {
-      mofaByCandidate.set(mofa.candidate_id, mofa);
-    }
+  if (
+    !existing ||
+    (mofa.version ?? 1) > (existing.version ?? 1)
+  ) {
+    mofaByMedical.set(mofa.medical_id, mofa);
   }
+}
 
   const result: VisaEligibleMofa[] = [];
 
@@ -250,13 +250,11 @@ export async function getApprovedMofasWithoutVisa() {
     // No Visa for this candidate
     if (candidatesWithVisa.has(candidate.id)) continue;
 
-    const mofa = mofaByCandidate.get(candidate.id);
+    const mofa = mofaByMedical.get(medical.id);
 
     // If an approved MOFA exists, it must belong to this medical.
     // Otherwise the candidate may still appear without a MOFA.
-    if (mofa && mofa.medical_id && mofa.medical_id !== medical.id) {
-      continue;
-    }
+    
 
     result.push({
       id: mofa?.id ?? medical.id,
