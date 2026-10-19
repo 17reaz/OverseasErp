@@ -13,7 +13,8 @@ import {
 import type { TradeTest } from "../takamul-service";
 
 import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 interface CandidateOption {
   id: string;
   name: string;
@@ -178,6 +179,7 @@ export function TradeTestTable({
       onPageChange={onPageChange}
       total={total}
       serverPagination={typeof total === "number" && total !== records.length}
+      className={TABLE_CLASS}
     />
   );
 }

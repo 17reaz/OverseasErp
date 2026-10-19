@@ -54,7 +54,8 @@ const BADGE_BASE_CLASS =
   "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium";
 
 const DEFAULT_BADGE_CLASS = "border-border bg-background";
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 const STAGE_LABELS: Record<string, string> = {
   new: "New",
   medupdated: "Medical Updated",
@@ -428,6 +429,7 @@ export function MofaTable({
       onPageChange={onPageChange}
       total={total}
       serverPagination={typeof total === "number" && total !== mofas.length}
+      className={TABLE_CLASS}
     />
   );
 }

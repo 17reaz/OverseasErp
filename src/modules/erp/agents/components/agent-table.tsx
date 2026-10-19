@@ -111,7 +111,8 @@ function AgentActions({
     </Popover>
   );
 }
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 export function AgentTable({
   agents,
   loading = false,
@@ -209,6 +210,7 @@ export function AgentTable({
       serverPagination={
         typeof total === "number" && total !== agents.length
       }
+      className={TABLE_CLASS}
     />
   );
 }

@@ -19,7 +19,8 @@ import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 // =====================================================
 // TYPES
 // =====================================================
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 interface CandidateInfo {
   id: string;
   name: string;
@@ -244,6 +245,7 @@ export function FingerTable({
       onPageChange={onPageChange}
       total={total}
       serverPagination={typeof total === "number" && total !== records.length}
+      className={TABLE_CLASS}
     />
   );
 }

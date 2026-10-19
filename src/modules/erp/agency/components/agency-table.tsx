@@ -45,7 +45,8 @@ function StatusBadge({ active }: { active: boolean }) {
     </span>
   );
 }
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 export function AgencyTable({
   agencies,
   loading = false,
@@ -230,6 +231,7 @@ export function AgencyTable({
         onPageChange={onPageChange}
         total={total}
         serverPagination={typeof total === "number" && total !== agencies.length}
+        className={TABLE_CLASS}
       />
     </TooltipProvider>
   );

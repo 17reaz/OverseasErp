@@ -37,7 +37,8 @@ interface CandidateInfo {
   name: string;
   passport_no: string;
 }
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 interface BmetTableProps {
   records: BmetRecord[];
   candidates: CandidateInfo[];
@@ -432,6 +433,7 @@ export function BmetTable({
       serverPagination={
         typeof total === "number" && total !== records.length
       }
+      className={TABLE_CLASS}
     />
   );
 }

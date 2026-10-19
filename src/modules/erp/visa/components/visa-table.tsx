@@ -417,7 +417,8 @@ function VisaActions({
 /* -------------------------------------------------------------------------- */
 /*  Table                                                                     */
 /* -------------------------------------------------------------------------- */
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 export function VisaTable({
   records,
   candidates,
@@ -568,6 +569,7 @@ export function VisaTable({
       serverPagination={
         typeof total === "number" && total !== records.length
       }
+      className={TABLE_CLASS}
     />
   );
 }
