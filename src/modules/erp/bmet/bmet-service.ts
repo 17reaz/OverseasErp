@@ -169,6 +169,7 @@ export async function updateBmetRecord(
     .from("bmet")
     .update({
       pdo: input.pdo,
+      pdo_date: input.pdo_date ?? null,
       finger: input.finger,
       nominee: input.nominee,
       bank: input.bank,
