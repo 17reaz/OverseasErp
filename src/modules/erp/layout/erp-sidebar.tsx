@@ -168,195 +168,143 @@ const [
             ================================================= */}
 
         <SidebarHeader>
+  <div
+    className="
+      relative
+      flex
+      h-16
+      items-center
+      gap-2
+      px-2
+      group-data-[collapsible=icon]:flex-col
+      group-data-[collapsible=icon]:justify-center
+      group-data-[collapsible=icon]:gap-1
+      group-data-[collapsible=icon]:h-auto
+      group-data-[collapsible=icon]:py-2
+    "
+  >
+    {/* Expanded logo/title */}
+    <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+      <h1 className="truncate text-sm font-semibold">
+        Overseas ERP
+      </h1>
+      <p className="truncate text-xs text-muted-foreground">
+        Management System
+      </p>
+    </div>
+
+    {/* Collapsed logo */}
+    <div
+      className="
+        hidden
+        text-sm
+        font-bold
+        group-data-[collapsible=icon]:block
+      "
+    >
+      OE
+    </div>
+
+    {/* Workspace selector (beside brand) */}
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setWorkspaceOpen((open) => !open)}
+        title={activeWorkspace.name}
+        className="
+          flex
+          h-9
+          items-center
+          gap-1
+          rounded-md
+          px-2
+          text-sm
+          transition-colors
+          hover:bg-muted
+          group-data-[collapsible=icon]:px-1
+        "
+      >
+        <span className="text-base leading-none">
+          {activeWorkspace.flag}
+        </span>
+
+        <ChevronDown
+          className="
+            h-3.5
+            w-3.5
+            shrink-0
+            text-muted-foreground
+            group-data-[collapsible=icon]:hidden
+          "
+        />
+      </button>
+
+      {workspaceOpen && (
+        <>
+          {/* click-outside overlay */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setWorkspaceOpen(false)}
+          />
 
           <div
             className="
-              flex
-              h-16
-              items-center
-              px-2
-              group-data-[collapsible=icon]:justify-center
+              absolute
+              right-0
+              top-full
+              z-50
+              mt-1
+              w-48
+              rounded-md
+              border
+              bg-popover
+              p-1
+              shadow-md
+              group-data-[collapsible=icon]:left-full
+              group-data-[collapsible=icon]:right-auto
+              group-data-[collapsible=icon]:top-0
+              group-data-[collapsible=icon]:ml-2
+              group-data-[collapsible=icon]:mt-0
             "
           >
-
-            {/* Expanded logo/title */}
-
-            <div
-              className="
-                min-w-0
-                group-data-[collapsible=icon]:hidden
-              "
-            >
-
-              <h1
+            {workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                type="button"
+                onClick={() => {
+                  setActiveWorkspace(workspace);
+                  setWorkspaceOpen(false);
+                }}
                 className="
-                  truncate
+                  flex
+                  h-8
+                  w-full
+                  items-center
+                  gap-2
+                  rounded-sm
+                  px-2
+                  text-left
                   text-sm
-                  font-semibold
+                  hover:bg-muted
                 "
               >
-                Overseas ERP
-              </h1>
+                <span className="text-base">{workspace.flag}</span>
 
-              <p
-                className="
-                  truncate
-                  text-xs
-                  text-muted-foreground
-                "
-              >
-                Management System
-              </p>
+                <span className="min-w-0 flex-1 truncate">
+                  {workspace.name}
+                </span>
 
-            </div>
-
-
-            {/* Collapsed logo */}
-
-            <div
-              className="
-                hidden
-                text-sm
-                font-bold
-                group-data-[collapsible=icon]:block
-              "
-            >
-              OE
-            </div>
-
+                {activeWorkspace.id === workspace.id && (
+                  <Check className="h-3.5 w-3.5 shrink-0" />
+                )}
+              </button>
+            ))}
           </div>
-
-{/* =================================================
-    WORKSPACE SELECTOR
-    ================================================= */}
-
-<div className="px-2 pb-2">
-
-  <div className="relative">
-
-    <button
-      type="button"
-      onClick={() =>
-        setWorkspaceOpen((open) => !open)
-      }
-      className="
-        flex
-        h-9
-        w-full
-        items-center
-        gap-2
-        rounded-md
-        px-2
-        text-left
-        text-sm
-        transition-colors
-        hover:bg-muted
-        group-data-[collapsible=icon]:justify-center
-      "
-    >
-
-      <span
-        className="
-          flex
-          h-6
-          w-6
-          shrink-0
-          items-center
-          justify-center
-          text-base
-        "
-      >
-        {activeWorkspace.flag}
-      </span>
-
-      <span
-        className="
-          min-w-0
-          flex-1
-          truncate
-          font-medium
-          group-data-[collapsible=icon]:hidden
-        "
-      >
-        {activeWorkspace.name}
-      </span>
-
-      <ChevronDown
-        className="
-          h-3.5
-          w-3.5
-          shrink-0
-          text-muted-foreground
-          group-data-[collapsible=icon]:hidden
-        "
-      />
-
-    </button>
-
-    {workspaceOpen && (
-      <div
-        className="
-          absolute
-          left-0
-          right-0
-          top-full
-          z-50
-          mt-1
-          rounded-md
-          border
-          bg-popover
-          p-1
-          shadow-md
-          group-data-[collapsible=icon]:left-10
-          group-data-[collapsible=icon]:right-auto
-          group-data-[collapsible=icon]:w-48
-        "
-      >
-
-        {workspaces.map((workspace) => (
-          <button
-            key={workspace.id}
-            type="button"
-            onClick={() => {
-              setActiveWorkspace(workspace);
-              setWorkspaceOpen(false);
-            }}
-            className="
-              flex
-              h-8
-              w-full
-              items-center
-              gap-2
-              rounded-sm
-              px-2
-              text-left
-              text-sm
-              hover:bg-muted
-            "
-          >
-
-            <span className="text-base">
-              {workspace.flag}
-            </span>
-
-            <span className="min-w-0 flex-1 truncate">
-              {workspace.name}
-            </span>
-
-            {activeWorkspace.id === workspace.id && (
-              <Check className="h-3.5 w-3.5 shrink-0" />
-            )}
-
-          </button>
-        ))}
-
-      </div>
-    )}
-
+        </>
+      )}
+    </div>
   </div>
-
-</div>
-        </SidebarHeader>
+</SidebarHeader>
 
 
         {/* =================================================
