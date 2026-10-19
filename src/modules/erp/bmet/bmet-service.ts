@@ -18,6 +18,7 @@ export interface BmetRecord {
   phone_number: string | null;
   password: string | null;
   pdo: boolean;
+  pdo_date: string | null;
   finger: boolean;
   nominee: boolean;
   bank: boolean;
@@ -33,6 +34,7 @@ export interface CreateBmetInput {
   phone_number?: string | null;
   password?: string | null;
   pdo?: boolean;
+  pdo_date?: string | null;
   finger?: boolean;
   nominee?: boolean;
   bank?: boolean;
@@ -45,6 +47,7 @@ export interface UpdateBmetInput {
   phone_number?: string | null;
   password?: string | null;
   pdo?: boolean;
+  pdo_date?: string | null;
   finger?: boolean;
   nominee?: boolean;
   bank?: boolean;
@@ -137,6 +140,7 @@ export async function createBmetRecord(
     .insert({
       candidate_id: input.candidate_id,
       pdo: input.pdo ?? false,
+      pdo_date: input.pdo_date ?? null,
       finger: input.finger ?? false,
       nominee: input.nominee ?? false,
       bank: input.bank ?? false,

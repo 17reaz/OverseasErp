@@ -332,8 +332,16 @@ function checklistColumn(
     className: `${widthClass} text-center`,
     hideOnMobile,
     cell: (record) => (
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-1">
         <ChecklistBadge checked={record[field]} />
+
+        {field === "pdo" &&
+          !isComplete(record) &&
+          record.pdo_date && (
+            <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">
+              {formatDate(record.pdo_date)}
+            </span>
+          )}
       </div>
     ),
   };

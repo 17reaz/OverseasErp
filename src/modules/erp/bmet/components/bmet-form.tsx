@@ -56,6 +56,7 @@ interface BmetFormState {
   phone_number: string;
 password: string;
   pdo: boolean;
+  pdo_date: string;
   finger: boolean;
   nominee: boolean;
   bank: boolean;
@@ -69,6 +70,7 @@ const DEFAULT_FORM: BmetFormState = {
   phone_number: "",
   password: "",
   pdo: false,
+  pdo_date: "",
   finger: false,
   nominee: false,
   bank: false,
@@ -108,6 +110,7 @@ useEffect(() => {
       phone_number: record.phone_number ?? "",
       password: record.password ?? "",
       pdo: record.pdo,
+      pdo_date: record.pdo_date ?? "",
       finger: record.finger,
       nominee: record.nominee,
       bank: record.bank,
@@ -168,8 +171,9 @@ useEffect(() => {
       const input = {
         visa_id: form.visa_id || null,
         phone_number: form.phone_number.trim() || null,
-password: form.password || null,
+        password: form.password || null,
         pdo: form.pdo,
+        pdo_date: form.pdo_date || null,
         finger: form.finger,
         nominee: form.nominee,
         bank: form.bank,
@@ -463,6 +467,24 @@ password: form.password || null,
                 updateField("pdo", checked)
               }
             />
+
+{/* PDO Date */}
+<div className="flex items-center justify-between gap-4 border-b px-4 py-3">
+  <Label htmlFor="pdo-date" className="shrink-0">
+    PDO Date
+  </Label>
+
+  <Input
+    id="pdo-date"
+    type="date"
+    value={form.pdo_date}
+    onChange={(event) =>
+      updateField("pdo_date", event.target.value)
+    }
+    disabled={saving}
+    className="w-auto min-w-0"
+  />
+</div>
 
             <ChecklistItem
               id="bmet-finger"
