@@ -1,13 +1,24 @@
 // src/modules/erp/finger/components/finger-table.tsx
 
-import { Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import type { FingerRecord, FingerStatus } from "../finger-service";
 
 import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
+
+// =====================================================
+// TYPES
+// =====================================================
 
 interface CandidateInfo {
   id: string;
@@ -29,6 +40,29 @@ interface FingerTableProps {
   onDelete: (record: FingerRecord) => void;
 }
 
+// =====================================================
+// CONSTANTS
+// =====================================================
+
+const SUCCESS_CLASS =
+  "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+const MUTED_CLASS =
+  "border-muted-foreground/30 bg-muted text-muted-foreground";
+
+const STATUS_CLASS: Record<FingerStatus, string> = {
+  completed: SUCCESS_CLASS,
+  scheduled:
+    "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  failed: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400",
+  cancelled: MUTED_CLASS,
+  pending:
+    "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+};
+
+// =====================================================
+// HELPERS
+// =====================================================
+
 function formatDate(date: string | null) {
   if (!date) return "—";
 
@@ -44,20 +78,58 @@ function getStatusLabel(status: FingerStatus) {
 }
 
 function getStatusClassName(status: FingerStatus) {
-  switch (status) {
-    case "completed":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
-    case "scheduled":
-      return "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400";
-    case "failed":
-      return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400";
-    case "cancelled":
-      return "border-muted-foreground/30 bg-muted text-muted-foreground";
-    case "pending":
-    default:
-      return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
-  }
+  return STATUS_CLASS[status] ?? STATUS_CLASS.pending;
 }
+
+// =====================================================
+// ROW ACTIONS
+// =====================================================
+
+function RowActions({
+  onEdit,
+  onDelete,
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="More actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 export function FingerTable({
   records,
@@ -84,28 +156,24 @@ export function FingerTable({
       cell: (record) => record.sl,
     },
     {
-  key: "candidate",
-  header: "Candidate",
-  cell: (record) => (
-    <div className="flex items-center gap-2">
-      <span className="font-medium">
-        {candidateMap.get(record.candidate_id)?.name ??
-          "Unknown candidate"}
-      </span>
+      key: "candidate",
+      header: "Candidate",
+      cell: (record) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">
+            {candidateMap.get(record.candidate_id)?.name ??
+              "Unknown candidate"}
+          </span>
 
-      <Badge
-        variant="outline"
-        className={
-          record.is_current
-            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-            : "border-muted-foreground/30 bg-muted text-muted-foreground"
-        }
-      >
-        V{record.version}
-      </Badge>
-    </div>
-  ),
-},
+          <Badge
+            variant="outline"
+            className={record.is_current ? SUCCESS_CLASS : MUTED_CLASS}
+          >
+            V{record.version}
+          </Badge>
+        </div>
+      ),
+    },
     {
       key: "passport",
       header: "Passport",
@@ -135,10 +203,7 @@ export function FingerTable({
       key: "status",
       header: "Status",
       cell: (record) => (
-        <Badge
-          variant="outline"
-          className={getStatusClassName(record.status)}
-        >
+        <Badge variant="outline" className={getStatusClassName(record.status)}>
           {getStatusLabel(record.status)}
         </Badge>
       ),
@@ -149,10 +214,7 @@ export function FingerTable({
       className: "max-w-[240px]",
       hideOnMobile: true,
       cell: (record) => (
-        <span
-          className="block truncate"
-          title={record.remarks ?? undefined}
-        >
+        <span className="block truncate" title={record.remarks ?? undefined}>
           {record.remarks || "—"}
         </span>
       ),
@@ -160,30 +222,12 @@ export function FingerTable({
     {
       key: "action",
       header: "Actions",
-      className: "w-[110px] text-right",
+      className: "w-[90px] text-right",
       cell: (record) => (
-        <div className="flex justify-end gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(record)}
-            aria-label="Edit finger record"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => onDelete(record)}
-            aria-label="Delete finger record"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <RowActions
+          onEdit={() => onEdit(record)}
+          onDelete={() => onDelete(record)}
+        />
       ),
     },
   ];
