@@ -957,15 +957,8 @@ async function handleDownloadMofaCopy(mofa: Mofa) {
    * RENDER
    * ======================================================= */
 
-  return (
-    <div
-      className="
-        flex
-        min-h-0
-        flex-col
-        gap-6
-      "
-    >
+ return (
+  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
 
       {/* =================================================
        * TOOLBAR
