@@ -81,7 +81,8 @@ function getValidityIcon(
 
   return null;
 }
-
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 export function MedicalTable({
   medicals,
   loading,
@@ -227,6 +228,7 @@ const sortedMedicals = [...medicals].sort(
       loading={loading}
       emptyTitle="No medical records found"
       emptyDescription="Medical records will appear here."
+      className={TABLE_CLASS}
     />
   );
 }
