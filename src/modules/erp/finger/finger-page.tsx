@@ -180,7 +180,7 @@ export function FingerPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 p-4">
+  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       <FingerToolbar
         search={search}
         onSearchChange={setSearch}

@@ -388,8 +388,8 @@ export function FilesPage() {
 
   const previewUrls = useFilePreviews(files);
 
-  return (
-    <div className="space-y-6">
+ return (
+  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       {/* Sticky header: scroll korleo upore thakbe */}
       <div className="sticky top-0 z-20 -mx-4 space-y-4 bg-background/95 px-4 pb-4 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <FilesToolbar

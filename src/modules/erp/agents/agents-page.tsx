@@ -114,7 +114,7 @@ export function AgentsPage() {
   }, [agents, search]);
 
   return (
-    <div className="space-y-6">
+  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       {/* Toolbar */}
       <AgentsToolbar
         search={search}
