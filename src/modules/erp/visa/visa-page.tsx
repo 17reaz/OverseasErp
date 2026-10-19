@@ -47,7 +47,7 @@ import {
 } from "../mofa/mofa-service";
 import { FlightForm } from "../flight/components/flight-form";
 import {
-  createFlight,
+  getFlights,
   type Flight,
 } from "../flight/flight-service";
 export function VisaPage() {
@@ -89,28 +89,30 @@ const [bmetFormOpen, setBmetFormOpen] =
     try {
       setLoading(true);
 
-      const [
-        visaList,
-        candidatesData,
-        mofaResult,
-        agencyResult,
-        bmetData,
-        activeVisaFiles,
-      ] = await Promise.all([
-        getVisas(),
-        getCandidates(),
-        getMofas(),
-        getMofaAgencies(),
-        getBmetRecords(),
-        getActiveCandidateFiles("visa"),
-      ]);
+     const [
+  visaList,
+  candidatesData,
+  mofaResult,
+  agencyResult,
+  bmetData,
+  activeVisaFiles,
+  flightsData,
+] = await Promise.all([
+  getVisas(),
+  getCandidates(),
+  getMofas(),
+  getMofaAgencies(),
+  getBmetRecords(),
+  getActiveCandidateFiles("visa"),
+  getFlights(),
+]);
 
       setRecords(visaList);
       setCandidates(candidatesData);
       setMofas(mofaResult.data ?? []);
       setAgencies(agencyResult.data ?? []);
       setBmetRecords(bmetData);
-
+      setFlights(flightsData);
       setVisaCopyCandidateIds(
         new Set(activeVisaFiles.map((file) => file.candidate_id)),
       );
@@ -686,6 +688,37 @@ async function handlePreviewVisaCopy(record: Visa) {
         mofas={mofas}
         prefill={prefill}
         onSuccess={handleFormSuccess}
+      />
+            <FlightForm
+        open={flightFormOpen}
+        onOpenChange={(open) => {
+          setFlightFormOpen(open);
+
+          if (!open) {
+            setFlightVisa(null);
+          }
+        }}
+        candidates={candidates}
+        visas={records}
+        initialVisaId={flightVisa?.id}
+        onSuccess={(savedRecord) => {
+          setFlights((previous) => {
+            const exists = previous.some(
+              (flight) => flight.id === savedRecord.id,
+            );
+
+            return exists
+              ? previous.map((flight) =>
+                  flight.id === savedRecord.id
+                    ? savedRecord
+                    : flight,
+                )
+              : [savedRecord, ...previous];
+          });
+
+          setFlightFormOpen(false);
+          setFlightVisa(null);
+        }}
       />
     </div>
   );
