@@ -331,19 +331,29 @@ function checklistColumn(
     header,
     className: `${widthClass} text-center`,
     hideOnMobile,
-    cell: (record) => (
-      <div className="flex flex-col items-center gap-1">
-        <ChecklistBadge checked={record[field]} />
-
-        {field === "pdo" &&
-          !isComplete(record) &&
-          record.pdo_date && (
-            <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">
-              {formatDate(record.pdo_date)}
-            </span>
-          )}
+    
+cell: (record) => {
+  if (
+    field === "pdo" &&
+    !isComplete(record) &&
+    record.pdo_date
+  ) {
+    return (
+      <div className="text-center">
+        <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+          {formatDate(record.pdo_date)}
+        </span>
       </div>
-    ),
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <ChecklistBadge checked={record[field]} />
+    </div>
+  );
+},
+
   };
 }
 
