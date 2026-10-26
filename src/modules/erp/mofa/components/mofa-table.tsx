@@ -34,6 +34,7 @@ interface MofaTableProps {
   page?: number;
   pageSize?: number;
   total?: number;
+  mofaCopyCandidateIds: Set<string>;
   onReactivate?: (mofa: Mofa) => Promise<void>;
   onPageChange?: (page: number) => void;
   onUploadCopy?: (mofa: Mofa, file: File) => Promise<void>;
@@ -128,6 +129,7 @@ function formatDate(value: string | null | undefined) {
 
 function MofaRowActions({
   mofa,
+  hasStoredCopy,
   onEdit,
   onDelete,
   onReactivate,
@@ -136,6 +138,7 @@ function MofaRowActions({
   onDownloadCopy,
 }: {
   mofa: Mofa;
+  hasStoredCopy: boolean;
   onEdit?: (mofa: Mofa) => void;
   onDelete?: (mofa: Mofa) => void;
   onReactivate?: (mofa: Mofa) => Promise<void>;
@@ -196,40 +199,55 @@ function MofaRowActions({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem
-            disabled={busy || !onUploadCopy}
-            onSelect={(event) => {
-              event.preventDefault();
-              fileInputRef.current?.click();
-            }}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Upload MOFA Copy
-          </DropdownMenuItem>
+         {hasStoredCopy ? (
+  <>
+    <DropdownMenuItem
+      disabled={busy || !onOpenCopy}
+      onSelect={() => {
+        if (onOpenCopy) {
+          void runAction(() => onOpenCopy(mofa));
+        }
+      }}
+    >
+      <Eye className="mr-2 h-4 w-4" />
+      View MOFA Copy
+    </DropdownMenuItem>
 
-          <DropdownMenuItem
-            disabled={busy || !onOpenCopy}
-            onSelect={() => {
-              if (onOpenCopy) {
-                void runAction(() => onOpenCopy(mofa));
-              }
-            }}
-          >
-            <Eye className="mr-2 h-4 w-4" />
-            View MOFA Copy
-          </DropdownMenuItem>
+    <DropdownMenuItem
+      disabled={busy || !onDownloadCopy}
+      onSelect={() => {
+        if (onDownloadCopy) {
+          void runAction(() => onDownloadCopy(mofa));
+        }
+      }}
+    >
+      <Download className="mr-2 h-4 w-4" />
+      Download MOFA Copy
+    </DropdownMenuItem>
 
-          <DropdownMenuItem
-            disabled={busy || !onDownloadCopy}
-            onSelect={() => {
-              if (onDownloadCopy) {
-                void runAction(() => onDownloadCopy(mofa));
-              }
-            }}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download MOFA Copy
-          </DropdownMenuItem>
+    <DropdownMenuItem
+      disabled={busy || !onUploadCopy}
+      onSelect={(event) => {
+        event.preventDefault();
+        fileInputRef.current?.click();
+      }}
+    >
+      <Upload className="mr-2 h-4 w-4" />
+      Replace MOFA Copy
+    </DropdownMenuItem>
+  </>
+) : (
+  <DropdownMenuItem
+    disabled={busy || !onUploadCopy}
+    onSelect={(event) => {
+      event.preventDefault();
+      fileInputRef.current?.click();
+    }}
+  >
+    <Upload className="mr-2 h-4 w-4" />
+    Upload MOFA Copy
+  </DropdownMenuItem>
+)}
             {mofa.validity_status === "invalid" && (
   <DropdownMenuItem
     disabled={busy || !onReactivate}
@@ -273,6 +291,7 @@ export function MofaTable({
   page,
   pageSize = 10,
   total,
+  mofaCopyCandidateIds,
   onPageChange,
   onUploadCopy,
   onOpenCopy,
@@ -409,6 +428,7 @@ export function MofaTable({
           onDelete={onDelete}
           onUploadCopy={onUploadCopy}
           onOpenCopy={onOpenCopy}
+          hasStoredCopy={mofaCopyCandidateIds.has(mofa.candidate_id)}
           onDownloadCopy={onDownloadCopy}
           onReactivate={onReactivate}
         />

@@ -6,6 +6,7 @@ import {
 } from "react";
 import {
   getActiveCandidateFile,
+  getActiveCandidateFiles,
   getCandidateMofaFileUrl,
   uploadCandidateMofa,
 } from "../candidates/candidate-files-service";
@@ -83,7 +84,8 @@ export function MofaPage() {
     setMofas,
   ] = useState<Mofa[]>([]);
 
-
+const [mofaCopyCandidateIds, setMofaCopyCandidateIds] =
+  useState<Set<string>>(() => new Set());
   /* =======================================================
    * CANDIDATES
    * ======================================================= */
@@ -199,45 +201,50 @@ export function MofaPage() {
    * ======================================================= */
 
   const loadMofas = useCallback(
-    async () => {
+  async () => {
+    try {
+      setLoading(true);
 
-      try {
+      const { data, error } = await getMofas();
 
-        setLoading(true);
-
-        const {
-          data,
-          error,
-        } = await getMofas();
-
-        if (error) {
-          throw error;
-        }
-
-        setMofas(
-          data ?? [],
-        );
-
-      } catch (error) {
-
-        console.error(
-          error,
-        );
-
-        toast.error(
-          "Failed to load MOFA records.",
-          "Please try again.",
-        );
-
-      } finally {
-
-        setLoading(false);
-
+      if (error) {
+        throw error;
       }
 
-    },
-    [],
-  );
+      // Load MOFA records
+      setMofas(data ?? []);
+
+      // Load uploaded MOFA copies separately
+      try {
+        const activeMofaFiles =
+          await getActiveCandidateFiles("mofa");
+
+        setMofaCopyCandidateIds(
+          new Set(
+            activeMofaFiles.map(
+              (file) => file.candidate_id,
+            ),
+          ),
+        );
+      } catch (fileError) {
+        console.error(
+          "Failed to load MOFA copies:",
+          fileError,
+        );
+      }
+    } catch (error) {
+      console.error(error);
+
+      toast.error(
+        "Failed to load MOFA records.",
+        "Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  },
+  [],
+);
 
 
   /* =======================================================
@@ -847,7 +854,11 @@ async function handleUploadMofaCopy(mofa: Mofa, file: File) {
     passportNo: mofa.candidate.passport_no,
     file,
   });
-
+  setMofaCopyCandidateIds((previous) => {
+  const next = new Set(previous);
+  next.add(mofa.candidate_id);
+  return next;
+});
   toast.success(
     "MOFA copy uploaded.",
     "The document was uploaded successfully.",
@@ -1074,26 +1085,16 @@ async function handleDownloadMofaCopy(mofa: Mofa) {
       ) : (
 
         <MofaTable
-
-          mofas={
-            filteredMofas
-          }
-
-          loading={
-            loading
-          }
-
-          onEdit={
-            handleEdit
-          }
-onReactivate={handleReactivateMofa}
-          onDelete={
-            handleDelete
-          }
-onUploadCopy={handleUploadMofaCopy}
-onOpenCopy={handleViewMofaCopy}
-onDownloadCopy={handleDownloadMofaCopy}
-        />
+  mofas={filteredMofas}
+  loading={loading}
+  mofaCopyCandidateIds={mofaCopyCandidateIds}
+  onEdit={handleEdit}
+  onReactivate={handleReactivateMofa}
+  onDelete={handleDelete}
+  onUploadCopy={handleUploadMofaCopy}
+  onOpenCopy={handleViewMofaCopy}
+  onDownloadCopy={handleDownloadMofaCopy}
+/>
 
       )}
 
