@@ -40,14 +40,21 @@ interface FlightRow {
 
 function getDaysRemaining(expiryDate: string) {
   const today = new Date();
+  const todayUtc = Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
 
-  today.setHours(0, 0, 0, 0);
+  const [year, month, day] = expiryDate
+    .slice(0, 10)
+    .split("-")
+    .map(Number);
 
-  const expiry = new Date(`${expiryDate}T00:00:00`);
+  const expiryUtc = Date.UTC(year, month - 1, day);
 
-  return Math.ceil(
-    (expiry.getTime() - today.getTime()) /
-      (1000 * 60 * 60 * 24),
+  return Math.round(
+    (expiryUtc - todayUtc) / (1000 * 60 * 60 * 24),
   );
 }
 
@@ -142,9 +149,11 @@ export async function getDashboardVisaWarnings(): Promise<
      * Only expired visas and visas expiring within
      * the next 30 days are dashboard warnings.
      */
-    if (daysRemaining > 30) {
-      continue;
-    }
+    // Hide visas expired more than 7 days ago.
+// Keep recent expiries and upcoming expiry warnings.
+if (daysRemaining < -7 || daysRemaining > 30) {
+  continue;
+}
 
     const candidate = Array.isArray(visa.candidate)
       ? visa.candidate[0]
