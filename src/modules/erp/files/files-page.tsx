@@ -447,6 +447,8 @@ useEffect(() => {
           onSearchChange={setSearch}
           docType={docType}
           onDocTypeChange={setDocType}
+          view={view}
+onViewChange={setView}
           onRefresh={() => {
             setRefreshing(true);
             void initialize();
@@ -455,34 +457,6 @@ useEffect(() => {
           refreshing={refreshing}
           createDisabled={!tenantId || candidates.length === 0}
         />
-
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">All Files</h2>
-
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              size="icon"
-              variant={view === "grid" ? "secondary" : "ghost"}
-              aria-label="Grid view"
-              aria-pressed={view === "grid"}
-              onClick={() => setView("grid")}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-
-            <Button
-              type="button"
-              size="icon"
-              variant={view === "table" ? "secondary" : "ghost"}
-              aria-label="Table view"
-              aria-pressed={view === "table"}
-              onClick={() => setView("table")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       {error && (
