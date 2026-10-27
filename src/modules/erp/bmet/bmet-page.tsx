@@ -99,12 +99,12 @@ export function BmetPage() {
 
       setCandidates(
         candidatesData.map((candidate) => ({
-          id: candidate.id,
-          name: candidate.name,
-          passport_no: candidate.passport_no,
-          tenant_id: candidate.tenant_id,
-          sl: candidate.sl,
-        })),
+  id: candidate.id,
+  name: candidate.name,
+  passport_no: candidate.passport_no,
+  tenant_id: candidate.tenant_id,
+  sl: candidate.sl ?? 0,
+}))
       );
     } catch (error) {
       console.error(
@@ -266,6 +266,36 @@ async function handleViewBmetCard(record: BmetRecord) {
 
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
+async function handleDownloadBmetCard(record: BmetRecord) {
+  const fileRecord = await getActiveCandidateFile(
+    record.candidate_id,
+    "bmet",
+  );
+
+  if (!fileRecord) {
+    throw new Error("এই candidate-এর BMET card upload করা হয়নি।");
+  }
+
+  const url = await getCandidateBmetFileUrl(
+    fileRecord.file_location,
+  );
+
+  const candidate = candidates.find(
+    (item) => item.id === record.candidate_id,
+  );
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.download = `bmet-${candidate?.sl ?? record.id}.pdf`;
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
   async function handleDelete(record: BmetRecord) {
     const candidate = candidates.find(
       (item) => item.id === record.candidate_id,
@@ -362,7 +392,7 @@ async function handleViewBmetCard(record: BmetRecord) {
   bmetCopyCandidateIds={bmetCopyCandidateIds}
   onUploadCopy={handleUploadBmetCard}
   onOpenCopy={handleViewBmetCard}
-  // onDownloadCopy={handleDownloadBmetCard}
+  onDownloadCopy={handleDownloadBmetCard}
 />
         )}
       </div>
