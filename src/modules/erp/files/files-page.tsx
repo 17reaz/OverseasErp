@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileText, LayoutGrid, List } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FileText,
+  LayoutGrid,
+  List,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -286,15 +292,20 @@ export function FilesPage() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [view, setView] = useState<"grid" | "table">("grid");
   const [search, setSearch] = useState("");
   const [docType, setDocType] = useState<DocTypeFilter>("all");
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState("");
 
-  const [view, setView] = useState<"grid" | "table">("grid");
+const PAGE_SIZE = 12;
+const FILES_PAGE_KEY = "overseaserp:files-page";
 
+const [currentPage, setCurrentPage] = useState(() => {
+  const savedPage = Number(localStorage.getItem(FILES_PAGE_KEY));
+  return Number.isInteger(savedPage) && savedPage > 0 ? savedPage : 1;
+});
   async function loadTenant() {
     const {
       data: { user },
@@ -387,6 +398,45 @@ export function FilesPage() {
   }, [files, search, docType]);
 
   const previewUrls = useFilePreviews(files);
+  const totalPages = Math.max(
+  1,
+  Math.ceil(filteredFiles.length / PAGE_SIZE),
+);
+
+const safePage = Math.min(currentPage, totalPages);
+
+const paginatedFiles = useMemo(() => {
+  const start = (safePage - 1) * PAGE_SIZE;
+
+  return filteredFiles.slice(start, start + PAGE_SIZE);
+}, [filteredFiles, safePage]);
+const hasMountedFilters = useRef(false);
+
+// Files load শেষ হওয়ার পরই page clamp করো
+useEffect(() => {
+  if (loading) return;
+
+  if (currentPage !== safePage) {
+    setCurrentPage(safePage);
+  }
+}, [loading, currentPage, safePage]);
+
+// Files load শেষ হলে current page save করো
+useEffect(() => {
+  if (loading) return;
+
+  localStorage.setItem(FILES_PAGE_KEY, String(safePage));
+}, [loading, safePage]);
+
+// প্রথম render-এ saved page reset করবে না
+useEffect(() => {
+  if (!hasMountedFilters.current) {
+    hasMountedFilters.current = true;
+    return;
+  }
+
+  setCurrentPage(1);
+}, [search, docType]);
 
  return (
   <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
@@ -478,7 +528,7 @@ export function FilesPage() {
             </div>
           ) : view === "grid" ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredFiles.map((file) => (
+              {paginatedFiles.map((file) => (
                 <FileCard
                   key={file.id}
                   file={file}
@@ -502,7 +552,7 @@ export function FilesPage() {
                 </TableHeader>
 
                 <TableBody>
-                  {filteredFiles.map((file) => (
+                  {paginatedFiles.map((file) => (
                     <TableRow key={file.id}>
                       <TableCell>{file.candidate?.sl ?? "-"}</TableCell>
                       <TableCell>
@@ -535,6 +585,55 @@ export function FilesPage() {
               </Table>
             </div>
           )}
+          {filteredFiles.length > 0 && (
+  <div className="mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+    <p className="text-sm text-muted-foreground">
+      Showing{" "}
+      <span className="font-medium text-foreground">
+        {(safePage - 1) * PAGE_SIZE + 1}
+      </span>
+      {" - "}
+      <span className="font-medium text-foreground">
+        {Math.min(safePage * PAGE_SIZE, filteredFiles.length)}
+      </span>
+      {" of "}
+      <span className="font-medium text-foreground">
+        {filteredFiles.length}
+      </span>
+      {" files"}
+    </p>
+
+    <div className="flex items-center justify-between gap-2 sm:justify-end">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={safePage <= 1}
+        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+      >
+        <ChevronLeft className="mr-1 size-4" />
+        Previous
+      </Button>
+
+      <span className="min-w-[90px] text-center text-sm font-medium">
+        Page {safePage} of {totalPages}
+      </span>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={safePage >= totalPages}
+        onClick={() =>
+          setCurrentPage((page) => Math.min(totalPages, page + 1))
+        }
+      >
+        Next
+        <ChevronRight className="ml-1 size-4" />
+      </Button>
+    </div>
+  </div>
+)}
         </CardContent>
       </Card>
 
