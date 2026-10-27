@@ -491,8 +491,8 @@ useEffect(() => {
         </div>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="min-h-0 flex-1 overflow-y-auto">
+  <CardContent className="pt-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <p className="text-sm text-muted-foreground">
