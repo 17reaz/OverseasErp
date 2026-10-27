@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 const PASSPORT_BUCKET = "passports";
 const VISA_BUCKET = "visas";
 const MOFA_BUCKET = "mofas";
+const BMET_BUCKET = "bmets";
 export interface CandidateFile {
   id: number;
   tenant_id: string;
@@ -85,7 +86,7 @@ async function uploadCandidateDocument({
   file,
 }: {
   bucket: string;
-  docType: "passport" | "visa" | "mofa";
+  docType: "passport" | "visa" | "mofa" | "bmet";  
   tenantId: string;
   candidateId: string;
   candidateSl: number;
@@ -317,6 +318,53 @@ export async function uploadCandidateMofa({
     file,
   });
 }
+
+/**
+ * Upload a BMET card.
+ */
+export async function uploadCandidateBmet({
+  tenantId,
+  candidateId,
+  candidateSl,
+  candidateName,
+  passportNo,
+  file,
+}: {
+  tenantId: string;
+  candidateId: string;
+  candidateSl: number;
+  candidateName: string;
+  passportNo: string;
+  file: File;
+}): Promise<CandidateFile> {
+  return uploadCandidateDocument({
+    bucket: BMET_BUCKET,
+    docType: "bmet",
+    tenantId,
+    candidateId,
+    candidateSl,
+    candidateName,
+    passportNo,
+    file,
+  });
+}
+
+/**
+ * Generate a temporary URL to view or download
+ * a BMET card from private Storage.
+ */
+export async function getCandidateBmetFileUrl(
+  fileLocation: string,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(BMET_BUCKET)
+    .createSignedUrl(fileLocation, 60 * 10);
+
+  if (error) throw error;
+
+  return data.signedUrl;
+}
+
 
 /**
  * Create a signed URL for a MOFA file.

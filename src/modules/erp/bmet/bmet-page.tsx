@@ -16,7 +16,12 @@ import {
   getBmetRecords,
   type BmetRecord,
 } from "./bmet-service";
-
+import {
+  getActiveCandidateFile,
+  getActiveCandidateFiles,
+  getCandidateBmetFileUrl,
+  uploadCandidateBmet,
+} from "../candidates/candidate-files-service";
 import { getCandidates } from "../candidates/candidate-service";
 import {
   getVisas,
@@ -27,6 +32,8 @@ interface CandidateOption {
   id: string;
   name: string;
   passport_no: string;
+  tenant_id: string;
+  sl: number;
 }
 
 type BmetFilter = "all" | "pending" | "complete";
@@ -65,23 +72,29 @@ export function BmetPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] =
     useState<BmetRecord | null>(null);
-
+  const [bmetCopyCandidateIds, setBmetCopyCandidateIds] =
+  useState<Set<string>>(() => new Set());
   const [createTarget, setCreateTarget] =
     useState<CreateTarget | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [
-        bmetRecords,
-        candidatesData,
-        visasData,
-      ] = await Promise.all([
-        getBmetRecords(),
-        getCandidates(),
-        getVisas(),
-      ]);
+     const [
+  bmetRecords,
+  candidatesData,
+  visasData,
+  activeBmetFiles,
+] = await Promise.all([
+  getBmetRecords(),
+  getCandidates(),
+  getVisas(),
+  getActiveCandidateFiles("bmet"),
+]);
 
       setRecords(bmetRecords);
+      setBmetCopyCandidateIds(
+  new Set(activeBmetFiles.map((file) => file.candidate_id)),
+);
       setVisas(visasData);
 
       setCandidates(
@@ -89,6 +102,8 @@ export function BmetPage() {
           id: candidate.id,
           name: candidate.name,
           passport_no: candidate.passport_no,
+          tenant_id: candidate.tenant_id,
+          sl: candidate.sl,
         })),
       );
     } catch (error) {
@@ -197,7 +212,60 @@ export function BmetPage() {
     setCreateTarget(null);
     setFormOpen(true);
   }
+async function handleUploadBmetCard(
+  record: BmetRecord,
+  file: File,
+) {
+  if (!record.bmet) {
+    throw new Error("BMET status OK না হলে card upload করা যাবে না।");
+  }
 
+  const candidate = candidates.find(
+    (item) => item.id === record.candidate_id,
+  );
+
+  if (!candidate) {
+    throw new Error("Candidate information পাওয়া যায়নি।");
+  }
+
+  if (!candidate.tenant_id || !candidate.sl) {
+    throw new Error("Candidate tenant ID অথবা SL পাওয়া যায়নি।");
+  }
+
+  await uploadCandidateBmet({
+    tenantId: candidate.tenant_id,
+    candidateId: candidate.id,
+    candidateSl: candidate.sl,
+    candidateName: candidate.name,
+    passportNo: candidate.passport_no,
+    file,
+  });
+
+  setBmetCopyCandidateIds((previous) => {
+    const next = new Set(previous);
+    next.add(candidate.id);
+    return next;
+  });
+
+  window.alert("BMET card uploaded successfully.");
+}
+
+async function handleViewBmetCard(record: BmetRecord) {
+  const fileRecord = await getActiveCandidateFile(
+    record.candidate_id,
+    "bmet",
+  );
+
+  if (!fileRecord) {
+    throw new Error("এই candidate-এর BMET card upload করা হয়নি।");
+  }
+
+  const url = await getCandidateBmetFileUrl(
+    fileRecord.file_location,
+  );
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
   async function handleDelete(record: BmetRecord) {
     const candidate = candidates.find(
       (item) => item.id === record.candidate_id,
@@ -286,12 +354,16 @@ export function BmetPage() {
           />
         ) : (
           <BmetTable
-            records={filteredRecords}
-            candidates={candidates}
-            loading={loading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+  records={filteredRecords}
+  candidates={candidates}
+  loading={loading}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  bmetCopyCandidateIds={bmetCopyCandidateIds}
+  onUploadCopy={handleUploadBmetCard}
+  onOpenCopy={handleViewBmetCard}
+  // onDownloadCopy={handleDownloadBmetCard}
+/>
         )}
       </div>
 

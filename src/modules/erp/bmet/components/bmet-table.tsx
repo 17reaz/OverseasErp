@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Check,
   Copy,
@@ -7,6 +7,9 @@ import {
   X,
   Eye,
   MoreHorizontal,
+  Upload,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,10 @@ interface BmetTableProps {
   onPageChange?: (page: number) => void;
   onEdit: (record: BmetRecord) => void;
   onDelete: (record: BmetRecord) => void;
+  bmetCopyCandidateIds: Set<string>;
+  onUploadCopy: (record: BmetRecord, file: File) => Promise<void>;
+  onOpenCopy: (record: BmetRecord) => Promise<void>;
+  onDownloadCopy: (record: BmetRecord) => Promise<void>;
 }
 
 type ChecklistField = "pdo" | "finger" | "nominee" | "bank" | "bmet";
@@ -271,17 +278,102 @@ function StatusBadge({ record }: { record: BmetRecord }) {
   );
 }
 
+
 function BmetActions({
   record,
+  hasCopy,
   onEdit,
   onDelete,
+  onUploadCopy,
+  onOpenCopy,
+  onDownloadCopy,
 }: {
   record: BmetRecord;
+  hasCopy: boolean;
   onEdit: (record: BmetRecord) => void;
   onDelete: (record: BmetRecord) => void;
+  onUploadCopy: (record: BmetRecord, file: File) => Promise<void>;
+  onOpenCopy: (record: BmetRecord) => Promise<void>;
+  onDownloadCopy: (record: BmetRecord) => Promise<void>;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleUpload(file?: File) {
+    if (!file) return;
+
+    if (!record.bmet) {
+      window.alert("BMET status OK হলে তবেই card upload করা যাবে।");
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      await onUploadCopy(record, file);
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "BMET card upload করা যায়নি।",
+      );
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function runAction(
+    action: (record: BmetRecord) => Promise<void>,
+  ) {
+    setBusy(true);
+
+    try {
+      await action(record);
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "BMET card action ব্যর্থ হয়েছে।",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="flex justify-end">
+    <div className="flex items-center justify-end gap-1">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        className="hidden"
+        onChange={(event) => {
+          void handleUpload(event.target.files?.[0]);
+        }}
+      />
+
+      {hasCopy && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          title="View BMET Card"
+          aria-label="View BMET Card"
+          disabled={busy}
+          onClick={() => void runAction(onOpenCopy)}
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Eye className="h-4 w-4" />
+          )}
+        </Button>
+      )}
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -290,12 +382,42 @@ function BmetActions({
             size="icon"
             className="h-8 w-8"
             aria-label="Open BMET actions"
+            disabled={busy}
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-36">
+        <DropdownMenuContent align="end" className="w-44">
+          {record.bmet && (
+            <DropdownMenuItem
+              onSelect={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {hasCopy ? "Replace BMET Card" : "Upload BMET Card"}
+            </DropdownMenuItem>
+          )}
+
+          {hasCopy && (
+            <>
+              <DropdownMenuItem
+                onClick={() => void runAction(onOpenCopy)}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View BMET Card
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => void runAction(onDownloadCopy)}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download BMET Card
+              </DropdownMenuItem>
+            </>
+          )}
+
+          <DropdownMenuSeparator />
+
           <DropdownMenuItem onClick={() => onEdit(record)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
@@ -371,6 +493,10 @@ export function BmetTable({
   onPageChange,
   onEdit,
   onDelete,
+  bmetCopyCandidateIds,
+  onUploadCopy,
+  onOpenCopy,
+  onDownloadCopy,
 }: BmetTableProps) {
   const candidateMap = new Map(
     candidates.map((candidate) => [candidate.id, candidate]),
@@ -432,8 +558,16 @@ export function BmetTable({
       header: "Actions",
       className: "w-[80px] text-right",
       cell: (record) => (
-        <BmetActions record={record} onEdit={onEdit} onDelete={onDelete} />
-      ),
+  <BmetActions
+    record={record}
+    hasCopy={bmetCopyCandidateIds.has(record.candidate_id)}
+    onEdit={onEdit}
+    onDelete={onDelete}
+    onUploadCopy={onUploadCopy}
+    onOpenCopy={onOpenCopy}
+    onDownloadCopy={onDownloadCopy}
+  />
+),
     },
   ];
 
