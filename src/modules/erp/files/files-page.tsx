@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FileText,
-  LayoutGrid,
-  List,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
