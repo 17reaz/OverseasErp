@@ -1,23 +1,42 @@
 
 import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 
-interface TakamulAbleCandidate {
+export interface TakamulAbleCandidate {
   id: string;
+  candidate_id: string;
   name: string;
   passport_no: string;
+  mofa_id: string;
+  application_number: string | null;
+  application_date: string;
   profession: string;
+  mofa_status: string;
 }
 
 interface TakamulAbleTableProps {
-  records?: TakamulAbleCandidate[];
+  records: TakamulAbleCandidate[];
   loading?: boolean;
 }
 
 const TABLE_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
 
+function formatDate(value: string | null) {
+  if (!value) return "—";
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
 export function TakamulAbleTable({
-  records = [],
+  records,
   loading = false,
 }: TakamulAbleTableProps) {
   const columns: DataTableColumn<TakamulAbleCandidate>[] = [
@@ -41,21 +60,22 @@ export function TakamulAbleTable({
       cell: (record) => record.profession || "—",
     },
     {
-      key: "mofa",
+      key: "application_number",
+      header: "MOFA Number",
+      cell: (record) => record.application_number || "—",
+    },
+    {
+      key: "application_date",
+      header: "MOFA Date",
+      cell: (record) => formatDate(record.application_date),
+    },
+    {
+      key: "mofa_status",
       header: "MOFA Status",
-      cell: () => "—",
-    },
-    {
-      key: "visa",
-      header: "Visa Status",
-      cell: () => "—",
-    },
-    {
-      key: "action",
-      header: "Actions",
-      className: "w-[100px] text-right",
-      cell: () => (
-        <span className="text-xs text-muted-foreground">Coming soon</span>
+      cell: (record) => (
+        <span className="rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400">
+          {record.mofa_status}
+        </span>
       ),
     },
   ];
@@ -64,10 +84,10 @@ export function TakamulAbleTable({
     <DataTable
       columns={columns}
       data={records}
-      getRowKey={(record) => record.id}
+      getRowKey={(record) => record.mofa_id}
       loading={loading}
       emptyTitle="No Takamul-able candidates found"
-      emptyDescription="Eligible candidates will appear here."
+      emptyDescription="Candidates with active MOFA and without Visa will appear here."
       pageSize={10}
       className={TABLE_CLASS}
     />
