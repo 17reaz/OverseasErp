@@ -160,18 +160,19 @@ const bmetAbleVisas = useMemo(() => {
   );
 
   return visas
-    .filter(
-      (visa) =>
-        (visa.status ?? "").toLowerCase() === "issued",
+    // Visa completed/issued: Active or Delivered
+    .filter((visa) =>
+      ["active", "delivered"].includes(
+        (visa.status ?? "").trim().toLowerCase(),
+      ),
     )
     .map((visa) => {
-      // First, find BMET linked to this exact visa.
-      // If no exact link exists, check an unlinked BMET
-      // record belonging to the same candidate.
+      // Match BMET by exact Visa first
       const record =
         records.find(
           (item) => item.visa_id === visa.id,
         ) ??
+        // Fallback for older BMET records without visa_id
         records.find(
           (item) =>
             item.candidate_id === visa.candidate_id &&
@@ -192,11 +193,9 @@ const bmetAbleVisas = useMemo(() => {
         record: BmetRecord | null;
       } => Boolean(item.candidate),
     )
-    // Remove only completed BMET records.
-    .filter(
-      ({ record }) =>
-        !record || getBmetStatus(record) !== "complete",
-    )
+    // Only BMET incomplete candidates
+    .filter(({ record }) => !record || !record.bmet)
+    // Search
     .filter(({ visa, candidate }) => {
       if (!query) return true;
 
@@ -208,6 +207,7 @@ const bmetAbleVisas = useMemo(() => {
       );
     });
 }, [visas, records, candidates, search]);
+
 
 
 
