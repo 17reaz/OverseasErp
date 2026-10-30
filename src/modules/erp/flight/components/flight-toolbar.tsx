@@ -1,4 +1,4 @@
-import { Plane, PlaneTakeoff } from "lucide-react";
+import {  PlaneTakeoff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PageToolbar } from "../../shared/ui/page-toolbar";
