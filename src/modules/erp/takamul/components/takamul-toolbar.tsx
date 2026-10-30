@@ -5,12 +5,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import { Button } from "@/components/ui/button";
 import { PageToolbar } from "../../shared/ui/page-toolbar";
 
 export type ResultFilter = "all" | "pending" | "pass" | "fail";
 
 interface TradeTestToolbarProps {
+  viewMode: "all" | "takamul-able";
+onViewModeChange: (mode: "all" | "takamul-able") => void;
   search: string;
   onSearchChange: (value: string) => void;
   resultFilter: ResultFilter;
@@ -21,6 +23,8 @@ interface TradeTestToolbarProps {
 }
 
 export function TradeTestToolbar({
+  viewMode,
+onViewModeChange,
   search,
   onSearchChange,
   resultFilter,
@@ -39,6 +43,25 @@ export function TradeTestToolbar({
       onCreate={onCreate}
       createLabel="Create"
     >
+      <div className="flex items-center gap-1 rounded-md border p-1">
+  <Button
+    type="button"
+    size="sm"
+    variant={viewMode === "all" ? "secondary" : "ghost"}
+    onClick={() => onViewModeChange("all")}
+  >
+    All Records
+  </Button>
+
+  <Button
+    type="button"
+    size="sm"
+    variant={viewMode === "takamul-able" ? "secondary" : "ghost"}
+    onClick={() => onViewModeChange("takamul-able")}
+  >
+    Takamul-able
+  </Button>
+</div>
       <Select
         value={resultFilter}
         onValueChange={(val) => onResultFilterChange(val as ResultFilter)}

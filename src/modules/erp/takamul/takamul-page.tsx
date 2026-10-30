@@ -8,7 +8,7 @@ import {
   type TradeTest,
 } from "./takamul-service";
 import { getCandidates } from "../candidates/candidate-service";
-
+import { TakamulAbleTable } from "./components/takamul-able-table";
 interface CandidateOption {
   id: string;
   name: string;
@@ -16,6 +16,7 @@ interface CandidateOption {
 }
 
 export function TradeTestPage() {
+  const [viewMode, setViewMode] = useState<"all" | "takamul-able">("all");
   const [records, setRecords] = useState<TradeTest[]>([]);
   const [candidates, setCandidates] = useState<CandidateOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,13 +126,20 @@ export function TradeTestPage() {
       />
 
       <div className="min-h-0 flex-1">
-        <TradeTestTable
-          records={filteredRecords}
-          candidates={candidates}
-          loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        {viewMode === "all" ? (
+  <TradeTestTable
+    records={filteredRecords}
+    candidates={candidates}
+    loading={loading}
+    onEdit={handleEdit}
+    onDelete={handleDelete}
+  />
+) : (
+  <TakamulAbleTable
+    records={[]}
+    loading={false}
+  />
+)}
       </div>
 
       <TradeTestForm
