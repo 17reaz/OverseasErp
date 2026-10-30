@@ -147,47 +147,69 @@ export function BmetPage() {
 
   // A Visa is BMET-able when no BMET record is linked
   // to that exact visa_id.
-  const bmetAbleVisas = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  
 
-    const linkedVisaIds = new Set(
-      records
-        .map((record) => record.visa_id)
-        .filter((id): id is string => Boolean(id)),
-    );
+const bmetAbleVisas = useMemo(() => {
+  const query = search.trim().toLowerCase();
 
-    const candidateMap = new Map(
-      candidates.map((candidate) => [
-        candidate.id,
-        candidate,
-      ]),
-    );
+  const candidateMap = new Map(
+    candidates.map((candidate) => [
+      candidate.id,
+      candidate,
+    ]),
+  );
 
-    return visas
-      .filter((visa) => !linkedVisaIds.has(visa.id))
-      .map((visa) => ({
+  return visas
+    .filter(
+      (visa) =>
+        (visa.status ?? "").toLowerCase() === "issued",
+    )
+    .map((visa) => {
+      // First, find BMET linked to this exact visa.
+      // If no exact link exists, check an unlinked BMET
+      // record belonging to the same candidate.
+      const record =
+        records.find(
+          (item) => item.visa_id === visa.id,
+        ) ??
+        records.find(
+          (item) =>
+            item.candidate_id === visa.candidate_id &&
+            !item.visa_id,
+        ) ??
+        null;
+
+      return {
         visa,
         candidate: candidateMap.get(visa.candidate_id),
-      }))
-      .filter(
-        (
-          item,
-        ): item is {
-          visa: Visa;
-          candidate: CandidateOption;
-        } => Boolean(item.candidate),
-      )
-      .filter(({ visa, candidate }) => {
-        if (!query) return true;
+        record,
+      };
+    })
+    .filter(
+      (item): item is {
+        visa: Visa;
+        candidate: CandidateOption;
+        record: BmetRecord | null;
+      } => Boolean(item.candidate),
+    )
+    // Remove only completed BMET records.
+    .filter(
+      ({ record }) =>
+        !record || getBmetStatus(record) !== "complete",
+    )
+    .filter(({ visa, candidate }) => {
+      if (!query) return true;
 
-        return (
-          candidate.name.toLowerCase().includes(query) ||
-          candidate.passport_no.toLowerCase().includes(query) ||
-          String(visa.sl).includes(query) ||
-          (visa.visa_no ?? "").toLowerCase().includes(query)
-        );
-      });
-  }, [visas, records, candidates, search]);
+      return (
+        candidate.name.toLowerCase().includes(query) ||
+        candidate.passport_no.toLowerCase().includes(query) ||
+        String(visa.sl).includes(query) ||
+        (visa.visa_no ?? "").toLowerCase().includes(query)
+      );
+    });
+}, [visas, records, candidates, search]);
+
+
 
   function handleCreate() {
     setEditingRecord(null);
@@ -378,10 +400,11 @@ async function handleDownloadBmetCard(record: BmetRecord) {
       <div className="min-h-0 flex-1">
         {bmetAbleMode ? (
           <BmetAbleTable
-            items={bmetAbleVisas}
-            loading={loading}
-            onCreate={handleCreateForVisa}
-          />
+  items={bmetAbleVisas}
+  loading={loading}
+  onCreate={handleCreateForVisa}
+  onEdit={handleEdit}
+/>
         ) : (
           <BmetTable
   records={filteredRecords}
