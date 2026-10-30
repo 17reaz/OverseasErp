@@ -3,7 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlightForm } from "./components/flight-form";
 import { FlightTable } from "./components/flight-table";
 import { FlightToolbar } from "./components/flight-toolbar";
+import { FlightAbleTable } from "./components/flight-able-table";
 
+import {
+  getBmetRecords,
+  type BmetRecord,
+} from "../bmet/bmet-service";
 import {
   deleteFlight,
   getFlights,
@@ -25,7 +30,9 @@ export function FlightPage() {
   const [records, setRecords] = useState<Flight[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [visas, setVisas] = useState<Visa[]>([]);
-
+  const [bmetRecords, setBmetRecords] = useState<BmetRecord[]>([]);
+  const [flightAbleMode, setFlightAbleMode] = useState(false);
+  const [initialVisaId, setInitialVisaId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -36,11 +43,22 @@ export function FlightPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [flightList, candidatesData, visasData] = await Promise.all([
-        getFlights(),
-        getCandidates(),
-        getVisas(),
-      ]);
+      const [
+  flightList,
+  candidatesData,
+  visasData,
+  bmetData,
+] = await Promise.all([
+  getFlights(),
+  getCandidates(),
+  getVisas(),
+  getBmetRecords(),
+]);
+
+setRecords(flightList);
+setCandidates(candidatesData);
+setVisas(visasData);
+setBmetRecords(bmetData);
 
       setRecords(flightList);
       setCandidates(candidatesData);
@@ -79,13 +97,110 @@ export function FlightPage() {
       );
     });
   }, [records, candidates, search]);
+const flightAbleItems = useMemo(() => {
+  const query = search.trim().toLowerCase();
 
+  const candidateMap = new Map(
+    candidates.map((candidate) => [
+      candidate.id,
+      candidate,
+    ]),
+  );
+
+  return visas
+    // Only issued/active visas
+    .filter((visa) =>
+      ["active", "delivered"].includes(
+        (visa.status ?? "").trim().toLowerCase(),
+      ),
+    )
+    .map((visa) => {
+      // Find BMET record for this exact visa first.
+      // Fallback for older records without visa_id.
+      const bmetRecord =
+        bmetRecords.find(
+          (record) => record.visa_id === visa.id,
+        ) ??
+        bmetRecords.find(
+          (record) =>
+            record.candidate_id === visa.candidate_id &&
+            !record.visa_id,
+        ) ??
+        null;
+
+      const candidate = candidateMap.get(
+        visa.candidate_id,
+      );
+
+      // Check whether this visa already has a flight.
+      const hasFlight = records.some(
+        (flight) =>
+          flight.visa_id === visa.id ||
+          (
+            flight.candidate_id === visa.candidate_id &&
+            !flight.visa_id
+          ),
+      );
+
+      return {
+        visa,
+        candidate,
+        bmetRecord,
+        hasFlight,
+      };
+    })
+    // Candidate must exist
+    .filter(
+      (item): item is typeof item & {
+        candidate: Candidate;
+        bmetRecord: BmetRecord;
+      } =>
+        Boolean(item.candidate && item.bmetRecord),
+    )
+    // All BMET steps must be complete
+    .filter(({ bmetRecord }) =>
+      Boolean(
+        bmetRecord.pdo &&
+        bmetRecord.finger &&
+        bmetRecord.nominee &&
+        bmetRecord.bank &&
+        bmetRecord.bmet
+      ),
+    )
+    // Do not show candidates who already have a flight
+    .filter(({ hasFlight }) => !hasFlight)
+    // Search
+    .filter(({ visa, candidate }) => {
+      if (!query) return true;
+
+      return (
+        candidate.name.toLowerCase().includes(query) ||
+        candidate.passport_no.toLowerCase().includes(query) ||
+        String(visa.sl).includes(query) ||
+        (visa.visa_no ?? "").toLowerCase().includes(query)
+      );
+    })
+    .map(({ visa, candidate }) => ({
+      visa,
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        passport_no: candidate.passport_no,
+      },
+    }));
+}, [visas, bmetRecords, records, candidates, search]);
   function handleCreate() {
+    setInitialVisaId(undefined);
     setEditingRecord(null);
     setFormOpen(true);
   }
-
+function handleCreateForVisa(visaId: string) {
+  setEditingRecord(null);
+  setInitialVisaId(visaId);
+  setFormOpen(true);
+}
   function handleEdit(record: Flight) {
+    setInitialVisaId(undefined);
     setEditingRecord(record);
     setFormOpen(true);
   }
@@ -193,20 +308,33 @@ export function FlightPage() {
         }}
         onCreate={handleCreate}
         refreshing={refreshing}
+        flightAbleMode={flightAbleMode}
+onFlightAbleToggle={() =>
+  setFlightAbleMode((current) => !current)
+}
       />
 
       <div className="min-h-0 flex-1">
-        <FlightTable
-          records={filteredRecords}
-          candidates={candidates}
-          loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onMarkIqamaComplete={handleMarkIqamaComplete}
-        />
+        {flightAbleMode ? (
+  <FlightAbleTable
+    items={flightAbleItems}
+    loading={loading}
+    onCreate={handleCreateForVisa}
+  />
+) : (
+  <FlightTable
+    records={filteredRecords}
+    candidates={candidates}
+    loading={loading}
+    onEdit={handleEdit}
+    onDelete={handleDelete}
+    onMarkIqamaComplete={handleMarkIqamaComplete}
+  />
+)}
       </div>
 
       <FlightForm
+      initialVisaId={initialVisaId}
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);
@@ -214,6 +342,10 @@ export function FlightPage() {
           if (!open) {
             setEditingRecord(null);
           }
+          if (!open) {
+  setEditingRecord(null);
+  setInitialVisaId(undefined);
+}
         }}
         record={editingRecord}
         candidates={candidates}
