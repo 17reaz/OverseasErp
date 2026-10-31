@@ -495,7 +495,7 @@ export async function getCandidateWorkflow(
     latestOf("flights", "flight_date,status,created_at", candidateId),
   ]);
 
-  for (const result of [
+    for (const result of [
     candidateResult,
     medicalResult,
     mofaResult,
@@ -509,8 +509,14 @@ export async function getCandidateWorkflow(
     if (result.error) throw result.error;
   }
 
+  const candidate = candidateResult.data;
+
+  if (!candidate) {
+    throw new Error(`Candidate not found: ${candidateId}`);
+  }
+
   return calculateWorkflowState(
-    buildWorkflowInput(candidateResult.data, {
+    buildWorkflowInput(candidate, {
       medical: medicalResult.data as MedicalRow | null,
       mofa: mofaResult.data as MofaRow | null,
       finger: fingerResult.data as FingerRow | null,
