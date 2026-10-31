@@ -55,6 +55,7 @@ interface PoliceClearanceFormProps {
   onOpenChange: (open: boolean) => void;
   record?: PoliceClearance | null;
   candidates: CandidateOption[];
+  initialCandidateId?: string;
   onSuccess?: (record: PoliceClearance) => void;
 }
 
@@ -79,6 +80,7 @@ export function PoliceClearanceForm({
   onOpenChange,
   record,
   candidates,
+  initialCandidateId,
   onSuccess,
 }: PoliceClearanceFormProps) {
   const [form, setForm] =
@@ -115,14 +117,17 @@ const currentCandidate =
         record.verified_date ?? "",
       remarks: record.remarks ?? "",
     });
-  } else {
-    setForm(DEFAULT_FORM);
-  }
+ } else {
+  setForm({
+    ...DEFAULT_FORM,
+    candidate_id: initialCandidateId ?? "",
+  });
+}
 
   setCandidateOpen(false);
   setError("");
   setDirty(false);
-}, [open, record]);
+}, [open, record,initialCandidateId]);
 
   function updateField<K extends keyof FormState>(
     field: K,
