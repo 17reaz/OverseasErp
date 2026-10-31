@@ -1,12 +1,16 @@
+
 import {
   useEffect,
   useState,
   type FormEvent,
 } from "react";
 
+import type { TradeProfession } from "../../settings/takamul-rules-service";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
 import {
   Select,
   SelectContent,
@@ -14,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, ChevronsUpDown } from "lucide-react";
 
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -32,6 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
 import { UniversalSheet } from "../../shared/forms/universal-sheet";
 
 import {
@@ -51,11 +56,13 @@ interface TradeTestFormProps {
   onOpenChange: (open: boolean) => void;
   record?: TradeTest | null;
   candidates: CandidateOption[];
+  professions: TradeProfession[];
   onSuccess?: (record: TradeTest) => void;
 }
 
 interface FormState {
   candidate_id: string;
+  profession_id: string;
   test_center: string;
   test_date: string;
   result: "pending" | "pass" | "fail";
@@ -67,6 +74,7 @@ interface FormState {
 
 const DEFAULT_FORM: FormState = {
   candidate_id: "",
+  profession_id: "",
   test_center: "",
   test_date: "",
   result: "pending",
@@ -81,16 +89,12 @@ export function TradeTestForm({
   onOpenChange,
   record,
   candidates,
+  professions,
   onSuccess,
 }: TradeTestFormProps) {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  /* =======================================================
-   * DIRTY STATE
-   * ======================================================= */
-
   const [dirty, setDirty] = useState(false);
 
   const isEdit = Boolean(record);
@@ -101,6 +105,7 @@ export function TradeTestForm({
     if (record) {
       setForm({
         candidate_id: record.candidate_id,
+        profession_id: record.profession_id ?? "",
         test_center: record.test_center ?? "",
         test_date: record.test_date ?? "",
         result: record.result ?? "pending",
@@ -117,7 +122,10 @@ export function TradeTestForm({
     setDirty(false);
   }, [open, record]);
 
-  function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
+  function updateField<K extends keyof FormState>(
+    field: K,
+    value: FormState[K],
+  ) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
@@ -134,6 +142,11 @@ export function TradeTestForm({
       return;
     }
 
+    if (!form.profession_id) {
+      setError("Please select a profession.");
+      return;
+    }
+
     if (!form.test_center.trim()) {
       setError("Please enter the test center.");
       return;
@@ -144,6 +157,7 @@ export function TradeTestForm({
 
     try {
       const input = {
+        profession_id: form.profession_id,
         test_center: form.test_center.trim(),
         test_date: form.test_date || null,
         result: form.result,
@@ -165,12 +179,15 @@ export function TradeTestForm({
       }
 
       onSuccess?.(savedRecord);
+
       setDirty(false);
       onOpenChange(false);
       setForm(DEFAULT_FORM);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to save trade test record.",
+        err instanceof Error
+          ? err.message
+          : "Failed to save trade test record.",
       );
     } finally {
       setSaving(false);
@@ -191,7 +208,11 @@ export function TradeTestForm({
       onSubmit={handleSubmit}
       submitLabel={isEdit ? "Update Test" : "Create Test"}
       loading={saving}
-      disabled={!form.candidate_id}
+      disabled={
+        !form.candidate_id ||
+        !form.profession_id ||
+        !form.test_center.trim()
+      }
     >
       <div className="flex flex-col gap-5">
         {/* Candidate */}
@@ -199,96 +220,131 @@ export function TradeTestForm({
           <Label htmlFor="tt-candidate">
             Candidate <span className="text-destructive">*</span>
           </Label>
+
           <Popover>
-  <PopoverTrigger asChild>
-    <Button
-      type="button"
-      variant="outline"
-      role="combobox"
-      disabled={isEdit || saving}
-      className="w-full justify-between font-normal"
-    >
-      {form.candidate_id
-        ? (() => {
-            const candidate = candidates.find(
-              (item) => item.id === form.candidate_id,
-            );
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                disabled={isEdit || saving}
+                className="w-full justify-between font-normal"
+              >
+                {form.candidate_id
+                  ? (() => {
+                      const candidate = candidates.find(
+                        (item) => item.id === form.candidate_id,
+                      );
 
-            return candidate ? (
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate">
-                  {candidate.name}
-                </span>
+                      return candidate ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">
+                            {candidate.name}
+                          </span>
 
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {candidate.passport_no}
-                </span>
-              </div>
-            ) : (
-              "Select candidate"
-            );
-          })()
-        : (
-          <span className="text-muted-foreground">
-            Select candidate
-          </span>
-        )}
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            {candidate.passport_no}
+                          </span>
+                        </div>
+                      ) : (
+                        "Select candidate"
+                      );
+                    })()
+                  : (
+                    <span className="text-muted-foreground">
+                      Select candidate
+                    </span>
+                  )}
 
-      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-    </Button>
-  </PopoverTrigger>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
 
-  <PopoverContent
-    align="start"
-    className="w-[var(--radix-popover-trigger-width)] p-0"
-  >
-    <Command>
-      <CommandInput placeholder="Search candidate or passport..." />
-
-      <CommandList>
-        <CommandEmpty>
-          No candidate found.
-        </CommandEmpty>
-
-        <CommandGroup>
-          {candidates.map((candidate) => (
-            <CommandItem
-              key={candidate.id}
-              value={`${candidate.name} ${candidate.passport_no}`}
-              onSelect={() =>
-                updateField(
-                  "candidate_id",
-                  candidate.id,
-                )
-              }
+            <PopoverContent
+              align="start"
+              className="w-[var(--radix-popover-trigger-width)] p-0"
             >
-              <Check
-                className={`mr-2 h-4 w-4 ${
-                  form.candidate_id === candidate.id
-                    ? "opacity-100"
-                    : "opacity-0"
-                }`}
-              />
+              <Command>
+                <CommandInput placeholder="Search candidate or passport..." />
 
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate">
-                  {candidate.name}
-                </span>
+                <CommandList>
+                  <CommandEmpty>
+                    No candidate found.
+                  </CommandEmpty>
 
-                <span className="text-xs text-muted-foreground">
-                  {candidate.passport_no}
-                </span>
-              </div>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  </PopoverContent>
-</Popover>
+                  <CommandGroup>
+                    {candidates.map((candidate) => (
+                      <CommandItem
+                        key={candidate.id}
+                        value={`${candidate.name} ${candidate.passport_no}`}
+                        onSelect={() =>
+                          updateField("candidate_id", candidate.id)
+                        }
+                      >
+                        <Check
+                          className={`mr-2 h-4 w-4 ${
+                            form.candidate_id === candidate.id
+                              ? "opacity-100"
+                              : "opacity-0"
+                          }`}
+                        />
+
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate">
+                            {candidate.name}
+                          </span>
+
+                          <span className="text-xs text-muted-foreground">
+                            {candidate.passport_no}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
           {isEdit && (
             <p className="text-xs text-muted-foreground">
               Candidate cannot be changed after creation.
+            </p>
+          )}
+        </div>
+
+        {/* Profession */}
+        <div className="space-y-2">
+          <Label>
+            Profession <span className="text-destructive">*</span>
+          </Label>
+
+          <Select
+            value={form.profession_id}
+            onValueChange={(value) =>
+              updateField("profession_id", value)
+            }
+            disabled={saving}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select profession" />
+            </SelectTrigger>
+
+            <SelectContent>
+              {professions.map((profession) => (
+                <SelectItem
+                  key={profession.id}
+                  value={profession.id}
+                >
+                  {profession.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {professions.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No active professions found. Add professions from Settings → Takamul Rules.
             </p>
           )}
         </div>
@@ -298,10 +354,13 @@ export function TradeTestForm({
           <Label htmlFor="tt-center">
             Test Center <span className="text-destructive">*</span>
           </Label>
+
           <Input
             id="tt-center"
             value={form.test_center}
-            onChange={(e) => updateField("test_center", e.target.value)}
+            onChange={(e) =>
+              updateField("test_center", e.target.value)
+            }
             placeholder="Enter test center name"
             disabled={saving}
           />
@@ -310,26 +369,34 @@ export function TradeTestForm({
         {/* Test Date */}
         <div className="space-y-2">
           <Label htmlFor="tt-date">Test Date</Label>
+
           <Input
             id="tt-date"
             type="date"
             value={form.test_date}
-            onChange={(e) => updateField("test_date", e.target.value)}
+            onChange={(e) =>
+              updateField("test_date", e.target.value)
+            }
             disabled={saving}
           />
         </div>
 
-        {/* Result & Status Row */}
+        {/* Result & Status */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Result</Label>
+
             <Select
               value={form.result}
-              onValueChange={(val: FormState["result"]) => updateField("result", val)}
+              onValueChange={(value: FormState["result"]) =>
+                updateField("result", value)
+              }
+              disabled={saving}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select result" />
               </SelectTrigger>
+
               <SelectContent>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="pass">Pass</SelectItem>
@@ -340,13 +407,18 @@ export function TradeTestForm({
 
           <div className="space-y-2">
             <Label>Status</Label>
+
             <Select
               value={form.status}
-              onValueChange={(val: FormState["status"]) => updateField("status", val)}
+              onValueChange={(value: FormState["status"]) =>
+                updateField("status", value)
+              }
+              disabled={saving}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
+
               <SelectContent>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -360,10 +432,13 @@ export function TradeTestForm({
         {/* Certificate No */}
         <div className="space-y-2">
           <Label htmlFor="tt-cert">Certificate No</Label>
+
           <Input
             id="tt-cert"
             value={form.certificate_no}
-            onChange={(e) => updateField("certificate_no", e.target.value)}
+            onChange={(e) =>
+              updateField("certificate_no", e.target.value)
+            }
             placeholder="Certificate number if passed"
             disabled={saving}
           />
@@ -372,11 +447,14 @@ export function TradeTestForm({
         {/* Expiry Date */}
         <div className="space-y-2">
           <Label htmlFor="tt-expiry">Expiry Date</Label>
+
           <Input
             id="tt-expiry"
             type="date"
             value={form.expiry_date}
-            onChange={(e) => updateField("expiry_date", e.target.value)}
+            onChange={(e) =>
+              updateField("expiry_date", e.target.value)
+            }
             disabled={saving}
           />
         </div>
@@ -384,10 +462,13 @@ export function TradeTestForm({
         {/* Remarks */}
         <div className="space-y-2">
           <Label htmlFor="tt-remarks">Remarks</Label>
+
           <Textarea
             id="tt-remarks"
             value={form.remarks}
-            onChange={(e) => updateField("remarks", e.target.value)}
+            onChange={(e) =>
+              updateField("remarks", e.target.value)
+            }
             placeholder="Add remarks..."
             rows={3}
             disabled={saving}

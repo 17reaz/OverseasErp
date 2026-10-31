@@ -7,6 +7,7 @@ export interface TradeTest {
   sl: number;
   test_center: string;
   test_date: string | null;
+  profession_id: string | null;
   result: "pending" | "pass" | "fail";
   certificate_no: string | null;
   expiry_date: string | null;
@@ -20,6 +21,7 @@ export type TradeTestInput = {
   candidate_id: string;
   test_center: string;
   test_date?: string | null;
+  profession_id: string;
   result?: "pending" | "pass" | "fail";
   certificate_no?: string | null;
   expiry_date?: string | null;

@@ -1,4 +1,3 @@
-// src/modules/erp/takamul/components/takamul-table.tsx
 
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
@@ -11,10 +10,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import type { TradeTest } from "../takamul-service";
+import type { TradeProfession } from "../../settings/takamul-rules-service";
 
 import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
+
 const TABLE_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
+
 interface CandidateOption {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ interface CandidateOption {
 interface TradeTestTableProps {
   records: TradeTest[];
   candidates: CandidateOption[];
+  professions: TradeProfession[];
   loading?: boolean;
 
   page?: number;
@@ -37,8 +40,11 @@ interface TradeTestTableProps {
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
+
   const date = new Date(`${value}T00:00:00`);
+
   if (Number.isNaN(date.getTime())) return value;
+
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -49,6 +55,7 @@ function formatDate(value: string | null): string {
 export function TradeTestTable({
   records,
   candidates,
+  professions,
   loading = false,
 
   page,
@@ -60,7 +67,16 @@ export function TradeTestTable({
   onDelete,
 }: TradeTestTableProps) {
   function getCandidate(candidateId: string) {
-    return candidates.find((c) => c.id === candidateId);
+    return candidates.find((candidate) => candidate.id === candidateId);
+  }
+
+  function getProfession(professionId: string | null) {
+    if (!professionId) return "—";
+
+    return (
+      professions.find((profession) => profession.id === professionId)
+        ?.name ?? "Unknown"
+    );
   }
 
   const columns: DataTableColumn<TradeTest>[] = [
@@ -86,6 +102,15 @@ export function TradeTestTable({
       cell: (record) => (
         <span className="font-mono text-xs">
           {getCandidate(record.candidate_id)?.passport_no ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "profession",
+      header: "Profession",
+      cell: (record) => (
+        <span className="font-medium">
+          {getProfession(record.profession_id)}
         </span>
       ),
     },
@@ -151,14 +176,16 @@ export function TradeTestTable({
 
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(record)}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
             </DropdownMenuItem>
 
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => onDelete(record)}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -178,7 +205,9 @@ export function TradeTestTable({
       page={page}
       onPageChange={onPageChange}
       total={total}
-      serverPagination={typeof total === "number" && total !== records.length}
+      serverPagination={
+        typeof total === "number" && total !== records.length
+      }
       className={TABLE_CLASS}
     />
   );

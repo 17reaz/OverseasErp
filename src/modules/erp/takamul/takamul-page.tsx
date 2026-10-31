@@ -1,12 +1,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  getTradeProfessions,
+  type TradeProfession,
+} from "../settings/takamul-rules-service";
+
 import { TradeTestForm } from "./components/takamul-form";
 import { TradeTestTable } from "./components/takamul-table";
 import {
   TradeTestToolbar,
   type ResultFilter,
 } from "./components/takamul-toolbar";
+
 import {
   deleteTradeTest,
   getTradeTests,
@@ -28,6 +34,13 @@ interface CandidateOption {
   passport_no: string;
 }
 
+function normalizeTrade(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase();
+}
+
 export function TradeTestPage() {
   const [viewMode, setViewMode] = useState<"all" | "takamul-able">("all");
 
@@ -36,6 +49,7 @@ export function TradeTestPage() {
   const [takamulAbleRecords, setTakamulAbleRecords] = useState<
     TakamulAbleCandidate[]
   >([]);
+  const [professions, setProfessions] = useState<TradeProfession[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,20 +62,26 @@ export function TradeTestPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [tradeTests, candidatesData, mofaResult, visas] =
-        await Promise.all([
-          getTradeTests(),
-          getCandidates(),
-          getMofas(),
-          getVisas(),
-        ]);
+      const [
+        tradeTests,
+        candidatesData,
+        mofaResult,
+        visas,
+        professionsData,
+      ] = await Promise.all([
+        getTradeTests(),
+        getCandidates(),
+        getMofas(),
+        getVisas(),
+        getTradeProfessions(),
+      ]);
 
       if (mofaResult.error) {
         throw mofaResult.error;
       }
 
-      // All Trade Test records
       setRecords(tradeTests);
+      setProfessions(professionsData);
 
       // Candidate options for Trade Test form and table
       const candidateOptions: CandidateOption[] = candidatesData.map((c) => ({
@@ -72,18 +92,33 @@ export function TradeTestPage() {
 
       setCandidates(candidateOptions);
 
+      // Active profession names from master settings
+      const activeProfessionNames = new Set(
+        professionsData
+          .filter((profession) => profession.is_active)
+          .map((profession) => normalizeTrade(profession.name))
+          .filter(Boolean),
+      );
+
       // Candidates who already have a Visa record
       const candidateVisaIds = new Set(
         visas.map((visa) => visa.candidate_id),
       );
 
-      // Active MOFA + no Visa + candidate relation exists
-      const activeMofas = (mofaResult.data ?? []).filter(
-        (mofa) =>
+      // Active MOFA + no Visa + candidate exists + registered profession
+      const activeMofas = (mofaResult.data ?? []).filter((mofa) => {
+        const normalizedTrade = normalizeTrade(mofa.trade);
+
+        return (
           mofa.validity_status === "active" &&
           !candidateVisaIds.has(mofa.candidate_id) &&
-          Boolean(mofa.candidate),
-      );
+          Boolean(mofa.candidate) &&
+          Boolean(
+            normalizedTrade &&
+              activeProfessionNames.has(normalizedTrade),
+          )
+        );
+      });
 
       // Takamul-able table data
       const takamulAbleData: TakamulAbleCandidate[] = activeMofas.map(
@@ -205,6 +240,7 @@ export function TradeTestPage() {
           <TradeTestTable
             records={filteredRecords}
             candidates={candidates}
+            professions={professions}
             loading={loading}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -228,6 +264,7 @@ export function TradeTestPage() {
         }}
         record={editingRecord}
         candidates={candidates}
+        professions={professions}
         onSuccess={handleFormSuccess}
       />
     </div>
