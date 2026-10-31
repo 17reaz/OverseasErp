@@ -1,21 +1,14 @@
+
 import { orchestrator } from "@/lib/data/orchestrator";
+import { getLiveWorkflowStates } from "../../workflow/workflow-service";
 
 const supabase = orchestrator.supabase;
-import {
-  getLiveWorkflowStates,
-} from "../../workflow/workflow-service";
-
-import type {
-  CandidateWorkflowState,
-} from "../../workflow/workflow-types";
 
 /* =========================================================
-   WORKFLOW
+   TYPES
 ========================================================= */
 
-export type DashboardWorkflowState =
-  | "processing"
-  | "hold";
+export type DashboardWorkflowState = "processing" | "hold";
 
 export type DashboardHoldReason =
   | "received"
@@ -26,10 +19,6 @@ export type DashboardHoldReason =
   | "manual_hold"
   | string
   | null;
-
-/* =========================================================
-   DASHBOARD STATS
-========================================================= */
 
 export interface DashboardStats {
   totalCandidates: number;
@@ -61,209 +50,131 @@ export interface DashboardStats {
   flightDeparted: number;
 }
 
-/* =========================================================
-   ACTIVE CANDIDATE
-========================================================= */
-
 export interface DashboardWorkflowCandidate {
   id: string;
-
-  current_stage:
-    | string
-    | null;
-
+  current_stage: string | null;
   requested_services:
     | Record<string, unknown>
     | null
     | undefined;
-
   workflow_state:
     | DashboardWorkflowState
     | null
     | undefined;
+  hold_reason: DashboardHoldReason;
+}
 
-  hold_reason:
-    | DashboardHoldReason;
+export interface DashboardStatsContext {
+  activeCandidateIds: { id: string }[];
+  activeStageCandidates: DashboardWorkflowCandidate[];
+  processingCandidates: DashboardWorkflowCandidate[];
+  medicalCandidateIds: Set<string>;
+  bmetCandidateIds: Set<string>;
 }
 
 /* =========================================================
-   NORMALIZE WORKFLOW STATE
+   HELPERS
 ========================================================= */
 
-/**
- * Workflow rule:
- *
- * processing = actual work has started
- * hold       = not currently processing
- *
- * IMPORTANT:
- * null / undefined is treated as HOLD.
- *
- * This is intentional because a newly created
- * candidate should not automatically appear
- * inside the processing pipeline.
- */
 export function normalizeWorkflowState(
   value: unknown,
 ): DashboardWorkflowState {
-  return value === "processing"
-    ? "processing"
-    : "hold";
+  return value === "processing" ? "processing" : "hold";
 }
-/* =========================================================
-   HOLD REASON LABEL
-========================================================= */
 
-function getHoldReasonLabel(
-  reason: string,
-): string {
-  switch (reason) {
-    case "received":
-      return "Received";
+function getHoldReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    received: "Received",
+    medical_expired: "Medical Expired",
+    mofa_expired: "MOFA Expired",
+    visa_expired: "Visa Expired",
+    iqama_overdue: "Iqama Overdue",
+    manual_hold: "Manual Hold",
+  };
 
-    case "medical_expired":
-      return "Medical Expired";
+  return (
+    labels[reason] ??
+    reason
+      .replace(/[_-]/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  );
+}
 
-    case "mofa_expired":
-      return "MOFA Expired";
+function getUniqueCandidateIds(
+  rows:
+    | { candidate_id: string | null }[]
+    | null
+    | undefined,
+): Set<string> {
+  return new Set(
+    (rows ?? [])
+      .map((row) => row.candidate_id)
+      .filter(
+        (id): id is string =>
+          typeof id === "string" && id.length > 0,
+      ),
+  );
+}
 
-    case "visa_expired":
-      return "Visa Expired";
-
-    case "iqama_overdue":
-      return "Iqama Overdue";
-
-    case "manual_hold":
-      return "Manual Hold";
-
-    default:
-      return reason
-        .replace(/[_-]/g, " ")
-        .replace(/\s+/g, " ")
-        .replace(
-          /\b\w/g,
-          (char) => char.toUpperCase(),
-        );
+function throwQueryError(
+  name: string,
+  result: { error: { message: string } | null },
+): void {
+  if (result.error) {
+    throw new Error(`${name}: ${result.error.message}`);
   }
 }
 
 /* =========================================================
-   DASHBOARD CONTEXT
-========================================================= */
-
-export interface DashboardStatsContext {
-  activeCandidateIds: {
-    id: string;
-  }[];
-
-  activeStageCandidates:
-    DashboardWorkflowCandidate[];
-
-  /**
-   * LIVE workflow state অনুযায়ী
-   * বর্তমানে processing candidate.
-   *
-   * Database workflow_state stale হলেও
-   * dashboard pipeline এই list ব্যবহার করবে।
-   */
-  processingCandidates:
-    DashboardWorkflowCandidate[];
-
-  medicalCandidateIds:
-    Set<string>;
-
-  bmetCandidateIds:
-    Set<string>;
-}
-/* =========================================================
-   MAIN
+   MAIN DASHBOARD STATS
 ========================================================= */
 
 export async function getDashboardStats(): Promise<{
   stats: DashboardStats;
   context: DashboardStatsContext;
 }> {
-  /* =======================================================
-     ACTIVE CANDIDATES
-     
-     Active means:
-     
-       is_deleted = false
-       is_returned = false
-       final_status IS NULL
-     
-     This intentionally includes BOTH:
-     
-       processing
-       hold
-     
-     Example:
-     
-       New candidate
-          ↓
-       active + hold
-     
-       Medical completed
-          ↓
-       active + processing
-  ======================================================= */
+  /*
+   * Active candidate:
+   * is_deleted = false
+   * is_returned = false
+   * final_status IS NULL
+   */
 
-  const activeCandidatesPromise =
-    supabase
-      .from("candidates")
-      .select(
-        `
-        id,
-        current_stage,
-        requested_services,
-        workflow_state,
-        hold_reason
-        `,
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .eq(
-        "is_returned",
-        false,
-      )
-      .is(
-        "final_status",
-        null,
-      );
+  const activeCandidatesQuery = supabase
+    .from("candidates")
+    .select(`
+      id,
+      current_stage,
+      requested_services,
+      workflow_state,
+      hold_reason
+    `)
+    .eq("is_deleted", false)
+    .eq("is_returned", false)
+    .is("final_status", null);
 
-  const activeCandidateIdsPromise =
-    supabase
-      .from("candidates")
-      .select("id")
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .eq(
-        "is_returned",
-        false,
-      )
-      .is(
-        "final_status",
-        null,
-      );
+  const activeCandidateIdsQuery = supabase
+    .from("candidates")
+    .select("id")
+    .eq("is_deleted", false)
+    .eq("is_returned", false)
+    .is("final_status", null);
 
   /* =======================================================
-     ALL DASHBOARD QUERIES
+     FETCH ALL DASHBOARD DATA
   ======================================================= */
 
   const [
-    totalCandidatesResult,
-    activeCandidatesResult,
-    returnedCandidatesResult,
-    completeCandidatesResult,
-    cancelledCandidatesResult,
+    totalResult,
+    activeResult,
+    returnedResult,
+    completeResult,
+    cancelledResult,
 
     medicalFitResult,
     medicalUnfitResult,
-    medicalCandidateIdsResult,
+    medicalAllResult,
 
     mofaPendingResult,
     mofaApprovedResult,
@@ -274,883 +185,318 @@ export async function getDashboardStats(): Promise<{
     flightScheduledResult,
     flightDepartedResult,
 
-    activeCandidateIdsResult,
-    activeCandidatesStageResult,
-
-    bmetCandidateIdsResult,
+    activeIdsResult,
+    activeCandidatesResult,
+    bmetResult,
   ] = await Promise.all([
-    /* =====================================================
-       TOTAL
-    ===================================================== */
-
+    // Total candidates
     supabase
       .from("candidates")
-      .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        },
-      )
-      .eq(
-        "is_deleted",
-        false,
-      ),
+      .select("id", { count: "exact", head: true })
+      .eq("is_deleted", false),
 
-    /* =====================================================
-       ACTIVE
-
-       Active =
-         processing + hold
-    ===================================================== */
-
+    // Active candidates
     supabase
       .from("candidates")
-      .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        },
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .eq(
-        "is_returned",
-        false,
-      )
-      .is(
-        "final_status",
-        null,
-      ),
+      .select("id", { count: "exact", head: true })
+      .eq("is_deleted", false)
+      .eq("is_returned", false)
+      .is("final_status", null),
 
-    /* =====================================================
-       RETURNED
-    ===================================================== */
-
+    // Returned
     supabase
       .from("candidates")
-      .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        },
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .eq(
-        "is_returned",
-        true,
-      ),
+      .select("id", { count: "exact", head: true })
+      .eq("is_deleted", false)
+      .eq("is_returned", true),
 
-    /* =====================================================
-       COMPLETE
-    ===================================================== */
-
+    // Complete
     supabase
       .from("candidates")
-      .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        },
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .eq(
-        "is_returned",
-        false,
-      )
-      .eq(
-        "final_status",
-        "complete",
-      ),
+      .select("id", { count: "exact", head: true })
+      .eq("is_deleted", false)
+      .eq("is_returned", false)
+      .eq("final_status", "complete"),
 
-    /* =====================================================
-       CANCELLED
-    ===================================================== */
-
+    // Cancelled
     supabase
       .from("candidates")
-      .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        },
-      )
-      .eq(
-        "is_deleted",
-        false,
-      )
-      .eq(
-        "is_returned",
-        false,
-      )
-      .eq(
-        "final_status",
-        "cancelled",
-      ),
+      .select("id", { count: "exact", head: true })
+      .eq("is_deleted", false)
+      .eq("is_returned", false)
+      .eq("final_status", "cancelled"),
 
-    /* =====================================================
-       MEDICAL - FIT
-    ===================================================== */
-
+    // Medical fit
     supabase
       .from("medicals")
-      .select(
-        "candidate_id",
-      )
-      .eq(
-        "status",
-        "fit",
-      ),
+      .select("candidate_id")
+      .eq("status", "fit"),
 
-    /* =====================================================
-       MEDICAL - UNFIT
-    ===================================================== */
-
+    // Medical unfit
     supabase
       .from("medicals")
-      .select(
-        "candidate_id",
-      )
-      .eq(
-        "status",
-        "unfit",
-      ),
+      .select("candidate_id")
+      .eq("status", "unfit"),
 
-    /* =====================================================
-       MEDICAL - ALL RECORDS
-    ===================================================== */
-
+    // All medical records
     supabase
       .from("medicals")
-      .select(
-        "candidate_id",
-      ),
+      .select("candidate_id"),
 
-    /* =====================================================
-       MOFA - PENDING
-    ===================================================== */
-
+    // MOFA pending
     supabase
       .from("mofas")
-      .select(
-        "candidate_id",
-      )
-      .in(
-        "stage",
-        [
-          "new",
-          "medupdated",
-        ],
-      ),
+      .select("candidate_id")
+      .in("stage", ["new", "medupdated"]),
 
-    /* =====================================================
-       MOFA - APPROVED
-    ===================================================== */
-
+    // MOFA approved
     supabase
       .from("mofas")
-      .select(
-        "candidate_id",
-      )
-      .eq(
-        "stage",
-        "approved",
-      ),
+      .select("candidate_id")
+      .eq("stage", "approved"),
 
-    /* =====================================================
-       VISA - PENDING
-    ===================================================== */
-
+    // Visa pending
     supabase
-  .from("visas")
-  .select("candidate_id")
-  .in(
-    "status",
-    [
-      "processing",
-      "active",
-    ],
-  ),
+      .from("visas")
+      .select("candidate_id")
+      .in("status", ["processing", "active"]),
 
-    /* =====================================================
-       VISA - ISSUED
-    ===================================================== */
+    // Visa issued
+    supabase
+      .from("visas")
+      .select("candidate_id")
+      .in("status", ["active", "delivered"]),
 
-   supabase
-  .from("visas")
-  .select("candidate_id")
-  .in(
-    "status",
-    [
-      "active",
-      "delivered",
-    ],
-  ),
-
-    /* =====================================================
-       FLIGHT - SCHEDULED
-    ===================================================== */
-
+    // Flight scheduled
     supabase
       .from("flights")
-      .select(
-        "candidate_id",
-      )
-      .eq(
-        "status",
-        "scheduled",
-      ),
+      .select("candidate_id")
+      .eq("status", "scheduled"),
 
-    /* =====================================================
-       FLIGHT - DEPARTED
-    ===================================================== */
-
+    // Flight departed
     supabase
       .from("flights")
-      .select(
-        "candidate_id",
-      )
-      .eq(
-        "status",
-        "departed",
-      ),
+      .select("candidate_id")
+      .eq("status", "departed"),
 
-    /* =====================================================
-       ACTIVE IDS
-    ===================================================== */
+    // Active candidate IDs
+    activeCandidateIdsQuery,
 
-    activeCandidateIdsPromise,
+    // Active candidate stage data
+    activeCandidatesQuery,
 
-    /* =====================================================
-       ACTIVE STAGE CANDIDATES
-    ===================================================== */
-
-    activeCandidatesPromise,
-
-    /* =====================================================
-       BMET
-    ===================================================== */
-
+    // BMET candidate IDs
     supabase
       .from("bmet")
-      .select(
-        "candidate_id",
-      ),
+      .select("candidate_id"),
   ]);
 
   /* =======================================================
-     ERROR HANDLING
+     QUERY ERROR HANDLING
+     কোনো query fail করলে dashboard ভুল count দেখাবে না।
   ======================================================= */
 
-  const results = [
-    totalCandidatesResult,
-    activeCandidatesResult,
-    returnedCandidatesResult,
-    completeCandidatesResult,
-    cancelledCandidatesResult,
+  const queryResults = [
+    ["Total candidates", totalResult],
+    ["Active candidates", activeResult],
+    ["Returned candidates", returnedResult],
+    ["Complete candidates", completeResult],
+    ["Cancelled candidates", cancelledResult],
+    ["Medical fit", medicalFitResult],
+    ["Medical unfit", medicalUnfitResult],
+    ["Medical records", medicalAllResult],
+    ["MOFA pending", mofaPendingResult],
+    ["MOFA approved", mofaApprovedResult],
+    ["Visa pending", visaPendingResult],
+    ["Visa issued", visaIssuedResult],
+    ["Flight scheduled", flightScheduledResult],
+    ["Flight departed", flightDepartedResult],
+    ["Active candidate IDs", activeIdsResult],
+    ["Active candidate records", activeCandidatesResult],
+    ["BMET records", bmetResult],
+  ] as const;
 
-    medicalFitResult,
-    medicalUnfitResult,
-    medicalCandidateIdsResult,
-
-    mofaPendingResult,
-    mofaApprovedResult,
-
-    visaPendingResult,
-    visaIssuedResult,
-
-    flightScheduledResult,
-    flightDepartedResult,
-
-    activeCandidateIdsResult,
-    activeCandidatesStageResult,
-
-    bmetCandidateIdsResult,
-  ];
-
-  for (const result of results) {
-    if (result.error) {
-      throw result.error;
-    }
+  for (const [name, result] of queryResults) {
+    throwQueryError(name, result);
   }
 
   /* =======================================================
      ACTIVE CANDIDATES
   ======================================================= */
 
-  const activeCandidateIds =
-    activeCandidateIdsResult.data ??
-    [];
+  const activeCandidateIds = activeIdsResult.data ?? [];
 
   const activeStageCandidates =
-    (
-      activeCandidatesStageResult.data ??
-      []
-    ) as DashboardWorkflowCandidate[];
+    (activeCandidatesResult.data ??
+      []) as DashboardWorkflowCandidate[];
 
   /* =======================================================
-     LIVE WORKFLOW RECALCULATION
-
-     workflow_state/hold_reason column stale হতে পারে —
-     persist না করেই এখানে medical/mofa/visa/flight data
-     দিয়ে live recompute করা হচ্ছে, যাতে শুধু সময় পার হয়ে
-     validity expire হলেও (কোনো record edit ছাড়াই) dashboard
-     ঠিক Processing/Hold count দেখায়।
-  ======================================================= */
-
-  let liveWorkflowStates =
-    new Map<string, CandidateWorkflowState>();
-
-  try {
-
-    liveWorkflowStates =
-      await getLiveWorkflowStates(
-        activeStageCandidates.map(
-          (candidate) => ({
-            id: candidate.id,
-            current_stage: candidate.current_stage,
-            is_returned: false,
-            final_status: null,
-          }),
-        ),
-      );
-
-  } catch (liveError) {
-
-    console.error(
-      "Failed to compute live workflow states for dashboard:",
-      liveError,
-    );
-
-  }
-
-  function resolveWorkflowState(
-    candidate: DashboardWorkflowCandidate,
-  ): DashboardWorkflowState {
-
-    const live =
-      liveWorkflowStates.get(candidate.id);
-
-    if (live) {
-      return live.workflowState;
-    }
-
-    return normalizeWorkflowState(
-      candidate.workflow_state,
-    );
-
-  }
-
-  function resolveHoldReason(
-    candidate: DashboardWorkflowCandidate,
-  ): DashboardHoldReason {
-
-    const live =
-      liveWorkflowStates.get(candidate.id);
-
-    if (live) {
-      return live.holdReason;
-    }
-
-    return candidate.hold_reason;
-
-  }
-
-  /* =======================================================
-     WORKFLOW SPLIT
-
-     ACTIVE
-       │
-       ├── HOLD
-       │    ├── Received
-       │    ├── Medical Expired
-       │    ├── MOFA Expired
-       │    ├── Visa Expired
-       │    ├── Iqama Overdue
-       │    └── Manual Hold
-       │
-       └── PROCESSING
-            └── Pipeline stages
+     LIVE WORKFLOW CALCULATION
 
      IMPORTANT:
-
-     Hold candidates remain ACTIVE.
-
-     But they are NOT included in
-     processing/pipeline counts.
+     Live workflow calculation fail করলে fallback নয়।
+     Error throw হবে, যাতে ভুল/stale pipeline count না আসে।
   ======================================================= */
 
-   const processingCandidates =
+  const liveWorkflowStates = await getLiveWorkflowStates(
+    activeStageCandidates.map((candidate) => ({
+      id: candidate.id,
+      current_stage: candidate.current_stage,
+      is_returned: false,
+      final_status: null,
+    })),
+  );
+
+  const processingCandidates =
     activeStageCandidates
-      .filter(
-        (candidate) =>
-          resolveWorkflowState(candidate) ===
-          "processing",
-      )
-      .map(
-        (candidate) => {
-          const live =
-            liveWorkflowStates.get(
-              candidate.id,
-            );
+      .filter((candidate) => {
+        const live = liveWorkflowStates.get(candidate.id);
 
-          if (!live) {
-            return candidate;
-          }
+        const state = live
+          ? live.workflowState
+          : normalizeWorkflowState(candidate.workflow_state);
 
-          return {
-            ...candidate,
-            current_stage:
-              live.currentStage,
-          };
-        },
-      );
+        return state === "processing";
+      })
+      .map((candidate) => {
+        const live = liveWorkflowStates.get(candidate.id);
+
+        return live
+          ? {
+              ...candidate,
+              current_stage: live.currentStage,
+              workflow_state: live.workflowState,
+              hold_reason: live.holdReason,
+            }
+          : candidate;
+      });
+
   const holdCandidates =
-    activeStageCandidates.filter(
-      (candidate) =>
-        resolveWorkflowState(candidate) ===
-        "hold",
-    );
+    activeStageCandidates.filter((candidate) => {
+      const live = liveWorkflowStates.get(candidate.id);
+
+      const state = live
+        ? live.workflowState
+        : normalizeWorkflowState(candidate.workflow_state);
+
+      return state === "hold";
+    });
 
   /* =======================================================
      HOLD REASONS
   ======================================================= */
 
-  const holdReasonMap =
-    new Map<string, number>();
+  const holdReasonMap = new Map<string, number>();
 
   for (const candidate of holdCandidates) {
-    const candidateHoldReason =
-      resolveHoldReason(candidate);
+    const live = liveWorkflowStates.get(candidate.id);
 
     const reason =
-      typeof candidateHoldReason ===
-      "string"
-        ? candidateHoldReason.trim()
-        : "";
-
-    /*
-     * If workflow_state is hold but
-     * hold_reason is missing, keep it
-     * under manual_hold instead of
-     * breaking dashboard counting.
-     */
-    const normalizedReason =
-      reason || "manual_hold";
+      (live?.holdReason ?? candidate.hold_reason)?.trim() ||
+      "manual_hold";
 
     holdReasonMap.set(
-      normalizedReason,
-      (
-        holdReasonMap.get(
-          normalizedReason,
-        ) ?? 0
-      ) + 1,
+      reason,
+      (holdReasonMap.get(reason) ?? 0) + 1,
     );
   }
 
-  const holdReasons =
-    Array.from(
-      holdReasonMap.entries(),
-    )
-      .sort(
-        ([, countA], [, countB]) =>
-          countB - countA,
-      )
-      .map(
-        ([reason, count]) => ({
-          reason,
-
-          label:
-            getHoldReasonLabel(
-              reason,
-            ),
-
-          count,
-        }),
-      );
+  const holdReasons = Array.from(holdReasonMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([reason, count]) => ({
+      reason,
+      label: getHoldReasonLabel(reason),
+      count,
+    }));
 
   /* =======================================================
-     MEDICAL CANDIDATE SET
-     
-     A candidate can have multiple
-     medical records.
-     
-     Therefore use Set.
+     CANDIDATE ID SETS
   ======================================================= */
 
-  const medicalCandidateIds =
-    new Set<string>(
-      (
-        medicalCandidateIdsResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
+  const medicalCandidateIds = getUniqueCandidateIds(
+    medicalAllResult.data,
+  );
 
-  /* =======================================================
-     BMET CANDIDATE SET
-  ======================================================= */
+  const bmetCandidateIds = getUniqueCandidateIds(
+    bmetResult.data,
+  );
 
-  const bmetCandidateIds =
-    new Set<string>(
-      (
-        bmetCandidateIdsResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
+  const medicalFitCandidateIds = getUniqueCandidateIds(
+    medicalFitResult.data,
+  );
+
+  const medicalUnfitCandidateIds = getUniqueCandidateIds(
+    medicalUnfitResult.data,
+  );
+
+  const mofaPendingCandidateIds = getUniqueCandidateIds(
+    mofaPendingResult.data,
+  );
+
+  const mofaApprovedCandidateIds = getUniqueCandidateIds(
+    mofaApprovedResult.data,
+  );
+
+  const visaPendingCandidateIds = getUniqueCandidateIds(
+    visaPendingResult.data,
+  );
+
+  const visaIssuedCandidateIds = getUniqueCandidateIds(
+    visaIssuedResult.data,
+  );
+
+  const flightScheduledCandidateIds = getUniqueCandidateIds(
+    flightScheduledResult.data,
+  );
+
+  const flightDepartedCandidateIds = getUniqueCandidateIds(
+    flightDepartedResult.data,
+  );
 
   /* =======================================================
      MEDICAL PENDING
-     
-     Active candidate
-     +
-     no medical record
-     
-     = pending medical
   ======================================================= */
 
-  const medicalPending =
-    activeCandidateIds.filter(
-      (candidate) =>
-        !medicalCandidateIds.has(
-          candidate.id,
-        ),
-    ).length;
+  const medicalPending = activeCandidateIds.filter(
+    (candidate) => !medicalCandidateIds.has(candidate.id),
+  ).length;
 
   /* =======================================================
-     MEDICAL FIT
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const medicalFitCandidateIds =
-    new Set<string>(
-      (
-        medicalFitResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     MEDICAL UNFIT
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const medicalUnfitCandidateIds =
-    new Set<string>(
-      (
-        medicalUnfitResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     MOFA PENDING
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const mofaPendingCandidateIds =
-    new Set<string>(
-      (
-        mofaPendingResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     MOFA APPROVED
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const mofaApprovedCandidateIds =
-    new Set<string>(
-      (
-        mofaApprovedResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     VISA PENDING
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const visaPendingCandidateIds =
-    new Set<string>(
-      (
-        visaPendingResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     VISA ISSUED
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const visaIssuedCandidateIds =
-    new Set<string>(
-      (
-        visaIssuedResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     FLIGHT SCHEDULED
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const flightScheduledCandidateIds =
-    new Set<string>(
-      (
-        flightScheduledResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     FLIGHT DEPARTED
-     
-     DISTINCT candidate IDs
-  ======================================================= */
-
-  const flightDepartedCandidateIds =
-    new Set<string>(
-      (
-        flightDepartedResult.data ??
-        []
-      )
-        .map(
-          (item) =>
-            item.candidate_id,
-        )
-        .filter(
-          (
-            id,
-          ): id is string =>
-            typeof id === "string" &&
-            id.length > 0,
-        ),
-    );
-
-  /* =======================================================
-     RETURN
+     FINAL RESULT
   ======================================================= */
 
   return {
     stats: {
-      /* ===================================================
-         MAIN KPI
-      =================================================== */
+      totalCandidates: totalResult.count ?? 0,
+      activeCandidates: activeResult.count ?? 0,
+      completeCandidates: completeResult.count ?? 0,
+      returnedCandidates: returnedResult.count ?? 0,
+      cancelledCandidates: cancelledResult.count ?? 0,
 
-      totalCandidates:
-        totalCandidatesResult.count ??
-        0,
-
-      activeCandidates:
-        activeCandidatesResult.count ??
-        0,
-
-      completeCandidates:
-        completeCandidatesResult.count ??
-        0,
-
-      returnedCandidates:
-        returnedCandidatesResult.count ??
-        0,
-
-      cancelledCandidates:
-        cancelledCandidatesResult.count ??
-        0,
-
-      /* ===================================================
-         WORKFLOW
-         
-         active =
-           processing + hold
-         
-         pipeline =
-           processing only
-      =================================================== */
-
-      processingCandidates:
-        processingCandidates.length,
-
-      holdCandidates:
-        holdCandidates.length,
-
+      processingCandidates: processingCandidates.length,
+      holdCandidates: holdCandidates.length,
       holdReasons,
 
-      /* ===================================================
-         MEDICAL
-      =================================================== */
-
       medicalPending,
+      medicalFit: medicalFitCandidateIds.size,
+      medicalUnfit: medicalUnfitCandidateIds.size,
 
-      medicalFit:
-        medicalFitCandidateIds.size,
+      mofaPending: mofaPendingCandidateIds.size,
+      mofaApproved: mofaApprovedCandidateIds.size,
 
-      medicalUnfit:
-        medicalUnfitCandidateIds.size,
+      visaPending: visaPendingCandidateIds.size,
+      visaIssued: visaIssuedCandidateIds.size,
 
-      /* ===================================================
-         MOFA
-      =================================================== */
-
-      mofaPending:
-        mofaPendingCandidateIds.size,
-
-      mofaApproved:
-        mofaApprovedCandidateIds.size,
-
-      /* ===================================================
-         VISA
-      =================================================== */
-
-      visaPending:
-        visaPendingCandidateIds.size,
-
-      visaIssued:
-        visaIssuedCandidateIds.size,
-
-      /* ===================================================
-         FLIGHT
-      =================================================== */
-
-      flightScheduled:
-        flightScheduledCandidateIds.size,
-
-      flightDeparted:
-        flightDepartedCandidateIds.size,
+      flightScheduled: flightScheduledCandidateIds.size,
+      flightDeparted: flightDepartedCandidateIds.size,
     },
 
     context: {
-  activeCandidateIds,
-
-  activeStageCandidates,
-
-  processingCandidates,
-
-  medicalCandidateIds,
-
-  bmetCandidateIds,
-},
+      activeCandidateIds,
+      activeStageCandidates,
+      processingCandidates,
+      medicalCandidateIds,
+      bmetCandidateIds,
+    },
   };
 }

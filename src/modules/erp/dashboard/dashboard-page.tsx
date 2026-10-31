@@ -127,11 +127,93 @@ export function DashboardPage() {
     }
   }
 
-  useEffect(() => {
-    // cache thakle silent refresh, na thakle normal load
-    void loadDashboard(cachedDashboard !== null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+ 
+useEffect(() => {
+  let active = true;
+
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // Initial dashboard load
+  void loadDashboard(cachedDashboard !== null);
+
+  // Realtime event এলে একবার refresh করবে
+  const refreshDashboard = () => {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+
+    refreshTimer = setTimeout(() => {
+      if (active) {
+        void loadDashboard(true);
+      }
+    }, 300);
+  };
+
+  // Dashboard related tables
+  const realtimeTables = [
+    "candidates",
+    "medicals",
+    "mofas",
+    "fingers",
+    "police_clearances",
+    "trade_tests",
+    "visas",
+    "bmet",
+    "flights",
+  ];
+
+  const channel = orchestrator.supabase
+    .channel("dashboard-live-updates")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+      },
+      (payload) => {
+        // শুধু dashboard সম্পর্কিত table-এর event
+        if (realtimeTables.includes(payload.table)) {
+          refreshDashboard();
+        }
+      },
+    )
+    .subscribe((status) => {
+      if (status === "CHANNEL_ERROR") {
+        console.error("Dashboard realtime subscription failed");
+      }
+    });
+
+  // অন্য tab থেকে dashboard-এ ফিরে এলে refresh
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      refreshDashboard();
+    }
+  };
+
+  window.addEventListener("focus", refreshDashboard);
+  document.addEventListener(
+    "visibilitychange",
+    handleVisibilityChange,
+  );
+
+  return () => {
+    active = false;
+
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+
+    window.removeEventListener("focus", refreshDashboard);
+    document.removeEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    void orchestrator.supabase.removeChannel(channel);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   const countries = useMemo<string[]>(() => data?.countries ?? [], [data]);
 
