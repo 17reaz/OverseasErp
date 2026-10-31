@@ -1,3 +1,4 @@
+
 import {
   useCallback,
   useEffect,
@@ -7,20 +8,20 @@ import {
 
 import { PoliceClearanceForm } from "./components/police-clearance-form";
 import { PoliceClearanceTable } from "./components/police-clearance-table";
-// import { PoliceClearanceToolbar } from "./components/police-clearance-toolbar";
 import { PoliceClearanceAbleTable } from "./components/police-clearance-able-table";
 import {
   PoliceClearanceToolbar,
   type PoliceClearanceView,
 } from "./components/police-clearance-toolbar";
+
 import { getMedicalPipelineItems } from "../medical/medical-service";
 import {
   deletePoliceClearance,
   getPoliceClearances,
   type PoliceClearance,
 } from "./police-clearance-service";
-
 import { getCandidates } from "../candidates/candidate-service";
+
 export interface PoliceClearanceAbleCandidate {
   candidate_id: string;
   sl: number | null;
@@ -28,6 +29,7 @@ export interface PoliceClearanceAbleCandidate {
   passport_no: string;
   fit_date: string | null;
 }
+
 interface CandidateOption {
   id: string;
   name: string;
@@ -40,22 +42,19 @@ type VerificationFilter =
   | "unverified";
 
 export function PoliceClearancePage() {
-  const [records, setRecords] = useState<
-    PoliceClearance[]
+  const [records, setRecords] = useState<PoliceClearance[]>([]);
+  const [candidates, setCandidates] = useState<CandidateOption[]>([]);
+
+  const [view, setView] = useState<PoliceClearanceView>("all");
+
+  const [pcAbleCandidates, setPcAbleCandidates] = useState<
+    PoliceClearanceAbleCandidate[]
   >([]);
 
-  const [candidates, setCandidates] = useState<
-    CandidateOption[]
-  >([]);
-const [view, setView] = useState<PoliceClearanceView>("all");
+  const [initialCandidateId, setInitialCandidateId] = useState<
+    string | undefined
+  >();
 
-const [pcAbleCandidates, setPcAbleCandidates] = useState<
-  PoliceClearanceAbleCandidate[]
->([]);
-
-const [initialCandidateId, setInitialCandidateId] = useState<
-  string | undefined
->();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -65,61 +64,66 @@ const [initialCandidateId, setInitialCandidateId] = useState<
     useState<VerificationFilter>("all");
 
   const [formOpen, setFormOpen] = useState(false);
-
   const [editingRecord, setEditingRecord] =
     useState<PoliceClearance | null>(null);
 
+  // Load all module data
   const loadData = useCallback(async () => {
     try {
-      const [policeClearances, candidatesData, medicalPipeline] =
-  await Promise.all([
-    getPoliceClearances(),
-    getCandidates(),
-    getMedicalPipelineItems(),
-  ]);
+      const [
+        policeClearances,
+        candidatesData,
+        medicalPipeline,
+      ] = await Promise.all([
+        getPoliceClearances(),
+        getCandidates(),
+        getMedicalPipelineItems(),
+      ]);
 
-if (medicalPipeline.error) throw medicalPipeline.error;
+      if (medicalPipeline.error) {
+        throw medicalPipeline.error;
+      }
 
-setRecords(policeClearances);
+      setRecords(policeClearances);
 
-setCandidates(
-  candidatesData.map((candidate) => ({
-    id: candidate.id,
-    name: candidate.name,
-    passport_no: candidate.passport_no,
-  }))
-);
+      setCandidates(
+        candidatesData.map((candidate) => ({
+          id: candidate.id,
+          name: candidate.name,
+          passport_no: candidate.passport_no,
+        })),
+      );
 
-// Already existing PC records বাদ
-const existingPcIds = new Set(
-  policeClearances.map((record) => record.candidate_id)
-);
+      // Exclude candidates who already have a PCC record
+      const existingPcIds = new Set(
+        policeClearances.map((record) => record.candidate_id),
+      );
 
-const eligible = new Map<
-  string,
-  PoliceClearanceAbleCandidate
->();
+      const eligible = new Map<
+        string,
+        PoliceClearanceAbleCandidate
+      >();
 
-for (const item of medicalPipeline.data ?? []) {
-  const candidate = item.candidate;
+      for (const item of medicalPipeline.data ?? []) {
+        const candidate = item.candidate;
 
-  if (
-    existingPcIds.has(candidate.id) ||
-    eligible.has(candidate.id)
-  ) {
-    continue;
-  }
+        if (
+          existingPcIds.has(candidate.id) ||
+          eligible.has(candidate.id)
+        ) {
+          continue;
+        }
 
-  eligible.set(candidate.id, {
-    candidate_id: candidate.id,
-    sl: candidate.sl,
-    name: candidate.name,
-    passport_no: candidate.passport_no,
-    fit_date: item.medical.fit_date,
-  });
-}
+        eligible.set(candidate.id, {
+          candidate_id: candidate.id,
+          sl: candidate.sl,
+          name: candidate.name,
+          passport_no: candidate.passport_no,
+          fit_date: item.medical.fit_date,
+        });
+      }
 
-setPcAbleCandidates([...eligible.values()]);
+      setPcAbleCandidates([...eligible.values()]);
     } catch (error) {
       console.error(
         "Failed to load police clearance module:",
@@ -135,6 +139,7 @@ setPcAbleCandidates([...eligible.values()]);
     void loadData();
   }, [loadData]);
 
+  // Filter existing PCC records
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -145,27 +150,16 @@ setPcAbleCandidates([...eligible.values()]);
 
       const matchesSearch =
         !query ||
-        candidate?.name
-          .toLowerCase()
-          .includes(query) ||
-        candidate?.passport_no
-          .toLowerCase()
-          .includes(query) ||
-        record.remarks
-          ?.toLowerCase()
-          .includes(query);
+        candidate?.name.toLowerCase().includes(query) ||
+        candidate?.passport_no.toLowerCase().includes(query) ||
+        record.remarks?.toLowerCase().includes(query);
 
       const matchesVerification =
         verificationFilter === "all" ||
-        (verificationFilter === "verified" &&
-          record.verified) ||
-        (verificationFilter === "unverified" &&
-          !record.verified);
+        (verificationFilter === "verified" && record.verified) ||
+        (verificationFilter === "unverified" && !record.verified);
 
-      return (
-        matchesSearch &&
-        matchesVerification
-      );
+      return matchesSearch && matchesVerification;
     });
   }, [
     records,
@@ -174,46 +168,53 @@ setPcAbleCandidates([...eligible.values()]);
     verificationFilter,
   ]);
 
-  function handleCreate(candidateId?: string) {
-  setInitialCandidateId(candidateId);
-  setEditingRecord(null);
-  setFormOpen(true);
-}
+  // Filter PC Able candidates
+  const filteredAbleCandidates = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-  function handleEdit(
-    record: PoliceClearance,
-  ) {
+    return pcAbleCandidates.filter((candidate) => {
+      return (
+        !query ||
+        candidate.name.toLowerCase().includes(query) ||
+        candidate.passport_no.toLowerCase().includes(query)
+      );
+    });
+  }, [pcAbleCandidates, search]);
+
+  function handleCreate(candidateId?: string) {
+    setInitialCandidateId(candidateId);
+    setEditingRecord(null);
+    setFormOpen(true);
+  }
+
+  function handleEdit(record: PoliceClearance) {
+    setInitialCandidateId(undefined);
     setEditingRecord(record);
     setFormOpen(true);
   }
 
-  async function handleDelete(
-    record: PoliceClearance,
-  ) {
+  async function handleDelete(record: PoliceClearance) {
     const candidate = candidates.find(
       (item) => item.id === record.candidate_id,
     );
 
     const confirmed = window.confirm(
       `Delete PCC #${record.sl}${
-        candidate
-          ? ` for ${candidate.name}`
-          : ""
+        candidate ? ` for ${candidate.name}` : ""
       }?`,
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       await deletePoliceClearance(record.id);
 
       setRecords((previous) =>
-        previous.filter(
-          (item) => item.id !== record.id,
-        ),
+        previous.filter((item) => item.id !== record.id),
       );
+
+      // Deleted candidate may become PC Able again
+      await loadData();
     } catch (error) {
       console.error(
         "Failed to delete police clearance:",
@@ -227,7 +228,7 @@ setPcAbleCandidates([...eligible.values()]);
     void loadData();
   }
 
-  function handleFormSuccess(
+  async function handleFormSuccess(
     savedRecord: PoliceClearance,
   ) {
     setRecords((previous) => {
@@ -245,81 +246,73 @@ setPcAbleCandidates([...eligible.values()]);
 
       return [savedRecord, ...previous];
     });
+
+    // Remove newly registered candidate from PC Able
+    setPcAbleCandidates((previous) =>
+      previous.filter(
+        (candidate) =>
+          candidate.candidate_id !== savedRecord.candidate_id,
+      ),
+    );
+
+    setFormOpen(false);
+    setEditingRecord(null);
+    setInitialCandidateId(undefined);
+
+    await loadData();
   }
 
-  function handleFormOpenChange(
-    open: boolean,
-  ) {
+  function handleFormOpenChange(open: boolean) {
     setFormOpen(open);
 
     if (!open) {
       setEditingRecord(null);
+      setInitialCandidateId(undefined);
     }
   }
 
   return (
-  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
-      
-      {/* Toolbar */}
+    <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       <PoliceClearanceToolbar
-  search={search}
-  onSearchChange={setSearch}
-  view={view}
-  onViewChange={setView}
-  pcAbleCount={pcAbleCandidates.length}
-  verificationFilter={verificationFilter}
-  onVerificationFilterChange={setVerificationFilter}
-  onRefresh={handleRefresh}
-  onCreate={() => handleCreate()}
-  refreshing={refreshing}
-/>
+        search={search}
+        onSearchChange={setSearch}
+        view={view}
+        onViewChange={setView}
+        pcAbleCount={pcAbleCandidates.length}
+        verificationFilter={verificationFilter}
+        onVerificationFilterChange={setVerificationFilter}
+        onRefresh={handleRefresh}
+        onCreate={() => handleCreate()}
+        refreshing={refreshing}
+      />
 
-<div className="min-h-0 flex-1">
-  {view === "all" ? (
-    <PoliceClearanceTable
-      records={filteredRecords}
-      candidates={candidates}
-      loading={loading}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-    />
-  ) : (
-    <PoliceClearanceAbleTable
-      candidates={pcAbleCandidates.filter((candidate) => {
-        const query = search.trim().toLowerCase();
-
-        return (
-          !query ||
-          candidate.name.toLowerCase().includes(query) ||
-          candidate.passport_no.toLowerCase().includes(query)
-        );
-      })}
-      loading={loading}
-      onCreate={(candidateId) => handleCreate(candidateId)}
-    />
-  )}
-</div>
-
-      {/* Table */}
+      {/* Only one table renders at a time */}
       <div className="min-h-0 flex-1">
-        <PoliceClearanceTable
-          records={filteredRecords}
-          candidates={candidates}
-          loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        {view === "all" ? (
+          <PoliceClearanceTable
+            records={filteredRecords}
+            candidates={candidates}
+            loading={loading}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ) : (
+          <PoliceClearanceAbleTable
+            candidates={filteredAbleCandidates}
+            loading={loading}
+            onCreate={handleCreate}
+          />
+        )}
       </div>
 
-      {/* Form */}
       <PoliceClearanceForm
-  open={formOpen}
-  onOpenChange={handleFormOpenChange}
-  record={editingRecord}
-  candidates={candidates}
-  initialCandidateId={initialCandidateId}
-  onSuccess={handleFormSuccess}
-/>
+        open={formOpen}
+        onOpenChange={handleFormOpenChange}
+        record={editingRecord}
+        candidates={candidates}
+        initialCandidateId={initialCandidateId}
+        onSuccess={handleFormSuccess}
+      />
     </div>
   );
 }
