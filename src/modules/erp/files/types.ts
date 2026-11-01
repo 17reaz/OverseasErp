@@ -17,7 +17,7 @@ export interface FileRecord {
   doc_type: DocumentType;
 
   file_location: string;
-
+  thumbnail_location: string | null;
   version: number;
 
   is_active: boolean;

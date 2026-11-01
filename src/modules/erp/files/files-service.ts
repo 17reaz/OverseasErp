@@ -203,6 +203,53 @@ export async function getFileUrl(
 
   return data.signedUrl;
 }
+/**
+ * Save a browser-generated PDF thumbnail through Edge Function.
+ */
+export async function savePdfThumbnail(
+  fileId: number,
+  blob: Blob,
+) {
+  if (blob.type !== "image/jpeg") {
+    throw new Error("Thumbnail must be a JPEG image.");
+  }
+
+  if (blob.size > 2 * 1024 * 1024) {
+    throw new Error("Thumbnail exceeds the 2 MB limit.");
+  }
+
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(i, i + chunkSize),
+    );
+  }
+
+  const imageBase64 = btoa(binary);
+
+  const { data, error } = await supabase.functions.invoke(
+    "file-pdf-thumbnail",
+    {
+      body: {
+        fileId,
+        imageBase64,
+      },
+    },
+  );
+
+  if (error) throw error;
+
+  if (!data?.success) {
+    throw new Error(data?.error ?? "Thumbnail save failed.");
+  }
+
+  return data;
+}
 export async function getAllFiles(
   tenantId: string,
 ) {
@@ -217,6 +264,7 @@ export async function getAllFiles(
       candidate_id,
       doc_type,
       file_location,
+      thumbnail_location,
       version,
       is_active,
       created_at,

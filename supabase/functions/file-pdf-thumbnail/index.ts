@@ -1,6 +1,6 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as pdfjsLib from "npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs";
+// import * as pdfjsLib from "npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,20 +9,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function getSourceBucket(docType: string) {
-  const buckets: Record<string, string> = {
-    passport: "passports",
-    visa: "visas",
-    mofa: "mofas",
-    bmet: "bmets",
-  };
 
-  return buckets[docType] ?? "passports";
-}
 const THUMBNAIL_BUCKET = "file-thumbnails";
-const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
-const BATCH_SIZE = 3;
 
 function respond(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -248,76 +237,109 @@ Deno.serve(async (req: Request) => {
     const tenantId = profile.tenant_id as string;
 
     // Mode 1: generate a thumbnail for one existing PDF.
-    if (body.fileId !== undefined) {
-      const fileId = Number(body.fileId);
+    // Save browser-generated thumbnail for one existing PDF.
+if (body.fileId !== undefined) {
+  const fileId = Number(body.fileId);
 
-      if (!Number.isSafeInteger(fileId) || fileId <= 0) {
-        return respond({ error: "Valid fileId is required" }, 400);
-      }
+  if (!Number.isSafeInteger(fileId) || fileId <= 0) {
+    return respond({ error: "Valid fileId is required" }, 400);
+  }
 
-      const { data: file, error: fileError } = await userClient
-        .from("files")
-       .select("id, tenant_id, doc_type, file_location, thumbnail_location")
-        .eq("id", fileId)
-        .eq("tenant_id", tenantId)
-        .maybeSingle();
+  if (
+    typeof body.imageBase64 !== "string" ||
+    !body.imageBase64
+  ) {
+    return respond({ error: "Thumbnail image is required" }, 400);
+  }
 
-      if (fileError) {
-        return respond({ error: "Could not read file record" }, 500);
-      }
+  const { data: file, error: fileError } = await userClient
+    .from("files")
+    .select("id, tenant_id, file_location, thumbnail_location")
+    .eq("id", fileId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
 
-      if (!file) {
-        return respond({ error: "File not found or access denied" }, 404);
-      }
+  if (fileError) {
+    return respond({ error: "Could not read file record" }, 500);
+  }
 
-      const result = await generateThumbnail(admin, file as FileRow);
+  if (!file) {
+    return respond({ error: "File not found or access denied" }, 404);
+  }
 
-      return respond(result, result.success ? 200 : 422);
+  if (!file.file_location?.toLowerCase().endsWith(".pdf")) {
+    return respond({ error: "File is not a PDF" }, 400);
+  }
+
+  // Avoid decoding an oversized payload.
+  if (body.imageBase64.length > MAX_THUMBNAIL_BYTES * 1.4) {
+    return respond({ error: "Thumbnail exceeds the 2 MB limit" }, 413);
+  }
+
+  let jpeg: Blob;
+
+  try {
+    const binary = atob(body.imageBase64);
+
+    if (binary.length > MAX_THUMBNAIL_BYTES) {
+      return respond({ error: "Thumbnail exceeds the 2 MB limit" }, 413);
     }
 
-    // Mode 2: generate thumbnails for existing PDFs missing thumbnails.
-    if (body.action === "generate-missing") {
-      const { data: files, error: filesError } = await userClient
-        .from("files")
-       .select("id, tenant_id, doc_type, file_location, thumbnail_location")
-        .eq("tenant_id", tenantId)
-        .ilike("file_location", "%.pdf")
-        .is("thumbnail_location", null)
-        .order("id", { ascending: true })
-        .limit(BATCH_SIZE);
+    const bytes = Uint8Array.from(
+      binary,
+      (character) => character.charCodeAt(0),
+    );
 
-      if (filesError) {
-        console.error("PDF list query failed:", filesError.message);
-        return respond({ error: "Could not list existing PDFs" }, 500);
-      }
-
-      const results = [];
-
-      // Process sequentially to reduce resource usage.
-      for (const file of (files ?? []) as FileRow[]) {
-        results.push(await generateThumbnail(admin, file));
-      }
-
-      const { count: remaining, error: countError } = await userClient
-        .from("files")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .ilike("file_location", "%.pdf")
-        .is("thumbnail_location", null);
-
-      if (countError) {
-        console.error("Remaining PDF count failed:", countError.message);
-      }
-
-      return respond({
-        success: true,
-        processed: results.length,
-        succeeded: results.filter((item) => item.success).length,
-        failed: results.filter((item) => !item.success).length,
-        remaining: countError ? null : remaining,
-        results,
-      });
+    // JPEG magic bytes: FF D8 FF
+    if (
+      bytes.length < 3 ||
+      bytes[0] !== 0xff ||
+      bytes[1] !== 0xd8 ||
+      bytes[2] !== 0xff
+    ) {
+      return respond({ error: "Invalid JPEG image" }, 400);
     }
+
+    jpeg = new Blob([bytes], { type: "image/jpeg" });
+  } catch {
+    return respond({ error: "Invalid thumbnail data" }, 400);
+  }
+
+  const thumbnailPath = `${tenantId}/${fileId}.jpg`;
+
+  const { error: uploadError } = await admin.storage
+    .from(THUMBNAIL_BUCKET)
+    .upload(thumbnailPath, jpeg, {
+      contentType: "image/jpeg",
+      cacheControl: "31536000",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("Thumbnail upload failed:", uploadError.message);
+    return respond({ error: "Could not save thumbnail" }, 500);
+  }
+
+  const { error: updateError } = await admin
+    .from("files")
+    .update({
+      thumbnail_location: thumbnailPath,
+    })
+    .eq("id", fileId)
+    .eq("tenant_id", tenantId);
+
+  if (updateError) {
+    console.error("Thumbnail DB update failed:", updateError.message);
+    return respond({ error: "Could not update thumbnail record" }, 500);
+  }
+
+  return respond({
+    success: true,
+    fileId,
+    thumbnailPath,
+  });
+}
+
 
     return respond({
       error: "Send fileId or action: generate-missing",

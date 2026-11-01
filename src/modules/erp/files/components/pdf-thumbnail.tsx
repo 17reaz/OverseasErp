@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
@@ -17,8 +18,14 @@ const MAX_CONCURRENT = 2;
  * CACHE + QUEUE (module level, sob component share kore)
  * ========================================================= */
 
-const cache = new Map<string, string>(); // key -> blob URL
-const inflight = new Map<string, Promise<string>>();
+type ThumbnailResult = {
+  objectUrl: string;
+  blob: Blob | null;
+};
+
+const cache = new Map<string, string>();
+const blobCache = new Map<string, Blob>();
+const inflight = new Map<string, Promise<ThumbnailResult>>();
 
 let active = 0;
 const waiting: Array<() => void> = [];
@@ -27,7 +34,9 @@ async function withSlot<T>(task: () => Promise<T>): Promise<T> {
   if (active >= MAX_CONCURRENT) {
     await new Promise<void>((resolve) => waiting.push(resolve));
   }
+
   active++;
+
   try {
     return await task();
   } finally {
@@ -41,10 +50,14 @@ function remember(key: string, objectUrl: string) {
 
   if (cache.size > MAX_CACHE) {
     const oldest = cache.keys().next().value;
+
     if (oldest !== undefined) {
       const old = cache.get(oldest);
+
       if (old) URL.revokeObjectURL(old);
+
       cache.delete(oldest);
+      blobCache.delete(oldest);
     }
   }
 }
@@ -56,12 +69,15 @@ function remember(key: string, objectUrl: string) {
 async function createThumbnail(
   url: string,
   withCredentials: boolean,
-): Promise<string> {
+): Promise<ThumbnailResult> {
   // Choto PDF, tai pura download kore pdf.js ke data dei (range/CORS jhamela nai)
   const res = await fetch(url, {
     credentials: withCredentials ? "include" : "same-origin",
   });
-  if (!res.ok) throw new Error(`PDF fetch failed: ${res.status}`);
+
+  if (!res.ok) {
+    throw new Error(`PDF fetch failed: ${res.status}`);
+  }
 
   const data = new Uint8Array(await res.arrayBuffer());
   const loadingTask = getDocument({ data });
@@ -72,6 +88,7 @@ async function createThumbnail(
 
     const base = page.getViewport({ scale: 1 });
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
     const viewport = page.getViewport({
       scale: (THUMB_WIDTH * dpr) / base.width,
     });
@@ -81,17 +98,26 @@ async function createThumbnail(
     canvas.height = Math.ceil(viewport.height);
 
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("Canvas is not supported.");
+
+    if (!context) {
+      throw new Error("Canvas is not supported.");
+    }
 
     context.fillStyle = "#fff";
     context.fillRect(0, 0, canvas.width, canvas.height);
 
-    await page.render({ canvas, canvasContext: context, viewport }).promise;
+    await page.render({
+      canvas,
+      canvasContext: context,
+      viewport,
+    }).promise;
 
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (b) =>
-          b ? resolve(b) : reject(new Error("Could not create thumbnail.")),
+          b
+            ? resolve(b)
+            : reject(new Error("Could not create thumbnail.")),
         "image/jpeg",
         0.82,
       );
@@ -101,7 +127,10 @@ async function createThumbnail(
     canvas.width = 0;
     canvas.height = 0;
 
-    return URL.createObjectURL(blob);
+    return {
+      objectUrl: URL.createObjectURL(blob),
+      blob,
+    };
   } finally {
     // cancel hok ba fail, pdf/worker memory sob somoy chere dey
     await loadingTask.destroy();
@@ -112,21 +141,36 @@ function getThumbnail(
   key: string,
   url: string,
   withCredentials: boolean,
-): Promise<string> {
+): Promise<ThumbnailResult> {
   const cached = cache.get(key);
-  if (cached) return Promise.resolve(cached);
+
+  if (cached) {
+    return Promise.resolve({
+      objectUrl: cached,
+      blob: blobCache.get(key) ?? null,
+    });
+  }
 
   const running = inflight.get(key);
+
   if (running) return running;
 
-  const promise = withSlot(() => createThumbnail(url, withCredentials))
-    .then((objectUrl) => {
-      remember(key, objectUrl);
-      return objectUrl;
+  const promise = withSlot(() =>
+    createThumbnail(url, withCredentials),
+  )
+    .then((result) => {
+      remember(key, result.objectUrl);
+
+      if (result.blob) {
+        blobCache.set(key, result.blob);
+      }
+
+      return result;
     })
     .finally(() => inflight.delete(key));
 
   inflight.set(key, promise);
+
   return promise;
 }
 
@@ -140,6 +184,7 @@ interface PdfThumbnailProps {
   cacheKey?: string;
   title: string;
   withCredentials?: boolean;
+  onGenerated?: (blob: Blob) => Promise<void> | void;
   /** cover = WhatsApp style (upor theke crop), contain = pura page */
   fit?: "cover" | "contain";
 }
@@ -150,19 +195,23 @@ export function PdfThumbnail({
   title,
   withCredentials = false,
   fit = "cover",
+  onGenerated,
 }: PdfThumbnailProps) {
   const key = cacheKey ?? url;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+
   const [preview, setPreview] = useState<string | null>(
     () => cache.get(key) ?? null,
   );
+
   const [failed, setFailed] = useState(false);
 
   // Screen e ashle tobei render shuru
   useEffect(() => {
     const node = containerRef.current;
+
     if (!node) return;
 
     const observer = new IntersectionObserver(
@@ -176,6 +225,7 @@ export function PdfThumbnail({
     );
 
     observer.observe(node);
+
     return () => observer.disconnect();
   }, []);
 
@@ -183,12 +233,21 @@ export function PdfThumbnail({
     if (!visible) return;
 
     let cancelled = false;
+
     setPreview(cache.get(key) ?? null);
     setFailed(false);
 
     getThumbnail(key, url, withCredentials)
-      .then((objectUrl) => {
-        if (!cancelled) setPreview(objectUrl);
+      .then(({ objectUrl, blob }) => {
+        if (blob && onGenerated) {
+          void Promise.resolve(onGenerated(blob)).catch((error) => {
+            console.error("Thumbnail storage failed:", error);
+          });
+        }
+
+        if (!cancelled) {
+          setPreview(objectUrl);
+        }
       })
       .catch((error) => {
         if (!cancelled) {
@@ -200,9 +259,10 @@ export function PdfThumbnail({
     return () => {
       cancelled = true;
     };
+
     // url ke deliberately deps e rakhini: shudhu key bodlale abar render hobe
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, withCredentials, visible]);
+  }, [key, withCredentials, visible, onGenerated]);
 
   return (
     <div ref={containerRef} className="h-full w-full">
@@ -224,8 +284,11 @@ export function PdfThumbnail({
           )}
 
           <span className="text-xs font-medium text-muted-foreground">
-            {failed ? "PDF preview unavailable" : "Preparing PDF preview..."}
+            {failed
+              ? "PDF preview unavailable"
+              : "Preparing PDF preview..."}
           </span>
+
           <span className="max-w-[85%] truncate text-xs text-muted-foreground">
             {title}
           </span>

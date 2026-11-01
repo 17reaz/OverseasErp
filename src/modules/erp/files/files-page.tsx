@@ -16,7 +16,11 @@ import {
 import { PdfThumbnail } from "./components/pdf-thumbnail";
 import { FilesToolbar, type DocTypeFilter } from "./components/files-toolbar";
 import { FileUploadSheet } from "./file-upload-sheet";
-import { getAllFiles, getStorageBucket } from "./files-service";
+import {
+  getAllFiles,
+  getStorageBucket,
+  savePdfThumbnail,
+} from "./files-service";
 
 import type { FileRecord } from "./types";
 
@@ -124,7 +128,55 @@ function useFilePreviews(files: FileWithCandidate[]) {
 
   return urls;
 }
+function useStoredThumbnailPreviews(files: FileWithCandidate[]) {
+  const [urls, setUrls] = useState<Record<number, string>>({});
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolve() {
+      const withThumbnail = files.filter(
+        (file) => file.thumbnail_location,
+      );
+
+      const results = await Promise.all(
+        withThumbnail.map(async (file) => {
+          const { data, error } = await supabase.storage
+            .from("file-thumbnails")
+            .createSignedUrl(file.thumbnail_location!, 3600);
+
+          if (error) {
+            console.error("Thumbnail URL failed:", error);
+            return null;
+          }
+
+          return {
+            id: file.id,
+            url: data.signedUrl,
+          };
+        }),
+      );
+
+      const next: Record<number, string> = {};
+
+      results.forEach((result) => {
+        if (result) next[result.id] = result.url;
+      });
+
+      if (!cancelled) setUrls(next);
+    }
+
+    void resolve().catch((error) => {
+      console.error("Stored thumbnails loading failed:", error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [files]);
+
+  return urls;
+}
 /* ------------------------------------------------------------------ */
 /* File card                                                           */
 /* ------------------------------------------------------------------ */
@@ -132,16 +184,21 @@ function useFilePreviews(files: FileWithCandidate[]) {
 function FileCard({
   file,
   url,
+  thumbnailUrl,
 }: {
   file: FileWithCandidate;
   url?: string;
+  thumbnailUrl?: string;
 }) {
   const [failed, setFailed] = useState(false);
 
   const kind = getPreviewKind(file);
   const showReal = Boolean(url) && !failed && kind !== "other";
   const title = file.candidate?.name ?? "Unknown candidate";
-
+  const persistThumbnail = useCallback(
+  (blob: Blob) => savePdfThumbnail(file.id, blob),
+  [file.id],
+);
   return (
     <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -154,12 +211,22 @@ function FileCard({
             onError={() => setFailed(true)}
           />
         ) : showReal && kind === "pdf" && url ? (
-          <PdfThumbnail
-            url={url}
-            cacheKey={file.file_location}
-            title={`${file.doc_type} - ${title}`}
-            fit="cover"
-          />
+  thumbnailUrl ? (
+    <img
+      src={thumbnailUrl}
+      alt={`${file.doc_type} - ${title}`}
+      loading="lazy"
+      className="h-full w-full object-cover object-top"
+    />
+  ) : (
+    <PdfThumbnail
+      url={url}
+      cacheKey={file.file_location}
+      title={`${file.doc_type} - ${title}`}
+      fit="cover"
+      onGenerated={persistThumbnail}
+    />
+  )
         ) : (
           <>
             <img
@@ -346,7 +413,7 @@ export function FilesPage() {
   }, [files, search, docType]);
 
   const previewUrls = useFilePreviews(files);
-
+const thumbnailUrls = useStoredThumbnailPreviews(files);
   const totalPages = Math.max(1, Math.ceil(filteredFiles.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
 
@@ -451,6 +518,7 @@ export function FilesPage() {
                   key={file.id}
                   file={file}
                   url={previewUrls[file.id]}
+                  thumbnailUrl={thumbnailUrls[file.id]}
                 />
               ))}
             </div>
