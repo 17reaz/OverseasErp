@@ -25,6 +25,7 @@ import {
   AgencyToolbar,
   type AgencyFilterState,
   type AgencySortState,
+  type AgencyViewMode,
 } from "./components/agency-toolbar";
 
 import {
@@ -66,7 +67,16 @@ export function AgencyPage() {
     loading,
     setLoading,
   ] = useState(true);
+/*
+ * =========================================================
+ * VIEW MODE
+ * =========================================================
+ */
 
+const [
+  viewMode,
+  setViewMode,
+] = useState<AgencyViewMode>("list");
 
   /*
    * =========================================================
@@ -720,7 +730,13 @@ export function AgencyPage() {
         search={
           search
         }
+        viewMode={
+  viewMode
+}
 
+onViewModeChange={
+  setViewMode
+}
         searchPlaceholder={
           "Search agency, code, phone or email..."
         }
@@ -773,7 +789,9 @@ export function AgencyPage() {
         loading={
           loading
         }
-
+        viewMode={
+  viewMode
+}
         page={
           page
         }
