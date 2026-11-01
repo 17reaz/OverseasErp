@@ -1,14 +1,16 @@
-// src/modules/erp/agents/agents-page.tsx
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "@/lib/supabase/client";
+
 import { AgentForm } from "./components/agent-form";
-import { AgentsToolbar } from "./components/agents-toolbar";
+import {
+  AgentsToolbar,
+  type AgentViewMode,
+} from "./components/agents-toolbar";
 import { AgentTable } from "./components/agent-table";
 
 import { getAgents, deleteAgent } from "./agents-service";
-
 import type { Agent } from "./types";
 
 export function AgentsPage() {
@@ -16,6 +18,8 @@ export function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+
+  const [viewMode, setViewMode] = useState<AgentViewMode>("list");
 
   const [showForm, setShowForm] = useState(false);
 
@@ -31,9 +35,7 @@ export function AgentsPage() {
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError) {
-        throw userError;
-      }
+      if (userError) throw userError;
 
       if (!user) {
         throw new Error("User is not authenticated.");
@@ -45,9 +47,7 @@ export function AgentsPage() {
         .eq("id", user.id)
         .single();
 
-      if (profileError) {
-        throw profileError;
-      }
+      if (profileError) throw profileError;
 
       if (!profile?.tenant_id) {
         throw new Error("No tenant is assigned to this user.");
@@ -64,7 +64,6 @@ export function AgentsPage() {
   const loadAgents = useCallback(async () => {
     try {
       const data = await getAgents();
-
       setAgents(data);
     } catch (error) {
       console.error("Failed to load agents:", error);
@@ -74,37 +73,33 @@ export function AgentsPage() {
     }
   }, []);
 
- async function handleDelete(id: string) {
-  const confirmed = window.confirm(
-    "Are you sure you want to delete this agent?",
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    await deleteAgent(id);
-
-    setAgents((current) =>
-      current.filter((agent) => agent.id !== id),
+  async function handleDelete(id: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this agent?",
     );
-  } catch (error) {
-    console.error("Failed to delete agent:", error);
+
+    if (!confirmed) return;
+
+    try {
+      await deleteAgent(id);
+
+      setAgents((current) =>
+        current.filter((agent) => agent.id !== id),
+      );
+    } catch (error) {
+      console.error("Failed to delete agent:", error);
+    }
   }
-}
 
   useEffect(() => {
-    loadTenant();
+    void loadTenant();
     void loadAgents();
   }, [loadAgents]);
 
   const filteredAgents = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) {
-      return agents;
-    }
+    if (!query) return agents;
 
     return agents.filter(
       (agent) =>
@@ -114,11 +109,12 @@ export function AgentsPage() {
   }, [agents, search]);
 
   return (
-  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
-      {/* Toolbar */}
+    <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
       <AgentsToolbar
         search={search}
         onSearchChange={setSearch}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onRefresh={() => {
           setRefreshing(true);
           void loadAgents();
@@ -128,7 +124,6 @@ export function AgentsPage() {
         createDisabled={tenantLoading || !tenantId}
       />
 
-      {/* Add Agent Form */}
       <AgentForm
         open={showForm}
         tenantId={tenantId ?? ""}
@@ -139,10 +134,10 @@ export function AgentsPage() {
         }}
       />
 
-      {/* Agents Table */}
       <AgentTable
         agents={filteredAgents}
         loading={loading}
+        viewMode={viewMode}
         onDelete={handleDelete}
       />
     </div>
