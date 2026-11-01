@@ -144,8 +144,7 @@ function AgentGrid({
 }) {
   if (agents.length === 0) {
     return (
-      <div className="flex min-h-[250px] flex-1 flex-col items-center justify-center rounded-lg border bg-background text-center">
-        <UserRound className="mb-3 h-8 w-8 text-muted-foreground/50" />
+      <div className="flex min-h-[250px] flex-1 flex-col items-center justify-center text-center">
         <p className="text-sm font-medium">No agents found</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Add an agent to get started.
@@ -155,80 +154,46 @@ function AgentGrid({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-background p-3">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {agents.map((agent) => (
           <div
             key={agent.id}
-            className="group min-w-0 rounded-xl border bg-card p-4 transition-colors hover:border-primary/30 hover:bg-muted/20"
+            className="min-w-0 rounded-lg border bg-background p-4 transition-colors hover:bg-muted/30"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <UserRound className="h-5 w-5" />
-                </div>
-
-                <div className="min-w-0">
-                  <Link
-                    to={`/app/agents/${agent.id}`}
-                    className="block truncate text-sm font-semibold hover:text-primary hover:underline"
-                  >
-                    {agent.name ?? "Unnamed Agent"}
-                  </Link>
-
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    Agent #{agent.sl ?? "—"}
-                  </p>
-                </div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Link
+                  to={`/app/agents/${agent.id}`}
+                  className="block truncate text-sm font-medium hover:underline"
+                >
+                  {agent.name ?? "Unnamed Agent"}
+                </Link>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  #{agent.sl ?? "—"}
+                </p>
               </div>
 
               <AgentActions agent={agent} onDelete={onDelete} />
             </div>
 
-            <div className="mt-4 space-y-3 border-t pt-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                  <Hash className="h-3.5 w-3.5 shrink-0" />
-                  <span>Agent Code</span>
-                </div>
-
-                <span className="truncate font-mono text-xs font-medium">
-                  {agent.code ?? "—"}
-                </span>
+            <dl className="mt-4 space-y-1.5 text-xs">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Code</dt>
+                <dd className="truncate font-mono">{agent.code ?? "—"}</dd>
               </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                  <Phone className="h-3.5 w-3.5 shrink-0" />
-                  <span>Phone</span>
-                </div>
-
-                <span className="truncate text-xs font-medium">
-                  {agent.phone ?? "—"}
-                </span>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Phone</dt>
+                <dd className="truncate">{agent.phone ?? "—"}</dd>
               </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  <span>Created</span>
-                </div>
-
-                <span className="text-xs font-medium">
-                  {formatDate(agent.created_at)}
-                </span>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Created</dt>
+                <dd>{formatDate(agent.created_at)}</dd>
               </div>
-            </div>
+            </dl>
 
-            <div className="mt-4 flex items-center justify-between border-t pt-3">
+            <div className="mt-4">
               <AgentStatus active={Boolean(agent.is_active)} />
-
-              <Link
-                to={`/app/agents/${agent.id}`}
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                View details
-              </Link>
             </div>
           </div>
         ))}
