@@ -348,19 +348,22 @@ function FileCard({
     if (kind === "pdf") {
       // 1) Saved thumbnail -> only the JPEG is downloaded
       if (hasStoredThumb && !thumbBroken) {
-        if (thumbnailUrl === undefined) return <Spinner />;
+  if (thumbnailUrl === undefined) {
+    return <div className="h-full w-full bg-muted" />;
+  }
 
-        return (
-          <img
-            src={thumbnailUrl ?? undefined}
-            alt={alt}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover object-top"
-            onError={() => setThumbFailed(true)}
-          />
-        );
-      }
+  return (
+    <img
+      src={thumbnailUrl}
+      alt={alt}
+      loading="eager"
+      decoding="async"
+      fetchPriority="high"
+      className="h-full w-full object-cover object-top"
+      onError={() => setThumbFailed(true)}
+    />
+  );
+}
 
       // 2) No (working) thumbnail -> render the PDF, then save it
       const pdfUrl = hasStoredThumb ? fallbackUrl : originalUrl;
