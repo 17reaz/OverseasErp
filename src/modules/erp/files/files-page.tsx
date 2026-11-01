@@ -41,8 +41,140 @@ interface FileWithCandidate extends FileRecord {
 
 type PreviewKind = "image" | "pdf" | "other";
 
+interface SignTarget {
+  bucket: string;
+  path: string;
+}
+
+/** undefined = still loading, null = failed, string = ready */
+type UrlState = string | null | undefined;
+
 const PAGE_SIZE = 12;
 const FILES_PAGE_KEY = "overseaserp:files-page";
+const THUMBNAIL_BUCKET = "file-thumbnails";
+
+const SIGNED_URL_TTL = 60 * 60; // 1 hour
+const REFRESH_MARGIN_MS = 5 * 60 * 1000; // re-sign 5 min before expiry
+
+/* ------------------------------------------------------------------ */
+/* Signed URL cache (shared across renders, pages and remounts)        */
+/* ------------------------------------------------------------------ */
+
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+// Thumbnails already uploaded in this session (avoids duplicate saves)
+const savedThumbnailIds = new Set<number>();
+
+function cacheKey(bucket: string, path: string) {
+  return `${bucket}/${path}`;
+}
+
+function getCachedUrl(bucket: string, path: string): string | undefined {
+  const hit = signedUrlCache.get(cacheKey(bucket, path));
+
+  if (!hit || hit.expiresAt - Date.now() < REFRESH_MARGIN_MS) {
+    return undefined;
+  }
+
+  return hit.url;
+}
+
+/**
+ * Signs many paths with ONE request per bucket.
+ * Already-cached paths are skipped.
+ * Returns { "bucket/path": url | null }.
+ */
+async function signUrls(
+  targets: SignTarget[],
+): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {};
+  const missing = new Map<string, string[]>();
+
+  for (const { bucket, path } of targets) {
+    const key = cacheKey(bucket, path);
+    const cached = getCachedUrl(bucket, path);
+
+    if (cached) {
+      out[key] = cached;
+      continue;
+    }
+
+    const list = missing.get(bucket) ?? [];
+    if (!list.includes(path)) list.push(path);
+    missing.set(bucket, list);
+  }
+
+  await Promise.all(
+    [...missing.entries()].map(async ([bucket, paths]) => {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrls(paths, SIGNED_URL_TTL);
+
+      if (error || !data) {
+        console.error(`Signed URLs failed for bucket "${bucket}":`, error);
+        paths.forEach((path) => {
+          out[cacheKey(bucket, path)] = null;
+        });
+        return;
+      }
+
+      data.forEach((item, index) => {
+        const path = item.path ?? paths[index];
+        const key = cacheKey(bucket, path);
+
+        if (item.error || !item.signedUrl) {
+          out[key] = null;
+          return;
+        }
+
+        signedUrlCache.set(key, {
+          url: item.signedUrl,
+          expiresAt: Date.now() + SIGNED_URL_TTL * 1000,
+        });
+        out[key] = item.signedUrl;
+      });
+    }),
+  );
+
+  return out;
+}
+
+/**
+ * Resolves signed URLs for a list of targets (batched + cached).
+ * Returns a lookup: resolve(bucket, path) -> UrlState
+ */
+function useSignedUrls(targets: SignTarget[]) {
+  const [urls, setUrls] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (targets.length === 0) return;
+
+    let cancelled = false;
+
+    signUrls(targets)
+      .then((result) => {
+        if (!cancelled) setUrls((prev) => ({ ...prev, ...result }));
+      })
+      .catch((error) => {
+        console.error("Failed to resolve signed URLs:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [targets]);
+
+  return useCallback(
+    (bucket: string, path: string): UrlState => {
+      const state = urls[cacheKey(bucket, path)];
+      if (state !== undefined) return state;
+
+      // Cache hit on first render -> no spinner flash
+      return getCachedUrl(bucket, path);
+    },
+    [urls],
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Preview helpers                                                     */
@@ -69,7 +201,6 @@ const SAMPLE_PREVIEW =
 </svg>`);
 
 // Detect the preview type from the file_location extension
-// (the filename keeps its extension on upload: ...-v1.jpg / .pdf)
 function getPreviewKind(file: FileWithCandidate): PreviewKind {
   const name = (file.file_location ?? "").toLowerCase();
 
@@ -78,201 +209,191 @@ function getPreviewKind(file: FileWithCandidate): PreviewKind {
   return "other";
 }
 
-// Resolves signed URLs for the file list: { [fileId]: url }
-function useFilePreviews(files: FileWithCandidate[]) {
-  const [urls, setUrls] = useState<Record<number, string>>({});
+// The original file is only needed for images, or for PDFs that
+// don't have a saved thumbnail yet (so we can render + save one).
+function needsOriginalUrl(file: FileWithCandidate): boolean {
+  if (!file.file_location) return false;
 
-  useEffect(() => {
-    let cancelled = false;
+  const kind = getPreviewKind(file);
 
-    async function resolve() {
-      const withPath = files.filter((file) => file.file_location);
-
-      if (withPath.length === 0) {
-        if (!cancelled) setUrls({});
-        return;
-      }
-
-      const results = await Promise.all(
-        withPath.map(async (file) => {
-          const { data, error } = await supabase.storage
-            .from(getStorageBucket(file.doc_type))
-            .createSignedUrl(file.file_location, 3600);
-
-          if (error) {
-            console.error(`Preview URL failed for ${file.doc_type}:`, error);
-            return null;
-          }
-
-          return { id: file.id, url: data.signedUrl };
-        }),
-      );
-
-      const next: Record<number, string> = {};
-
-      results.forEach((result) => {
-        if (result) next[result.id] = result.url;
-      });
-
-      if (!cancelled) setUrls(next);
-    }
-
-    void resolve().catch((err) => {
-      console.error("Failed to load file previews:", err);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [files]);
-
-  return urls;
+  if (kind === "image") return true;
+  if (kind === "pdf") return !file.thumbnail_location;
+  return false;
 }
-function useStoredThumbnailPreviews(files: FileWithCandidate[]) {
-  const requestKey = files
-    .map((file) => `${file.id}:${file.thumbnail_location ?? ""}`)
-    .join("|");
 
-  const [result, setResult] = useState<{
-    key: string;
-    urls: Record<number, string>;
-  }>({ key: "", urls: {} });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function resolve() {
-      const withThumbnail = files.filter(
-        (file) => file.thumbnail_location,
-      );
-
-      const results = await Promise.all(
-        withThumbnail.map(async (file) => {
-          const { data, error } = await supabase.storage
-            .from("file-thumbnails")
-            .createSignedUrl(file.thumbnail_location!, 3600);
-
-          if (error) {
-            console.error("Thumbnail URL failed:", error);
-            return null;
-          }
-
-          return {
-            id: file.id,
-            url: data.signedUrl,
-          };
-        }),
-      );
-
-      const next: Record<number, string> = {};
-
-      results.forEach((item) => {
-        if (item) next[item.id] = item.url;
-      });
-
-      if (!cancelled) {
-        setResult({ key: requestKey, urls: next });
-      }
-    }
-
-    void resolve().catch((error) => {
-      console.error("Stored thumbnails loading failed:", error);
-
-      if (!cancelled) {
-        setResult({ key: requestKey, urls: {} });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [files, requestKey]);
-
-  const loading = result.key !== requestKey;
-
-  return {
-    urls: loading ? {} : result.urls,
-    loading,
-  };
+function Spinner() {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+    </div>
+  );
 }
+
+function NoPreview() {
+  return (
+    <>
+      <img
+        src={SAMPLE_PREVIEW}
+        alt="No preview available"
+        className="h-full w-full object-cover"
+      />
+
+      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
+        No preview
+      </span>
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* File card                                                           */
 /* ------------------------------------------------------------------ */
 
 function FileCard({
   file,
-  url,
   thumbnailUrl,
-  thumbnailLoading,
+  originalUrl,
 }: {
   file: FileWithCandidate;
-  url?: string;
-  thumbnailUrl?: string;
-  thumbnailLoading: boolean;
+  thumbnailUrl: UrlState;
+  originalUrl: UrlState;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const [fallbackUrl, setFallbackUrl] = useState<UrlState>(undefined);
 
   const kind = getPreviewKind(file);
-  const showReal = Boolean(url) && !failed && kind !== "other";
   const title = file.candidate?.name ?? "Unknown candidate";
+  const alt = `${file.doc_type} - ${title}`;
+  const bucket = getStorageBucket(file.doc_type);
+
+  const hasStoredThumb = Boolean(file.thumbnail_location);
+  const thumbBroken =
+    hasStoredThumb && (thumbnailUrl === null || thumbFailed);
+
+  // Rare case: saved thumbnail is broken -> sign the original on demand
+  // so the PDF can be re-rendered and the thumbnail healed.
+  useEffect(() => {
+    if (kind !== "pdf" || !thumbBroken || !file.file_location) return;
+
+    let cancelled = false;
+    const path = file.file_location;
+
+    void signUrls([{ bucket, path }]).then((result) => {
+      if (!cancelled) setFallbackUrl(result[cacheKey(bucket, path)] ?? null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, thumbBroken, bucket, file.file_location]);
+
   const persistThumbnail = useCallback(
-  (blob: Blob) => savePdfThumbnail(file.id, blob),
-  [file.id],
-);
+    async (blob: Blob) => {
+      if (savedThumbnailIds.has(file.id)) return;
+      savedThumbnailIds.add(file.id);
+
+      try {
+        await savePdfThumbnail(file.id, blob);
+      } catch (error) {
+        savedThumbnailIds.delete(file.id);
+        console.error("Failed to save PDF thumbnail:", error);
+      }
+    },
+    [file.id],
+  );
+
+  // Open the original file: sign only when the user clicks
+  const openOriginal = useCallback(async () => {
+    if (!file.file_location) return;
+
+    // Open the tab synchronously so popup blockers allow it
+    const tab = window.open("about:blank", "_blank");
+
+    try {
+      const result = await signUrls([
+        { bucket, path: file.file_location },
+      ]);
+      const url = result[cacheKey(bucket, file.file_location)];
+
+      if (!url) throw new Error("Could not create file URL.");
+
+      if (tab) tab.location.href = url;
+      else window.open(url, "_blank");
+    } catch (error) {
+      console.error("Failed to open file:", error);
+      tab?.close();
+    }
+  }, [bucket, file.file_location]);
+
+  function renderPreview() {
+    /* ---- Images: need the original ---- */
+    if (kind === "image") {
+      if (originalUrl === undefined) return <Spinner />;
+      if (!originalUrl || imageFailed) return <NoPreview />;
+
+      return (
+        <img
+          src={originalUrl}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      );
+    }
+
+    /* ---- PDFs ---- */
+    if (kind === "pdf") {
+      // 1) Saved thumbnail -> only the JPEG is downloaded
+      if (hasStoredThumb && !thumbBroken) {
+        if (thumbnailUrl === undefined) return <Spinner />;
+
+        return (
+          <img
+            src={thumbnailUrl ?? undefined}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover object-top"
+            onError={() => setThumbFailed(true)}
+          />
+        );
+      }
+
+      // 2) No (working) thumbnail -> render the PDF, then save it
+      const pdfUrl = hasStoredThumb ? fallbackUrl : originalUrl;
+
+      if (pdfUrl === undefined) return <Spinner />;
+      if (!pdfUrl) return <NoPreview />;
+
+      return (
+        <PdfThumbnail
+          url={pdfUrl}
+          cacheKey={file.file_location}
+          title={alt}
+          fit="cover"
+          onGenerated={persistThumbnail}
+        />
+      );
+    }
+
+    return <NoPreview />;
+  }
+
   return (
     <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-        {showReal && kind === "image" ? (
-          <img
-            src={url}
-            alt={`${file.doc_type} - ${title}`}
-            loading="lazy"
-            className="h-full w-full object-cover"
-            onError={() => setFailed(true)}
-          />
-        ) : showReal && kind === "pdf" && url ? (
-  thumbnailLoading ? (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-    </div>
-  ) : thumbnailUrl ? (
-    <img
-      src={thumbnailUrl}
-      alt={`${file.doc_type} - ${title}`}
-      loading="lazy"
-      className="h-full w-full object-cover object-top"
-    />
-  ) : (
-    <PdfThumbnail
-      url={url}
-      cacheKey={file.file_location}
-      title={`${file.doc_type} - ${title}`}
-      fit="cover"
-      onGenerated={persistThumbnail}
-    />
-  )
-        ) : (
-          <>
-            <img
-              src={SAMPLE_PREVIEW}
-              alt="No preview available"
-              className="h-full w-full object-cover"
-            />
+        {renderPreview()}
 
-            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
-              No preview
-            </span>
-          </>
-        )}
-
-        {/* Link that opens the original file */}
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
+        {/* Opens the original file (signed on click) */}
+        {file.file_location && (
+          <button
+            type="button"
             aria-label={`Open ${file.doc_type} for ${title}`}
-            className="absolute inset-0"
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => void openOriginal()}
           />
         )}
 
@@ -437,20 +558,41 @@ export function FilesPage() {
   }, [files, search, docType]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFiles.length / PAGE_SIZE));
-const safePage = Math.min(currentPage, totalPages);
+  const safePage = Math.min(currentPage, totalPages);
 
-const paginatedFiles = useMemo(() => {
-  const start = (safePage - 1) * PAGE_SIZE;
-  return filteredFiles.slice(start, start + PAGE_SIZE);
-}, [filteredFiles, safePage]);
+  const paginatedFiles = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredFiles.slice(start, start + PAGE_SIZE);
+  }, [filteredFiles, safePage]);
 
-// Only resolve URLs for current page files
-const previewUrls = useFilePreviews(paginatedFiles);
+  /* ------------------------ Preview URLs -------------------------- */
 
-const {
-  urls: thumbnailUrls,
-  loading: thumbnailLoading,
-} = useStoredThumbnailPreviews(paginatedFiles);
+  // 1) Saved thumbnails: one batched request for the whole page
+  const thumbnailTargets = useMemo<SignTarget[]>(() => {
+    if (view !== "grid") return [];
+
+    return paginatedFiles
+      .filter((file) => file.thumbnail_location)
+      .map((file) => ({
+        bucket: THUMBNAIL_BUCKET,
+        path: file.thumbnail_location!,
+      }));
+  }, [paginatedFiles, view]);
+
+  // 2) Originals: ONLY images + PDFs without a saved thumbnail
+  const originalTargets = useMemo<SignTarget[]>(() => {
+    if (view !== "grid") return [];
+
+    return paginatedFiles.filter(needsOriginalUrl).map((file) => ({
+      bucket: getStorageBucket(file.doc_type),
+      path: file.file_location,
+    }));
+  }, [paginatedFiles, view]);
+
+  const resolveThumbnail = useSignedUrls(thumbnailTargets);
+  const resolveOriginal = useSignedUrls(originalTargets);
+
+  /* ---------------------- Page state effects ---------------------- */
 
   // Clamp the page only after files have finished loading
   useEffect(() => {
@@ -545,12 +687,25 @@ const {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {paginatedFiles.map((file) => (
                 <FileCard
-  key={file.id}
-  file={file}
-  url={previewUrls[file.id]}
-  thumbnailUrl={thumbnailUrls[file.id]}
-  thumbnailLoading={thumbnailLoading}
-/>
+                  key={file.id}
+                  file={file}
+                  thumbnailUrl={
+                    file.thumbnail_location
+                      ? resolveThumbnail(
+                          THUMBNAIL_BUCKET,
+                          file.thumbnail_location,
+                        )
+                      : undefined
+                  }
+                  originalUrl={
+                    needsOriginalUrl(file)
+                      ? resolveOriginal(
+                          getStorageBucket(file.doc_type),
+                          file.file_location,
+                        )
+                      : undefined
+                  }
+                />
               ))}
             </div>
           ) : (
