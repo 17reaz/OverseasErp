@@ -5,7 +5,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
-
+import { PdfThumbnail } from "./components/pdf-thumbnail";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -140,9 +140,7 @@ function FileCard({
   url?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [thumbnailLoading, setThumbnailLoading] = useState(false);
-
+  
   const kind = getPreviewKind(file);
   const showReal = Boolean(url) && !failed && kind !== "other";
   const title = file.candidate?.name ?? "Unknown candidate";
@@ -189,96 +187,84 @@ function FileCard({
   }, [file.id, url]);
 
   return (
-    <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-        {showReal && kind === "image" ? (
+  <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
+    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+      {showReal && kind === "image" ? (
+        <img
+          src={url}
+          alt={`${file.doc_type} - ${title}`}
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : showReal && kind === "pdf" && url ? (
+        <PdfThumbnail
+          url={url}
+          cacheKey={file.file_location}
+          title={`${file.doc_type} - ${title}`}
+          fit="cover"
+        />
+      ) : (
+        <>
           <img
-            src={url}
-            alt={`${file.doc_type} - ${title}`}
-            loading="lazy"
+            src={SAMPLE_PREVIEW}
+            alt="No preview available"
             className="h-full w-full object-cover"
-            onError={() => setFailed(true)}
           />
-        ) : showReal && kind === "pdf" ? (
-          thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt={`${file.doc_type} - ${title}`}
-              loading="lazy"
-              className="h-full w-full object-cover object-top"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted">
-              <FileText className="size-10 text-muted-foreground" />
 
-              <span className="text-center text-xs text-muted-foreground">
-                {thumbnailLoading
-                  ? "Preparing PDF thumbnail..."
-                  : "PDF thumbnail unavailable"}
-              </span>
-            </div>
-          )
-        ) : (
-          <>
-            <img
-              src={SAMPLE_PREVIEW}
-              alt="No preview available"
-              className="h-full w-full object-cover"
-            />
-
-            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
-              No preview
-            </span>
-          </>
-        )}
-
-        {/* Original file open korar link */}
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Open ${file.doc_type} for ${title}`}
-            className="absolute inset-0"
-          />
-        )}
-
-        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
-          {file.doc_type}
-        </span>
-
-        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
-          v{file.version}
-        </span>
-      </div>
-
-      <div className="space-y-1.5 p-3">
-        <p className="truncate text-sm font-medium" title={title}>
-          {title}
-        </p>
-
-        <p className="truncate font-mono text-xs text-muted-foreground">
-          {file.candidate?.passport_no ?? "-"}
-        </p>
-
-        <div className="flex items-center justify-between pt-1 text-xs">
-          {file.is_active ? (
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700 dark:text-emerald-400">
-              Active
-            </span>
-          ) : (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-              Previous
-            </span>
-          )}
-
-          <span className="text-muted-foreground">
-            {new Date(file.created_at).toLocaleDateString()}
+          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
+            No preview
           </span>
-        </div>
+        </>
+      )}
+
+      {/* Original file open korar link */}
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open ${file.doc_type} for ${title}`}
+          className="absolute inset-0"
+        />
+      )}
+
+      <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
+        {file.doc_type}
+      </span>
+
+      <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
+        v{file.version}
+      </span>
+    </div>
+
+    <div className="space-y-1.5 p-3">
+      <p className="truncate text-sm font-medium" title={title}>
+        {title}
+      </p>
+
+      <p className="truncate font-mono text-xs text-muted-foreground">
+        {file.candidate?.passport_no ?? "-"}
+      </p>
+
+      <div className="flex items-center justify-between pt-1 text-xs">
+        {file.is_active ? (
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700 dark:text-emerald-400">
+            Active
+          </span>
+        ) : (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+            Previous
+          </span>
+        )}
+
+        <span className="text-muted-foreground">
+          {new Date(file.created_at).toLocaleDateString()}
+        </span>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 /* ------------------------------------------------------------------ */
