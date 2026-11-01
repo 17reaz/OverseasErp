@@ -129,7 +129,14 @@ function useFilePreviews(files: FileWithCandidate[]) {
   return urls;
 }
 function useStoredThumbnailPreviews(files: FileWithCandidate[]) {
-  const [urls, setUrls] = useState<Record<number, string>>({});
+  const requestKey = files
+    .map((file) => `${file.id}:${file.thumbnail_location ?? ""}`)
+    .join("|");
+
+  const [result, setResult] = useState<{
+    key: string;
+    urls: Record<number, string>;
+  }>({ key: "", urls: {} });
 
   useEffect(() => {
     let cancelled = false;
@@ -159,23 +166,34 @@ function useStoredThumbnailPreviews(files: FileWithCandidate[]) {
 
       const next: Record<number, string> = {};
 
-      results.forEach((result) => {
-        if (result) next[result.id] = result.url;
+      results.forEach((item) => {
+        if (item) next[item.id] = item.url;
       });
 
-      if (!cancelled) setUrls(next);
+      if (!cancelled) {
+        setResult({ key: requestKey, urls: next });
+      }
     }
 
     void resolve().catch((error) => {
       console.error("Stored thumbnails loading failed:", error);
+
+      if (!cancelled) {
+        setResult({ key: requestKey, urls: {} });
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [files]);
+  }, [files, requestKey]);
 
-  return urls;
+  const loading = result.key !== requestKey;
+
+  return {
+    urls: loading ? {} : result.urls,
+    loading,
+  };
 }
 /* ------------------------------------------------------------------ */
 /* File card                                                           */
@@ -185,10 +203,12 @@ function FileCard({
   file,
   url,
   thumbnailUrl,
+  thumbnailLoading,
 }: {
   file: FileWithCandidate;
   url?: string;
   thumbnailUrl?: string;
+  thumbnailLoading: boolean;
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -211,7 +231,11 @@ function FileCard({
             onError={() => setFailed(true)}
           />
         ) : showReal && kind === "pdf" && url ? (
-  thumbnailUrl ? (
+  thumbnailLoading ? (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+    </div>
+  ) : thumbnailUrl ? (
     <img
       src={thumbnailUrl}
       alt={`${file.doc_type} - ${title}`}
@@ -412,15 +436,21 @@ export function FilesPage() {
     });
   }, [files, search, docType]);
 
-  const previewUrls = useFilePreviews(files);
-const thumbnailUrls = useStoredThumbnailPreviews(files);
   const totalPages = Math.max(1, Math.ceil(filteredFiles.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
+const safePage = Math.min(currentPage, totalPages);
 
-  const paginatedFiles = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filteredFiles.slice(start, start + PAGE_SIZE);
-  }, [filteredFiles, safePage]);
+const paginatedFiles = useMemo(() => {
+  const start = (safePage - 1) * PAGE_SIZE;
+  return filteredFiles.slice(start, start + PAGE_SIZE);
+}, [filteredFiles, safePage]);
+
+// Only resolve URLs for current page files
+const previewUrls = useFilePreviews(paginatedFiles);
+
+const {
+  urls: thumbnailUrls,
+  loading: thumbnailLoading,
+} = useStoredThumbnailPreviews(paginatedFiles);
 
   // Clamp the page only after files have finished loading
   useEffect(() => {
@@ -515,11 +545,12 @@ const thumbnailUrls = useStoredThumbnailPreviews(files);
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {paginatedFiles.map((file) => (
                 <FileCard
-                  key={file.id}
-                  file={file}
-                  url={previewUrls[file.id]}
-                  thumbnailUrl={thumbnailUrls[file.id]}
-                />
+  key={file.id}
+  file={file}
+  url={previewUrls[file.id]}
+  thumbnailUrl={thumbnailUrls[file.id]}
+  thumbnailLoading={thumbnailLoading}
+/>
               ))}
             </div>
           ) : (
