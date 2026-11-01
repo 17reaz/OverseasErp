@@ -5,7 +5,16 @@ import type {
   FileRecord,
 } from "./types";
 
-const BUCKET = "passports";
+const BUCKET_BY_DOC_TYPE: Record<string, string> = {
+  passport: "passports",
+  visa: "visas",
+  mofa: "mofas",
+  bmet: "bmets",
+};
+
+export function getStorageBucket(docType: string) {
+  return BUCKET_BY_DOC_TYPE[docType] ?? "passports";
+}
 
 /**
  * Get the currently active file
@@ -124,12 +133,12 @@ export async function uploadFile({
    */
 
   const { error: uploadError } =
-    await supabase.storage
-      .from(BUCKET)
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+  await supabase.storage
+    .from(getStorageBucket(docType))
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
 
   if (uploadError) {
     throw uploadError;
@@ -184,18 +193,13 @@ export async function uploadFile({
  */
 export async function getFileUrl(
   fileLocation: string,
+  docType: string = "passport",
 ) {
-  const { data, error } =
-    await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(
-        fileLocation,
-        60 * 10,
-      );
+  const { data, error } = await supabase.storage
+    .from(getStorageBucket(docType))
+    .createSignedUrl(fileLocation, 60 * 10);
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   return data.signedUrl;
 }

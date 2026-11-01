@@ -20,7 +20,8 @@ import {
 
 import { FileUploadSheet } from "./file-upload-sheet";
 import { FilesToolbar, type DocTypeFilter } from "./components/files-toolbar";
-import { getAllFiles } from "./files-service";
+// import { getAllFiles } from "./files-service";
+import { getAllFiles, getStorageBucket } from "./files-service";
 
 import type { FileRecord } from "./types";
 
@@ -39,7 +40,6 @@ interface FileWithCandidate extends FileRecord {
 /* Preview helpers                                                     */
 /* ------------------------------------------------------------------ */
 
-const BUCKET = "passports"; // files-service.ts er BUCKET er shathe same
 
 // Preview na thakle ei sample image dekhabe
 const SAMPLE_PREVIEW =
@@ -81,41 +81,44 @@ function useFilePreviews(files: FileWithCandidate[]) {
     let cancelled = false;
 
     async function resolve() {
-      const withPath = files.filter((file) => file.file_location);
+  const withPath = files.filter((file) => file.file_location);
 
-      if (withPath.length === 0) {
-        if (!cancelled) setUrls({});
-        return;
-      }
+  if (withPath.length === 0) {
+    if (!cancelled) setUrls({});
+    return;
+  }
 
+  const results = await Promise.all(
+    withPath.map(async (file) => {
       const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(
-          withPath.map((file) => file.file_location),
-          3600,
-        );
+        .from(getStorageBucket(file.doc_type))
+        .createSignedUrl(file.file_location, 3600);
 
-      if (error || !data) {
-        console.error("createSignedUrls failed:", error);
-        return;
+      if (error) {
+        console.error(
+          `Preview URL failed for ${file.doc_type}:`,
+          error,
+        );
+        return null;
       }
 
-      const next: Record<number, string> = {};
+      return {
+        id: file.id,
+        url: data.signedUrl,
+      };
+    }),
+  );
 
-      data.forEach((row, index) => {
-        if (row.signedUrl && !row.error) {
-          next[withPath[index].id] = row.signedUrl;
-        } else {
-          console.warn(
-            "Signed URL missing for:",
-            withPath[index].file_location,
-            row.error,
-          );
-        }
-      });
+  const next: Record<number, string> = {};
 
-      if (!cancelled) setUrls(next);
+  results.forEach((result) => {
+    if (result) {
+      next[result.id] = result.url;
     }
+  });
+
+  if (!cancelled) setUrls(next);
+}
 
     void resolve().catch((err) => {
       console.error("Failed to load file previews:", err);

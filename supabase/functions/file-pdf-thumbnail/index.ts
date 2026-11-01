@@ -9,7 +9,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SOURCE_BUCKET = "passports";
+function getSourceBucket(docType: string) {
+  const buckets: Record<string, string> = {
+    passport: "passports",
+    visa: "visas",
+    mofa: "mofas",
+    bmet: "bmets",
+  };
+
+  return buckets[docType] ?? "passports";
+}
 const THUMBNAIL_BUCKET = "file-thumbnails";
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
@@ -28,6 +37,7 @@ function respond(data: unknown, status = 200) {
 type FileRow = {
   id: number;
   tenant_id: string;
+  doc_type: string;
   file_location: string;
   thumbnail_location: string | null;
 };
@@ -67,9 +77,9 @@ async function generateThumbnail(
 
     // Download original PDF without modifying it.
     const { data: original, error: downloadError } =
-      await admin.storage
-        .from(SOURCE_BUCKET)
-        .download(file.file_location);
+  await admin.storage
+    .from(getSourceBucket(file.doc_type))
+    .download(file.file_location);
 
     if (downloadError || !original) {
       throw new Error(
@@ -247,7 +257,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: file, error: fileError } = await userClient
         .from("files")
-        .select("id, tenant_id, file_location, thumbnail_location")
+       .select("id, tenant_id, doc_type, file_location, thumbnail_location")
         .eq("id", fileId)
         .eq("tenant_id", tenantId)
         .maybeSingle();
@@ -269,7 +279,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "generate-missing") {
       const { data: files, error: filesError } = await userClient
         .from("files")
-        .select("id, tenant_id, file_location, thumbnail_location")
+       .select("id, tenant_id, doc_type, file_location, thumbnail_location")
         .eq("tenant_id", tenantId)
         .ilike("file_location", "%.pdf")
         .is("thumbnail_location", null)
