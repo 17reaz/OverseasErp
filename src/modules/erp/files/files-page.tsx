@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
+
 import { supabase } from "@/lib/supabase/client";
-import { PdfThumbnail } from "./components/pdf-thumbnail";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
 import {
   Table,
   TableBody,
@@ -18,12 +13,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { FileUploadSheet } from "./file-upload-sheet";
+import { PdfThumbnail } from "./components/pdf-thumbnail";
 import { FilesToolbar, type DocTypeFilter } from "./components/files-toolbar";
-// import { getAllFiles } from "./files-service";
+import { FileUploadSheet } from "./file-upload-sheet";
 import { getAllFiles, getStorageBucket } from "./files-service";
 
 import type { FileRecord } from "./types";
+
+/* ------------------------------------------------------------------ */
+/* Types & constants                                                   */
+/* ------------------------------------------------------------------ */
 
 interface CandidateInfo {
   id: string;
@@ -36,12 +35,16 @@ interface FileWithCandidate extends FileRecord {
   candidate?: CandidateInfo;
 }
 
+type PreviewKind = "image" | "pdf" | "other";
+
+const PAGE_SIZE = 12;
+const FILES_PAGE_KEY = "overseaserp:files-page";
+
 /* ------------------------------------------------------------------ */
 /* Preview helpers                                                     */
 /* ------------------------------------------------------------------ */
 
-
-// Preview na thakle ei sample image dekhabe
+// Shown when a file has no preview
 const SAMPLE_PREVIEW =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(`
@@ -61,10 +64,8 @@ const SAMPLE_PREVIEW =
   <rect x="135" y="224" width="70" height="26" rx="5" fill="#e2e8f0"/>
 </svg>`);
 
-type PreviewKind = "image" | "pdf" | "other";
-
-// file_location er extension theke type bujhi
-// (upload-er somoy filename-e extension thake: ...-v1.jpg / .pdf)
+// Detect the preview type from the file_location extension
+// (the filename keeps its extension on upload: ...-v1.jpg / .pdf)
 function getPreviewKind(file: FileWithCandidate): PreviewKind {
   const name = (file.file_location ?? "").toLowerCase();
 
@@ -73,7 +74,7 @@ function getPreviewKind(file: FileWithCandidate): PreviewKind {
   return "other";
 }
 
-// files list theke signed URL ber kore: { [fileId]: url }
+// Resolves signed URLs for the file list: { [fileId]: url }
 function useFilePreviews(files: FileWithCandidate[]) {
   const [urls, setUrls] = useState<Record<number, string>>({});
 
@@ -81,44 +82,36 @@ function useFilePreviews(files: FileWithCandidate[]) {
     let cancelled = false;
 
     async function resolve() {
-  const withPath = files.filter((file) => file.file_location);
+      const withPath = files.filter((file) => file.file_location);
 
-  if (withPath.length === 0) {
-    if (!cancelled) setUrls({});
-    return;
-  }
-
-  const results = await Promise.all(
-    withPath.map(async (file) => {
-      const { data, error } = await supabase.storage
-        .from(getStorageBucket(file.doc_type))
-        .createSignedUrl(file.file_location, 3600);
-
-      if (error) {
-        console.error(
-          `Preview URL failed for ${file.doc_type}:`,
-          error,
-        );
-        return null;
+      if (withPath.length === 0) {
+        if (!cancelled) setUrls({});
+        return;
       }
 
-      return {
-        id: file.id,
-        url: data.signedUrl,
-      };
-    }),
-  );
+      const results = await Promise.all(
+        withPath.map(async (file) => {
+          const { data, error } = await supabase.storage
+            .from(getStorageBucket(file.doc_type))
+            .createSignedUrl(file.file_location, 3600);
 
-  const next: Record<number, string> = {};
+          if (error) {
+            console.error(`Preview URL failed for ${file.doc_type}:`, error);
+            return null;
+          }
 
-  results.forEach((result) => {
-    if (result) {
-      next[result.id] = result.url;
+          return { id: file.id, url: data.signedUrl };
+        }),
+      );
+
+      const next: Record<number, string> = {};
+
+      results.forEach((result) => {
+        if (result) next[result.id] = result.url;
+      });
+
+      if (!cancelled) setUrls(next);
     }
-  });
-
-  if (!cancelled) setUrls(next);
-}
 
     void resolve().catch((err) => {
       console.error("Failed to load file previews:", err);
@@ -132,6 +125,10 @@ function useFilePreviews(files: FileWithCandidate[]) {
   return urls;
 }
 
+/* ------------------------------------------------------------------ */
+/* File card                                                           */
+/* ------------------------------------------------------------------ */
+
 function FileCard({
   file,
   url,
@@ -140,131 +137,90 @@ function FileCard({
   url?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  
+
   const kind = getPreviewKind(file);
   const showReal = Boolean(url) && !failed && kind !== "other";
   const title = file.candidate?.name ?? "Unknown candidate";
 
-  useEffect(() => {
-    if (getPreviewKind(file) !== "pdf" || !url) return;
-
-    let cancelled = false;
-
-    async function loadThumbnail() {
-      setThumbnailLoading(true);
-
-      try {
-        const { data, error } = await supabase.functions.invoke(
-          "file-pdf-thumbnail",
-          {
-            body: { fileId: file.id },
-          },
-        );
-
-        if (error) {
-          console.error("Thumbnail unavailable:", error.message);
-          return;
-        }
-
-        if (!cancelled && data?.thumbnailUrl) {
-          setThumbnailUrl(data.thumbnailUrl);
-        }
-      } catch (error) {
-        console.error("Failed to load PDF thumbnail:", error);
-      } finally {
-        if (!cancelled) {
-          setThumbnailLoading(false);
-        }
-      }
-    }
-
-    void loadThumbnail();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file.id, url]);
-
   return (
-  <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
-    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-      {showReal && kind === "image" ? (
-        <img
-          src={url}
-          alt={`${file.doc_type} - ${title}`}
-          loading="lazy"
-          className="h-full w-full object-cover"
-          onError={() => setFailed(true)}
-        />
-      ) : showReal && kind === "pdf" && url ? (
-        <PdfThumbnail
-          url={url}
-          cacheKey={file.file_location}
-          title={`${file.doc_type} - ${title}`}
-          fit="cover"
-        />
-      ) : (
-        <>
+    <div className="group overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md">
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+        {showReal && kind === "image" ? (
           <img
-            src={SAMPLE_PREVIEW}
-            alt="No preview available"
+            src={url}
+            alt={`${file.doc_type} - ${title}`}
+            loading="lazy"
             className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
           />
-
-          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
-            No preview
-          </span>
-        </>
-      )}
-
-      {/* Original file open korar link */}
-      {url && (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Open ${file.doc_type} for ${title}`}
-          className="absolute inset-0"
-        />
-      )}
-
-      <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
-        {file.doc_type}
-      </span>
-
-      <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
-        v{file.version}
-      </span>
-    </div>
-
-    <div className="space-y-1.5 p-3">
-      <p className="truncate text-sm font-medium" title={title}>
-        {title}
-      </p>
-
-      <p className="truncate font-mono text-xs text-muted-foreground">
-        {file.candidate?.passport_no ?? "-"}
-      </p>
-
-      <div className="flex items-center justify-between pt-1 text-xs">
-        {file.is_active ? (
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700 dark:text-emerald-400">
-            Active
-          </span>
+        ) : showReal && kind === "pdf" && url ? (
+          <PdfThumbnail
+            url={url}
+            cacheKey={file.file_location}
+            title={`${file.doc_type} - ${title}`}
+            fit="cover"
+          />
         ) : (
-          <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-            Previous
-          </span>
+          <>
+            <img
+              src={SAMPLE_PREVIEW}
+              alt="No preview available"
+              className="h-full w-full object-cover"
+            />
+
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-sm">
+              No preview
+            </span>
+          </>
         )}
 
-        <span className="text-muted-foreground">
-          {new Date(file.created_at).toLocaleDateString()}
+        {/* Link that opens the original file */}
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open ${file.doc_type} for ${title}`}
+            className="absolute inset-0"
+          />
+        )}
+
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-background/90 px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm">
+          {file.doc_type}
+        </span>
+
+        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium shadow-sm">
+          v{file.version}
         </span>
       </div>
+
+      <div className="space-y-1.5 p-3">
+        <p className="truncate text-sm font-medium" title={title}>
+          {title}
+        </p>
+
+        <p className="truncate font-mono text-xs text-muted-foreground">
+          {file.candidate?.passport_no ?? "-"}
+        </p>
+
+        <div className="flex items-center justify-between pt-1 text-xs">
+          {file.is_active ? (
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-700 dark:text-emerald-400">
+              Active
+            </span>
+          ) : (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+              Previous
+            </span>
+          )}
+
+          <span className="text-muted-foreground">
+            {new Date(file.created_at).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -286,13 +242,15 @@ export function FilesPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState("");
 
-const PAGE_SIZE = 12;
-const FILES_PAGE_KEY = "overseaserp:files-page";
+  const [currentPage, setCurrentPage] = useState(() => {
+    const savedPage = Number(localStorage.getItem(FILES_PAGE_KEY));
+    return Number.isInteger(savedPage) && savedPage > 0 ? savedPage : 1;
+  });
 
-const [currentPage, setCurrentPage] = useState(() => {
-  const savedPage = Number(localStorage.getItem(FILES_PAGE_KEY));
-  return Number.isInteger(savedPage) && savedPage > 0 ? savedPage : 1;
-});
+  const hasMountedFilters = useRef(false);
+
+  /* ----------------------------- Data ----------------------------- */
+
   async function loadTenant() {
     const {
       data: { user },
@@ -309,8 +267,9 @@ const [currentPage, setCurrentPage] = useState(() => {
       .single();
 
     if (profileError) throw profileError;
-    if (!profile?.tenant_id)
+    if (!profile?.tenant_id) {
       throw new Error("No tenant is assigned to this user.");
+    }
 
     return profile.tenant_id as string;
   }
@@ -368,6 +327,8 @@ const [currentPage, setCurrentPage] = useState(() => {
     }
   }
 
+  /* ------------------- Filtering & pagination --------------------- */
+
   const filteredFiles = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -385,49 +346,47 @@ const [currentPage, setCurrentPage] = useState(() => {
   }, [files, search, docType]);
 
   const previewUrls = useFilePreviews(files);
-  const totalPages = Math.max(
-  1,
-  Math.ceil(filteredFiles.length / PAGE_SIZE),
-);
 
-const safePage = Math.min(currentPage, totalPages);
+  const totalPages = Math.max(1, Math.ceil(filteredFiles.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
 
-const paginatedFiles = useMemo(() => {
-  const start = (safePage - 1) * PAGE_SIZE;
+  const paginatedFiles = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredFiles.slice(start, start + PAGE_SIZE);
+  }, [filteredFiles, safePage]);
 
-  return filteredFiles.slice(start, start + PAGE_SIZE);
-}, [filteredFiles, safePage]);
-const hasMountedFilters = useRef(false);
+  // Clamp the page only after files have finished loading
+  useEffect(() => {
+    if (loading) return;
 
-// Files load শেষ হওয়ার পরই page clamp করো
-useEffect(() => {
-  if (loading) return;
+    if (currentPage !== safePage) {
+      setCurrentPage(safePage);
+    }
+  }, [loading, currentPage, safePage]);
 
-  if (currentPage !== safePage) {
-    setCurrentPage(safePage);
-  }
-}, [loading, currentPage, safePage]);
+  // Save the current page once files have loaded
+  useEffect(() => {
+    if (loading) return;
 
-// Files load শেষ হলে current page save করো
-useEffect(() => {
-  if (loading) return;
+    localStorage.setItem(FILES_PAGE_KEY, String(safePage));
+  }, [loading, safePage]);
 
-  localStorage.setItem(FILES_PAGE_KEY, String(safePage));
-}, [loading, safePage]);
+  // Reset to page 1 when filters change (but not on the first render,
+  // so the saved page is kept)
+  useEffect(() => {
+    if (!hasMountedFilters.current) {
+      hasMountedFilters.current = true;
+      return;
+    }
 
-// প্রথম render-এ saved page reset করবে না
-useEffect(() => {
-  if (!hasMountedFilters.current) {
-    hasMountedFilters.current = true;
-    return;
-  }
+    setCurrentPage(1);
+  }, [search, docType]);
 
-  setCurrentPage(1);
-}, [search, docType]);
+  /* ----------------------------- Render --------------------------- */
 
- return (
-  <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
-      {/* Sticky header: scroll korleo upore thakbe */}
+  return (
+    <div className="flex h-[calc(100vh-120px)] min-h-[500px] flex-col gap-4">
+      {/* Sticky header: stays on top while scrolling */}
       <div className="sticky top-0 z-20 -mx-4 space-y-4 bg-background/95 px-4 pb-4 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <FilesToolbar
           search={search}
@@ -435,7 +394,7 @@ useEffect(() => {
           docType={docType}
           onDocTypeChange={setDocType}
           view={view}
-onViewChange={setView}
+          onViewChange={setView}
           onRefresh={() => {
             setRefreshing(true);
             void initialize();
@@ -453,12 +412,10 @@ onViewChange={setView}
       )}
 
       <Card className="min-h-0 flex-1 overflow-y-auto">
-  <CardContent className="pt-6">
+        <CardContent className="pt-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <p className="text-sm text-muted-foreground">
-                Loading files...
-              </p>
+              <p className="text-sm text-muted-foreground">Loading files...</p>
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
@@ -521,9 +478,7 @@ onViewChange={setView}
                           {file.candidate?.name ?? "-"}
                         </p>
                       </TableCell>
-                      <TableCell>
-                        {file.candidate?.passport_no ?? "-"}
-                      </TableCell>
+                      <TableCell>{file.candidate?.passport_no ?? "-"}</TableCell>
                       <TableCell className="capitalize">
                         {file.doc_type}
                       </TableCell>
@@ -546,55 +501,58 @@ onViewChange={setView}
               </Table>
             </div>
           )}
+
           {filteredFiles.length > 0 && (
-  <div className="mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-    <p className="text-sm text-muted-foreground">
-      Showing{" "}
-      <span className="font-medium text-foreground">
-        {(safePage - 1) * PAGE_SIZE + 1}
-      </span>
-      {" - "}
-      <span className="font-medium text-foreground">
-        {Math.min(safePage * PAGE_SIZE, filteredFiles.length)}
-      </span>
-      {" of "}
-      <span className="font-medium text-foreground">
-        {filteredFiles.length}
-      </span>
-      {" files"}
-    </p>
+            <div className="mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing{" "}
+                <span className="font-medium text-foreground">
+                  {(safePage - 1) * PAGE_SIZE + 1}
+                </span>
+                {" - "}
+                <span className="font-medium text-foreground">
+                  {Math.min(safePage * PAGE_SIZE, filteredFiles.length)}
+                </span>
+                {" of "}
+                <span className="font-medium text-foreground">
+                  {filteredFiles.length}
+                </span>
+                {" files"}
+              </p>
 
-    <div className="flex items-center justify-between gap-2 sm:justify-end">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={safePage <= 1}
-        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-      >
-        <ChevronLeft className="mr-1 size-4" />
-        Previous
-      </Button>
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage <= 1}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.max(1, page - 1))
+                  }
+                >
+                  <ChevronLeft className="mr-1 size-4" />
+                  Previous
+                </Button>
 
-      <span className="min-w-[90px] text-center text-sm font-medium">
-        Page {safePage} of {totalPages}
-      </span>
+                <span className="min-w-[90px] text-center text-sm font-medium">
+                  Page {safePage} of {totalPages}
+                </span>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={safePage >= totalPages}
-        onClick={() =>
-          setCurrentPage((page) => Math.min(totalPages, page + 1))
-        }
-      >
-        Next
-        <ChevronRight className="ml-1 size-4" />
-      </Button>
-    </div>
-  </div>
-)}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage >= totalPages}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.min(totalPages, page + 1))
+                  }
+                >
+                  Next
+                  <ChevronRight className="ml-1 size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
