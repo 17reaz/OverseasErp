@@ -24,7 +24,13 @@ function getStartOfMonth(
     1,
   );
 }
-
+function toDateKey(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
 function getDaysSince(
   dateString: string,
 ): number {
@@ -92,13 +98,12 @@ export async function getDashboardSupportData(
     recentCandidatesResult,
   ] = await Promise.all([
     supabase
-      .from("candidates")
-      .select("created_at")
-      .eq("is_deleted", false)
-      .gte(
-        "created_at",
-        sixMonthsAgo.toISOString(),
-      ),
+  .from("candidates")
+  .select("received_date")
+  .eq("is_deleted", false)
+  .not("received_date", "is", null)
+  .gte("received_date", toDateKey(sixMonthsAgo))
+  .lte("received_date", toDateKey(now)),
 
     supabase
       .from("candidates")
@@ -195,31 +200,21 @@ export async function getDashboardSupportData(
     );
   }
 
-  for (
-    const candidate of
-    trendCandidatesResult.data ??
-    []
-  ) {
-    const date =
-      new Date(
-        candidate.created_at,
-      );
+for (
+  const candidate of
+  trendCandidatesResult.data ?? []
+) {
+  if (!candidate.received_date) continue;
 
-    const key =
-      `${date.getFullYear()}-${String(
-        date.getMonth() + 1,
-      ).padStart(2, "0")}`;
+  const key = candidate.received_date.slice(0, 7);
 
-    if (
-      trendMap.has(key)
-    ) {
-      trendMap.set(
-        key,
-        (trendMap.get(key) ??
-          0) + 1,
-      );
-    }
+  if (trendMap.has(key)) {
+    trendMap.set(
+      key,
+      (trendMap.get(key) ?? 0) + 1,
+    );
   }
+}
 
   const trend =
     trendMeta.map(
