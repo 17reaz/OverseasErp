@@ -102,7 +102,7 @@ export const CANDIDATE_STATUS_DESCRIPTIONS: Record<
   string
 > = {
 
-  active:
+  processing:
     "Candidate is currently being processed.",
 
   hold:

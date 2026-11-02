@@ -354,7 +354,7 @@ function FileCard({
 
   return (
     <img
-      src={thumbnailUrl}
+      src={thumbnailUrl ?? undefined}
       alt={alt}
       loading="eager"
       decoding="async"

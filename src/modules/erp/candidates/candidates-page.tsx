@@ -325,7 +325,7 @@ export function CandidatesPage() {
       const status = getDisplayStatus(candidate);
 
       switch (status) {
-        case "active":
+        case "processing":
           active++;
           break;
 
