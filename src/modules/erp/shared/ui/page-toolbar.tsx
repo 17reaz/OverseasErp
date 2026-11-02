@@ -45,7 +45,7 @@ function SearchField({
   placeholder: string;
 }) {
   return (
-    <div className="relative min-w-24 flex-1 sm:min-w-40">
+    <div className="relative min-w-32 flex-1 sm:min-w-48">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
       <Input
@@ -86,6 +86,8 @@ function SearchField({
  *   or drawn over each other.
  * - If a screen is still too narrow for everything, the toolbar scrolls
  *   sideways instead of clipping or overlapping anything.
+ * - The container has 4px padding (offset by a -4px margin) so focus rings
+ *   (ring-2 + ring-offset-2) are not clipped by the scroll container.
  */
 export function PageToolbar({
   search,
@@ -106,7 +108,7 @@ export function PageToolbar({
   return (
     <div
       className={cn(
-        "-mx-0.5 -my-0.5 flex w-full min-w-0 shrink-0 flex-nowrap items-center gap-2 overflow-x-auto px-0.5 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "-m-1 flex w-[calc(100%+0.5rem)] min-w-0 shrink-0 flex-nowrap items-center gap-2 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
@@ -143,7 +145,7 @@ export function PageToolbar({
             type="button"
             disabled={createDisabled}
             onClick={onCreate}
-            className="h-9 shrink-0 px-3 sm:px-4"
+            className="h-9 shrink-0 px-3 py-0 sm:px-4"
             aria-label={createLabel}
             title={createLabel}
           >
