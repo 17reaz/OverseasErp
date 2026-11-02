@@ -281,7 +281,6 @@ function DeliveryDatePicker({
           mode="single"
           selected={selectedDate}
           onSelect={handleSelect}
-          initialFocus
         />
 
         {value && (

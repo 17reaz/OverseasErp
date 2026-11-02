@@ -35,6 +35,7 @@ import {
   getApprovedMofasWithoutVisa,
   getVisas,
   updateVisa,
+  updateVisaDeliveryDate,
   type Visa,
   type VisaEligibleMofa,
 } from "./visa-service";
@@ -137,6 +138,28 @@ const [bmetFormOpen, setBmetFormOpen] =
   setFlightVisa(record);
   setFlightFormOpen(true);
 }
+const handleDeliveryDateChange = async (
+  record: Visa,
+  date: string | null,
+) => {
+  try {
+    const updated = await updateVisaDeliveryDate(record.id, date);
+
+    setRecords((current) =>
+      current.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    );
+  } catch (error) {
+    window.alert(
+      error instanceof Error
+        ? error.message
+        : "Failed to update delivery date.",
+    );
+
+    throw error;
+  }
+};
 async function handleConnectManpower(
   record: BmetRecord,
 ) {
@@ -615,25 +638,23 @@ async function handlePreviewVisaCopy(record: Visa) {
           />
         ) : (
           <VisaTable
-            records={filteredRecords}
-            candidates={candidates}
-            agencies={agencies}
-            loading={loading}
-            onPreviewCopy={handlePreviewVisaCopy}
-            bmetRecords={bmetRecords}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusChange={handleStatusChange}
-            onUploadCopy={handleUploadVisaCopy}
-            onOpenCopy={handleViewVisaCopy}
-            onCreateFlight={handleCreateFlight}
-            onDownloadCopy={handleDownloadVisaCopy}
-            records={showDeliveryList ? deliveryRecords : filteredRecords}
-            onManageManpower={(record) =>
-  setManpowerVisa(record)
-}
-            visaCopyCandidateIds={visaCopyCandidateIds}
-          />
+  records={showDeliveryList ? deliveryRecords : filteredRecords}
+  candidates={candidates}
+  agencies={agencies}
+  loading={loading}
+  onDeliveryDateChange={handleDeliveryDateChange}
+  onPreviewCopy={handlePreviewVisaCopy}
+  bmetRecords={bmetRecords}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  onStatusChange={handleStatusChange}
+  onUploadCopy={handleUploadVisaCopy}
+  onOpenCopy={handleViewVisaCopy}
+  onCreateFlight={handleCreateFlight}
+  onDownloadCopy={handleDownloadVisaCopy}
+  onManageManpower={(record) => setManpowerVisa(record)}
+  visaCopyCandidateIds={visaCopyCandidateIds}
+/>
         )}
       </div>
 <Dialog
