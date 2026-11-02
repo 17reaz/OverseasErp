@@ -10,7 +10,6 @@ import {
   Loader2,
   RefreshCw,
   PlaneTakeoff,
-  CalendarDays,
 } from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
 import { RowActions } from "../../shared/ui/actions/row-actions";
@@ -267,7 +266,6 @@ function DeliveryDatePicker({
           className="h-8 px-2 font-normal"
           disabled={saving}
         >
-          <CalendarDays className="mr-2 h-4 w-4" />
           {saving
             ? "Saving..."
             : value

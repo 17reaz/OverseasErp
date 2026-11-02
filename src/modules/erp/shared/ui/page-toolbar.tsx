@@ -60,7 +60,10 @@ function SearchField({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+          // NOTE: no transform-based centering here. Button's pressed state
+          // applies its own transform, which would shift the button on
+          // mousedown and cancel the click.
+          className="absolute inset-y-0 right-1 my-auto h-7 w-7"
           onClick={() => onChange("")}
           aria-label="Clear search"
         >
