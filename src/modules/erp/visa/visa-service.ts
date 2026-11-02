@@ -12,6 +12,7 @@ export interface Visa {
   visa_no?: string | null;
   visa_date: string | null;
   expiry_date: string | null;
+  delivery_date: string | null;
   visa_type: string;
   status: string;
   agency_id: string | null;
@@ -26,6 +27,7 @@ export type VisaInput = {
   visa_no?: string | null;
   visa_date?: string | null;
   expiry_date?: string | null;
+  delivery_date?: string | null;
   visa_type?: string;
   status?: string;
   agency_id?: string | null;
@@ -359,4 +361,21 @@ export async function deleteVisa(id: string): Promise<void> {
   if (error) {
     throw new Error(error.message);
   }
+}
+export async function updateVisaDeliveryDate(
+  id: string,
+  deliveryDate: string | null,
+): Promise<Visa> {
+  const { data, error } = await supabase
+    .from("visas")
+    .update({ delivery_date: deliveryDate })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
 }

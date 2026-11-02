@@ -73,7 +73,7 @@ const [previewError, setPreviewError] = useState("");
   const [pendingMofas, setPendingMofas] =
     useState<VisaEligibleMofa[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
-
+const [showDeliveryList, setShowDeliveryList] = useState(false);
   const [prefill, setPrefill] = useState<{
     candidate_id: string;
     mofa_id: string;
@@ -268,7 +268,16 @@ function handleManpowerFormSuccess(
       );
     });
   }, [records, candidates, search]);
-
+const deliveryRecords = useMemo(() => {
+  return filteredRecords
+    .filter((record) => record.delivery_date)
+    .sort((a, b) => {
+      return (
+        new Date(`${a.delivery_date}T00:00:00`).getTime() -
+        new Date(`${b.delivery_date}T00:00:00`).getTime()
+      );
+    });
+}, [filteredRecords]);
   const filteredPendingMofas = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -479,6 +488,8 @@ async function handlePreviewVisaCopy(record: Visa) {
         view={view}
         onViewChange={setView}
         displayView={displayView}
+        showDeliveryList={showDeliveryList}
+        onDeliveryListChange={setShowDeliveryList}
         onDisplayViewChange={setDisplayView}
       />
         <Dialog
@@ -594,7 +605,7 @@ async function handlePreviewVisaCopy(record: Visa) {
             loading={pendingLoading}
             onAddVisa={handleAddVisa}
           />
-        ) : displayView === "grid" ? (
+        ) : displayView === "grid" && !showDeliveryList ? (
           <VisaGrid
             records={filteredRecords}
             candidates={candidates}
@@ -617,6 +628,7 @@ async function handlePreviewVisaCopy(record: Visa) {
             onOpenCopy={handleViewVisaCopy}
             onCreateFlight={handleCreateFlight}
             onDownloadCopy={handleDownloadVisaCopy}
+            records={showDeliveryList ? deliveryRecords : filteredRecords}
             onManageManpower={(record) =>
   setManpowerVisa(record)
 }

@@ -10,6 +10,7 @@ import {
   Loader2,
   RefreshCw,
   PlaneTakeoff,
+  CalendarDays,
 } from "lucide-react";
 import type { BmetRecord } from "../../bmet/bmet-service";
 import { RowActions } from "../../shared/ui/actions/row-actions";
@@ -20,6 +21,8 @@ import {
 } from "../../shared/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,10 @@ interface VisaTableProps {
   page?: number;
   pageSize?: number;
   total?: number;
+  onDeliveryDateChange: (
+  record: Visa,
+  date: string | null,
+) => Promise<void>;
   visaCopyCandidateIds: ReadonlySet<string>;
   onPageChange?: (page: number) => void;
   onStatusChange: (record: Visa, status: string) => Promise<void>;
@@ -208,7 +215,93 @@ interface VisaActionsProps {
   onManageManpower: (record: Visa) => void;
   onCreateFlight: (record: Visa) => void;
 }
+function DeliveryDatePicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (date: string | null) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  const selectedDate = value
+    ? new Date(`${value}T00:00:00`)
+    : undefined;
+
+  async function handleSelect(date?: Date) {
+    if (!date) return;
+
+    const formatted = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    setSaving(true);
+    try {
+      await onChange(formatted);
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove() {
+    setSaving(true);
+    try {
+      await onChange(null);
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 font-normal"
+          disabled={saving}
+        >
+          <CalendarDays className="mr-2 h-4 w-4" />
+          {saving
+            ? "Saving..."
+            : value
+              ? formatDate(value)
+              : "Set Date"}
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={handleSelect}
+          initialFocus
+        />
+
+        {value && (
+          <div className="border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              disabled={saving}
+              onClick={handleRemove}
+            >
+              Remove Date
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 function VisaActions({
   record,
   hasStoredCopy,
@@ -438,6 +531,7 @@ export function VisaTable({
   onPreviewCopy,
   onDownloadCopy,
   onManageManpower,
+  onDeliveryDateChange,
     onCreateFlight,
 }: VisaTableProps) {
   const getCandidate = (id: string) =>
@@ -498,6 +592,7 @@ export function VisaTable({
       className: "whitespace-nowrap",
       cell: (record) => formatDate(record.visa_date),
     },
+
     {
       key: "expiry_date",
       header: "Expiry Date",
@@ -527,6 +622,17 @@ export function VisaTable({
       hideOnMobile: true,
       cell: (record) => getAgency(record.agency_id)?.name ?? "—",
     },
+    {
+  key: "delivery_date",
+  header: "Delivery Date",
+  className: "whitespace-nowrap",
+  cell: (record) => (
+    <DeliveryDatePicker
+      value={record.delivery_date}
+      onChange={(date) => onDeliveryDateChange(record, date)}
+    />
+  ),
+},
     {
       key: "status",
       header: "Status",

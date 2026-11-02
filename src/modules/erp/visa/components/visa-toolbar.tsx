@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   FileCheck2,
   Grid2X2,
   List,
@@ -14,6 +15,8 @@ export type VisaDisplayView = "list" | "grid";
 interface VisaToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
+  showDeliveryList?: boolean;
+  onDeliveryListChange?: (show: boolean) => void;
   onRefresh: () => void;
   onCreate: () => void;
   refreshing?: boolean;
@@ -32,6 +35,8 @@ export function VisaToolbar({
   onSearchChange,
   onRefresh,
   onCreate,
+  showDeliveryList = false,
+  onDeliveryListChange,
   refreshing = false,
 
   view = "all",
@@ -95,7 +100,16 @@ export function VisaToolbar({
           </span>
         </Button>
       </div>
-
+      {/* DELIVERY LIST */}
+<Button
+  type="button"
+  variant={showDeliveryList ? "secondary" : "outline"}
+  className="h-9 shrink-0"
+  onClick={() => onDeliveryListChange?.(!showDeliveryList)}
+>
+  <CalendarDays className="mr-2 h-4 w-4" />
+  <span className="hidden sm:inline">Delivery List</span>
+</Button>
       {/* ===================================================
           VISAABLE — standalone toggle
           =================================================== */}
