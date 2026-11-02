@@ -56,6 +56,7 @@ interface VisaTableProps {
   page?: number;
   pageSize?: number;
   total?: number;
+  hideManpower?: boolean;
   onDeliveryDateChange: (
   record: Visa,
   date: string | null,
@@ -515,6 +516,7 @@ export function VisaTable({
   agencies,
   loading = false,
   bmetRecords,
+  hideManpower = false,
   page,
   pageSize = 10,
   total,
@@ -597,22 +599,26 @@ export function VisaTable({
       hideOnMobile: true,
       cell: (record) => formatDate(record.expiry_date),
     },
-    {
-      key: "manpower",
-      header: "Manpower",
-      hideOnMobile: true,
-      cell: (record) => {
-        const { label, className } = getManpowerDisplay(record);
+    ...(!hideManpower
+  ? [
+      {
+        key: "manpower",
+        header: "Manpower",
+        hideOnMobile: true,
+        cell: (record: Visa) => {
+          const { label, className } = getManpowerDisplay(record);
 
-        return (
-          <span
-            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
-          >
-            {label}
-          </span>
-        );
+          return (
+            <span
+              className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
+            >
+              {label}
+            </span>
+          );
+        },
       },
-    },
+    ]
+  : []),
     {
       key: "agency",
       header: "Agency",

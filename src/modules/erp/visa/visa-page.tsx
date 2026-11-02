@@ -654,6 +654,7 @@ async function handlePreviewVisaCopy(record: Visa) {
   onDownloadCopy={handleDownloadVisaCopy}
   onManageManpower={(record) => setManpowerVisa(record)}
   visaCopyCandidateIds={visaCopyCandidateIds}
+  hideManpower={showDeliveryList}
 />
         )}
       </div>
