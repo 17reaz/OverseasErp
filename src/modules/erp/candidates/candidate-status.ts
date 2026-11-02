@@ -47,7 +47,7 @@ export type CandidateFinalStatus =
 
 export const CANDIDATE_DISPLAY_STATUS = {
 
-  ACTIVE: "active",
+  PROCESSING: "processing",
 
   HOLD: "hold",
 
@@ -78,7 +78,7 @@ export const CANDIDATE_STATUS_LABELS: Record<
   string
 > = {
 
-  active: "Active",
+  processing: "PROCESSING",
 
   hold: "Hold",
 

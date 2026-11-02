@@ -92,8 +92,9 @@ const defaultSort: CandidateSortState = {
 };
 
 const STATUS_OPTIONS: Option[] = [
-  { value: "all", label: "All" },
-  { value: "active", label: "Active" },
+ { value: "all", label: "All" },
+  { value: "processing", label: "Processing" },
+  { value: "hold", label: "Hold" },
   { value: "returned", label: "Returned" },
   { value: "cancelled", label: "Cancelled" },
   { value: "complete", label: "Complete" },

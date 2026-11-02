@@ -167,7 +167,7 @@ export function getCandidateOverallStatus(
     context.moduleStatus === "processing"
   ) {
 
-    return CANDIDATE_DISPLAY_STATUS.ACTIVE;
+    return CANDIDATE_DISPLAY_STATUS.PROCESSING;
 
   }
 
@@ -181,7 +181,7 @@ export function getCandidateOverallStatus(
      → Active
   ------------------------------------------------------- */
 
-  return CANDIDATE_DISPLAY_STATUS.ACTIVE;
+  return CANDIDATE_DISPLAY_STATUS.PROCESSING;
 
 }
 

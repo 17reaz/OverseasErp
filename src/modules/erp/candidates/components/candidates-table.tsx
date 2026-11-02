@@ -225,7 +225,13 @@ function StatusCell({ candidate }: { candidate: Candidate }) {
     return <Badge variant="outline">Complete</Badge>;
   }
 
-  return <Badge variant="default">Active</Badge>;
+  if (status === "hold") {
+  return <Badge variant="secondary">Hold</Badge>;
+}
+
+if (status === "processing") {
+  return <Badge variant="default">Processing</Badge>;
+}
 }
 
 /* -------------------------------------------------------------------------- */
