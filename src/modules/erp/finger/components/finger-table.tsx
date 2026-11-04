@@ -19,13 +19,14 @@ import { DataTable, type DataTableColumn } from "../../shared/ui/data-table";
 // =====================================================
 // TYPES
 // =====================================================
-const TABLE_CLASS =
-  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
+
 interface CandidateInfo {
   id: string;
   name: string;
   passport_no: string;
 }
+
+type CandidateMap = Map<string, CandidateInfo>;
 
 interface FingerTableProps {
   records: FingerRecord[];
@@ -41,12 +42,22 @@ interface FingerTableProps {
   onDelete: (record: FingerRecord) => void;
 }
 
+interface BuildColumnsOptions {
+  candidateMap: CandidateMap;
+  onEdit: (record: FingerRecord) => void;
+  onDelete: (record: FingerRecord) => void;
+}
+
 // =====================================================
 // CONSTANTS
 // =====================================================
 
+const TABLE_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background";
+
 const SUCCESS_CLASS =
   "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+
 const MUTED_CLASS =
   "border-muted-foreground/30 bg-muted text-muted-foreground";
 
@@ -82,9 +93,52 @@ function getStatusClassName(status: FingerStatus) {
   return STATUS_CLASS[status] ?? STATUS_CLASS.pending;
 }
 
+function getFingerTypeLabel(type: FingerRecord["finger_type"]) {
+  return type === "fresh" ? "Fresh" : "Existing";
+}
+
 // =====================================================
-// ROW ACTIONS
+// CELLS
 // =====================================================
+
+function CandidateCell({
+  record,
+  candidate,
+}: {
+  record: FingerRecord;
+  candidate?: CandidateInfo;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-medium">
+        {candidate?.name ?? "Unknown candidate"}
+      </span>
+
+      <Badge
+        variant="outline"
+        className={record.is_current ? SUCCESS_CLASS : MUTED_CLASS}
+      >
+        V{record.version}
+      </Badge>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: FingerStatus }) {
+  return (
+    <Badge variant="outline" className={getStatusClassName(status)}>
+      {getStatusLabel(status)}
+    </Badge>
+  );
+}
+
+function RemarksCell({ remarks }: { remarks: string | null }) {
+  return (
+    <span className="block truncate" title={remarks ?? undefined}>
+      {remarks || "—"}
+    </span>
+  );
+}
 
 function RowActions({
   onEdit,
@@ -129,27 +183,15 @@ function RowActions({
 }
 
 // =====================================================
-// COMPONENT
+// COLUMNS
 // =====================================================
 
-export function FingerTable({
-  records,
-  candidates,
-  loading = false,
-
-  page,
-  pageSize = 10,
-  total,
-  onPageChange,
-
+function buildColumns({
+  candidateMap,
   onEdit,
   onDelete,
-}: FingerTableProps) {
-  const candidateMap = new Map(
-    candidates.map((candidate) => [candidate.id, candidate]),
-  );
-
-  const columns: DataTableColumn<FingerRecord>[] = [
+}: BuildColumnsOptions): DataTableColumn<FingerRecord>[] {
+  return [
     {
       key: "sl",
       header: "SL",
@@ -160,19 +202,10 @@ export function FingerTable({
       key: "candidate",
       header: "Candidate",
       cell: (record) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium">
-            {candidateMap.get(record.candidate_id)?.name ??
-              "Unknown candidate"}
-          </span>
-
-          <Badge
-            variant="outline"
-            className={record.is_current ? SUCCESS_CLASS : MUTED_CLASS}
-          >
-            V{record.version}
-          </Badge>
-        </div>
+        <CandidateCell
+          record={record}
+          candidate={candidateMap.get(record.candidate_id)}
+        />
       ),
     },
     {
@@ -195,30 +228,20 @@ export function FingerTable({
       header: "Type",
       hideOnMobile: true,
       cell: (record) => (
-        <Badge variant="outline">
-          {record.finger_type === "fresh" ? "Fresh" : "Existing"}
-        </Badge>
+        <Badge variant="outline">{getFingerTypeLabel(record.finger_type)}</Badge>
       ),
     },
     {
       key: "status",
       header: "Status",
-      cell: (record) => (
-        <Badge variant="outline" className={getStatusClassName(record.status)}>
-          {getStatusLabel(record.status)}
-        </Badge>
-      ),
+      cell: (record) => <StatusBadge status={record.status} />,
     },
     {
       key: "remarks",
       header: "Remarks",
       className: "max-w-[240px]",
       hideOnMobile: true,
-      cell: (record) => (
-        <span className="block truncate" title={record.remarks ?? undefined}>
-          {record.remarks || "—"}
-        </span>
-      ),
+      cell: (record) => <RemarksCell remarks={record.remarks} />,
     },
     {
       key: "action",
@@ -232,6 +255,33 @@ export function FingerTable({
       ),
     },
   ];
+}
+
+// =====================================================
+// COMPONENT
+// =====================================================
+
+export function FingerTable({
+  records,
+  candidates,
+  loading = false,
+
+  page,
+  pageSize = 10,
+  total,
+  onPageChange,
+
+  onEdit,
+  onDelete,
+}: FingerTableProps) {
+  const candidateMap: CandidateMap = new Map(
+    candidates.map((candidate) => [candidate.id, candidate]),
+  );
+
+  const columns = buildColumns({ candidateMap, onEdit, onDelete });
+
+  const serverPagination =
+    typeof total === "number" && total !== records.length;
 
   return (
     <DataTable
@@ -244,7 +294,7 @@ export function FingerTable({
       page={page}
       onPageChange={onPageChange}
       total={total}
-      serverPagination={typeof total === "number" && total !== records.length}
+      serverPagination={serverPagination}
       className={TABLE_CLASS}
     />
   );
