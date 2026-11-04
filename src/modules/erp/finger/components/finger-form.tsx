@@ -55,6 +55,7 @@ interface FingerFormProps {
   onOpenChange: (open: boolean) => void;
   record?: FingerRecord | null;
   candidates: CandidateOption[];
+  initialCandidateId?: string | null;
   onSuccess?: (record: FingerRecord) => void;
 }
 
@@ -79,6 +80,7 @@ export function FingerForm({
   onOpenChange,
   record,
   candidates,
+  initialCandidateId,
   onSuccess,
 }: FingerFormProps) {
   const [form, setForm] =
@@ -110,13 +112,16 @@ const [candidateOpen, setCandidateOpen] = useState(false);
         remarks: record.remarks ?? "",
       });
     } else {
-      setForm(DEFAULT_FORM);
-    }
+  setForm({
+    ...DEFAULT_FORM,
+    candidate_id: initialCandidateId ?? "",
+  });
+}
 
     setError("");
     setDirty(false);
     setCandidateOpen(false);
-  }, [open, record]);
+  }, [open, record, initialCandidateId]);
 
   function updateField<K extends keyof FingerFormState>(
     field: K,
