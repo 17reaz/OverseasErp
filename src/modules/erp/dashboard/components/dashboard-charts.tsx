@@ -1,9 +1,10 @@
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -33,38 +34,37 @@ const stageShort: Record<string, string> = {
   "Police Clearance": "PCC",
 };
 
-const axisTick = { fontSize: 10 };
+const axisTick = { fontSize: 11, fill: "currentColor", opacity: 0.6 };
 
 const tooltipStyle = {
-  fontSize: 11,
-  padding: "4px 8px",
+  fontSize: 12,
+  padding: "6px 10px",
   borderRadius: 6,
 };
 
 function ChartSection({
   title,
   subtitle,
+  heightClass,
   className = "",
   children,
 }: {
   title: string;
   subtitle: string;
+  heightClass: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section
-      className={`flex min-h-[140px] min-w-0 flex-1 flex-col ${className}`}
-    >
-      <div className="mb-1 flex items-baseline gap-2">
-        <h3 className="text-xs font-semibold leading-none">{title}</h3>
+    <section className={`min-w-0 ${className}`}>
+      <div className="mb-2 flex items-baseline gap-2">
+        <h3 className="text-sm font-semibold leading-none">{title}</h3>
 
-        <p className="truncate text-[11px] text-muted-foreground">
-          {subtitle}
-        </p>
+        <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
       </div>
 
-      <div className="min-h-0 flex-1">{children}</div>
+      {/* Fixed height, tai ResponsiveContainer collapse hobe na */}
+      <div className={`w-full text-primary ${heightClass}`}>{children}</div>
     </section>
   );
 }
@@ -80,17 +80,23 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
   });
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <ChartSection
         title="Candidate Pipeline"
         subtitle="Across workflow stages"
+        heightClass="h-44"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={pipelineData}
             margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="currentColor"
+              strokeOpacity={0.12}
+            />
 
             <XAxis
               dataKey="stage"
@@ -100,7 +106,7 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
               interval={0}
               angle={-30}
               textAnchor="end"
-              height={40}
+              height={44}
             />
 
             <YAxis
@@ -112,7 +118,7 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
             />
 
             <Tooltip
-              cursor={{ opacity: 0.08 }}
+              cursor={{ fill: "currentColor", opacity: 0.08 }}
               contentStyle={tooltipStyle}
               formatter={(value) => [value, "Candidates"]}
             />
@@ -121,7 +127,7 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
               dataKey="count"
               name="Candidates"
               radius={[4, 4, 0, 0]}
-              fill="hsl(var(--primary))"
+              fill="currentColor"
             />
           </BarChart>
         </ResponsiveContainer>
@@ -130,20 +136,27 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
       <ChartSection
         title="Candidate Trend"
         subtitle="Registrations over time"
-        className="border-t pt-3"
+        heightClass="h-52"
+        className="border-t pt-4"
       >
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <AreaChart
             data={trend}
-            margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+            margin={{ top: 18, right: 16, left: -20, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="currentColor"
+              strokeOpacity={0.12}
+            />
 
             <XAxis
               dataKey="month"
               tickLine={false}
               axisLine={false}
               tick={axisTick}
+              padding={{ left: 12, right: 12 }}
             />
 
             <YAxis
@@ -152,6 +165,7 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
               axisLine={false}
               width={32}
               tick={axisTick}
+              domain={[0, (dataMax: number) => Math.max(dataMax, 1)]}
             />
 
             <Tooltip
@@ -159,16 +173,27 @@ export function DashboardCharts({ pipeline, trend }: DashboardChartsProps) {
               formatter={(value) => [value, "Candidates"]}
             />
 
-            <Line
+            <Area
               type="monotone"
               dataKey="candidates"
               name="Candidates"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              activeDot={{ r: 4 }}
-            />
-          </LineChart>
+              stroke="currentColor"
+              strokeWidth={2.5}
+              fill="currentColor"
+              fillOpacity={0.15}
+              dot={{ r: 4, fill: "currentColor", strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
+              isAnimationActive={false}
+            >
+              <LabelList
+                dataKey="candidates"
+                position="top"
+                offset={8}
+                fontSize={11}
+                fill="currentColor"
+              />
+            </Area>
+          </AreaChart>
         </ResponsiveContainer>
       </ChartSection>
     </div>
