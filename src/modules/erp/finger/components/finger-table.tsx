@@ -120,6 +120,12 @@ function CandidateCell({
       >
         V{record.version}
       </Badge>
+      <Badge
+  variant="outline"
+  className={record.is_current ? SUCCESS_CLASS : MUTED_CLASS}
+>
+  {record.is_current ? "Current" : "History"}
+</Badge>
     </div>
   );
 }
@@ -243,6 +249,19 @@ function buildColumns({
       hideOnMobile: true,
       cell: (record) => <RemarksCell remarks={record.remarks} />,
     },
+    {
+  key: "history_reason",
+  header: "History Reason",
+  hideOnMobile: true,
+  cell: (record) => (
+    <span
+      className="block max-w-[240px] truncate text-xs text-muted-foreground"
+      title={record.invalidated_reason ?? undefined}
+    >
+      {record.invalidated_reason || "—"}
+    </span>
+  ),
+},
     {
       key: "action",
       header: "Actions",

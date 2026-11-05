@@ -21,6 +21,8 @@ invalidated_reason: string | null;
   finger_date: string | null;
   finger_type: FingerType;
   status: FingerStatus;
+  mofa_id: string | null;
+
   remarks: string | null;
   created_at: string;
   updated_at: string;
@@ -51,7 +53,6 @@ export async function getFingerRecords(): Promise<FingerRecord[]> {
   const { data, error } = await supabase
     .from("fingers")
     .select("*")
-    .eq("is_current", true)
     .order("created_at", { ascending: false });
 
   if (error) {
