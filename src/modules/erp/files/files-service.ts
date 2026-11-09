@@ -65,6 +65,7 @@ export async function getFileVersions(
 /**
  * Upload a new file.
  */
+
 export async function uploadFile({
   tenantId,
   candidateId,
@@ -82,111 +83,131 @@ export async function uploadFile({
   docType: DocumentType;
   file: File;
 }) {
-  /*
-   * 1. Get current active version
-   */
+  if (!tenantId || !candidateId) {
+    throw new Error("Candidate tenant and ID are required.");
+  }
 
-  const currentFile = await getActiveFile(
-    candidateId,
-    docType,
-  );
+  // 1. Get all existing versions.
+  const { data: versions, error: versionsError } = await supabase
+    .from("files")
+    .select("id, version, is_active")
+    .eq("tenant_id", tenantId)
+    .eq("candidate_id", candidateId)
+    .eq("doc_type", docType)
+    .order("version", { ascending: false });
+
+  if (versionsError) throw versionsError;
+
+  const currentVersions = versions ?? [];
+
+  const currentFile =
+    currentVersions.find((item) => item.is_active) ?? null;
 
   const nextVersion =
-    currentFile?.version
-      ? currentFile.version + 1
-      : 1;
+    currentVersions.reduce(
+      (max, item) => Math.max(max, item.version ?? 0),
+      0,
+    ) + 1;
 
-  /*
-   * 2. Make safe filename
-   */
+  // 2. Generate safe filename.
+  const safeName =
+    candidateName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "candidate";
 
-  const safeName = candidateName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  const safePassportNo = passportNo
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]/g, "");
+  const safePassportNo =
+    passportNo.trim().replace(/[^a-zA-Z0-9_-]/g, "") || "passport";
 
   const extension =
-    file.name.split(".").pop()?.toLowerCase() ||
-    "bin";
-
-  /*
-   * 3. Create filename
-   */
+    file.name.split(".").pop()?.toLowerCase() || "bin";
 
   const fileName =
     `${candidateSl}-${safeName}-${safePassportNo}-${docType}-v${nextVersion}.${extension}`;
 
-  /*
-   * 4. Storage path
-   */
+  const filePath = `${tenantId}/${candidateId}/${fileName}`;
+  const bucket = getStorageBucket(docType);
 
-  const filePath =
-    `${tenantId}/${candidateId}/${fileName}`;
-
-  /*
-   * 5. Upload to Storage
-   */
-
-  const { error: uploadError } =
-  await supabase.storage
-    .from(getStorageBucket(docType))
+  // 3. Upload new file to Storage.
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
     .upload(filePath, file, {
       cacheControl: "3600",
       upsert: false,
+      contentType: file.type,
     });
 
-  if (uploadError) {
-    throw uploadError;
+  if (uploadError) throw uploadError;
+
+  // 4. Insert new database record FIRST.
+  const { data: newRecord, error: insertError } = await supabase
+    .from("files")
+    .insert({
+      tenant_id: tenantId,
+      candidate_id: candidateId,
+      doc_type: docType,
+      file_location: filePath,
+      version: nextVersion,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  // If DB insert fails, remove the newly uploaded object.
+  if (insertError || !newRecord) {
+    const { error: cleanupError } = await supabase.storage
+      .from(bucket)
+      .remove([filePath]);
+
+    if (cleanupError) {
+      console.error("File cleanup failed:", cleanupError);
+    }
+
+    if (insertError) throw insertError;
+
+    throw new Error("New file record could not be created.");
   }
 
-  /*
-   * 6. Disable old active version
-   */
-
+  // 5. Only now deactivate the previous version.
   if (currentFile) {
-    const { error: updateError } =
+    const { data: deactivated, error: deactivateError } =
       await supabase
         .from("files")
         .update({
           is_active: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", currentFile.id);
+        .eq("id", currentFile.id)
+        .eq("tenant_id", tenantId)
+        .eq("is_active", true)
+        .select("id")
+        .maybeSingle();
 
-    if (updateError) {
-      throw updateError;
+    if (deactivateError || !deactivated) {
+      // Roll back the new record.
+      await supabase
+        .from("files")
+        .delete()
+        .eq("id", newRecord.id)
+        .eq("tenant_id", tenantId);
+
+      // Remove the new Storage object.
+      await supabase.storage
+        .from(bucket)
+        .remove([filePath]);
+
+      if (deactivateError) throw deactivateError;
+
+      throw new Error(
+        "Previous file could not be replaced. Please try again.",
+      );
     }
   }
 
-  /*
-   * 7. Insert new database record
-   */
-
-  const { data, error: insertError } =
-    await supabase
-      .from("files")
-      .insert({
-        tenant_id: tenantId,
-        candidate_id: candidateId,
-        doc_type: docType,
-        file_location: filePath,
-        version: nextVersion,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-  if (insertError) {
-    throw insertError;
-  }
-
-  return data as FileRecord;
+  return newRecord as FileRecord;
 }
+
 
 /**
  * Create a temporary URL for a private file.
