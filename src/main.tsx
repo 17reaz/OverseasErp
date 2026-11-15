@@ -6,7 +6,7 @@ import App from "./app/App";
 import { AppErrorBoundary } from "./components/error-boundary";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { queryClient } from "./lib/tanstack/query-client";
-
+import { ThemeProvider } from "./components/theme-provider";
 import "./index.css";
 
 const RELOAD_KEY = "oerp-chunk-reload-at";
@@ -91,6 +91,8 @@ setupLifecycleLogging();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <ThemeProvider>
+
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -98,5 +100,6 @@ createRoot(document.getElementById("root")!).render(
         </TooltipProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
+    </ThemeProvider>
   </StrictMode>,
 );

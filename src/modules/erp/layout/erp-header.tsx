@@ -9,7 +9,9 @@ import {
   FileText,
   CreditCard,
   Plane,
+  Moon, Sun
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -57,7 +59,12 @@ const [unreadCount,setUnreadCount] = useState(0);
     return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
   }, []);
     
+const { theme, setTheme } = useTheme();
+const [mounted, setMounted] = useState(false);
 
+useEffect(() => {
+  setMounted(true);
+}, []);
  useEffect(() => {
   let mounted = true;
 
@@ -145,7 +152,21 @@ const [unreadCount,setUnreadCount] = useState(0);
               Ctrl K
             </kbd>
           </Button>
-
+{mounted && (
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+    aria-label="Toggle dark mode"
+    title="Toggle dark mode"
+  >
+    {theme === "dark" ? (
+      <Sun className="h-4 w-4" />
+    ) : (
+      <Moon className="h-4 w-4" />
+    )}
+  </Button>
+)}
           
 <Button
   type="button"
