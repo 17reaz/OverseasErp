@@ -91,8 +91,7 @@ setupLifecycleLogging();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
-
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
