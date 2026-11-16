@@ -38,12 +38,7 @@ setupChunkReloadRecovery();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <ThemeProvider    >
       <AppErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
